@@ -113,6 +113,8 @@ class TestSecrets(unittest.TestCase):
             "30 passed in 1.92s",
             "Author: Octo Cat",
             "https://docs.python.org/3/library/http.server.html",
+            "src/api/auth.py:41: # TODO rotate session keys",
+            "tokenizer.py:12:def split(text):",
             "C:/Program Files/Lively Wallpaper/Lively.exe",
         ]
         for s in keep:

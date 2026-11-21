@@ -103,7 +103,8 @@ _VALUE = r"(?:\"[^\"\n]*\"|'[^'\n]*'|`[^`\n]*`|[^\s,;&|)}\]\"']+)"
 
 BY_NAME = [
     # name = value / name: value / "name": "value"  (also covers export X=, set X=, $env:X =, ENV X)
-    (re.compile(rf"(?i)(\b{_NAME}[\"']?\s*(?::=|=>|[:=])\s*)({_VALUE})"), r"\1" + MASK),
+    # ":" counts only before a space or quote, so file:line references like auth.py:41: stay readable
+    (re.compile(rf"(?i)(\b{_NAME}[\"']?\s*(?::=|=>|=|:(?=[\s\"'`]))\s*)({_VALUE})"), r"\1" + MASK),
     # PowerShell / dotenv / Dockerfile:  $env:X = 'v'   ENV X v   setx X v
     (re.compile(rf"(?i)(\b(?:ENV|setx|set-item\s+env:)\s+{_NAME}\s+)({_VALUE})"), r"\1" + MASK),
     # CLI flags:  --password hunter2   --token=abc   -Password 'x'
