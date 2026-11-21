@@ -303,8 +303,8 @@ Stdlib only at runtime, Python 3.9+.
 
 **MIT**, see [LICENSE](LICENSE). Free to use, change and share.
 [Departure Mono](https://departuremono.com) is © Helena Zhang, SIL Open Font License 1.1, see [OFL.txt](src/glitchwall/wallpaper/OFL.txt).
-VT323, IBM Plex Mono, Chakra Petch, Doto, Saira Stencil One, Instrument Serif, Courier Prime, DM Mono, Fira Code and
-Overpass Mono are bundled under the SIL Open Font License 1.1 (from [Google Fonts](https://github.com/google/fonts));
+VT323, IBM Plex Mono, Chakra Petch, Doto, Saira Stencil One, Instrument Serif, Courier Prime, DM Mono, Fira Code,
+Overpass Mono, Gelasio, Caveat, Cascadia Mono and Inconsolata are bundled under the SIL Open Font License 1.1 (from [Google Fonts](https://github.com/google/fonts));
 each license is in [fonts/licenses](src/glitchwall/wallpaper/fonts/licenses).
 The first eight themes' palettes, and the grain, scanline and halftone textures, are adapted from the themes of
 [SUB/WAVE](https://github.com/perminder-klair/subwave) by Parminder Klair (MIT). Go check it out, it's a lovely

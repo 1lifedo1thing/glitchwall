@@ -12,6 +12,10 @@
   @font-face { font-family:'DM Mono'; src:url('fonts/DMMono-Regular.ttf'); font-display:block; }
   @font-face { font-family:'Fira Code'; src:url('fonts/FiraCode.ttf'); font-weight:300 700; font-display:block; }
   @font-face { font-family:'Overpass Mono'; src:url('fonts/OverpassMono.ttf'); font-weight:300 700; font-display:block; }
+  @font-face { font-family:'Gelasio'; src:url('fonts/Gelasio.ttf'); font-weight:400 700; font-display:block; }
+  @font-face { font-family:'Caveat'; src:url('fonts/Caveat.ttf'); font-weight:400 700; font-display:block; }
+  @font-face { font-family:'Cascadia Mono'; src:url('fonts/CascadiaMono.ttf'); font-weight:200 700; font-display:block; }
+  @font-face { font-family:'Inconsolata'; src:url('fonts/Inconsolata.ttf'); font-weight:200 900; font-display:block; }
 
   /* every color and font comes from the theme (THEMES below); applyLook() sets these */
   :root { --bg:#04110a; --g:#8cffb2; --s:#4fae74; --l:#ffb02e; --d:rgba(140,255,178,.3); --acc:#ffb02e;
@@ -160,11 +164,11 @@ const THEMES = {
                 display:'departure', mono:'departure', grain:0, texture:'scan', scan:.3, glow:true, rain:'grid', dim:'#b967ff', hi:'#01cdfe',
                 bar:'rgba(1,205,254,.14)', status:'#8a5fd0', edge:'rgba(255,113,206,.4)' },
   msdos:      { mode:'dark',  bg:'#0000AA', surface:'#0000AA', ink:'#AAAAAA', muted:'#0000AA', faint:'#000066', acc:'#FFFF55', acc2:'#55FFFF', err:'#FF5555',
-                display:'lucida', mono:'lucida', grain:0, texture:'scan', scan:.18, rain:'none', dim:'#5555FF', hi:'#FFFFFF', solid:1,
+                display:'vt323', mono:'vt323', grain:0, texture:'scan', scan:.18, rain:'none', dim:'#5555FF', hi:'#FFFFFF', solid:1,
                 bar:'#AAAAAA', barb:'#000000', edge:'#AAAAAA', shadow:'8px 8px 0 rgba(0,0,0,.65)', filter:'none', status:'#AAAAAA', line:'#5555FF' },
   // the old blue screen: white VGA text straight on blue, a grey title chip, a stop screen behind
   bsod:       { mode:'dark',  bg:'#0000AA', surface:'#0000AA', ink:'#FFFFFF', muted:'#AAAAAA', faint:'#5555FF', acc:'#FFFFFF', acc2:'#AAAAAA', err:'#FFFF55',
-                display:'lucida', mono:'lucida', grain:0, texture:'scan', scan:.12, rain:'stop', dim:'#AAAAAA', hi:'#FFFFFF', solid:1,
+                display:'vt323', mono:'vt323', grain:0, texture:'scan', scan:.12, rain:'stop', dim:'#AAAAAA', hi:'#FFFFFF', solid:1,
                 bar:'#AAAAAA', barfg:'#0000AA', barb:'#0000AA', edge:'rgba(0,0,0,0)', shadow:'none', filter:'none', line:'rgba(255,255,255,.35)' },
   // blueprint's older cousin: a sun print in Prussian blue, paper grain, pale cyan
   cyanotype:  { mode:'dark',  bg:'#14376b', surface:'#1a4179', ink:'#eaf1f8', muted:'#a9bfd9', faint:'#6f8fb8', acc:'#9fd8f5', acc2:'#ffffff', err:'#ffd0c0',
@@ -184,17 +188,17 @@ const FONTS = {
   doto:         ["'Doto', 'Lucida Console', monospace", 1.2, 800],
   stencil:      ["'Saira Stencil One', Impact, sans-serif", 1.1, 400],
   serif:        ["'Instrument Serif', Georgia, serif", 1.3, 400],
-  georgia:      ["Georgia, 'Times New Roman', serif", 1.08, 700],
+  georgia:      ["'Gelasio', Georgia, serif", 1.08, 700],
   courierprime: ["'Courier Prime', 'Courier New', monospace", 1, 400],
   dmmono:       ["'DM Mono', Consolas, monospace", 1, 400],
   fira:         ["'Fira Code', Consolas, monospace", 1, 400],
   overpass:     ["'Overpass Mono', Consolas, monospace", 1, 400],
-  cascadia:     ["'Cascadia Mono', 'Cascadia Code', Consolas, Menlo, monospace", 1, 400],
-  consolas:     ["Consolas, 'Lucida Console', Menlo, monospace", 1, 400],
+  cascadia:     ["'Cascadia Mono', Consolas, monospace", 1, 400],
+  consolas:     ["'Inconsolata', Consolas, monospace", 1.05, 400],
   lucida:       ["'Lucida Console', 'Lucida Sans Typewriter', Monaco, monospace", 1, 400],
-  courier:      ["'Courier New', Courier, monospace", 1, 400],
+  courier:      ["'Courier Prime', 'Courier New', monospace", 1, 400],
   segoe:        ["'Segoe UI', system-ui, -apple-system, sans-serif", 1, 600],
-  hand:         ["'Ink Free', 'Segoe Print', 'Bradley Hand', 'Comic Sans MS', cursive", 1.12, 400],
+  hand:         ["'Caveat', 'Ink Free', cursive", 1.3, 500],
   mono:         ["ui-monospace, Menlo, monospace", 1, 400],
 };
 // how cards arrive and leave, per theme (keyframes in the CSS); exits stay under 0.65 s, when the card is removed

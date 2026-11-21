@@ -116,6 +116,7 @@ class TestSecrets(unittest.TestCase):
             "src/api/auth.py:41: # TODO rotate session keys",
             "tokenizer.py:12:def split(text):",
             "C:/Program Files/Lively Wallpaper/Lively.exe",
+            "-     if not session_id:\n+     if session_id is None:",   # a diff: the "+" line is not a value
         ]
         for s in keep:
             with self.subTest(s):

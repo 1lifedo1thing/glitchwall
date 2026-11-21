@@ -65,8 +65,17 @@ class TestNamesMatch(unittest.TestCase):
         for url in re.findall(r"url\('([^']+\.(?:ttf|otf))'\)", PAGE):
             self.assertTrue((WP / url).is_file(), url)
         ttfs = list((WP / "fonts").glob("*.ttf"))
-        self.assertEqual(len(ttfs), 10)
+        self.assertEqual(len(ttfs), 14)
         self.assertEqual(len(list((WP / "fonts" / "licenses").glob("OFL-*.txt"))), len(ttfs))
+
+    def test_themes_use_only_bundled_fonts(self):
+        system = {"lucida", "segoe", "mono"}          # menu options that say they are system fonts
+        body = block("const THEMES = {") + "\n"
+        for name in themes.THEMES:
+            m = re.search(rf"^  {name}:\s*\{{(.*?)\}},\n", body, re.M | re.S)
+            f = dict(re.findall(r"(\w+):'([^']*)'", m.group(1)))
+            for k in ("display", "mono"):
+                self.assertNotIn(f[k], system, f"{name}.{k}")
 
     def test_lively_dropdowns(self):
         for prop, kind in (("themeSel", "theme"), ("paletteSel", "palette"), ("rainSel", "rain"),
