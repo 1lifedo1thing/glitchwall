@@ -131,6 +131,19 @@ customize panel has the same five dropdowns, and anything other than *Use glitch
 the command line. In a browser, URL parameters (`?theme=sleeve&rain=jukebox&transition=stamp`) win over both,
 and `?cycle=10` steps through every theme. The background slider sets how busy any background is (0 stills it).
 
+### Up close
+
+Full-size shots (click one to open it). They come from ambient mode, so every session in them is made up.
+
+<table>
+<tr><td><a href="docs/shots/phosphor.jpg"><img src="docs/shots/phosphor.jpg" alt="the phosphor look"></a><br><sub>phosphor</sub></td><td><a href="docs/shots/drafting.jpg"><img src="docs/shots/drafting.jpg" alt="the drafting look"></a><br><sub>drafting</sub></td></tr>
+<tr><td><a href="docs/shots/notebook.jpg"><img src="docs/shots/notebook.jpg" alt="the notebook look"></a><br><sub>notebook</sub></td><td><a href="docs/shots/sleeve.jpg"><img src="docs/shots/sleeve.jpg" alt="the sleeve look"></a><br><sub>sleeve</sub></td></tr>
+<tr><td><a href="docs/shots/duplicator.jpg"><img src="docs/shots/duplicator.jpg" alt="the duplicator look"></a><br><sub>duplicator</sub></td><td><a href="docs/shots/newsprint.jpg"><img src="docs/shots/newsprint.jpg" alt="the newsprint look"></a><br><sub>newsprint</sub></td></tr>
+<tr><td><a href="docs/shots/neon.jpg"><img src="docs/shots/neon.jpg" alt="the neon look"></a><br><sub>neon</sub></td><td><a href="docs/shots/bsod.jpg"><img src="docs/shots/bsod.jpg" alt="the bsod look"></a><br><sub>bsod</sub></td></tr>
+<tr><td><a href="docs/shots/art-synthwave.jpg"><img src="docs/shots/art-synthwave.jpg" alt="the synthwave, art mode look"></a><br><sub>synthwave, art mode</sub></td><td><a href="docs/shots/art-halftone.jpg"><img src="docs/shots/art-halftone.jpg" alt="the duplicator, art mode look"></a><br><sub>duplicator, art mode</sub></td></tr>
+<tr><td><a href="docs/shots/art-starburst.jpg"><img src="docs/shots/art-starburst.jpg" alt="the sleeve + starburst, art mode look"></a><br><sub>sleeve + starburst, art mode</sub></td><td><a href="docs/shots/art-testcard.jpg"><img src="docs/shots/art-testcard.jpg" alt="the fieldops + testcard, art mode look"></a><br><sub>fieldops + testcard, art mode</sub></td></tr>
+</table>
+
 ## Not a coder? 🌙
 
 You don't need Claude Code, or any code, to use glitchwall. Pick a mode:
@@ -281,6 +294,7 @@ uv build                                                             # wheel + s
 powershell -File packaging\build-exe.ps1                             # standalone Windows exes + zip (PyInstaller, build time only)
 uv run --no-project --with pillow --with websockets python tools/record_demo.py   # re-record docs/demo.gif
 uv run --no-project --with pillow --with websockets python tools/theme_gallery.py  # rebuild docs/themes.png
+uv run --no-project --with pillow --with websockets python tools/screenshots.py   # rebuild docs/shots/ (the "Up close" gallery)
 ```
 
 Stdlib only at runtime, Python 3.9+.
@@ -293,14 +307,6 @@ Stdlib only at runtime, Python 3.9+.
 | `src/glitchwall/themes.py` | theme, background and font names (the colors live in the page) |
 | `src/glitchwall/platforms.py` | Lively, autostart, background process, standalone exe |
 | `src/glitchwall/wallpaper/` | the page itself (`index.html?still` renders without animation, for screenshots) |
-
-<details>
-<summary>More screenshots</summary>
-
-![four tool calls on the wallpaper, one curl command with its Authorization header masked](docs/screenshot-1.png)
-![a git commit, a cargo build and an ls on the wallpaper](docs/screenshot-2.png)
-
-</details>
 
 ## Support ☕
 

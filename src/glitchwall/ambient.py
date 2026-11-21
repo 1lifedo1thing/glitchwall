@@ -120,8 +120,8 @@ def docker_deploy(p):
         ("$", f"docker build -t {p}:{tag} .", f"[+] Building {random.uniform(6, 50):.1f}s (14/14) FINISHED\n => exporting to image\n => naming to docker.io/library/{p}:{tag}", False),
         ("$", "docker compose up -d", f"[+] Running 3/3\n ✔ Container {p}-db-1     Healthy\n ✔ Container {p}-cache-1  Started\n ✔ Container {p}-api-1    Started", False),
         ("$", f"kubectl -n {p} rollout status deploy/{p}-api", f"Waiting for deployment \"{p}-api\" rollout to finish: {pods - 1} of {pods} updated replicas are available...\ndeployment \"{p}-api\" successfully rolled out", False),
-        ("$", f"kubectl -n {p} get pods", "NAME" + " " * 24 + "READY   STATUS    RESTARTS   AGE\n" + "\n".join(
-            f"{p}-api-{_h(9)}-{_h(5)}   1/1     Running   0          {random.randint(5, 90)}s" for _ in range(min(pods, 4))), False),
+        ("$", f"kubectl -n {p} get pods", "NAME          READY  STATUS   AGE\n" + "\n".join(
+            f"api-{_h(5)}-{_h(3)}  1/1    Running  {random.randint(5, 90)}s" for _ in range(min(pods, 3))), False),
         ("$", f"curl -s https://{random.choice(HOSTS)}/healthz", '{"status":"ok","db":"ok","version":"' + tag + '"}', False),
     ]
 
@@ -129,12 +129,13 @@ def docker_deploy(p):
 def sql_work(p):
     n = random.choice(NOUNS)
     c = random.randint(800, 250000)
+    mig = f"{random.randint(20, 80):04d}_{n}s_owner_idx.sql"   # the same file in every step
     return [
         ("$", f"psql -d {p} -c \"select count(*) from {n}s where created_at > now() - interval '7 days'\"", f" count\n-------\n {c:>5}\n(1 row)", False),
         ("$", f"psql -d {p} -c \"explain analyze select * from {n}s where owner_id = 42\"",
          f"Seq Scan on {n}s  (cost=0.00..{random.randint(1000, 9000)}.00 rows={random.randint(3, 40)})\nExecution Time: {random.uniform(40, 900):.3f} ms", False),
-        ("write", f"~/code/{p}/migrations/{random.randint(20, 80):04d}_{n}s_owner_idx.sql\nCREATE INDEX CONCURRENTLY {n}s_owner_idx\n    ON {n}s (owner_id);", "", False),
-        ("$", "make migrate", f"applying {random.randint(20, 80):04d}_{n}s_owner_idx.sql ... ok", False),
+        ("write", f"~/code/{p}/migrations/{mig}\nCREATE INDEX CONCURRENTLY {n}s_owner_idx\n    ON {n}s (owner_id);", "", False),
+        ("$", "make migrate", f"applying {mig} ... ok", False),
         ("$", f"psql -d {p} -c \"explain analyze select * from {n}s where owner_id = 42\"",
          f"Index Scan using {n}s_owner_idx on {n}s\nExecution Time: {random.uniform(.05, 2):.3f} ms", False),
     ]

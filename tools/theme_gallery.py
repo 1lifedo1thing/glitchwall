@@ -24,7 +24,7 @@ import websockets
 from PIL import Image, ImageDraw, ImageFont
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from record_demo import browser  # noqa: E402
+from record_demo import browser, stop  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -107,8 +107,8 @@ def main() -> None:
             sys.exit("browser did not start")
         shots = asyncio.run(shoot(ws_url, outdir))
     finally:
-        br.terminate()
-        demo.terminate()
+        stop(br, prof)
+        stop(demo)
     print(gallery(shots))
 
 

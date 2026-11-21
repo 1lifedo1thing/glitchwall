@@ -44,6 +44,9 @@
   .body { padding:8px 12px 10px; font-size:calc(16px * var(--mscale)); line-height:1.15; overflow:hidden; display:flex; flex-direction:column; justify-content:flex-end;
           background-image:var(--rules); background-position:0 8px; }
   .cmd, .out, .err { white-space:pre-wrap; word-break:break-word; }
+  /* a tall card keeps its command; long output shrinks and shows its newest lines (typeInto scrolls it) */
+  .cmd { flex-shrink:0; max-height:calc(16px * var(--mscale) * 1.15 * 9); overflow:hidden; }
+  .out, .err { min-height:calc(16px * var(--mscale) * 1.15 * 2); overflow:hidden; }
   .cmd, .out { color:var(--g); text-shadow:var(--glow); }
   .cmd .p { color:var(--l); }
   .cmd .p, .bar b { text-shadow:var(--ghost); }   /* the riso misprint, on bold bits only: doubled small type reads as blur */
@@ -169,7 +172,7 @@ const THEMES = {
   // the old blue screen: white VGA text straight on blue, a grey title chip, a stop screen behind
   bsod:       { mode:'dark',  bg:'#0000AA', surface:'#0000AA', ink:'#FFFFFF', muted:'#AAAAAA', faint:'#5555FF', acc:'#FFFFFF', acc2:'#AAAAAA', err:'#FFFF55',
                 display:'vt323', mono:'vt323', grain:0, texture:'scan', scan:.12, rain:'stop', dim:'#AAAAAA', hi:'#FFFFFF', solid:1,
-                bar:'#AAAAAA', barfg:'#0000AA', barb:'#0000AA', edge:'rgba(0,0,0,0)', shadow:'none', filter:'none', line:'rgba(255,255,255,.35)' },
+                bar:'#AAAAAA', barfg:'#0000AA', barb:'#0000AA', edge:'rgba(170,170,170,.45)', shadow:'none', filter:'none', line:'rgba(255,255,255,.35)' },
   // blueprint's older cousin: a sun print in Prussian blue, paper grain, pale cyan
   cyanotype:  { mode:'dark',  bg:'#14376b', surface:'#1a4179', ink:'#eaf1f8', muted:'#a9bfd9', faint:'#6f8fb8', acc:'#9fd8f5', acc2:'#ffffff', err:'#ffd0c0',
                 display:'serif', mono:'plex', grain:.35, texture:'none', rain:'print', dim:'#a9bfd9', hi:'#eaf1f8', solid:.7 },
@@ -716,7 +719,7 @@ const STYLES = {
       const title = ' glitchwall ', tw = cx.measureText(title).width;
       cx.globalAlpha = .55; cx.fillStyle = T.muted; cx.fillRect(W / 2 - tw / 2 - 4, y - 4, tw + 8, fs + 8);
       cx.fillStyle = T.bg; cx.fillText(title, W / 2 - tw / 2, y);
-      y += fs * 2.4; cx.fillStyle = T.ink; cx.globalAlpha = .3;
+      y += fs * 2.4; cx.fillStyle = T.ink; cx.globalAlpha = .17;   // faint, so cards on top stay readable
       for (const l of this.lines) { cx.fillText(l, x, y); y += fs * 1.35; }
       cx.fillText('Press any key to continue ' + (this.on ? '_' : ' '), x, y);
       cx.globalAlpha = 1;
@@ -818,17 +821,23 @@ let z = 10;
 function place(card) {
   const w = Math.round(innerWidth * (0.24 + Math.random() * 0.14));
   card.style.width = w + 'px';
-  const h = Math.min(innerHeight * 0.42, 260);
+  const h = Math.min(innerHeight * 0.42, 220);
   let best = null, bestHit = Infinity;
-  for (let k = 0; k < 16; k++) {
-    const x = 16 + Math.random() * (innerWidth - w - 32), y = 64 + Math.random() * (innerHeight - h - 100);
+  // live cards by their real size (plus a gap), so blocks sit side by side instead of on top of each other
+  // offset* is layout size: unlike getBoundingClientRect it is not shrunk by a card's entry animation (scale/clip)
+  // and at least 160px tall: a card that only has its command so far grows when the tool output arrives
+  const rects = open.map(o => ({ x: o.offsetLeft - 14, y: o.offsetTop - 14, w: o.offsetWidth + 28, h: Math.max(o.offsetHeight, 160) + 28 }));
+  for (let k = 0; k < 80; k++) {
+    const x = 16 + Math.random() * (innerWidth - w - 32), y = 64 + Math.random() * (innerHeight - h - 120);
     let hit = 0;
-    open.forEach(o => { const r = o._rect; if (!r) return;
+    rects.forEach(r => {
       hit += Math.max(0, Math.min(x + w, r.x + r.w) - Math.max(x, r.x)) * Math.max(0, Math.min(y + h, r.y + r.h) - Math.max(y, r.y)); });
     if (hit < bestHit) { bestHit = hit; best = { x, y }; }
+    if (!hit) break;
   }
   card._rect = { x: best.x, y: best.y, w, h };
   card.style.left = best.x + 'px'; card.style.top = best.y + 'px'; card.style.zIndex = ++z;
+  card.style.maxHeight = Math.min(innerHeight * 0.42, innerHeight - best.y - 52) + 'px';   // never grows over the corner label
 }
 function kill(card) {
   if (!card || card._dead) return; card._dead = true;
@@ -854,9 +863,10 @@ const byRef = new Map();        // tool call id -> its card
 function typeInto(el, text, cps, done) {
   const node = document.createTextNode(''); el.appendChild(node); el.classList.add('cur');
   let i = 0;
-  if (STILL) { node.data = text; el.classList.remove('cur'); return setTimeout(done, 0); }
+  if (STILL) { node.data = text; el.classList.remove('cur'); el.scrollTop = el.scrollHeight; return setTimeout(done, 0); }
   const step = () => {
     node.data = text.slice(0, i += Math.max(1, Math.round(cps / 60)));
+    el.scrollTop = el.scrollHeight;
     if (i < text.length) requestAnimationFrame(step); else { el.classList.remove('cur'); done(); }
   };
   setTimeout(step, 260);   // let the glitch-in land first
