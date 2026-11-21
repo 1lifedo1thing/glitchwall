@@ -31,7 +31,7 @@ Your agent is doing a hundred things a minute in a terminal you're not watching.
 - 🔒 **Paranoid by design.** 50 secret formats, credential assignments, high-entropy strings, your home path, user name and email are all masked *before* anything is stored. Localhost only. No telemetry. Read-only on your logs.
 - 🎥 **Stream-safe.** One command (`glitchwall pause`) and the screen is clean, enforced by the feed itself, not the wallpaper.
 - 🪶 **Tiny.** Pure Python standard library, zero dependencies, a single HTML page. Or a standalone `.exe` if you don't have Python.
-- 🎨 **Fifteen themes, sixteen backgrounds, ten transitions.** An oscilloscope, a blueprint, newsprint by day and night, neon, a field-ops poster, a risograph print, a record sleeve, a school notebook, an old blue stop screen and more. Each is a finished bundle of colors, fonts, background, texture and its own way of bringing cards in and out, and you can swap any single part.
+- 🎨 **Sixteen themes, seventeen backgrounds, eleven transitions.** An oscilloscope, a blueprint, newsprint by day and night, neon, a field-ops poster, a risograph print, a record sleeve, a school notebook, an old blue stop screen, an all-seeing machine's ring of data and more. Each is a finished bundle of colors, fonts, background, texture and its own way of bringing cards in and out, and you can swap any single part.
 - 🌙 **No code of your own needed.** Ambient mode plays made-up but realistic coding sessions forever, and art mode shows just the background. Neither one reads anything. See [Not a coder?](#not-a-coder-).
 - 🎛️ **Tweakable.** Typing speed, linger time, cards on screen, background intensity and glass opacity, all from Lively's sliders.
 
@@ -88,7 +88,7 @@ A `file://` page sends `Origin: null`, which the feed accepts with the key.
 
 ## Themes 🎨
 
-![fifteen themes](docs/themes.png)
+![sixteen themes](docs/themes.png)
 
 Each theme is a finished bundle: colors, two fonts, a background, a texture and its own way of bringing cards
 in and taking them away. Use one as it is, or swap any single part.
@@ -105,6 +105,7 @@ in and taking them away. Use one as it is, or swap any single part.
 | `notebook` | ruled paper, red margin, ballpoint handwriting, pencil doodles | written in / crumpled and tossed |
 | `bsod` | the old blue stop screen: white VGA text, grey title chips | drawn line by line / gone |
 | `cyanotype` | a sun print in Prussian blue, paper grain, a mid-century print | ruled in / erased |
+| `oracle` | an all-seeing machine: one great ring of jagged data strokes on black, slowly turning and always redrawing itself, white ink and one signal red | opens like an iris / closes to a point |
 | `matrix` · `amber` · `synthwave` · `msdos` | the original bright-green look, amber mono, a synthwave sunset, blue DOS boxes | glitch · beam · glitch · line by line |
 
 **Mix and match.** Five independent choices; `theme` means "whatever the theme uses":
@@ -121,9 +122,9 @@ glitchwall demo --open --theme notebook             # try one without touching y
 
 | Choice | Options |
 | --- | --- |
-| **Background** (`--rain`) | `pixel` bit-glyph rain · `code` katakana rain · `stars` · `static` · `snow` · `grid` synthwave sun · `draft` drawing grid · `halftone` two-ink dots · `record` · `jukebox` · `starburst` atomic age · `testcard` · `print` mid-century wallpaper · `stop` stop screen · `notebook` ruled paper · `none` |
+| **Background** (`--rain`) | `pixel` bit-glyph rain · `code` katakana rain · `stars` · `static` · `snow` · `grid` synthwave sun · `draft` drawing grid · `halftone` two-ink dots · `record` · `jukebox` · `starburst` atomic age · `testcard` · `print` mid-century wallpaper · `stop` stop screen · `notebook` ruled paper · `oracle` ring of data · `none` |
 | **Font** | `departure` · `plex` · `vt323` · `chakra` · `doto` · `stencil` · `serif` · `courierprime` · `dmmono` · `fira` · `overpass` · `georgia` · `cascadia` · `consolas` · `lucida` · `courier` · `segoe` · `hand` · `mono` |
-| **Transition** | `glitch` · `crt` · `draft` · `press` · `neon` · `stamp` · `riso` · `sleeve` · `dos` · `write` |
+| **Transition** | `glitch` · `crt` · `draft` · `press` · `neon` · `stamp` · `riso` · `sleeve` · `dos` · `write` · `iris` |
 | **Palette** | any theme name |
 
 Fonts are bundled or already on your system; nothing is downloaded at run time. In Lively, the wallpaper's
@@ -139,6 +140,7 @@ Full-size shots (click one to open it). They come from ambient mode, so every se
 <tr><td><a href="docs/shots/phosphor.jpg"><img src="docs/shots/phosphor.jpg" alt="the phosphor look"></a><br><sub>phosphor</sub></td><td><a href="docs/shots/drafting.jpg"><img src="docs/shots/drafting.jpg" alt="the drafting look"></a><br><sub>drafting</sub></td></tr>
 <tr><td><a href="docs/shots/notebook.jpg"><img src="docs/shots/notebook.jpg" alt="the notebook look"></a><br><sub>notebook</sub></td><td><a href="docs/shots/sleeve.jpg"><img src="docs/shots/sleeve.jpg" alt="the sleeve look"></a><br><sub>sleeve</sub></td></tr>
 <tr><td><a href="docs/shots/duplicator.jpg"><img src="docs/shots/duplicator.jpg" alt="the duplicator look"></a><br><sub>duplicator</sub></td><td><a href="docs/shots/newsprint.jpg"><img src="docs/shots/newsprint.jpg" alt="the newsprint look"></a><br><sub>newsprint</sub></td></tr>
+<tr><td><a href="docs/shots/oracle.jpg"><img src="docs/shots/oracle.jpg" alt="the oracle look"></a><br><sub>oracle</sub></td><td><a href="docs/shots/art-oracle.jpg"><img src="docs/shots/art-oracle.jpg" alt="the oracle, art mode look"></a><br><sub>oracle, art mode</sub></td></tr>
 <tr><td><a href="docs/shots/neon.jpg"><img src="docs/shots/neon.jpg" alt="the neon look"></a><br><sub>neon</sub></td><td><a href="docs/shots/bsod.jpg"><img src="docs/shots/bsod.jpg" alt="the bsod look"></a><br><sub>bsod</sub></td></tr>
 <tr><td><a href="docs/shots/art-synthwave.jpg"><img src="docs/shots/art-synthwave.jpg" alt="the synthwave, art mode look"></a><br><sub>synthwave, art mode</sub></td><td><a href="docs/shots/art-halftone.jpg"><img src="docs/shots/art-halftone.jpg" alt="the duplicator, art mode look"></a><br><sub>duplicator, art mode</sub></td></tr>
 <tr><td><a href="docs/shots/art-starburst.jpg"><img src="docs/shots/art-starburst.jpg" alt="the sleeve + starburst, art mode look"></a><br><sub>sleeve + starburst, art mode</sub></td><td><a href="docs/shots/art-testcard.jpg"><img src="docs/shots/art-testcard.jpg" alt="the fieldops + testcard, art mode look"></a><br><sub>fieldops + testcard, art mode</sub></td></tr>

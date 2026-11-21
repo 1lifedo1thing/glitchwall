@@ -21,6 +21,7 @@ THEMES = {
     "bsod": "extra: the old blue stop screen, white VGA text, grey title chip",
     "cyanotype": "extra: a sun print in Prussian blue, paper grain, mid-century print",
     "notebook": "extra: ruled notebook paper, ballpoint handwriting, pencil doodles",
+    "oracle": "extra: an all-seeing machine's ring of jagged data on black, one signal red",
 }
 RAINS = {
     "theme": "whatever the theme uses",
@@ -39,6 +40,7 @@ RAINS = {
     "print": "mid-century wallpaper: diamonds, dots, stars",
     "stop": "the old stop screen, faint, with a blinking cursor",
     "notebook": "ruled paper and red margin, pencil doodles sketching themselves",
+    "oracle": "a great ring of jagged data strokes, slowly turning, always redrawing itself",
     "none": "plain background",
 }
 FONTS = {
@@ -76,6 +78,7 @@ TRANSITIONS = {
     "sleeve": "slides up out of a sleeve; back down",
     "dos": "drawn a few lines at a time; gone at once",
     "write": "written in left to right; crumpled and tossed",
+    "iris": "opens out from the centre like an aperture; closes to a point",
 }
 # a theme is a bundle; every part of it can be swapped on its own
 KINDS = {"theme": THEMES, "palette": PALETTES, "rain": RAINS, "font": FONTS, "transition": TRANSITIONS}

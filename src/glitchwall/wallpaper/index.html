@@ -106,7 +106,25 @@
   /* write: written in left to right; leaving, crumpled up and tossed */
   @keyframes writeIn  { 0% { clip-path:inset(0 100% 0 0); } 100% { clip-path:inset(0 0 0 0); } }
   @keyframes writeOut { 35% { transform:scale(.92) rotate(-3deg); filter:brightness(.97); } 100% { transform:translateY(50px) scale(.12) rotate(28deg); opacity:0; } }
+  /* iris: opens out from the centre like an aperture, overexposed for a moment; leaving, it closes back to a point */
+  @keyframes irisIn  { 0% { opacity:0; clip-path:circle(0 at 50% 50%); filter:brightness(2.4) contrast(1.4); }
+                       18% { opacity:1; } 60% { filter:brightness(1.3); } 100% { clip-path:circle(75% at 50% 50%); filter:none; } }
+  @keyframes irisOut { 0% { clip-path:circle(75% at 50% 50%); } 30% { filter:brightness(1.6); }
+                       100% { clip-path:circle(0 at 50% 50%); opacity:.4; filter:brightness(2.4); } }
   .still .card { animation:none; }
+
+  /* oracle cards: instrument readouts with hairline corner brackets, a spaced title and one red signal mark */
+  html[data-theme="oracle"] .card { --k:color-mix(in srgb, var(--g) 55%, transparent);
+    background-image:linear-gradient(var(--k),var(--k)), linear-gradient(var(--k),var(--k)), linear-gradient(var(--k),var(--k)), linear-gradient(var(--k),var(--k)),
+                     linear-gradient(var(--k),var(--k)), linear-gradient(var(--k),var(--k)), linear-gradient(var(--k),var(--k)), linear-gradient(var(--k),var(--k));
+    background-size:12px 1px, 1px 12px, 12px 1px, 1px 12px, 12px 1px, 1px 12px, 12px 1px, 1px 12px;
+    background-position:top left, top left, top right, top right, bottom left, bottom left, bottom right, bottom right;
+    background-repeat:no-repeat; background-color:rgba(var(--card),var(--alpha)); }
+  html[data-theme="oracle"] .bar { text-transform:uppercase; letter-spacing:.22em; padding:6px 12px 5px; border-bottom-color:color-mix(in srgb, var(--g) 8%, transparent); }
+  html[data-theme="oracle"] .bar b::before { content:''; display:inline-block; width:5px; height:5px; margin:0 10px 1px 0; background:var(--acc);
+    box-shadow:0 0 8px var(--acc); vertical-align:middle; }
+  html[data-theme="oracle"] .body { padding:10px 14px 12px; }
+  html[data-theme="oracle"] .out { border-left-color:color-mix(in srgb, var(--g) 14%, transparent); }
 
   /* overlays, all static (no per-frame cost beyond compositing) */
   #grain { position:fixed; inset:0; pointer-events:none; z-index:2147483645; opacity:var(--grain); }
@@ -180,8 +198,13 @@ const THEMES = {
   notebook:   { mode:'light', bg:'#fbf9f1', surface:'#fffef8', ink:'#22337a', muted:'#5d6b9a', faint:'#a9b4d0', acc:'#d64545', acc2:'#6e6e6e', err:'#d64545',
                 display:'hand', mono:'hand', grain:.22, texture:'none', rain:'notebook', dim:'#9ec1e3', hi:'#707070', solid:.94, rules:true,
                 bar:'rgba(214,69,69,.05)', edge:'rgba(0,0,0,.08)', shadow:'0 3px 12px rgba(0,0,0,.12)', filter:'none' },
+  // an all-seeing machine: one great ring of jagged data strokes on black, redrawing itself; white ink, one signal red
+  oracle:     { mode:'dark',  bg:'#050506', surface:'#0b0b0d', ink:'#e4e6e8', muted:'#8a8f96', faint:'#43474d', acc:'#ff4b2b', acc2:'#b9bec4', err:'#ff6a4f',
+                display:'chakra', mono:'dmmono', grain:.07, texture:'none', rain:'oracle', dim:'#c9ccd0', hi:'#ffffff',
+                bar:'rgba(228,230,232,.035)', barfg:'#8a8f96', edge:'rgba(228,230,232,.12)', shadow:'0 0 0 1px #000, 0 18px 50px rgba(0,0,0,.65)',
+                filter:'blur(18px) saturate(0) brightness(.7)' },
 };
-const RAINS = ['pixel', 'code', 'stars', 'static', 'snow', 'grid', 'draft', 'halftone', 'record', 'jukebox', 'starburst', 'testcard', 'print', 'stop', 'notebook', 'none'];
+const RAINS = ['pixel', 'code', 'stars', 'static', 'snow', 'grid', 'draft', 'halftone', 'record', 'jukebox', 'starburst', 'testcard', 'print', 'stop', 'notebook', 'oracle', 'none'];
 // family, size scale (pixel and display faces run small), weight for title bars
 const FONTS = {
   departure:    ["'Departure Mono', 'Cascadia Mono', Consolas, monospace", 1, 400],
@@ -216,10 +239,11 @@ const ANIMS = {
   sleeve: ['sleeveIn .55s cubic-bezier(.2,.8,.2,1) both', 'sleeveOut .45s ease-in both'],
   dos:    ['dosIn .3s steps(6) both', 'dosOut .05s linear both'],
   write:  ['writeIn .7s ease-out both', 'writeOut .5s ease-in both'],
+  iris:   ['irisIn .7s cubic-bezier(.2,.7,.2,1) both', 'irisOut .5s cubic-bezier(.6,0,.8,.4) both'],
 };
 const THEME_ANIM = { phosphor: 'crt', amber: 'crt', matrix: 'glitch', synthwave: 'glitch', drafting: 'draft', cyanotype: 'draft',
   newsprint: 'press', nightprint: 'press', neon: 'neon', fieldops: 'stamp', duplicator: 'riso', sleeve: 'sleeve', msdos: 'dos', bsod: 'dos',
-  notebook: 'write' };
+  notebook: 'write', oracle: 'iris' };
 // Lively dropdown order: index 0 = "use glitchwall config", then these
 const LIVELY = { theme: Object.keys(THEMES), palette: ['theme', ...Object.keys(THEMES)], rain: ['theme', ...RAINS],
                  font: ['theme', ...Object.keys(FONTS)], transition: ['theme', ...Object.keys(ANIMS)] };
@@ -776,6 +800,143 @@ const STYLES = {
         return true;
       });
       cx.globalAlpha = 1; cx.lineCap = cx.lineJoin = 'butt';
+    },
+  },
+  // one great ring of thin jagged data strokes, woven into a band that swells and pinches as it slowly turns.
+  // Every stroke has its own write head running round it, rewriting the data as it passes (the bright stretch
+  // just behind it), so the ring is always redrawing itself; now and then one stretch diverges in the accent.
+  oracle: {
+    scale: 1, still: true, M: 480, K: 34,
+    init() {
+      const M = this.M, R = this.R = Math.min(W, H) * .32, ox = this.ox = W / 2, oy = this.oy = H / 2;
+      this.cos = new Float32Array(M); this.sin = new Float32Array(M); this.env = new Float32Array(M);
+      for (let i = 0; i < M; i++) { this.cos[i] = Math.cos(i / M * TAU); this.sin[i] = Math.sin(i / M * TAU); }
+      this.t = rnd(0, 500); this.rot = rnd(0, TAU); this.read = .99 + rnd(0, .009);
+      // the parts that never move: the field, a faint halo where the band sits, guide circles, a centre mark
+      const o = this.back = document.createElement('canvas'), g = o.getContext('2d');
+      o.width = W; o.height = H; g.fillStyle = T.bg; g.fillRect(0, 0, W, H);
+      const halo = g.createRadialGradient(ox, oy, R * .6, ox, oy, R * 1.55);
+      halo.addColorStop(0, rgba(T.ink, 0)); halo.addColorStop(.4, rgba(T.ink, T.mode === 'light' ? .05 : .04)); halo.addColorStop(1, rgba(T.ink, 0));
+      g.fillStyle = halo; g.fillRect(0, 0, W, H);
+      if (T.mode !== 'light') {
+        const vig = g.createRadialGradient(ox, oy, R * 1.1, ox, oy, Math.hypot(W, H) * .62);
+        vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,.6)'); g.fillStyle = vig; g.fillRect(0, 0, W, H);
+      }
+      g.strokeStyle = T.ink; g.lineWidth = 1;
+      for (const [r, a] of [[R * .62, .09], [R * .6, .04], [R * 1.4, .06], [R * 1.47, .03]]) { g.globalAlpha = a; g.beginPath(); g.arc(ox, oy, r, 0, TAU); g.stroke(); }
+      g.globalAlpha = .22; g.beginPath(); g.moveTo(ox - 7, oy); g.lineTo(ox + 7, oy); g.moveTo(ox, oy - 7); g.lineTo(ox, oy + 7); g.stroke();
+      this.tr = Array.from({ length: this.K }, (_, k) => {
+        const u = k / (this.K - 1);
+        return { k, off: (u - .5) * .36 + rnd(-.02, .02), amp: rnd(.025, .075), v: new Float32Array(M), head: rnd(0, M),
+                 sp: rnd(.04, .12) * M * (Math.random() < .35 ? -1 : 1), a: rnd(.1, .38), w: Math.random() < .18 ? 1.25 : .7 };
+      });
+      this.tr.forEach(tr => { for (let i = 0; i < M; i++) tr.v[i] = this.field(tr.k, i); });
+      this.diverge(rnd(.12, .3)); this.acc = 0;      // one already showing, so even a stilled ring has its red
+      this.paint();          // a first frame even when stilled
+    },
+    // the data: a few slow waves around the ring (shared by neighbouring strokes, so the band flows), plus jag and spikes
+    field(k, i) {
+      const a = i / this.M * TAU, t = this.t, p = k * .12;
+      let v = Math.sin(3 * a + t * .35 + p) * .45 + Math.sin(7 * a - t * .5 + p * 1.7) * .3 + Math.sin(17 * a + t * .9 - p * 2.3) * .15;
+      v += (Math.random() - .5) * .45;
+      if (Math.random() < .03) v += (Math.random() < .5 ? -1 : 1) * rnd(.8, 2);
+      return v;
+    },
+    rad(tr, i) { const e = this.env[i]; return this.R * (1 + tr.off * e + tr.amp * e * tr.v[i]); },
+    trace(tr, from, n, dir) {    // a polyline along the stroke, n samples from `from`, in ring coordinates
+      const M = this.M; cx.beginPath();
+      for (let j = 0; j <= n; j++) {
+        const i = ((from + dir * j) % M + M) % M, r = this.rad(tr, i);
+        j ? cx.lineTo(r * this.cos[i], r * this.sin[i]) : cx.moveTo(r * this.cos[i], r * this.sin[i]);
+      }
+      cx.stroke();
+    },
+    paint() {
+      if (!W || !H) return;     // no size yet (hidden, or before layout): resize() will init again
+      const M = this.M, R = this.R, t = this.t;
+      cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over'; cx.drawImage(this.back, 0, 0);
+      for (let i = 0; i < M; i++) {     // the band's thickness: swells and pinches around the ring, drifting slowly
+        const a = i / M * TAU;
+        this.env[i] = .14 + .86 * (.5 + .5 * Math.sin(2 * a + t * .06)) ** 2.2 * (.7 + .3 * Math.sin(5 * a - t * .11));
+      }
+      cx.save(); cx.translate(this.ox, this.oy);
+      // scales: fine ticks outside turning against the ring, coarse ones inside turning with it, faster
+      cx.strokeStyle = T.ink; cx.lineWidth = 1;
+      for (const [r0, n, L, rot, al] of [[R * 1.4, 180, 5, -this.rot * .6, .22], [R * .62, 60, -6, this.rot * 1.7, .2]]) {
+        cx.globalAlpha = al; cx.beginPath();
+        for (let k = 0; k < n; k++) {
+          const a = rot + k / n * TAU, l = k % 15 ? L : L * 2.4, c = Math.cos(a), s = Math.sin(a);
+          cx.moveTo(c * r0, s * r0); cx.lineTo(c * (r0 + l), s * (r0 + l));
+        }
+        cx.stroke();
+      }
+      cx.rotate(this.rot); cx.lineJoin = 'miter';
+      cx.strokeStyle = T.mode === 'light' ? T.ink : T.dim;      // on paper the faint colour vanishes: draw in ink
+      for (const tr of this.tr) { cx.globalAlpha = tr.a; cx.lineWidth = tr.w; this.trace(tr, 0, M, 1); }
+      // the freshly written stretch behind every head, brightest nearest it
+      cx.strokeStyle = T.hi; cx.lineWidth = 1;
+      for (const tr of this.tr) {
+        const h = Math.floor(tr.head), dir = -Math.sign(tr.sp);
+        for (const [o, n, al] of [[0, 10, .75], [10, 16, .4], [26, 24, .16]]) { cx.globalAlpha = al; this.trace(tr, h + dir * o, n, dir); }
+      }
+      // a divergence: a few strokes pulled out of true, in the accent
+      const an = this.anom;
+      if (an) {
+        const f = Math.max(0, Math.min(1, an.age / .9, (an.life - an.age) / .9));
+        cx.strokeStyle = T.acc; cx.shadowColor = T.acc; cx.shadowBlur = 10; cx.lineWidth = 1.2;
+        for (let s = 0; s < an.n; s++) {
+          const tr = this.tr[(an.k + s) % this.K];
+          cx.globalAlpha = (.95 - s * .12) * f; cx.beginPath();
+          for (let j = -an.w; j <= an.w; j++) {
+            const i = ((an.c + j) % M + M) % M, bump = Math.cos(j / an.w * Math.PI / 2) ** 2 * f;
+            const r = this.rad(tr, i) + R * an.pull * bump * (s % 2 ? -.6 : 1) * (1 + .3 * Math.sin(j * .45 + s * 1.9));
+            j > -an.w ? cx.lineTo(r * this.cos[i], r * this.sin[i]) : cx.moveTo(r * this.cos[i], r * this.sin[i]);
+          }
+          cx.stroke();
+        }
+        cx.shadowBlur = 0;
+      }
+      cx.restore();
+      // its leader line and reading, upright, outside the ring
+      const fs = Math.max(10, Math.round(R * .032));
+      cx.font = `${fs}px ${MONO}`; cx.textBaseline = 'middle';
+      if (an) {
+        const f = Math.max(0, Math.min(1, an.age / .9, (an.life - an.age) / .9)), a = this.rot + an.c / M * TAU, c = Math.cos(a), s = Math.sin(a);
+        const x1 = this.ox + c * R * 1.22, y1 = this.oy + s * R * 1.22, x2 = this.ox + c * R * 1.36, y2 = this.oy + s * R * 1.36, side = c < 0 ? -1 : 1;
+        cx.globalAlpha = .8 * f; cx.strokeStyle = T.acc; cx.lineWidth = 1;
+        cx.beginPath(); cx.moveTo(x1, y1); cx.lineTo(x2, y2); cx.lineTo(x2 + side * fs * 3, y2); cx.stroke();
+        cx.fillStyle = T.acc; cx.fillRect(x1 - 2, y1 - 2, 4, 4);
+        cx.textAlign = side < 0 ? 'right' : 'left';
+        const tx = x2 + side * fs * 3.6;
+        cx.globalAlpha = .55 * f; cx.fillStyle = T.ink; cx.fillText('DIVERGENCE', tx, y2 - fs * .7);
+        cx.globalAlpha = .9 * f; cx.fillStyle = T.acc; cx.fillText(`Δ ${an.val.toFixed(4)}   ${an.id}`, tx, y2 + fs * .7);
+      }
+      // the centre: one quiet reading
+      cx.textAlign = 'center'; cx.fillStyle = T.ink;
+      cx.globalAlpha = .38; cx.fillText('P R O J E C T I O N', this.ox, this.oy - fs * 2.2);
+      cx.globalAlpha = .7; cx.fillText(this.read.toFixed(5), this.ox, this.oy + fs * 2.2);
+      cx.globalAlpha = 1; cx.textAlign = 'start';
+    },
+    frame(dt) {
+      if (RAIN <= 0 || !(dt = every(this, 20, dt))) return;     // 0 stills it: the frame from init() stays up
+      const M = this.M, sp = .4 + RAIN * 1.6;
+      this.t += dt * sp; this.rot += dt * .016 * sp;
+      for (const tr of this.tr) {         // each head rewrites the samples it passes
+        const from = Math.floor(tr.head), dir = Math.sign(tr.sp);
+        tr.head += tr.sp * dt * sp;
+        const n = Math.abs(Math.floor(tr.head) - from);
+        for (let j = 1; j <= n; j++) { const i = ((from + dir * j) % M + M) % M; tr.v[i] = this.field(tr.k, i); }
+        tr.head = (tr.head % M + M) % M;
+      }
+      if (this.anom) { if ((this.anom.age += dt * sp) > this.anom.life) { this.anom = null; this.wait = rnd(1.5, 4); } }
+      else if ((this.wait -= dt * sp) <= 0) this.diverge(0);
+      this.paint();
+    },
+    diverge(age) {           // a few neighbouring strokes pulled out of true for a while, with a reading
+      const life = rnd(8, 14);
+      this.anom = { c: rnd(0, this.M) | 0, w: rnd(14, 28) | 0, k: rnd(0, this.K) | 0, n: 3 + (Math.random() * 3 | 0), pull: rnd(.05, .1),
+                    age: age * life, life, val: rnd(.012, .09), id: '#' + (Math.random() * 0xffff | 0).toString(16).padStart(4, '0') };
+      this.read = 1 - this.anom.val * rnd(.05, .15);
     },
   },
   none: { scale: 1, init() { cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H); }, frame() {} },

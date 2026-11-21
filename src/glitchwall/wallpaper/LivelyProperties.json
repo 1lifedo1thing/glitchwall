@@ -19,7 +19,8 @@
       "msdos",
       "bsod",
       "cyanotype",
-      "notebook"
+      "notebook",
+      "oracle"
     ]
   },
   "paletteSel": {
@@ -43,7 +44,8 @@
       "msdos",
       "bsod",
       "cyanotype",
-      "notebook"
+      "notebook",
+      "oracle"
     ]
   },
   "rainSel": {
@@ -68,6 +70,7 @@
       "print",
       "stop",
       "notebook",
+      "oracle",
       "none"
     ]
   },
@@ -115,7 +118,8 @@
       "riso",
       "sleeve",
       "dos",
-      "write"
+      "write",
+      "iris"
     ]
   },
   "typeSpeed": {

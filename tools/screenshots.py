@@ -37,6 +37,8 @@ SHOTS = [
     ("sleeve", "theme=sleeve"),
     ("duplicator", "theme=duplicator"),
     ("newsprint", "theme=newsprint"),
+    ("oracle", "theme=oracle"),
+    ("art-oracle", "theme=oracle&mode=art"),
     ("neon", "theme=neon"),
     ("bsod", "theme=bsod"),
     ("art-synthwave", "theme=synthwave&mode=art"),
