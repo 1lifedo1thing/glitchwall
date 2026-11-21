@@ -1,0 +1,14 @@
+{
+  "AppVersion": "2.2.1.0",
+  "Title": "Agent Live Wallpaper",
+  "Thumbnail": "thumbnail.png",
+  "Preview": "thumbnail.png",
+  "Desc": "Your coding agent's tool calls as they run: each command and its output glitches in, types out, then collapses like a CRT. Reads a feed on 127.0.0.1 only; start it with `agent-wallpaper start`.",
+  "Author": "agent-live-wallpaper",
+  "License": "MIT (code), SIL OFL 1.1 (Departure Mono font)",
+  "Contact": "",
+  "Type": 1,
+  "FileName": "index.html",
+  "Arguments": null,
+  "IsAbsolutePath": false
+}

@@ -1,0 +1,42 @@
+{
+  "typeSpeed": {
+    "type": "slider",
+    "value": 5,
+    "min": 1,
+    "max": 20,
+    "step": 1,
+    "text": "Typing speed"
+  },
+  "linger": {
+    "type": "slider",
+    "value": 7,
+    "min": 2,
+    "max": 30,
+    "step": 1,
+    "text": "Seconds a block stays after it finishes"
+  },
+  "cards": {
+    "type": "slider",
+    "value": 4,
+    "min": 1,
+    "max": 6,
+    "step": 1,
+    "text": "Blocks on screen at once"
+  },
+  "rain": {
+    "type": "slider",
+    "value": 5,
+    "min": 0,
+    "max": 10,
+    "step": 1,
+    "text": "Background rain"
+  },
+  "glass": {
+    "type": "slider",
+    "value": 58,
+    "min": 20,
+    "max": 95,
+    "step": 1,
+    "text": "Glass opacity (lower = more see-through)"
+  }
+}

@@ -1,0 +1,203 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Agent Live Wallpaper</title>
+<style>
+  @font-face { font-family:'Departure Mono'; src:url('DepartureMono-Regular.otf') format('opentype'); font-display:block; }
+  :root { --g:#00FF41; --s:#7DFF9E; --l:#C8FFD4; --d:#0B4A1A; --bg:#0C0E0C;
+          --glass:.58;
+          --glow:0 0 1px #00FF41, 0 0 5px rgba(0,255,65,.8), 0 0 14px rgba(0,255,65,.45); }
+  html, body { margin:0; height:100%; background:var(--bg); overflow:hidden; cursor:default;
+               font-family:'Departure Mono', 'Cascadia Mono', Consolas, monospace; }
+  canvas { position:fixed; inset:0; width:100%; height:100%; image-rendering:pixelated; }
+  #status { position:fixed; right:2.5%; bottom:16px; color:#3d8f55; font-size:13px; letter-spacing:.06em; }
+  #live { width:8px; height:8px; display:inline-block; margin-right:8px; background:#2a3a2c; }
+  #live.on { background:var(--g); box-shadow:0 0 6px var(--g); }
+
+  .card { position:fixed; max-height:42vh; overflow:hidden; display:flex; flex-direction:column;
+          background:rgba(44,48,44,var(--glass)); backdrop-filter:blur(14px) saturate(.5) brightness(.85); border:1px solid rgba(0,255,65,.22); box-shadow:0 0 0 1px #000, 0 0 28px rgba(0,255,65,.10);
+          animation:glitchIn .55s steps(1) both; }
+  .card.bye { animation:glitchOut .6s linear both; }
+  .bar { display:flex; justify-content:space-between; gap:12px; padding:4px 10px; background:rgba(6,42,15,.55); color:var(--s);
+         font-size:12px; letter-spacing:.05em; border-bottom:1px solid #0B4A1A; white-space:nowrap; }
+  .bar b { color:var(--g); font-weight:normal; overflow:hidden; text-overflow:ellipsis; }
+  .body { padding:8px 12px 10px; font-size:16px; line-height:1.15; overflow:hidden; display:flex; flex-direction:column; justify-content:flex-end; }
+  .cmd, .out, .err { white-space:pre-wrap; word-break:break-word; }
+  .cmd, .out { color:var(--g); text-shadow:var(--glow); }
+  .cmd .p { color:var(--l); }
+  .bar { text-shadow:var(--glow); }
+  .out { opacity:.82; border-left:2px solid #0B4A1A; padding-left:10px; margin-top:6px; }
+  .err { color:#ff8a7a; text-shadow:0 0 4px rgba(255,90,70,.6); border-left:2px solid #5a1e18; padding-left:10px; margin-top:6px; }
+  .cur::after { content:'█'; color:var(--g); text-shadow:var(--glow); animation:b 1s steps(1) infinite; }
+  @keyframes b { 50% { opacity:0; } }
+
+  /* pop into existence: torn slices, RGB split, jitter */
+  @keyframes glitchIn {
+    0%   { opacity:0; }
+    8%   { opacity:1; clip-path:inset(42% 0 50% 0); transform:translate(-26px,0) skewX(18deg); filter:hue-rotate(80deg) saturate(3); text-shadow:4px 0 #ff2a55,-4px 0 #00e5ff; }
+    20%  { clip-path:inset(8% 0 78% 0);  transform:translate(18px,-3px); }
+    32%  { clip-path:inset(64% 0 6% 0);  transform:translate(-10px,2px) skewX(-8deg); filter:hue-rotate(-60deg); }
+    44%  { clip-path:inset(20% 0 30% 0); transform:translate(6px,0); }
+    56%  { clip-path:inset(0 0 0 0);     transform:translate(-3px,0); filter:none; text-shadow:2px 0 #ff2a55,-2px 0 #00e5ff; }
+    72%  { transform:translate(2px,0); opacity:.85; }
+    84%  { transform:none; opacity:1; text-shadow:none; }
+    100% { clip-path:inset(0 0 0 0); transform:none; opacity:1; filter:none; }
+  }
+  /* blink out of existence: shudder, tear, collapse to a CRT line, vanish */
+  @keyframes glitchOut {
+    0%   { transform:none; opacity:1; }
+    12%  { transform:translate(10px,0) skewX(-12deg); clip-path:inset(0 0 55% 0); filter:hue-rotate(90deg) saturate(3); text-shadow:4px 0 #ff2a55,-4px 0 #00e5ff; }
+    24%  { transform:translate(-14px,0); clip-path:inset(48% 0 0 0); }
+    36%  { transform:translate(4px,0); clip-path:inset(0 0 0 0); filter:brightness(2.2); }
+    60%  { transform:scale(1,.02); filter:brightness(3); }
+    82%  { transform:scale(.02,.02); opacity:1; }
+    100% { transform:scale(0,0); opacity:0; }
+  }
+  .still .card { animation:none; }
+  #scan { position:fixed; inset:0; pointer-events:none; z-index:2147483647;
+          background:repeating-linear-gradient(to bottom, transparent 0 1px, rgba(0,0,0,.42) 1px 2px); animation:flick 6s infinite; }
+  @keyframes flick { 0%,100% { opacity:1 } 47% { opacity:1 } 48% { opacity:.86 } 49% { opacity:1 } }
+</style></head>
+<body>
+<canvas id="c"></canvas>
+<div id="status"><i id="live"></i><span id="label">live tool feed</span></div>
+<div id="scan"></div>
+<script src="config.js"></script>
+<script>
+// ---------- settings (Lively sliders) ----------
+let TYPE_CPS = 240, RAIN = .5, LINGER = 7000, MAXCARDS = 4;
+// ?still : for screenshots (headless browsers): no glitch, instant typing, cards stay
+const STILL = new URLSearchParams(location.search).has('still');
+if (STILL) { LINGER = 1e9; document.documentElement.classList.add('still'); }
+function livelyPropertyListener(name, val) {
+  if (name === 'typeSpeed') TYPE_CPS = 60 + val * 40;
+  if (name === 'rain') RAIN = val / 10;
+  if (name === 'linger') LINGER = val * 1000;
+  if (name === 'cards') MAXCARDS = val;
+  if (name === 'glass') document.documentElement.style.setProperty('--glass', (val / 100).toFixed(2));
+}
+
+// ---------- dim pixel rain behind everything ----------
+const cv = document.getElementById('c'), cx = cv.getContext('2d');
+const S = 3, CW = 6, CH = 9; let W, H, cols = [];
+function resize() {
+  W = cv.width = Math.ceil(innerWidth / S); H = cv.height = Math.ceil(innerHeight / S);
+  cols = Array.from({ length: Math.floor(W / CW) }, () => ({ y: Math.random() * -H, v: 4 + Math.random() * 7 }));
+}
+resize(); addEventListener('resize', resize);
+let last = performance.now();
+function rain(t) {
+  const dt = Math.min(.1, (t - last) / 1000); last = t;
+  cx.fillStyle = 'rgba(6,8,6,0.18)'; cx.fillRect(0, 0, W, H);
+  cols.forEach((c, i) => {
+    c.y += c.v * dt * CH;
+    if (c.y > H + 40) { c.y = Math.random() * -60; c.v = 4 + Math.random() * 7; }
+    if (Math.random() > RAIN * 1.4) return;
+    const x = i * CW, y = Math.floor(c.y / CH) * CH;
+    cx.fillStyle = Math.random() < .08 ? '#7DFF9E' : '#0f6b28';
+    for (let r = 0; r < 7; r++) { const row = Math.random() * 32 | 0; for (let b = 0; b < 5; b++) if (row >> b & 1) cx.fillRect(x + b, y + r, 1, 1); }
+  });
+  requestAnimationFrame(rain);
+}
+requestAnimationFrame(rain);
+
+// ---------- cards ----------
+const PROMPT = { '$': '$', 'PS>': 'PS>', read: 'cat', write: 'write', edit: 'edit', find: 'grep', web: 'curl', agent: 'spawn', mouse: 'click', tool: '>' };
+const open = [];                // cards on screen, oldest first
+let z = 10;
+
+// Pop-up-ad placement: anywhere on screen (below the top taskbar), random size,
+// best of 16 random tries so a new block covers the live ones as little as possible.
+function place(card) {
+  const w = Math.round(innerWidth * (0.24 + Math.random() * 0.14));
+  card.style.width = w + 'px';
+  const h = Math.min(innerHeight * 0.42, 260);
+  let best = null, bestHit = Infinity;
+  for (let k = 0; k < 16; k++) {
+    const x = 16 + Math.random() * (innerWidth - w - 32), y = 64 + Math.random() * (innerHeight - h - 100);
+    let hit = 0;
+    open.forEach(o => { const r = o._rect; if (!r) return;
+      hit += Math.max(0, Math.min(x + w, r.x + r.w) - Math.max(x, r.x)) * Math.max(0, Math.min(y + h, r.y + r.h) - Math.max(y, r.y)); });
+    if (hit < bestHit) { bestHit = hit; best = { x, y }; }
+  }
+  card._rect = { x: best.x, y: best.y, w, h };
+  card.style.left = best.x + 'px'; card.style.top = best.y + 'px'; card.style.zIndex = ++z;
+}
+function kill(card) {
+  if (!card || card._dead) return; card._dead = true;
+  const i = open.indexOf(card); if (i >= 0) open.splice(i, 1);
+  card.classList.add('bye');
+  setTimeout(() => card.remove(), 650);
+}
+function newCard(ev) {
+  while (open.length >= MAXCARDS) kill(open[0]);
+  const card = document.createElement('div'); card.className = 'card';
+  const t = ev.ts ? new Date(ev.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+  card.innerHTML = `<div class="bar"><b></b><span>${t}</span></div><div class="body"></div>`;
+  card.querySelector('b').textContent = `${ev.proj}${ev.side ? ' / agent' : ''} #${ev.session}`;
+  document.body.insertBefore(card, document.getElementById('scan'));
+  place(card); open.push(card);
+  card._timer = setTimeout(() => kill(card), STILL ? 1e9 : 30000);     // never got output: go anyway
+  return card;
+}
+
+// ---------- typing queue ----------
+let since = 0, queue = [], typing = false, lastEvent = 0, current = null;
+const byRef = new Map();        // tool call id -> its card
+function typeInto(el, text, cps, done) {
+  const node = document.createTextNode(''); el.appendChild(node); el.classList.add('cur');
+  let i = 0;
+  if (STILL) { node.data = text; el.classList.remove('cur'); return setTimeout(done, 0); }
+  const step = () => {
+    node.data = text.slice(0, i += Math.max(1, Math.round(cps / 60)));
+    if (i < text.length) requestAnimationFrame(step); else { el.classList.remove('cur'); done(); }
+  };
+  setTimeout(step, 260);   // let the glitch-in land first
+}
+function next() {
+  if (!queue.length) { typing = false; return; }
+  typing = true;
+  const ev = queue.shift(), busy = queue.length > 6;
+  if (ev.kind === 'out' || ev.kind === 'err') {
+    const card = byRef.get(ev.ref) || (ev.ref ? null : current);   // output goes under the command it belongs to
+    byRef.delete(ev.ref);
+    if (!card || card._dead) return next();
+    const el = document.createElement('div'); el.className = ev.kind;
+    card.querySelector('.body').appendChild(el);
+    typeInto(el, ev.text, TYPE_CPS * 5, () => {
+      clearTimeout(card._timer); card._timer = setTimeout(() => kill(card), busy ? 1500 : LINGER);
+      setTimeout(next, 120);
+    });
+    return;
+  }
+  current = newCard(ev);
+  if (ev.ref) { byRef.set(ev.ref, current); if (byRef.size > 50) byRef.delete(byRef.keys().next().value); }
+  const el = document.createElement('div'); el.className = 'cmd';
+  el.innerHTML = `<span class="p"></span>`; el.firstChild.textContent = (PROMPT[ev.kind] || '>') + ' ';
+  current.querySelector('.body').appendChild(el);
+  typeInto(el, ev.text, TYPE_CPS * (busy ? 4 : 1), () => setTimeout(next, 200));
+}
+
+const live = document.getElementById('live'), label = document.getElementById('label');
+const F = window.FEED || {};
+const LABEL = F.label || 'live tool feed';
+label.textContent = F.key ? LABEL : 'no config.js here: run  agent-wallpaper install';
+async function poll() {
+  try {
+    if (!F.key) throw new Error('no config.js');
+    const r = await fetch(`http://127.0.0.1:${F.port}/feed?since=${since}&key=${encodeURIComponent(F.key)}`, { cache: 'no-store' });
+    if (!r.ok) throw new Error('refused: ' + r.status);
+    const data = await r.json(), evs = data.events || [];
+    if (data.last < since) since = 0;                          // the feed restarted: start over
+    label.textContent = data.paused ? LABEL + '  [paused]' : LABEL;
+    if (data.paused) { queue.length = 0; open.slice().forEach(kill); }   // stream-safe: clear the screen now
+    if (evs.length) {
+      if (since === 0) evs.splice(0, Math.max(0, evs.length - 6));   // on start, replay just the last few
+      since = evs[evs.length - 1].id; lastEvent = Date.now(); queue.push(...evs);
+      if (!typing) next();
+    }
+    live.classList.toggle('on', Date.now() - lastEvent < 60000);
+  } catch { live.classList.remove('on'); }
+  setTimeout(poll, 1000);
+}
+poll();
+</script>
+</body></html>

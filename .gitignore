@@ -1,0 +1,10 @@
+# the original prototype stays local (its thumbnail shows real work)
+prototype/
+__pycache__/
+*.pyc
+dist/
+build/
+.venv/
+*.egg-info/
+# a written config.js holds a feed key
+config.js

@@ -1,0 +1,26 @@
+[project]
+name = "agent-live-wallpaper"
+version = "0.1.0"
+description = "Your coding agent's tool calls as a live desktop wallpaper. Local only, secrets masked, stdlib only."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE", "src/agent_live_wallpaper/wallpaper/OFL.txt"]
+requires-python = ">=3.9"
+dependencies = []
+keywords = ["wallpaper", "lively", "claude-code", "terminal", "retro"]
+classifiers = [
+    "Environment :: Win32 (MS Windows)",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Topic :: Desktop Environment",
+]
+
+[project.scripts]
+agent-wallpaper = "agent_live_wallpaper.cli:main"
+agent-live-wallpaper = "agent_live_wallpaper.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.8,<0.14"]
+build-backend = "uv_build"
