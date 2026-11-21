@@ -132,7 +132,7 @@ def add_autostart() -> str:
         import winreg
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE) as k:
             winreg.SetValueEx(k, RUN_VALUE, 0, winreg.REG_SZ, subprocess.list2cmdline(cmd))
-        return r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run\\" + RUN_VALUE
+        return "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\" + RUN_VALUE
     if sys.platform == "darwin":
         from xml.sax.saxutils import escape
         args = "".join(f"<string>{escape(a)}</string>" for a in cmd)
