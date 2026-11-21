@@ -40,6 +40,21 @@ glitchwall install
 starts the feed in the background, adds a start-at-logon entry and switches
 Lively to it. Your previous wallpaper is remembered.
 
+**No Python? Use the standalone exe.** Download `glitchwall-<version>-windows.zip`
+from the releases page, unzip, and in that folder run:
+
+```
+.\glitchwall.exe install
+```
+
+It copies `glitchwall.exe` and `glitchwall-feed.exe` (the windowed feed that
+starts at logon, no console window) into `%USERPROFILE%\.glitchwall\bin`, so
+you can delete the download afterwards. Use
+`%USERPROFILE%\.glitchwall\bin\glitchwall.exe pause` (or `resume`, `status`,
+`uninstall`) from then on. `uninstall` removes the exes too.
+The exes are not code-signed yet, so Windows SmartScreen may say "unknown
+publisher"; the release lists SHA-256 hashes so you can check your download.
+
 | Command | What it does |
 | --- | --- |
 | `glitchwall install` | set everything up (`--commands-only`, `--no-autostart`, `--no-set`, `--port N`) |
@@ -158,6 +173,7 @@ A `file://` page sends `Origin: null`, which the feed accepts with the key.
 ```
 uv run python -m unittest discover -s tests
 uv build
+powershell -File packaging\build-exe.ps1   # standalone Windows exes + zip in dist\ (PyInstaller, build time only)
 ```
 
 Stdlib only at runtime, Python 3.9+. Code layout:

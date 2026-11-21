@@ -25,6 +25,8 @@ FOLDER = "glitchwall"
 RUN_VALUE = "glitchwall"
 LAUNCH_LABEL = "io.github.glitchwall"
 WIN = sys.platform == "win32"
+FROZEN = bool(getattr(sys, "frozen", False))   # running as the standalone glitchwall.exe
+CLI_EXE, FEED_EXE = "glitchwall.exe", "glitchwall-feed.exe"
 
 
 # ---------------------------------------------------------------- wallpaper files
@@ -113,8 +115,39 @@ def ephemeral_env() -> bool:
     return any(s in p for s in ("/uv/cache/", "/archive-v", "/builds-v", "/pipx/.cache/", "/pipx/cache/"))
 
 
+def bin_dir() -> Path:
+    """Where the standalone exes are copied, so autostart doesn't depend on the Downloads folder."""
+    return cfg.state_dir() / "bin"
+
+
 def feed_command() -> list[str]:
+    if FROZEN:   # windowed feed exe: no console window at logon
+        return [str(bin_dir() / FEED_EXE)]
     return [pythonw(), "-m", "glitchwall", "run"]
+
+
+def install_binaries() -> list[str]:
+    """Standalone build: copy glitchwall.exe and glitchwall-feed.exe next to the state."""
+    if not FROZEN:
+        return []
+    src_dir, dest = Path(sys.executable).resolve().parent, bin_dir()
+    dest.mkdir(parents=True, exist_ok=True)
+    done = []
+    for name in (CLI_EXE, FEED_EXE):
+        src = src_dir / name
+        if not src.exists():
+            raise SystemExit(f"{name} not found next to {sys.executable}; keep both exes in the same folder")
+        if src.resolve() != (dest / name).resolve():
+            shutil.copy2(src, dest / name)
+            done.append(f"copied {name} to {dest}")
+    return done
+
+
+def delete_later(path: Path) -> None:
+    """Remove a folder after this process exits (a running exe can't delete itself on Windows)."""
+    if WIN:
+        subprocess.Popen(f'cmd /c ping -n 3 127.0.0.1 >nul & rmdir /s /q "{path}"',
+                         creationflags=subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS, close_fds=True)
 
 
 # ---------------------------------------------------------------- autostart
@@ -201,7 +234,7 @@ def _is_ours(pid: int) -> bool:
         if WIN:
             out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
                                  capture_output=True, text=True, timeout=10).stdout.lower()
-            return "python" in out
+            return "python" in out or "glitchwall" in out
         os.kill(pid, 0)
         cmd = subprocess.run(["ps", "-p", str(pid), "-o", "command="], capture_output=True, text=True).stdout
         return "glitchwall" in cmd

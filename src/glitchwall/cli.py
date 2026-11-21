@@ -17,7 +17,8 @@ ON_OFF = {"on": True, "off": False, "true": True, "false": False, "yes": True, "
 
 
 def say(msg: str = "") -> None:
-    print(msg, flush=True)
+    if sys.stdout is not None:   # None in the windowed glitchwall-feed.exe
+        print(msg, flush=True)
 
 
 # ---------------------------------------------------------------- commands
@@ -123,7 +124,7 @@ def cmd_install(a) -> int:
     # 2. autostart
     if a.no_autostart:
         say("autostart: skipped (--no-autostart)")
-    elif plat.ephemeral_env() and not a.force:
+    elif plat.ephemeral_env() and not a.force and not plat.FROZEN:
         say("autostart: skipped. This copy runs from a temporary uvx/pipx-run environment that can vanish.\n"
             "  For start-at-logon, install it for good:  uv tool install glitchwall   (or pipx install)\n"
             "  then run:  glitchwall install")
@@ -132,7 +133,9 @@ def cmd_install(a) -> int:
 
     # 3. (re)start the feed so it uses the current port and code
     plat.stop_background()
-    time.sleep(0.3)
+    time.sleep(0.5)
+    for msg in plat.install_binaries():
+        say(msg)
     if cmd_start(a) != 0:
         return 1
 
@@ -153,7 +156,11 @@ def cmd_install(a) -> int:
         say(f"  {(dest / 'index.html').as_uri()}")
         say("  (see README: macOS / Linux)")
     say("")
-    say("done. Stream-safe switch:  glitchwall pause   /   glitchwall resume")
+    if plat.FROZEN:
+        say(f"done. Commands from now on:  \"{plat.bin_dir() / plat.CLI_EXE}\" pause | resume | status | uninstall")
+        say("You can delete the downloaded copy.")
+    else:
+        say("done. Stream-safe switch:  glitchwall pause   /   glitchwall resume")
     return 0
 
 
@@ -184,10 +191,13 @@ def cmd_uninstall(a) -> int:
     sd = cfg.state_dir()
     if sd.exists():
         shutil.rmtree(sd, ignore_errors=True)
-        removed.append(f"deleted {sd} (key, settings, logs)")
+        if sd.exists():   # this exe is running from sd/bin
+            plat.delete_later(sd)
+        removed.append(f"deleted {sd} (key, settings, logs{', programs' if plat.FROZEN else ''})")
     for r in removed or ["nothing to remove"]:
         say(r)
-    say("Your Claude Code logs were never modified. To remove the program itself: uv tool uninstall glitchwall")
+    say("Your Claude Code logs were never modified."
+        + ("" if plat.FROZEN else " To remove the program itself: uv tool uninstall glitchwall"))
     return 0
 
 
