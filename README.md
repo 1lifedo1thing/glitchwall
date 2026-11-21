@@ -10,6 +10,8 @@ Every command it runs glitches onto your wallpaper, types itself out, and dies l
 ![local only](https://img.shields.io/badge/network-localhost%20only-00ff41?style=flat-square&labelColor=0c0e0c)
 ![telemetry](https://img.shields.io/badge/telemetry-none-00ff41?style=flat-square&labelColor=0c0e0c)
 ![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-00ff41?style=flat-square&labelColor=0c0e0c)
+![free forever](https://img.shields.io/badge/price-free%20forever-00ff41?style=flat-square&labelColor=0c0e0c)
+[![buy me a coffee](https://img.shields.io/badge/ko--fi-buy%20me%20a%20coffee-00ff41?style=flat-square&labelColor=0c0e0c)](https://ko-fi.com/marklesterb28)
 
 ![glitchwall demo: tool calls glitch in at random spots, type out with their output, then collapse](docs/demo.gif)
 
@@ -308,7 +310,8 @@ paid version, no locked extras and no nagging. You don't owe anything to use it,
 If it brightens your desk and you'd like to say thanks, a donation is warmly appreciated but **never required**.
 Starring the repo, reporting a bug or showing it to a friend helps just as much.
 
-<!-- donation links go here once the accounts exist -->
+- 💚 [GitHub Sponsors](https://github.com/sponsors/marklesterb28): monthly or one-time, no fees taken by GitHub
+- ☕ [Ko-fi](https://ko-fi.com/marklesterb28): a one-off coffee, card or PayPal
 
 ## License & credits
 
