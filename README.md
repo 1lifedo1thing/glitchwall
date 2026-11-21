@@ -90,9 +90,17 @@ itself, so nothing can reach the screen even if the wallpaper is visible.
 
 | Where | What |
 | --- | --- |
-| `%LOCALAPPDATA%\agent-live-wallpaper\` (Windows), `~/Library/Application Support/agent-live-wallpaper/` (macOS), `~/.local/state/agent-live-wallpaper/` (Linux) | key, settings, pid file, refusal note, previous-wallpaper note |
+| `%USERPROFILE%\.agent-live-wallpaper\` (Windows), `~/Library/Application Support/agent-live-wallpaper/` (macOS), `~/.local/state/agent-live-wallpaper/` (Linux) | key, settings, pid file, refusal note, previous-wallpaper note |
 | `<Lively library>\wallpapers\agent-live-wallpaper\` | the wallpaper page and its `config.js` |
 | `HKCU\...\CurrentVersion\Run\agent-live-wallpaper` / `~/.config/autostart/agent-live-wallpaper.desktop` / `~/Library/LaunchAgents/io.github.agent-live-wallpaper.plist` | start at logon |
+
+Why the home folder on Windows, not `%LOCALAPPDATA%`: packaged (MSIX) apps such
+as Claude Desktop or Store terminals get new AppData folders redirected into a
+private copy. `install` run from one of them and the feed started at logon
+would then read different key files, and every request would be refused.
+Version 0.1.0 used `%LOCALAPPDATA%\agent-live-wallpaper`; `install` and
+`uninstall` move or remove it. Set `AGENT_WALLPAPER_HOME` to put the state
+somewhere else.
 
 ## Redaction
 

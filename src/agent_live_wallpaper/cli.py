@@ -93,6 +93,8 @@ def cmd_status(a) -> int:
 
 
 def cmd_install(a) -> int:
+    for msg in plat.migrate_legacy():
+        say(msg)
     s = cfg.load_settings()
     if a.port:
         s["port"] = a.port
@@ -153,7 +155,7 @@ def cmd_install(a) -> int:
 
 
 def cmd_uninstall(a) -> int:
-    removed = []
+    removed = plat.migrate_legacy()
     if plat.stop_background():
         removed.append("stopped the feed")
     if plat.remove_autostart():

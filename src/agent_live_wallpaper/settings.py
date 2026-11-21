@@ -1,10 +1,15 @@
 """Where this tool keeps its few files, and its settings.
 
 State dir (key, settings, pid, refusal log):
-  Windows  %LOCALAPPDATA%\\agent-live-wallpaper
+  Windows  %USERPROFILE%\\.agent-live-wallpaper
   macOS    ~/Library/Application Support/agent-live-wallpaper
   Linux    $XDG_STATE_HOME/agent-live-wallpaper  (default ~/.local/state/...)
 Override with AGENT_WALLPAPER_HOME.
+
+Why not %LOCALAPPDATA% on Windows: MSIX-packaged apps (Claude Desktop, Store apps, their
+terminals) get new AppData folders redirected into a private per-app copy. `install` run from
+such an app and the feed started at logon would then read different key files, and every
+request would be refused. The home folder is not redirected.
 """
 from __future__ import annotations
 
@@ -31,14 +36,21 @@ def state_dir() -> Path:
     if os.environ.get("AGENT_WALLPAPER_HOME"):
         return Path(os.environ["AGENT_WALLPAPER_HOME"])
     if sys.platform == "win32":
-        return Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local") / APP
+        return Path.home() / f".{APP}"
     if sys.platform == "darwin":
         return Path.home() / "Library" / "Application Support" / APP
     return Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local" / "state") / APP
 
 
+def legacy_state_dirs() -> list[Path]:
+    """Where 0.1.0 kept its state on Windows (see module docstring). Cleaned up by install/uninstall."""
+    if sys.platform != "win32" or os.environ.get("AGENT_WALLPAPER_HOME") or not os.environ.get("LOCALAPPDATA"):
+        return []
+    return [Path(os.environ["LOCALAPPDATA"]) / APP]
+
+
 def _private_write(path: Path, text: str) -> None:
-    """Write a file only this user can read (on POSIX; Windows %LOCALAPPDATA% is per-user already)."""
+    """Write a file only this user can read (mode 0600 on POSIX; on Windows the profile folder is per-user)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as f:

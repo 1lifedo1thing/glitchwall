@@ -1,6 +1,6 @@
 [project]
 name = "agent-live-wallpaper"
-version = "0.1.0"
+version = "0.1.1"
 description = "Your coding agent's tool calls as a live desktop wallpaper. Local only, secrets masked, stdlib only."
 readme = "README.md"
 license = "MIT"

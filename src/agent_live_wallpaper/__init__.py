@@ -1,2 +1,2 @@
 """Your coding agent's tool calls as a live desktop wallpaper. Local only, stdlib only."""
-__version__ = "0.1.0"
+__version__ = "0.1.1"

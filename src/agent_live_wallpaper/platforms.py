@@ -205,9 +205,9 @@ def _is_ours(pid: int) -> bool:
         return False
 
 
-def running_pid() -> int | None:
+def running_pid(pf: Path | None = None) -> int | None:
     try:
-        pid = int(pid_file().read_text().strip())
+        pid = int((pf or pid_file()).read_text().strip())
     except (OSError, ValueError):
         return None
     return pid if _is_ours(pid) else None
@@ -224,8 +224,9 @@ def start_background() -> int:
     return p.pid
 
 
-def stop_background() -> bool:
-    pid = running_pid()
+def stop_background(pf: Path | None = None) -> bool:
+    pf = pf or pid_file()
+    pid = running_pid(pf)
     if pid is None:
         return False
     try:
@@ -233,7 +234,25 @@ def stop_background() -> bool:
     except OSError:
         return False
     try:
-        pid_file().unlink()
+        pf.unlink()
     except OSError:
         pass
     return True
+
+
+def migrate_legacy() -> list[str]:
+    """0.1.0 kept state in %LOCALAPPDATA% (see settings.py). Stop its feed, keep its settings, remove it."""
+    done = []
+    for old in cfg.legacy_state_dirs():
+        if not old.exists():
+            continue
+        if stop_background(old / "feed.pid"):
+            done.append(f"stopped the feed started from {old}")
+        new = cfg.state_dir()
+        new.mkdir(parents=True, exist_ok=True)
+        for name in ("settings.json", "previous-wallpaper.json"):   # never the key: make a fresh one
+            if (old / name).exists() and not (new / name).exists():
+                shutil.copy2(old / name, new / name)
+        shutil.rmtree(old, ignore_errors=True)
+        done.append(f"moved settings from {old} to {new} and deleted the old folder")
+    return done
