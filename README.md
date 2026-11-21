@@ -245,7 +245,8 @@ secrets through it, plus ordinary text that must survive untouched.
 - **Provided as is, with no warranty**, under the MIT license. See [LICENSE](LICENSE) and [SECURITY.md](SECURITY.md).
 - **Not affiliated with Anthropic or Lively Wallpaper.** "Claude" and "Claude Code" are trademarks of
   Anthropic; they're named here only to say which logs glitchwall reads.
-- **Free and open source, forever.** No accounts, no paid tier, no ads.
+- **Free and open source, forever.** No accounts, no paid tier, no ads. Donations are appreciated but never
+  required, and they don't unlock anything. See [Support](#support-).
 
 ## FAQ
 
@@ -298,6 +299,16 @@ Stdlib only at runtime, Python 3.9+.
 ![a git commit, a cargo build and an ls on the wallpaper](docs/screenshot-2.png)
 
 </details>
+
+## Support ☕
+
+glitchwall is **completely free** and always will be. Every theme, mode and feature is here for everyone, with no
+paid version, no locked extras and no nagging. You don't owe anything to use it, share it or build on it.
+
+If it brightens your desk and you'd like to say thanks, a donation is warmly appreciated but **never required**.
+Starring the repo, reporting a bug or showing it to a friend helps just as much.
+
+<!-- donation links go here once the accounts exist -->
 
 ## License & credits
 
