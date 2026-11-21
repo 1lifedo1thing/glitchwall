@@ -1,10 +1,10 @@
 """Where this tool keeps its few files, and its settings.
 
 State dir (key, settings, pid, refusal log):
-  Windows  %USERPROFILE%\\.agent-live-wallpaper
-  macOS    ~/Library/Application Support/agent-live-wallpaper
-  Linux    $XDG_STATE_HOME/agent-live-wallpaper  (default ~/.local/state/...)
-Override with AGENT_WALLPAPER_HOME.
+  Windows  %USERPROFILE%\\.glitchwall
+  macOS    ~/Library/Application Support/glitchwall
+  Linux    $XDG_STATE_HOME/glitchwall  (default ~/.local/state/...)
+Override with GLITCHWALL_HOME.
 
 Why not %LOCALAPPDATA% on Windows: MSIX-packaged apps (Claude Desktop, Store apps, their
 terminals) get new AppData folders redirected into a private per-app copy. `install` run from
@@ -19,7 +19,7 @@ import secrets
 import sys
 from pathlib import Path
 
-APP = "agent-live-wallpaper"
+APP = "glitchwall"
 DEFAULT_PORT = 47833
 
 DEFAULTS = {
@@ -33,8 +33,8 @@ DEFAULTS = {
 
 
 def state_dir() -> Path:
-    if os.environ.get("AGENT_WALLPAPER_HOME"):
-        return Path(os.environ["AGENT_WALLPAPER_HOME"])
+    if os.environ.get("GLITCHWALL_HOME"):
+        return Path(os.environ["GLITCHWALL_HOME"])
     if sys.platform == "win32":
         return Path.home() / f".{APP}"
     if sys.platform == "darwin":
@@ -42,11 +42,20 @@ def state_dir() -> Path:
     return Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local" / "state") / APP
 
 
+LEGACY_NAME = "agent-live-wallpaper"   # this project's name before 0.2.0
+
+
 def legacy_state_dirs() -> list[Path]:
-    """Where 0.1.0 kept its state on Windows (see module docstring). Cleaned up by install/uninstall."""
-    if sys.platform != "win32" or os.environ.get("AGENT_WALLPAPER_HOME") or not os.environ.get("LOCALAPPDATA"):
+    """Where earlier versions kept their state. Cleaned up by install/uninstall.
+    0.1.0: %LOCALAPPDATA%\\agent-live-wallpaper (see module docstring); 0.1.1: ~/.agent-live-wallpaper."""
+    if os.environ.get("GLITCHWALL_HOME"):
         return []
-    return [Path(os.environ["LOCALAPPDATA"]) / APP]
+    if sys.platform == "win32":
+        out = [Path.home() / f".{LEGACY_NAME}"]
+        if os.environ.get("LOCALAPPDATA"):
+            out.append(Path(os.environ["LOCALAPPDATA"]) / LEGACY_NAME)
+        return out
+    return [state_dir().parent / LEGACY_NAME]
 
 
 def _private_write(path: Path, text: str) -> None:

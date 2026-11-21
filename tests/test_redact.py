@@ -5,7 +5,7 @@ don't flag this file. None of them are real.
 """
 import unittest
 
-from agent_live_wallpaper.redact import MASK, Redactor, entropy, looks_random
+from glitchwall.redact import MASK, Redactor, entropy, looks_random
 
 R = Redactor(home=r"C:\Users\octocat", user="octocat")
 P = Redactor(home="/home/octocat", user="octocat")
@@ -104,7 +104,7 @@ class TestSecrets(unittest.TestCase):
             "pytest -q tests/test_routes.py",
             "Get-ChildItem -Recurse src | Select-Object -First 5",
             "docker compose up -d --build",
-            "src/agent_live_wallpaper/redact.py",
+            "src/glitchwall/redact.py",
             "ThreadingHTTPServer(('127.0.0.1', 47833), Handler)",
             "[main 9c1e4b7] list endpoint returns totals",
             "{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}",
@@ -152,7 +152,7 @@ class TestEntropy(unittest.TestCase):
         self.assertTrue(looks_random(B64))
         self.assertFalse(looks_random("ThisIsAVeryLongClassName"))
         self.assertFalse(looks_random("some_long_function_name_here"))
-        self.assertFalse(looks_random("src/agent_live_wallpaper/redact"))
+        self.assertFalse(looks_random("src/glitchwall/redact"))
         self.assertTrue(looks_random("abc/" + B64))
 
 

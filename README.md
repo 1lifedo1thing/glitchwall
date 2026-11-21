@@ -1,4 +1,4 @@
-# agent-live-wallpaper
+# glitchwall
 
 Your coding agent's tool calls as a live desktop wallpaper. Every command, edit,
 read and search your agent runs pops up somewhere on the screen like a retro
@@ -11,17 +11,17 @@ scanlines, dim pixel rain. Works today with **Claude Code** session logs.
 ![four tool calls on the wallpaper, one curl command with its Authorization header masked](docs/screenshot-1.png)
 ![a git commit, a cargo build and an ls on the wallpaper](docs/screenshot-2.png)
 
-*Both screenshots come from demo mode (`agent-wallpaper demo`), not real work.*
+*Both screenshots come from demo mode (`glitchwall demo`), not real work.*
 
 ## Try it without installing anything
 
 Needs [uv](https://docs.astral.sh/uv/) (or pipx). Nothing is read from your logs in demo mode.
 
 ```
-uvx agent-live-wallpaper demo --open
+uvx glitchwall demo --open
 ```
 
-(Not on PyPI yet. From a checkout of this repo: `uvx --from . agent-live-wallpaper demo --open`.)
+(Not on PyPI yet. From a checkout of this repo: `uvx --from . glitchwall demo --open`.)
 
 That starts a fake feed and opens the wallpaper page in your browser at
 `http://127.0.0.1:47834/`. Ctrl+C to stop.
@@ -32,8 +32,8 @@ That starts a fake feed and opens the wallpaper page in your browser at
 2. Install this tool for good (so it can start at logon), then run its installer:
 
 ```
-uv tool install agent-live-wallpaper
-agent-wallpaper install
+uv tool install glitchwall
+glitchwall install
 ```
 
 `install` copies the wallpaper into Lively's library, writes its `config.js`,
@@ -42,20 +42,20 @@ Lively to it. Your previous wallpaper is remembered.
 
 | Command | What it does |
 | --- | --- |
-| `agent-wallpaper install` | set everything up (`--commands-only`, `--no-autostart`, `--no-set`, `--port N`) |
-| `agent-wallpaper status` | what is installed and running |
-| `agent-wallpaper start` / `stop` | start or stop the background feed |
-| `agent-wallpaper pause` / `resume` | **stream-safe**: the feed serves nothing and the wallpaper clears at once; only rain stays |
-| `agent-wallpaper config --commands-only on` | show the calls but never their output |
-| `agent-wallpaper config --label "TEXT"` | the text in the bottom-right corner |
-| `agent-wallpaper demo` | fake events + the page, for screenshots and trying it |
-| `agent-wallpaper export DIR` | write the wallpaper and its `config.js` to a folder (other wallpaper apps) |
-| `agent-wallpaper uninstall` | remove everything `install` added and put your old wallpaper back |
+| `glitchwall install` | set everything up (`--commands-only`, `--no-autostart`, `--no-set`, `--port N`) |
+| `glitchwall status` | what is installed and running |
+| `glitchwall start` / `stop` | start or stop the background feed |
+| `glitchwall pause` / `resume` | **stream-safe**: the feed serves nothing and the wallpaper clears at once; only rain stays |
+| `glitchwall config --commands-only on` | show the calls but never their output |
+| `glitchwall config --label "TEXT"` | the text in the bottom-right corner |
+| `glitchwall demo` | fake events + the page, for screenshots and trying it |
+| `glitchwall export DIR` | write the wallpaper and its `config.js` to a folder (other wallpaper apps) |
+| `glitchwall uninstall` | remove everything `install` added and put your old wallpaper back |
 
 Lively's wallpaper settings give you sliders for typing speed, how long a block
 lingers, blocks on screen, rain and glass opacity.
 
-**Streaming?** Run `agent-wallpaper pause` before you go live (or put it in
+**Streaming?** Run `glitchwall pause` before you go live (or put it in
 your stream start script) and `resume` after. Pausing happens in the feed
 itself, so nothing can reach the screen even if the wallpaper is visible.
 `--commands-only` is a lighter option that hides all tool output.
@@ -90,17 +90,20 @@ itself, so nothing can reach the screen even if the wallpaper is visible.
 
 | Where | What |
 | --- | --- |
-| `%USERPROFILE%\.agent-live-wallpaper\` (Windows), `~/Library/Application Support/agent-live-wallpaper/` (macOS), `~/.local/state/agent-live-wallpaper/` (Linux) | key, settings, pid file, refusal note, previous-wallpaper note |
-| `<Lively library>\wallpapers\agent-live-wallpaper\` | the wallpaper page and its `config.js` |
-| `HKCU\...\CurrentVersion\Run\agent-live-wallpaper` / `~/.config/autostart/agent-live-wallpaper.desktop` / `~/Library/LaunchAgents/io.github.agent-live-wallpaper.plist` | start at logon |
+| `%USERPROFILE%\.glitchwall\` (Windows), `~/Library/Application Support/glitchwall/` (macOS), `~/.local/state/glitchwall/` (Linux) | key, settings, pid file, refusal note, previous-wallpaper note |
+| `<Lively library>\wallpapers\glitchwall\` | the wallpaper page and its `config.js` |
+| `HKCU\...\CurrentVersion\Run\glitchwall` / `~/.config/autostart/glitchwall.desktop` / `~/Library/LaunchAgents/io.github.glitchwall.plist` | start at logon |
 
 Why the home folder on Windows, not `%LOCALAPPDATA%`: packaged (MSIX) apps such
 as Claude Desktop or Store terminals get new AppData folders redirected into a
 private copy. `install` run from one of them and the feed started at logon
 would then read different key files, and every request would be refused.
-Version 0.1.0 used `%LOCALAPPDATA%\agent-live-wallpaper`; `install` and
-`uninstall` move or remove it. Set `AGENT_WALLPAPER_HOME` to put the state
-somewhere else.
+Set `GLITCHWALL_HOME` to put the state somewhere else.
+
+Upgrading from 0.1.x (then called `agent-live-wallpaper`): `glitchwall install`
+stops the old feed, keeps its settings (makes a new key), and removes the old
+state folder, autostart entry and Lively folder. Then
+`uv tool uninstall agent-live-wallpaper`.
 
 ## Redaction
 
@@ -133,8 +136,8 @@ The feed and the page are cross-platform (Python stdlib, plain HTML), but only
 Windows + Lively is tested so far.
 
 ```
-uv tool install agent-live-wallpaper
-agent-wallpaper install
+uv tool install glitchwall
+glitchwall install
 ```
 
 On macOS/Linux, `install` writes the wallpaper to the state dir, adds a login
@@ -161,14 +164,14 @@ Stdlib only at runtime, Python 3.9+. Code layout:
 
 | File | Role |
 | --- | --- |
-| `src/agent_live_wallpaper/claude_logs.py` | follow the logs, pair each call with its output |
-| `src/agent_live_wallpaper/redact.py` | all masking |
-| `src/agent_live_wallpaper/server.py` | the local feed and its access checks |
-| `src/agent_live_wallpaper/platforms.py` | Lively, autostart, background process |
-| `src/agent_live_wallpaper/wallpaper/` | the page itself (`index.html?still` renders without animation, for screenshots) |
+| `src/glitchwall/claude_logs.py` | follow the logs, pair each call with its output |
+| `src/glitchwall/redact.py` | all masking |
+| `src/glitchwall/server.py` | the local feed and its access checks |
+| `src/glitchwall/platforms.py` | Lively, autostart, background process |
+| `src/glitchwall/wallpaper/` | the page itself (`index.html?still` renders without animation, for screenshots) |
 
 ## License
 
 MIT, see [LICENSE](LICENSE). Departure Mono is © Helena Zhang, SIL Open Font
-License 1.1, see [OFL.txt](src/agent_live_wallpaper/wallpaper/OFL.txt).
+License 1.1, see [OFL.txt](src/glitchwall/wallpaper/OFL.txt).
 Not affiliated with Anthropic or Lively.

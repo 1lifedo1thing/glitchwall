@@ -19,7 +19,7 @@ than usual. Its promises:
 
 - Redaction is pattern- and entropy-based. A secret with no known prefix, no
   telling variable name and low randomness (say, a dictionary-word password
-  typed as a bare argument) can get through. Use `agent-wallpaper pause` when
+  typed as a bare argument) can get through. Use `glitchwall pause` when
   streaming or screen sharing, or `--commands-only`.
 - Any program already running as you can read the key file and the logs
   themselves; this tool doesn't protect against local malware.
@@ -27,7 +27,7 @@ than usual. Its promises:
   need the key, which only this wallpaper's `config.js` has.
 - `config.js` contains the key. Don't publish an exported wallpaper folder.
   If you did, delete the `key` file in the state dir and run
-  `agent-wallpaper install` again to make a new one.
+  `glitchwall install` again to make a new one.
 
 ## Reporting
 

@@ -8,11 +8,11 @@ import time
 import unittest
 from pathlib import Path
 
-os.environ["AGENT_WALLPAPER_HOME"] = tempfile.mkdtemp(prefix="alw-test-")
+os.environ["GLITCHWALL_HOME"] = tempfile.mkdtemp(prefix="alw-test-")
 
-from agent_live_wallpaper import settings as cfg  # noqa: E402
-from agent_live_wallpaper.redact import Redactor  # noqa: E402
-from agent_live_wallpaper.server import EventStore, LiveSettings, check_access, make_handler, serve  # noqa: E402
+from glitchwall import settings as cfg  # noqa: E402
+from glitchwall.redact import Redactor  # noqa: E402
+from glitchwall.server import EventStore, LiveSettings, check_access, make_handler, serve  # noqa: E402
 
 KEY = "k" * 43
 PORT = 47899
@@ -54,7 +54,7 @@ class TestLiveServer(unittest.TestCase):
         cls.store = EventStore(Redactor(home="/home/octo", user="octo"))
         cls.store.add({"kind": "$", "ref": "a1", "text": "export API_TOKEN=" + "abc123secretvalue", "proj": "p"})
         cls.store.add({"kind": "out", "ref": "a1", "text": "ok", "proj": "p"})
-        cls.refused = Path(os.environ["AGENT_WALLPAPER_HOME"]) / "last-refused.txt"
+        cls.refused = Path(os.environ["GLITCHWALL_HOME"]) / "last-refused.txt"
         cls.httpd = serve(make_handler(cls.store, KEY, PORT, refusal_log=cls.refused), PORT)
         threading.Thread(target=cls.httpd.serve_forever, daemon=True).start()
 

@@ -4,9 +4,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from agent_live_wallpaper.claude_logs import ClaudeLogTailer, describe
-from agent_live_wallpaper.demo import SCRIPT
-from agent_live_wallpaper.redact import MASK, Redactor
+from glitchwall.claude_logs import ClaudeLogTailer, describe
+from glitchwall.demo import SCRIPT
+from glitchwall.redact import MASK, Redactor
 
 
 def line(content, **kw):

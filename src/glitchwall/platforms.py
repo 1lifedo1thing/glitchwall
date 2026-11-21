@@ -21,15 +21,15 @@ from pathlib import Path
 
 from . import settings as cfg
 
-FOLDER = "agent-live-wallpaper"
-RUN_VALUE = "agent-live-wallpaper"
-LAUNCH_LABEL = "io.github.agent-live-wallpaper"
+FOLDER = "glitchwall"
+RUN_VALUE = "glitchwall"
+LAUNCH_LABEL = "io.github.glitchwall"
 WIN = sys.platform == "win32"
 
 
 # ---------------------------------------------------------------- wallpaper files
 def wallpaper_source() -> Path:
-    return Path(str(resources.files("agent_live_wallpaper") / "wallpaper"))
+    return Path(str(resources.files("glitchwall") / "wallpaper"))
 
 
 def copy_wallpaper(dest: Path, port: int, key: str, label: str) -> None:
@@ -114,16 +114,16 @@ def ephemeral_env() -> bool:
 
 
 def feed_command() -> list[str]:
-    return [pythonw(), "-m", "agent_live_wallpaper", "run"]
+    return [pythonw(), "-m", "glitchwall", "run"]
 
 
 # ---------------------------------------------------------------- autostart
-def _desktop_file() -> Path:
-    return Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "autostart" / f"{FOLDER}.desktop"
+def _desktop_file(name: str = FOLDER) -> Path:
+    return Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "autostart" / f"{name}.desktop"
 
 
-def _plist() -> Path:
-    return Path.home() / "Library" / "LaunchAgents" / f"{LAUNCH_LABEL}.plist"
+def _plist(label: str = LAUNCH_LABEL) -> Path:
+    return Path.home() / "Library" / "LaunchAgents" / f"{label}.plist"
 
 
 def add_autostart() -> str:
@@ -147,21 +147,25 @@ def add_autostart() -> str:
     import shlex
     f = _desktop_file()
     f.parent.mkdir(parents=True, exist_ok=True)
-    f.write_text("[Desktop Entry]\nType=Application\nName=Agent Live Wallpaper feed\n"
+    f.write_text("[Desktop Entry]\nType=Application\nName=glitchwall feed\n"
                  f"Exec={shlex.join(cmd)}\nNoDisplay=true\nX-GNOME-Autostart-enabled=true\n", encoding="utf-8")
     return str(f)
 
 
 def remove_autostart() -> bool:
+    return _remove_autostart(RUN_VALUE, LAUNCH_LABEL)
+
+
+def _remove_autostart(name: str, label: str) -> bool:
     if WIN:
         import winreg
         try:
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE) as k:
-                winreg.DeleteValue(k, RUN_VALUE)
+                winreg.DeleteValue(k, name)
             return True
         except FileNotFoundError:
             return False
-    f = _plist() if sys.platform == "darwin" else _desktop_file()
+    f = _plist(label) if sys.platform == "darwin" else _desktop_file(name)
     if f.exists():
         f.unlink()
         return True
@@ -200,7 +204,7 @@ def _is_ours(pid: int) -> bool:
             return "python" in out
         os.kill(pid, 0)
         cmd = subprocess.run(["ps", "-p", str(pid), "-o", "command="], capture_output=True, text=True).stdout
-        return "agent_live_wallpaper" in cmd
+        return "glitchwall" in cmd
     except (OSError, subprocess.SubprocessError):
         return False
 
@@ -240,19 +244,42 @@ def stop_background(pf: Path | None = None) -> bool:
     return True
 
 
+def _legacy_lively_folder() -> Path | None:
+    lib = lively_library() if WIN else None
+    return lib / cfg.LEGACY_NAME if lib else None
+
+
 def migrate_legacy() -> list[str]:
-    """0.1.0 kept state in %LOCALAPPDATA% (see settings.py). Stop its feed, keep its settings, remove it."""
+    """Clean up installs of earlier versions (0.1.x was called agent-live-wallpaper and 0.1.0 kept
+    its state in %LOCALAPPDATA%): stop their feed, keep their settings (not the key), remove the
+    old state folder, autostart entry and Lively folder."""
     done = []
+    new = cfg.state_dir()
+    old_lively = _legacy_lively_folder()
     for old in cfg.legacy_state_dirs():
         if not old.exists():
             continue
         if stop_background(old / "feed.pid"):
-            done.append(f"stopped the feed started from {old}")
-        new = cfg.state_dir()
+            done.append(f"stopped the old feed started from {old}")
         new.mkdir(parents=True, exist_ok=True)
-        for name in ("settings.json", "previous-wallpaper.json"):   # never the key: make a fresh one
-            if (old / name).exists() and not (new / name).exists():
-                shutil.copy2(old / name, new / name)
+        if (old / "settings.json").exists() and not (new / "settings.json").exists():
+            shutil.copy2(old / "settings.json", new / "settings.json")
+        prev_old, prev_new = old / "previous-wallpaper.json", new / "previous-wallpaper.json"
+        if prev_old.exists() and not prev_new.exists():
+            try:
+                prev = [p for p in json.loads(prev_old.read_text(encoding="utf-8"))
+                        if not old_lively or Path(p) != old_lively]
+                if prev:
+                    prev_new.write_text(json.dumps(prev), encoding="utf-8")
+            except (OSError, ValueError):
+                pass
         shutil.rmtree(old, ignore_errors=True)
         done.append(f"moved settings from {old} to {new} and deleted the old folder")
+    if _remove_autostart(cfg.LEGACY_NAME, f"io.github.{cfg.LEGACY_NAME}"):
+        done.append(f"removed the old autostart entry ({cfg.LEGACY_NAME})")
+    if old_lively and old_lively.exists():
+        showing = any(Path(c) == old_lively for c in lively_current())
+        if not showing:   # if it is on screen, install switches away first and calls this again
+            shutil.rmtree(old_lively, ignore_errors=True)
+            done.append(f"deleted the old wallpaper folder {old_lively}")
     return done

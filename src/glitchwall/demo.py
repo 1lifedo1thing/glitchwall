@@ -1,6 +1,6 @@
 """Demo mode: made-up tool calls, no logs read. For screenshots and trying the look.
 
-`agent-wallpaper demo` serves fake events on its own port (47834 by default) and also
+`glitchwall demo` serves fake events on its own port (47834 by default) and also
 serves the wallpaper page itself at http://127.0.0.1:47834/ so you can open it in a browser.
 The demo key is random per run and the data is fake, so nothing real is exposed.
 """
@@ -69,7 +69,7 @@ def run_demo(port: int = DEMO_PORT, pace: float = 1.0) -> None:
     stop = threading.Event()
     threading.Thread(target=generate, args=(store, stop, pace), daemon=True).start()
     key = secrets.token_urlsafe(24)
-    wallpaper = Path(str(resources.files("agent_live_wallpaper") / "wallpaper"))
+    wallpaper = Path(str(resources.files("glitchwall") / "wallpaper"))
     label = cfg.load_settings().get("label") or cfg.DEFAULTS["label"]
     handler = make_handler(
         store, key, port, static_dir=wallpaper,

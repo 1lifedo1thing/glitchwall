@@ -1,13 +1,13 @@
 [project]
-name = "agent-live-wallpaper"
-version = "0.1.1"
-description = "Your coding agent's tool calls as a live desktop wallpaper. Local only, secrets masked, stdlib only."
+name = "glitchwall"
+version = "0.2.0"
+description = "Your coding agent's tool calls as a live, glitchy retro-terminal desktop wallpaper. Local only, secrets masked, stdlib only."
 readme = "README.md"
 license = "MIT"
-license-files = ["LICENSE", "src/agent_live_wallpaper/wallpaper/OFL.txt"]
+license-files = ["LICENSE", "src/glitchwall/wallpaper/OFL.txt"]
 requires-python = ">=3.9"
 dependencies = []
-keywords = ["wallpaper", "lively", "claude-code", "terminal", "retro"]
+keywords = ["wallpaper", "lively", "claude-code", "terminal", "retro", "glitch"]
 classifiers = [
     "Environment :: Win32 (MS Windows)",
     "Operating System :: Microsoft :: Windows",
@@ -18,8 +18,7 @@ classifiers = [
 ]
 
 [project.scripts]
-agent-wallpaper = "agent_live_wallpaper.cli:main"
-agent-live-wallpaper = "agent_live_wallpaper.cli:main"
+glitchwall = "glitchwall.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.8,<0.14"]

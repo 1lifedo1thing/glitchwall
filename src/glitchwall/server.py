@@ -90,7 +90,7 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
                  static_dir: Path | None = None, config_js: str | None = None,
                  extra_origins: tuple[str, ...] = (), refusal_log: Path | None = None):
     class Handler(BaseHTTPRequestHandler):
-        server_version = "agent-live-wallpaper"
+        server_version = "glitchwall"
         sys_version = ""
 
         def refuse(self, code: int) -> None:

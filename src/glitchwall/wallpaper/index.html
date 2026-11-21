@@ -1,5 +1,5 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>Agent Live Wallpaper</title>
+<html><head><meta charset="utf-8"><title>glitchwall</title>
 <style>
   @font-face { font-family:'Departure Mono'; src:url('DepartureMono-Regular.otf') format('opentype'); font-display:block; }
   :root { --g:#00FF41; --s:#7DFF9E; --l:#C8FFD4; --d:#0B4A1A; --bg:#0C0E0C;
@@ -179,7 +179,7 @@ function next() {
 const live = document.getElementById('live'), label = document.getElementById('label');
 const F = window.FEED || {};
 const LABEL = F.label || 'live tool feed';
-label.textContent = F.key ? LABEL : 'no config.js here: run  agent-wallpaper install';
+label.textContent = F.key ? LABEL : 'no config.js here: run  glitchwall install';
 async function poll() {
   try {
     if (!F.key) throw new Error('no config.js');

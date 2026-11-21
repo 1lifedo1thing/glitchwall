@@ -1,4 +1,4 @@
-"""agent-wallpaper: command line."""
+"""glitchwall: command line."""
 from __future__ import annotations
 
 import argparse
@@ -50,7 +50,7 @@ def cmd_start(a) -> int:
         say(f"feed already running (pid {plat.running_pid()}) on 127.0.0.1:{port}")
         return 0
     if plat.port_open(port):
-        say(f"port {port} is in use by another program. Pick another: agent-wallpaper config --port N")
+        say(f"port {port} is in use by another program. Pick another: glitchwall config --port N")
         return 1
     plat.start_background()
     for _ in range(40):
@@ -58,7 +58,7 @@ def cmd_start(a) -> int:
             say(f"feed running on 127.0.0.1:{port} (pid {plat.running_pid()})")
             return 0
         time.sleep(0.25)
-    say("feed did not come up; run `agent-wallpaper run` to see the error")
+    say("feed did not come up; run `glitchwall run` to see the error")
     return 1
 
 
@@ -73,7 +73,7 @@ def cmd_stop(a) -> int:
 def cmd_status(a) -> int:
     s = cfg.load_settings()
     pid = plat.running_pid()
-    say(f"agent-live-wallpaper {__version__}")
+    say(f"glitchwall {__version__}")
     say(f"  feed        {'running, pid ' + str(pid) if pid else 'stopped'} (127.0.0.1:{s['port']})")
     say(f"  paused      {'yes (serving nothing)' if s['paused'] else 'no'}")
     say(f"  outputs     {'hidden (commands only)' if s['commands_only'] else 'shown'}")
@@ -125,8 +125,8 @@ def cmd_install(a) -> int:
         say("autostart: skipped (--no-autostart)")
     elif plat.ephemeral_env() and not a.force:
         say("autostart: skipped. This copy runs from a temporary uvx/pipx-run environment that can vanish.\n"
-            "  For start-at-logon, install it for good:  uv tool install agent-live-wallpaper   (or pipx install)\n"
-            "  then run:  agent-wallpaper install")
+            "  For start-at-logon, install it for good:  uv tool install glitchwall   (or pipx install)\n"
+            "  then run:  glitchwall install")
     else:
         say(f"autostart: {plat.add_autostart()}")
 
@@ -140,17 +140,20 @@ def cmd_install(a) -> int:
     if lib is not None:
         if a.no_set:
             say("Lively: wallpaper added to the library, not set (--no-set)")
-        elif plat.lively(*["setwp", "--file", str(dest)]):
+        elif plat.lively("setwp", "--file", str(dest)):
             say("Lively: wallpaper set")
+            time.sleep(1.5)   # let Lively let go of an old-name folder it was showing
+            for msg in plat.migrate_legacy():
+                say(msg)
         else:
-            say("Lively: could not set it automatically. Open Lively and pick 'Agent Live Wallpaper' from the library.")
+            say("Lively: could not set it automatically. Open Lively and pick 'glitchwall' from the library.")
     else:
         say("")
         say("Point any web-wallpaper app at this page, or open it fullscreen in a browser:")
         say(f"  {(dest / 'index.html').as_uri()}")
         say("  (see README: macOS / Linux)")
     say("")
-    say("done. Stream-safe switch:  agent-wallpaper pause   /   agent-wallpaper resume")
+    say("done. Stream-safe switch:  glitchwall pause   /   glitchwall resume")
     return 0
 
 
@@ -184,7 +187,7 @@ def cmd_uninstall(a) -> int:
         removed.append(f"deleted {sd} (key, settings, logs)")
     for r in removed or ["nothing to remove"]:
         say(r)
-    say("Your Claude Code logs were never modified. To remove the program itself: uv tool uninstall agent-live-wallpaper")
+    say("Your Claude Code logs were never modified. To remove the program itself: uv tool uninstall glitchwall")
     return 0
 
 
@@ -258,7 +261,7 @@ def cmd_export(a) -> int:
 
 # ---------------------------------------------------------------- parser
 def parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="agent-wallpaper",
+    p = argparse.ArgumentParser(prog="glitchwall",
                                 description="Your coding agent's tool calls as a live desktop wallpaper. Local only.")
     p.add_argument("--version", action="version", version=__version__)
     sub = p.add_subparsers(dest="cmd", metavar="command")
