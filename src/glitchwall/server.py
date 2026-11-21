@@ -90,7 +90,7 @@ class LiveSettings:
 def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | None = None,
                  static_dir: Path | None = None, config_js: str | None = None,
                  extra_origins: tuple[str, ...] = (), refusal_log: Path | None = None,
-                 look: dict | None = None):
+                 look: dict | None = None, mode: str | None = None, label: str | None = None):
     class Handler(BaseHTTPRequestHandler):
         server_version = "glitchwall"
         sys_version = ""
@@ -127,7 +127,8 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
             s = live.get() if live else cfg.DEFAULTS
             out = [] if s.get("paused") else store.since(since, bool(s.get("commands_only")))
             body = json.dumps({"events": out, "paused": bool(s.get("paused")), "last": store.seq,
-                               "look": look or themes.look(s)}).encode()
+                               "look": look or themes.look(s), "mode": mode or cfg.mode(s),
+                               "label": cfg.display_label(s) if label is None else label}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))
@@ -170,13 +171,38 @@ def serve(handler, port: int) -> ThreadingHTTPServer:
 
 
 def run_feed(port: int | None = None) -> None:
-    """Run the real feed in the foreground (what `start` launches in the background)."""
-    from .claude_logs import ClaudeLogTailer
+    """Run the feed in the foreground (what `start` launches in the background).
+    The source follows the `mode` setting and switches when it changes, no restart needed:
+    live = tail Claude Code's logs, ambient = made-up sessions (reads nothing), art = nothing."""
     live = LiveSettings()
     s = live.get()
     port = port or int(s["port"])
     store = EventStore(Redactor(mask_user=s.get("mask_user", True), mask_email=s.get("mask_email", True)))
-    tailer = ClaudeLogTailer(store.add)
-    threading.Thread(target=tailer.run, daemon=True).start()
+    threading.Thread(target=follow_mode, args=(store, live), daemon=True).start()
     handler = make_handler(store, cfg.load_key(), port, live, refusal_log=cfg.state_dir() / "last-refused.txt")
     serve(handler, port).serve_forever()
+
+
+def start_source(mode: str, store: EventStore) -> threading.Event:
+    """Start the event source for a mode; set the returned event to stop it."""
+    stop = threading.Event()
+    if mode == "live":
+        from .claude_logs import ClaudeLogTailer
+        threading.Thread(target=ClaudeLogTailer(store.add).run, args=(stop,), daemon=True).start()
+    elif mode == "ambient":
+        from . import ambient
+        threading.Thread(target=ambient.generate, args=(store, stop), daemon=True).start()
+    return stop
+
+
+def follow_mode(store: EventStore, live: LiveSettings, poll: float = 1.0, quit: threading.Event | None = None) -> None:
+    mode, stop = None, None
+    while not (quit and quit.is_set()):
+        m = cfg.mode(live.get())
+        if m != mode:
+            if stop:
+                stop.set()
+            mode, stop = m, start_source(m, store)
+        time.sleep(poll)
+    if stop:
+        stop.set()

@@ -3,19 +3,120 @@
     "type": "dropdown",
     "value": 0,
     "text": "Theme",
-    "items": ["Use glitchwall config", "phosphor", "amber", "cyberpunk", "synthwave", "msdos", "bsod", "ice", "paper"]
+    "items": [
+      "Use glitchwall config",
+      "phosphor",
+      "drafting",
+      "newsprint",
+      "nightprint",
+      "neon",
+      "fieldops",
+      "duplicator",
+      "sleeve",
+      "matrix",
+      "amber",
+      "synthwave",
+      "msdos",
+      "bsod",
+      "cyanotype",
+      "notebook"
+    ]
+  },
+  "paletteSel": {
+    "type": "dropdown",
+    "value": 0,
+    "text": "Colors",
+    "items": [
+      "Use glitchwall config",
+      "theme",
+      "phosphor",
+      "drafting",
+      "newsprint",
+      "nightprint",
+      "neon",
+      "fieldops",
+      "duplicator",
+      "sleeve",
+      "matrix",
+      "amber",
+      "synthwave",
+      "msdos",
+      "bsod",
+      "cyanotype",
+      "notebook"
+    ]
   },
   "rainSel": {
     "type": "dropdown",
     "value": 0,
     "text": "Background style",
-    "items": ["Use glitchwall config", "theme", "pixel", "code", "stars", "static", "snow", "grid", "none"]
+    "items": [
+      "Use glitchwall config",
+      "theme",
+      "pixel",
+      "code",
+      "stars",
+      "static",
+      "snow",
+      "grid",
+      "draft",
+      "halftone",
+      "record",
+      "jukebox",
+      "starburst",
+      "testcard",
+      "print",
+      "stop",
+      "notebook",
+      "none"
+    ]
   },
   "fontSel": {
     "type": "dropdown",
     "value": 0,
     "text": "Font",
-    "items": ["Use glitchwall config", "theme", "departure", "cascadia", "consolas", "lucida", "courier", "segoe", "mono"]
+    "items": [
+      "Use glitchwall config",
+      "theme",
+      "departure",
+      "plex",
+      "vt323",
+      "chakra",
+      "doto",
+      "stencil",
+      "serif",
+      "georgia",
+      "courierprime",
+      "dmmono",
+      "fira",
+      "overpass",
+      "cascadia",
+      "consolas",
+      "lucida",
+      "courier",
+      "segoe",
+      "hand",
+      "mono"
+    ]
+  },
+  "animSel": {
+    "type": "dropdown",
+    "value": 0,
+    "text": "Transition",
+    "items": [
+      "Use glitchwall config",
+      "theme",
+      "glitch",
+      "crt",
+      "draft",
+      "press",
+      "neon",
+      "stamp",
+      "riso",
+      "sleeve",
+      "dos",
+      "write"
+    ]
   },
   "typeSpeed": {
     "type": "slider",

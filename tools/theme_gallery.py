@@ -3,7 +3,7 @@
 Dev-only helper, not part of the package. Needs Pillow and websockets:
     uv run --no-project --with pillow --with websockets python tools/theme_gallery.py [OUTDIR]
 
-Full-size shots go to OUTDIR (default: a temp folder); the 4x2 gallery goes to docs/themes.png.
+Full-size shots go to OUTDIR (default: a temp folder); the gallery (4 per row) goes to docs/themes.png.
 Browser console errors are printed, so it doubles as a smoke test for every theme.
 """
 from __future__ import annotations
@@ -70,7 +70,8 @@ async def shoot(ws_url: str, outdir: Path) -> dict[str, Path]:
 
 def gallery(shots: dict[str, Path]) -> Path:
     tw, th, pad, cap = 420, 236, 10, 26
-    cols, rows = 4, 2
+    cols = 4
+    rows = -(-len(shots) // cols)
     img = Image.new("RGB", (cols * tw + (cols + 1) * pad, rows * (th + cap) + (rows + 1) * pad), "#0b0b0b")
     d = ImageDraw.Draw(img)
     font_path = ROOT / "src" / "glitchwall" / "wallpaper" / "DepartureMono-Regular.otf"

@@ -29,10 +29,34 @@ DEFAULTS = {
     "mask_user": True,       # replace your user name with "user"
     "mask_email": True,      # replace email local parts with ••••
     "label": "CLAUDE :: live tool feed",
+    "mode": "live",          # live | ambient | art, see MODES
     "theme": "phosphor",     # see `glitchwall themes`
+    "palette": "theme",      # borrow another theme's colors
     "rain": "theme",         # background style; "theme" = the theme's own
     "font": "theme",
+    "transition": "theme",   # how cards arrive and leave
 }
+
+
+MODES = {
+    "live": "your real Claude Code tool calls, as they happen",
+    "ambient": "made-up but realistic coding sessions; reads nothing, no Claude Code needed",
+    "art": "just the themed background: no cards, no label",
+}
+AMBIENT_LABEL = "AMBIENT :: made-up sessions, nothing real"
+
+
+def mode(s: dict) -> str:
+    m = str(s.get("mode", "")).lower()
+    return m if m in MODES else "live"
+
+
+def display_label(s: dict) -> str:
+    """The corner label. A label you set always wins; the stock one says which mode is on."""
+    label = s.get("label") or DEFAULTS["label"]
+    if label != DEFAULTS["label"]:
+        return label
+    return {"live": label, "ambient": AMBIENT_LABEL, "art": ""}[mode(s)]
 
 
 def state_dir() -> Path:

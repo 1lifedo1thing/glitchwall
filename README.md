@@ -29,7 +29,8 @@ Your agent is doing a hundred things a minute in a terminal you're not watching.
 - 🔒 **Paranoid by design.** 50 secret formats, credential assignments, high-entropy strings, your home path, user name and email are all masked *before* anything is stored. Localhost only. No telemetry. Read-only on your logs.
 - 🎥 **Stream-safe.** One command (`glitchwall pause`) and the screen is clean, enforced by the feed itself, not the wallpaper.
 - 🪶 **Tiny.** Pure Python standard library, zero dependencies, a single HTML page. Or a standalone `.exe` if you don't have Python.
-- 🎨 **Eight themes, seven backgrounds.** Phosphor, amber, cyberpunk, synthwave, MS-DOS, blue screen, ice and paper, over pixel rain, glyph rain, a starfield, TV static, snow or a synthwave grid. Mix and match, with any font.
+- 🎨 **Fifteen themes, sixteen backgrounds, ten transitions.** An oscilloscope, a blueprint, newsprint by day and night, neon, a field-ops poster, a risograph print, a record sleeve, a school notebook, an old blue stop screen and more. Each is a finished bundle of colors, fonts, background, texture and its own way of bringing cards in and out, and you can swap any single part.
+- 🌙 **No code of your own needed.** Ambient mode plays made-up but realistic coding sessions forever, and art mode shows just the background. Neither one reads anything. See [Not a coder?](#not-a-coder-).
 - 🎛️ **Tweakable.** Typing speed, linger time, cards on screen, background intensity and glass opacity, all from Lively's sliders.
 
 ## Quick start
@@ -85,24 +86,66 @@ A `file://` page sends `Origin: null`, which the feed accepts with the key.
 
 ## Themes 🎨
 
-![the eight themes: phosphor, amber, cyberpunk, synthwave, msdos, bsod, ice, paper](docs/themes.png)
+![fifteen themes](docs/themes.png)
+
+Each theme is a finished bundle: colors, two fonts, a background, a texture and its own way of bringing cards
+in and taking them away. Use one as it is, or swap any single part.
+
+| Theme | Personality | Cards arrive / leave |
+| --- | --- | --- |
+| `phosphor` (default) | lab oscilloscope at night: green phosphor on black glass, amber for anything live, CRT tube | beam opens / collapses to a dot |
+| `drafting` | blueprint: chalk-white linework on cobalt, shapes drafting and dimensioning themselves | ruled in / erased |
+| `newsprint` · `nightprint` | cream newsprint, black ink, hot vermilion; the same at night on charcoal | pressed on / lifted off |
+| `neon` | near-black neon: cyan ink, hot pink, dot-matrix titles, katakana rain | tube flickers on / off |
+| `fieldops` | field-ops poster: khaki stock, hot-orange tactical grid, stencil type | stamped / torn off |
+| `duplicator` | risograph: blue and fluorescent-pink inks, halftone, the pink drum a little off true | second ink lands off true |
+| `sleeve` | record sleeve: sepia paper, brown ink, mustard, a record turning in the corner | slides out of the sleeve |
+| `notebook` | ruled paper, red margin, ballpoint handwriting, pencil doodles | written in / crumpled and tossed |
+| `bsod` | the old blue stop screen: white VGA text, grey title chips | drawn line by line / gone |
+| `cyanotype` | a sun print in Prussian blue, paper grain, a mid-century print | ruled in / erased |
+| `matrix` · `amber` · `synthwave` · `msdos` | the original bright-green look, amber mono, a synthwave sunset, blue DOS boxes | glitch · beam · glitch · line by line |
+
+**Mix and match.** Five independent choices; `theme` means "whatever the theme uses":
 
 ```sh
 glitchwall themes                                   # list everything, * marks what you use now
-glitchwall config --theme synthwave                 # the running wallpaper switches within a second
-glitchwall config --rain stars --font cascadia      # any background, any font, with any theme
-glitchwall config --rain theme --font theme         # back to the theme's own
-glitchwall demo --open --theme msdos                # try one without touching your setup
+glitchwall config --theme drafting                  # pick a bundle; the running wallpaper switches within a second
+glitchwall config --palette sleeve                  # ...but with another theme's colors
+glitchwall config --rain starburst --font vt323     # ...any background, any font
+glitchwall config --transition neon                 # ...any way of arriving and leaving
+glitchwall config --palette theme --rain theme --font theme --transition theme   # back to the bundle
+glitchwall demo --open --theme notebook             # try one without touching your setup
 ```
 
-| Backgrounds | Fonts |
+| Choice | Options |
 | --- | --- |
-| `pixel` bit-glyph rain · `code` katakana rain · `stars` starfield · `static` dead channel · `snow` · `grid` synthwave sun · `none` | `departure` (bundled) · `cascadia` · `consolas` · `lucida` · `courier` · `segoe` · `mono` |
+| **Background** (`--rain`) | `pixel` bit-glyph rain · `code` katakana rain · `stars` · `static` · `snow` · `grid` synthwave sun · `draft` drawing grid · `halftone` two-ink dots · `record` · `jukebox` · `starburst` atomic age · `testcard` · `print` mid-century wallpaper · `stop` stop screen · `notebook` ruled paper · `none` |
+| **Font** | `departure` · `plex` · `vt323` · `chakra` · `doto` · `stencil` · `serif` · `courierprime` · `dmmono` · `fira` · `overpass` · `georgia` · `cascadia` · `consolas` · `lucida` · `courier` · `segoe` · `hand` · `mono` |
+| **Transition** | `glitch` · `crt` · `draft` · `press` · `neon` · `stamp` · `riso` · `sleeve` · `dos` · `write` |
+| **Palette** | any theme name |
 
-In Lively, the wallpaper's customize panel has **Theme**, **Background style** and **Font** dropdowns too;
-anything other than *Use glitchwall config* there wins over the command line. In a browser,
-`?theme=amber&rain=snow&font=courier` wins over both. Fonts other than Departure Mono come from your
-system, so nothing is downloaded; a missing one falls back to the next monospace font.
+Fonts are bundled or already on your system; nothing is downloaded at run time. In Lively, the wallpaper's
+customize panel has the same five dropdowns, and anything other than *Use glitchwall config* there wins over
+the command line. In a browser, URL parameters (`?theme=sleeve&rain=jukebox&transition=stamp`) win over both,
+and `?cycle=10` steps through every theme. The background slider sets how busy any background is (0 stills it).
+
+## Not a coder? 🌙
+
+You don't need Claude Code, or any code, to use glitchwall. Pick a mode:
+
+| Mode | What you see | What it reads |
+| --- | --- | --- |
+| `live` (default) | your real Claude Code tool calls as they happen | your Claude Code logs (see below) |
+| `ambient` | endless made-up coding sessions: a bug found and fixed, tests failing then passing, a build, a deploy, a release. Believable code with fake projects, files and numbers | nothing at all |
+| `art` | just the themed background, no cards, no label | nothing at all |
+
+```
+glitchwall install --mode ambient
+glitchwall config --mode art        # switch any time; the running wallpaper follows within a second
+```
+
+Every theme, background and transition works the same in every mode. Preview without installing:
+`glitchwall demo --open --mode ambient`.
 
 ## Going live? 🎥
 
@@ -119,7 +162,8 @@ Want a lighter option? `glitchwall config --commands-only on` shows the calls bu
 
 | Command | What it does |
 | --- | --- |
-| `glitchwall install` | set everything up (`--commands-only`, `--no-autostart`, `--no-set`, `--port N`) |
+| `glitchwall install` | set everything up (`--mode ambient`, `--commands-only`, `--no-autostart`, `--no-set`, `--port N`) |
+| `glitchwall config --mode live\|ambient\|art` | real activity, made-up sessions, or background only |
 | `glitchwall status` | what's installed and running |
 | `glitchwall start` / `stop` | start or stop the background feed |
 | `glitchwall pause` / `resume` | stream-safe switch: serve nothing / back to live |
@@ -136,6 +180,8 @@ Want a lighter option? `glitchwall config --commands-only on` shows the calls bu
 > **TL;DR:** it reads your agent's logs, masks the secrets, and shows them to one page on your own machine. That's it.
 
 ### ✅ It reads
+
+In `ambient` and `art` mode it reads no logs at all, only its own settings. In `live` mode:
 
 - **Claude Code session logs:** `~/.claude/projects/*/*.jsonl` (or `$CLAUDE_CONFIG_DIR/projects`),
   opened **read-only**, only logs touched in the last 30 minutes, only the newly appended part.
@@ -210,8 +256,15 @@ and one web page. Lively pauses wallpapers when a fullscreen app (game, video) i
 ([`claude_logs.py`](src/glitchwall/claude_logs.py)), and pull requests for other agents are welcome.
 
 **Can I change the look?** Yes: see [Themes](#themes-). A new theme is one entry in `THEMES` in
-[`index.html`](src/glitchwall/wallpaper/index.html) plus its name in [`themes.py`](src/glitchwall/themes.py)
-and `LivelyProperties.json` (a test checks the three agree). Pull requests welcome.
+[`index.html`](src/glitchwall/wallpaper/index.html) plus its name in [`themes.py`](src/glitchwall/themes.py);
+`LivelyProperties.json` is generated from those names and a test checks they all agree. Pull requests welcome.
+
+**Do I need Lively?** Only for the one-command Windows install. The wallpaper is a plain web page and the
+feed is a local web server, so anything that can show a web page can show it:
+`glitchwall export DIR` writes the page and its `config.js` to a folder. Use that folder in Wallpaper Engine
+(Windows, as a web wallpaper), [Plash](https://github.com/sindresorhus/Plash) (macOS), a KDE or GNOME web
+wallpaper plugin (Linux), a browser window in kiosk mode, or an OBS **browser source** to put your agent on
+stream as an overlay (`glitchwall pause` still clears it instantly). Only Lively is tested so far; reports welcome.
 
 **Upgrading from 0.1.x (then called `agent-live-wallpaper`)?** `glitchwall install` stops the old feed,
 keeps its settings (with a new key), and removes the old state folder, autostart entry and Lively folder.
@@ -250,6 +303,12 @@ Stdlib only at runtime, Python 3.9+.
 
 **MIT**, see [LICENSE](LICENSE). Free to use, change and share.
 [Departure Mono](https://departuremono.com) is © Helena Zhang, SIL Open Font License 1.1, see [OFL.txt](src/glitchwall/wallpaper/OFL.txt).
+VT323, IBM Plex Mono, Chakra Petch, Doto, Saira Stencil One, Instrument Serif, Courier Prime, DM Mono, Fira Code and
+Overpass Mono are bundled under the SIL Open Font License 1.1 (from [Google Fonts](https://github.com/google/fonts));
+each license is in [fonts/licenses](src/glitchwall/wallpaper/fonts/licenses).
+The first eight themes' palettes, and the grain, scanline and halftone textures, are adapted from the themes of
+[SUB/WAVE](https://github.com/perminder-klair/subwave) by Parminder Klair (MIT). Go check it out, it's a lovely
+self-hosted radio station. Notice in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 Wallpaper host: [Lively Wallpaper](https://github.com/rocksdanister/lively) by rocksdanister.
 
 <div align="center"><sub>made for people who like watching the machine think</sub></div>

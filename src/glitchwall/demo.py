@@ -65,22 +65,30 @@ def generate(store: EventStore, stop: threading.Event, pace: float = 1.0) -> Non
             break
 
 
-def run_demo(port: int = DEMO_PORT, pace: float = 1.0, look: dict | None = None) -> None:
+def run_demo(port: int = DEMO_PORT, pace: float = 1.0, look: dict | None = None, mode: str | None = None) -> None:
     store = EventStore(Redactor(home="", user="", mask_user=False))
     stop = threading.Event()
-    threading.Thread(target=generate, args=(store, stop, pace), daemon=True).start()
+    mode = mode or "live"                  # live here = the scripted demo session
+    if mode == "ambient":
+        from .ambient import generate as gen
+    else:
+        gen = generate
+    if mode != "art":
+        threading.Thread(target=gen, args=(store, stop, pace), daemon=True).start()
     key = secrets.token_urlsafe(24)
     wallpaper = Path(str(resources.files("glitchwall") / "wallpaper"))
     s = cfg.load_settings()
-    label = s.get("label") or cfg.DEFAULTS["label"]
+    label = cfg.display_label({**s, "mode": mode})
     look = themes.look({**s, **(look or {})})
     handler = make_handler(
         store, key, port, static_dir=wallpaper,
         config_js=cfg.config_js(port, key, label + "  [demo]"),
         extra_origins=(f"http://127.0.0.1:{port}", f"http://localhost:{port}"), look=look,
+        mode=mode, label=label + "  [demo]" if label else "",
     )
     httpd = serve(handler, port)
     print(f"demo feed (fake data) on http://127.0.0.1:{port}/  - open it in a browser, Ctrl+C to stop")
+    print(f"mode: {mode}")
     print(f"look: {look['theme']} theme, {look['rain']} rain, {look['font']} font  (try ?theme=amber&rain=stars)")
     try:
         httpd.serve_forever()

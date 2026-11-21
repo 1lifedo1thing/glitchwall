@@ -77,6 +77,7 @@ def cmd_status(a) -> int:
     pid = plat.running_pid()
     say(f"glitchwall {__version__}")
     say(f"  feed        {'running, pid ' + str(pid) if pid else 'stopped'} (127.0.0.1:{s['port']})")
+    say(f"  mode        {cfg.mode(s)} ({cfg.MODES[cfg.mode(s)]})")
     say(f"  paused      {'yes (serving nothing)' if s['paused'] else 'no'}")
     say(f"  outputs     {'hidden (commands only)' if s['commands_only'] else 'shown'}")
     say(f"  state dir   {cfg.state_dir()}")
@@ -102,9 +103,12 @@ def cmd_install(a) -> int:
         s["port"] = a.port
     if a.commands_only:
         s["commands_only"] = True
+    if a.mode:
+        s["mode"] = a.mode
     cfg.save_settings(s)
     key = cfg.load_key()
-    port, label = int(s["port"]), s["label"]
+    port, label = int(s["port"]), cfg.display_label(s)
+    say(f"mode: {cfg.mode(s)} ({cfg.MODES[cfg.mode(s)]})")
     say(f"state dir: {cfg.state_dir()}")
 
     # 1. wallpaper files
@@ -212,7 +216,7 @@ def cmd_demo(a) -> int:
         import threading
         import webbrowser
         threading.Timer(0.8, webbrowser.open, [f"http://127.0.0.1:{port}/"]).start()
-    run_demo(port, a.pace, {k: getattr(a, k) for k in themes.KINDS if getattr(a, k)})
+    run_demo(port, a.pace, {k: getattr(a, k) for k in themes.KINDS if getattr(a, k)}, a.mode)
     return 0
 
 
@@ -238,13 +242,16 @@ def cmd_config(a) -> int:
     if a.port is not None:
         s["port"] = a.port
         changed = True
+    if a.mode is not None:
+        s["mode"] = a.mode   # the running feed switches source by itself within a second
+        changed = True
     for k in themes.KINDS:
         if getattr(a, k) is not None:
             s[k] = getattr(a, k)
             changed = True
     if changed:
         cfg.save_settings(s)
-        if a.port is not None or a.label is not None:
+        if a.port is not None or a.label is not None or a.mode is not None:
             _refresh_config(s)
         if a.port is not None or a.mask_user is not None or a.mask_email is not None:
             if plat.running_pid():
@@ -273,21 +280,27 @@ def _refresh_config(s: dict) -> None:
     lib = plat.lively_library() if plat.WIN else None
     dest = (lib / plat.FOLDER) if lib else cfg.state_dir() / "wallpaper"
     if dest.exists():
-        plat.write_config(dest, int(s["port"]), cfg.load_key(), s["label"])
+        plat.write_config(dest, int(s["port"]), cfg.load_key(), cfg.display_label(s))
         say(f"updated {dest / 'config.js'} (reload the wallpaper to pick it up)")
 
 
 def cmd_export(a) -> int:
     s = cfg.load_settings()
     dest = Path(a.dir).expanduser().resolve()
-    plat.copy_wallpaper(dest, int(s["port"]), cfg.load_key(), s["label"])
+    plat.copy_wallpaper(dest, int(s["port"]), cfg.load_key(), cfg.display_label(s))
     say(f"wallpaper written to {dest}  (config.js holds your feed key: keep it private)")
     say(f"open: {(dest / 'index.html').as_uri()}")
     return 0
 
 
 # ---------------------------------------------------------------- parser
+def _mode_arg(p) -> None:
+    p.add_argument("--mode", choices=list(cfg.MODES), help="live: your real Claude Code activity; "
+                   "ambient: made-up coding sessions, reads nothing; art: background only")
+
+
 def _look_args(p) -> None:
+    _mode_arg(p)
     for k, names in themes.KINDS.items():
         p.add_argument(f"--{k}", choices=list(names), metavar="NAME", help=f"{k} (see: glitchwall themes)")
 
@@ -301,6 +314,7 @@ def parser() -> argparse.ArgumentParser:
     i = sub.add_parser("install", help="put the wallpaper into Lively, start the feed, start it at logon")
     i.add_argument("--port", type=int)
     i.add_argument("--commands-only", action="store_true", help="never show tool output, only the calls")
+    _mode_arg(i)
     i.add_argument("--no-autostart", action="store_true", help="don't start the feed at logon")
     i.add_argument("--no-set", action="store_true", help="add to Lively's library but don't switch to it")
     i.add_argument("--force", action="store_true", help="add autostart even from a temporary uvx environment")

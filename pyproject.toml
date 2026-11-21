@@ -1,10 +1,10 @@
 [project]
 name = "glitchwall"
-version = "0.3.0"
+version = "0.4.0"
 description = "Your coding agent's tool calls as a live, glitchy retro-terminal desktop wallpaper. Local only, secrets masked, stdlib only."
 readme = "README.md"
 license = "MIT"
-license-files = ["LICENSE", "src/glitchwall/wallpaper/OFL.txt"]
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "src/glitchwall/wallpaper/OFL.txt", "src/glitchwall/wallpaper/fonts/licenses/*.txt"]
 requires-python = ">=3.9"
 dependencies = []
 keywords = ["wallpaper", "lively", "claude-code", "terminal", "retro", "glitch"]
