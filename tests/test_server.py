@@ -123,6 +123,11 @@ class TestLiveServer(unittest.TestCase):
             d = fetch()
             self.assertEqual(d["events"], [])
             self.assertTrue(d["paused"])
+            self.assertEqual(d["look"], {"theme": "phosphor", "rain": "theme", "font": "theme"})
+            s.update(theme="synthwave", rain="stars", font="bogus")     # `glitchwall config --theme ...`
+            cfg.save_settings(s)
+            os.utime(cfg.settings_file(), (time.time() + 3, time.time() + 3))
+            self.assertEqual(fetch()["look"], {"theme": "synthwave", "rain": "stars", "font": "theme"})
         finally:
             httpd2.shutdown()
             httpd2.server_close()

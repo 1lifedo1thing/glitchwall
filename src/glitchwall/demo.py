@@ -15,6 +15,7 @@ from importlib import resources
 from pathlib import Path
 
 from . import settings as cfg
+from . import themes
 from .redact import Redactor
 from .server import EventStore, make_handler, serve
 
@@ -64,20 +65,23 @@ def generate(store: EventStore, stop: threading.Event, pace: float = 1.0) -> Non
             break
 
 
-def run_demo(port: int = DEMO_PORT, pace: float = 1.0) -> None:
+def run_demo(port: int = DEMO_PORT, pace: float = 1.0, look: dict | None = None) -> None:
     store = EventStore(Redactor(home="", user="", mask_user=False))
     stop = threading.Event()
     threading.Thread(target=generate, args=(store, stop, pace), daemon=True).start()
     key = secrets.token_urlsafe(24)
     wallpaper = Path(str(resources.files("glitchwall") / "wallpaper"))
-    label = cfg.load_settings().get("label") or cfg.DEFAULTS["label"]
+    s = cfg.load_settings()
+    label = s.get("label") or cfg.DEFAULTS["label"]
+    look = themes.look({**s, **(look or {})})
     handler = make_handler(
         store, key, port, static_dir=wallpaper,
         config_js=cfg.config_js(port, key, label + "  [demo]"),
-        extra_origins=(f"http://127.0.0.1:{port}", f"http://localhost:{port}"),
+        extra_origins=(f"http://127.0.0.1:{port}", f"http://localhost:{port}"), look=look,
     )
     httpd = serve(handler, port)
     print(f"demo feed (fake data) on http://127.0.0.1:{port}/  - open it in a browser, Ctrl+C to stop")
+    print(f"look: {look['theme']} theme, {look['rain']} rain, {look['font']} font  (try ?theme=amber&rain=stars)")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

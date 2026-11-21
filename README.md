@@ -25,11 +25,12 @@ Your agent is doing a hundred things a minute in a terminal you're not watching.
 **glitchwall** turns that into the coolest wallpaper you've ever had:
 
 - 🟩 **Live.** Commands, file edits, reads, searches and web fetches pop up the moment they run, with their output typed out underneath.
-- 📺 **Retro to the bone.** Phosphor-green [Departure Mono](https://departuremono.com), frosted glass cards, RGB-split glitch-in, CRT collapse-out, 1px scanlines over everything, dim pixel rain behind.
+- 📺 **Retro to the bone.** [Departure Mono](https://departuremono.com) in phosphor green (by default), frosted glass cards, RGB-split glitch-in, CRT collapse-out, 1px scanlines over everything.
 - 🔒 **Paranoid by design.** 50 secret formats, credential assignments, high-entropy strings, your home path, user name and email are all masked *before* anything is stored. Localhost only. No telemetry. Read-only on your logs.
 - 🎥 **Stream-safe.** One command (`glitchwall pause`) and the screen is clean, enforced by the feed itself, not the wallpaper.
 - 🪶 **Tiny.** Pure Python standard library, zero dependencies, a single HTML page. Or a standalone `.exe` if you don't have Python.
-- 🎛️ **Tweakable.** Typing speed, linger time, cards on screen, rain density and glass opacity, all from Lively's sliders.
+- 🎨 **Eight themes, seven backgrounds.** Phosphor, amber, cyberpunk, synthwave, MS-DOS, blue screen, ice and paper, over pixel rain, glyph rain, a starfield, TV static, snow or a synthwave grid. Mix and match, with any font.
+- 🎛️ **Tweakable.** Typing speed, linger time, cards on screen, background intensity and glass opacity, all from Lively's sliders.
 
 ## Quick start
 
@@ -82,6 +83,27 @@ or KDE's HTML wallpaper plugins on Linux), or open it fullscreen on a spare moni
 A `file://` page sends `Origin: null`, which the feed accepts with the key.
 <sub>The macOS/Linux path is written but not tested yet. Reports welcome.</sub>
 
+## Themes 🎨
+
+![the eight themes: phosphor, amber, cyberpunk, synthwave, msdos, bsod, ice, paper](docs/themes.png)
+
+```sh
+glitchwall themes                                   # list everything, * marks what you use now
+glitchwall config --theme synthwave                 # the running wallpaper switches within a second
+glitchwall config --rain stars --font cascadia      # any background, any font, with any theme
+glitchwall config --rain theme --font theme         # back to the theme's own
+glitchwall demo --open --theme msdos                # try one without touching your setup
+```
+
+| Backgrounds | Fonts |
+| --- | --- |
+| `pixel` bit-glyph rain · `code` katakana rain · `stars` starfield · `static` dead channel · `snow` · `grid` synthwave sun · `none` | `departure` (bundled) · `cascadia` · `consolas` · `lucida` · `courier` · `segoe` · `mono` |
+
+In Lively, the wallpaper's customize panel has **Theme**, **Background style** and **Font** dropdowns too;
+anything other than *Use glitchwall config* there wins over the command line. In a browser,
+`?theme=amber&rain=snow&font=courier` wins over both. Fonts other than Departure Mono come from your
+system, so nothing is downloaded; a missing one falls back to the next monospace font.
+
 ## Going live? 🎥
 
 ```
@@ -103,6 +125,8 @@ Want a lighter option? `glitchwall config --commands-only on` shows the calls bu
 | `glitchwall pause` / `resume` | stream-safe switch: serve nothing / back to live |
 | `glitchwall config --commands-only on` | show calls, hide all output |
 | `glitchwall config --label "TEXT"` | the text in the bottom-right corner |
+| `glitchwall themes` | list themes, backgrounds and fonts |
+| `glitchwall config --theme X --rain Y --font Z` | change the look, live |
 | `glitchwall demo [--open]` | fake events + the page, for screenshots and trying it |
 | `glitchwall export DIR` | write the wallpaper and its `config.js` to a folder (other wallpaper apps) |
 | `glitchwall uninstall` | remove everything `install` added and put your old wallpaper back |
@@ -185,8 +209,9 @@ and one web page. Lively pauses wallpapers when a fullscreen app (game, video) i
 **Does it work with other agents?** It reads Claude Code's logs today. The parser is one small file
 ([`claude_logs.py`](src/glitchwall/claude_logs.py)), and pull requests for other agents are welcome.
 
-**Can I change the look?** Lively's sliders cover typing speed, linger time, cards on screen, rain and
-glass opacity. Everything else is plain CSS in [`index.html`](src/glitchwall/wallpaper/index.html).
+**Can I change the look?** Yes: see [Themes](#themes-). A new theme is one entry in `THEMES` in
+[`index.html`](src/glitchwall/wallpaper/index.html) plus its name in [`themes.py`](src/glitchwall/themes.py)
+and `LivelyProperties.json` (a test checks the three agree). Pull requests welcome.
 
 **Upgrading from 0.1.x (then called `agent-live-wallpaper`)?** `glitchwall install` stops the old feed,
 keeps its settings (with a new key), and removes the old state folder, autostart entry and Lively folder.
@@ -199,6 +224,7 @@ uv run python -m unittest discover -s tests                          # tests
 uv build                                                             # wheel + sdist
 powershell -File packaging\build-exe.ps1                             # standalone Windows exes + zip (PyInstaller, build time only)
 uv run --no-project --with pillow --with websockets python tools/record_demo.py   # re-record docs/demo.gif
+uv run --no-project --with pillow --with websockets python tools/theme_gallery.py  # rebuild docs/themes.png
 ```
 
 Stdlib only at runtime, Python 3.9+.
@@ -208,6 +234,7 @@ Stdlib only at runtime, Python 3.9+.
 | `src/glitchwall/claude_logs.py` | follow the logs, pair each call with its output |
 | `src/glitchwall/redact.py` | all masking |
 | `src/glitchwall/server.py` | the local feed and its access checks |
+| `src/glitchwall/themes.py` | theme, background and font names (the colors live in the page) |
 | `src/glitchwall/platforms.py` | Lively, autostart, background process, standalone exe |
 | `src/glitchwall/wallpaper/` | the page itself (`index.html?still` renders without animation, for screenshots) |
 

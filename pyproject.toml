@@ -1,6 +1,6 @@
 [project]
 name = "glitchwall"
-version = "0.2.0"
+version = "0.3.0"
 description = "Your coding agent's tool calls as a live, glitchy retro-terminal desktop wallpaper. Local only, secrets masked, stdlib only."
 readme = "README.md"
 license = "MIT"

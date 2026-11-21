@@ -29,6 +29,9 @@ DEFAULTS = {
     "mask_user": True,       # replace your user name with "user"
     "mask_email": True,      # replace email local parts with ••••
     "label": "CLAUDE :: live tool feed",
+    "theme": "phosphor",     # see `glitchwall themes`
+    "rain": "theme",         # background style; "theme" = the theme's own
+    "font": "theme",
 }
 
 

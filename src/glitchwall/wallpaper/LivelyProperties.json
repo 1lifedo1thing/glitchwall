@@ -1,4 +1,22 @@
 {
+  "themeSel": {
+    "type": "dropdown",
+    "value": 0,
+    "text": "Theme",
+    "items": ["Use glitchwall config", "phosphor", "amber", "cyberpunk", "synthwave", "msdos", "bsod", "ice", "paper"]
+  },
+  "rainSel": {
+    "type": "dropdown",
+    "value": 0,
+    "text": "Background style",
+    "items": ["Use glitchwall config", "theme", "pixel", "code", "stars", "static", "snow", "grid", "none"]
+  },
+  "fontSel": {
+    "type": "dropdown",
+    "value": 0,
+    "text": "Font",
+    "items": ["Use glitchwall config", "theme", "departure", "cascadia", "consolas", "lucida", "courier", "segoe", "mono"]
+  },
   "typeSpeed": {
     "type": "slider",
     "value": 5,
@@ -29,7 +47,7 @@
     "min": 0,
     "max": 10,
     "step": 1,
-    "text": "Background rain"
+    "text": "Background intensity"
   },
   "glass": {
     "type": "slider",

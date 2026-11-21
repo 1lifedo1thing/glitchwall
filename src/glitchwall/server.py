@@ -22,6 +22,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 from . import settings as cfg
+from . import themes
 from .redact import Redactor
 
 KEEP = 300   # events kept in memory
@@ -88,7 +89,8 @@ class LiveSettings:
 
 def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | None = None,
                  static_dir: Path | None = None, config_js: str | None = None,
-                 extra_origins: tuple[str, ...] = (), refusal_log: Path | None = None):
+                 extra_origins: tuple[str, ...] = (), refusal_log: Path | None = None,
+                 look: dict | None = None):
     class Handler(BaseHTTPRequestHandler):
         server_version = "glitchwall"
         sys_version = ""
@@ -124,7 +126,8 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
                 since = 0
             s = live.get() if live else cfg.DEFAULTS
             out = [] if s.get("paused") else store.since(since, bool(s.get("commands_only")))
-            body = json.dumps({"events": out, "paused": bool(s.get("paused")), "last": store.seq}).encode()
+            body = json.dumps({"events": out, "paused": bool(s.get("paused")), "last": store.seq,
+                               "look": look or themes.look(s)}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))

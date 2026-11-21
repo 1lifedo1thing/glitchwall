@@ -12,6 +12,7 @@ from pathlib import Path
 from . import __version__
 from . import platforms as plat
 from . import settings as cfg
+from . import themes
 
 ON_OFF = {"on": True, "off": False, "true": True, "false": False, "yes": True, "no": False, "1": True, "0": False}
 
@@ -211,7 +212,7 @@ def cmd_demo(a) -> int:
         import threading
         import webbrowser
         threading.Timer(0.8, webbrowser.open, [f"http://127.0.0.1:{port}/"]).start()
-    run_demo(port, a.pace)
+    run_demo(port, a.pace, {k: getattr(a, k) for k in themes.KINDS if getattr(a, k)})
     return 0
 
 
@@ -237,6 +238,10 @@ def cmd_config(a) -> int:
     if a.port is not None:
         s["port"] = a.port
         changed = True
+    for k in themes.KINDS:
+        if getattr(a, k) is not None:
+            s[k] = getattr(a, k)
+            changed = True
     if changed:
         cfg.save_settings(s)
         if a.port is not None or a.label is not None:
@@ -248,6 +253,18 @@ def cmd_config(a) -> int:
                 cmd_start(a)
     for k in cfg.DEFAULTS:
         say(f"{k:14} {s[k]}")
+    return 0
+
+
+def cmd_themes(a) -> int:
+    s = themes.look(cfg.load_settings())
+    for k, names in themes.KINDS.items():
+        say(f"{k}  (glitchwall config --{k} NAME)")
+        for n, desc in names.items():
+            say(f"  {'*' if s[k] == n else ' '} {n:10} {desc}")
+        say()
+    say("Changes reach the running wallpaper within a second. Lively's own dropdowns win over these.")
+    say("Preview any mix: glitchwall demo --open --theme synthwave --rain stars")
     return 0
 
 
@@ -270,6 +287,11 @@ def cmd_export(a) -> int:
 
 
 # ---------------------------------------------------------------- parser
+def _look_args(p) -> None:
+    for k, names in themes.KINDS.items():
+        p.add_argument(f"--{k}", choices=list(names), metavar="NAME", help=f"{k} (see: glitchwall themes)")
+
+
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="glitchwall",
                                 description="Your coding agent's tool calls as a live desktop wallpaper. Local only.")
@@ -299,6 +321,7 @@ def parser() -> argparse.ArgumentParser:
     d.add_argument("--port", type=int)
     d.add_argument("--pace", type=float, default=1.0, help="slower >1, faster <1")
     d.add_argument("--open", action="store_true", help="open it in your browser")
+    _look_args(d)
     d.set_defaults(fn=cmd_demo)
 
     c = sub.add_parser("config", help="show or change settings")
@@ -307,7 +330,10 @@ def parser() -> argparse.ArgumentParser:
     c.add_argument("--mask-email", dest="mask_email", choices=sorted(ON_OFF), metavar="on|off")
     c.add_argument("--label", help="text in the corner of the wallpaper")
     c.add_argument("--port", type=int)
+    _look_args(c)
     c.set_defaults(fn=cmd_config)
+
+    sub.add_parser("themes", help="list themes, rain styles and fonts").set_defaults(fn=cmd_themes)
 
     e = sub.add_parser("export", help="write the wallpaper + config.js to a folder (other wallpaper apps)")
     e.add_argument("dir")
