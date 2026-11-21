@@ -137,13 +137,69 @@ and `?cycle=10` steps through every theme. The background slider sets how busy a
 Full-size shots (click one to open it). They come from ambient mode, so every session in them is made up.
 
 <table>
-<tr><td><a href="docs/shots/phosphor.jpg"><img src="docs/shots/phosphor.jpg" alt="the phosphor look"></a><br><sub>phosphor</sub></td><td><a href="docs/shots/drafting.jpg"><img src="docs/shots/drafting.jpg" alt="the drafting look"></a><br><sub>drafting</sub></td></tr>
-<tr><td><a href="docs/shots/notebook.jpg"><img src="docs/shots/notebook.jpg" alt="the notebook look"></a><br><sub>notebook</sub></td><td><a href="docs/shots/sleeve.jpg"><img src="docs/shots/sleeve.jpg" alt="the sleeve look"></a><br><sub>sleeve</sub></td></tr>
-<tr><td><a href="docs/shots/duplicator.jpg"><img src="docs/shots/duplicator.jpg" alt="the duplicator look"></a><br><sub>duplicator</sub></td><td><a href="docs/shots/newsprint.jpg"><img src="docs/shots/newsprint.jpg" alt="the newsprint look"></a><br><sub>newsprint</sub></td></tr>
-<tr><td><a href="docs/shots/oracle.jpg"><img src="docs/shots/oracle.jpg" alt="the oracle look"></a><br><sub>oracle</sub></td><td><a href="docs/shots/art-oracle.jpg"><img src="docs/shots/art-oracle.jpg" alt="the oracle, art mode look"></a><br><sub>oracle, art mode</sub></td></tr>
-<tr><td><a href="docs/shots/neon.jpg"><img src="docs/shots/neon.jpg" alt="the neon look"></a><br><sub>neon</sub></td><td><a href="docs/shots/bsod.jpg"><img src="docs/shots/bsod.jpg" alt="the bsod look"></a><br><sub>bsod</sub></td></tr>
-<tr><td><a href="docs/shots/art-synthwave.jpg"><img src="docs/shots/art-synthwave.jpg" alt="the synthwave, art mode look"></a><br><sub>synthwave, art mode</sub></td><td><a href="docs/shots/art-halftone.jpg"><img src="docs/shots/art-halftone.jpg" alt="the duplicator, art mode look"></a><br><sub>duplicator, art mode</sub></td></tr>
-<tr><td><a href="docs/shots/art-starburst.jpg"><img src="docs/shots/art-starburst.jpg" alt="the sleeve + starburst, art mode look"></a><br><sub>sleeve + starburst, art mode</sub></td><td><a href="docs/shots/art-testcard.jpg"><img src="docs/shots/art-testcard.jpg" alt="the fieldops + testcard, art mode look"></a><br><sub>fieldops + testcard, art mode</sub></td></tr>
+<tr><td>
+
+[![the phosphor look](docs/shots/phosphor.jpg)](docs/shots/phosphor.jpg)<br><sub>phosphor</sub>
+
+</td><td>
+
+[![the drafting look](docs/shots/drafting.jpg)](docs/shots/drafting.jpg)<br><sub>drafting</sub>
+
+</td></tr>
+<tr><td>
+
+[![the notebook look](docs/shots/notebook.jpg)](docs/shots/notebook.jpg)<br><sub>notebook</sub>
+
+</td><td>
+
+[![the sleeve look](docs/shots/sleeve.jpg)](docs/shots/sleeve.jpg)<br><sub>sleeve</sub>
+
+</td></tr>
+<tr><td>
+
+[![the duplicator look](docs/shots/duplicator.jpg)](docs/shots/duplicator.jpg)<br><sub>duplicator</sub>
+
+</td><td>
+
+[![the newsprint look](docs/shots/newsprint.jpg)](docs/shots/newsprint.jpg)<br><sub>newsprint</sub>
+
+</td></tr>
+<tr><td>
+
+[![the oracle look](docs/shots/oracle.jpg)](docs/shots/oracle.jpg)<br><sub>oracle</sub>
+
+</td><td>
+
+[![the oracle, art mode look](docs/shots/art-oracle.jpg)](docs/shots/art-oracle.jpg)<br><sub>oracle, art mode</sub>
+
+</td></tr>
+<tr><td>
+
+[![the neon look](docs/shots/neon.jpg)](docs/shots/neon.jpg)<br><sub>neon</sub>
+
+</td><td>
+
+[![the bsod look](docs/shots/bsod.jpg)](docs/shots/bsod.jpg)<br><sub>bsod</sub>
+
+</td></tr>
+<tr><td>
+
+[![the synthwave, art mode look](docs/shots/art-synthwave.jpg)](docs/shots/art-synthwave.jpg)<br><sub>synthwave, art mode</sub>
+
+</td><td>
+
+[![the duplicator, art mode look](docs/shots/art-halftone.jpg)](docs/shots/art-halftone.jpg)<br><sub>duplicator, art mode</sub>
+
+</td></tr>
+<tr><td>
+
+[![the sleeve + starburst, art mode look](docs/shots/art-starburst.jpg)](docs/shots/art-starburst.jpg)<br><sub>sleeve + starburst, art mode</sub>
+
+</td><td>
+
+[![the fieldops + testcard, art mode look](docs/shots/art-testcard.jpg)](docs/shots/art-testcard.jpg)<br><sub>fieldops + testcard, art mode</sub>
+
+</td></tr>
 </table>
 
 ## Not a coder? 🌙
