@@ -131,6 +131,7 @@ def attach(h: int, rect: tuple[int, int, int, int]) -> None:
     u32.MapWindowPoints(None, parent, pts, 2)   # desktop -> parent's client coordinates
     u32.SetWindowPos(h, after or 0, pts[0].x, pts[0].y, pts[1].x - pts[0].x, pts[1].y - pts[0].y,
                      0x40 | 0x20 | 0x10)       # show, frame changed, no activate
+    u32.EnableWindow(h, False)                 # a wallpaper takes no clicks, drags or keys: they go to the desktop
 
 
 def fullscreen_screens(mons: dict[int, tuple]) -> set[int]:
@@ -183,7 +184,7 @@ class Host:
 
     def new_window(self, n: int):
         import webview
-        w = webview.create_window(f"glitchwall screen {n}", self.url(n), frameless=True, focus=False,
+        w = webview.create_window(f"glitchwall screen {n}", self.url(n), frameless=True, focus=False, easy_drag=False,
                                   x=OFFSCREEN, y=OFFSCREEN, width=800, height=600, background_color="#000000")
         self.windows[n] = w
         return w
