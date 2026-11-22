@@ -1,4 +1,4 @@
-"""The theme names live in two places (Python and the page); keep them in step."""
+"""looks.js is the one list of themes, backgrounds, fonts and transitions; check it holds together with the page."""
 import re
 import unittest
 from pathlib import Path
@@ -7,56 +7,57 @@ from glitchwall import themes
 
 WP = Path(__file__).resolve().parents[1] / "src" / "glitchwall" / "wallpaper"
 PAGE = (WP / "index.html").read_text(encoding="utf-8")
+L = themes.LOOKS
+SYSTEM_FONTS = {"lucida", "segoe", "mono"}          # menu options that say they are system fonts
 
 
-def block(start: str) -> str:
-    i = PAGE.index(start)
-    return PAGE[i:PAGE.index("\n};", i)]
+class TestLooks(unittest.TestCase):
+    def test_page_loads_looks_before_its_script(self):
+        self.assertLess(PAGE.index('<script src="looks.js"></script>'), PAGE.index("const LOOKS = window.LOOKS;"))
 
-
-class TestNamesMatch(unittest.TestCase):
-    def test_page_themes(self):
-        names = re.findall(r"^  (\w+):\s*\{", block("const THEMES = {"), re.M)
-        self.assertEqual(names, list(themes.THEMES))
-
-    def test_page_rains(self):
-        rains = re.search(r"const RAINS = \[([^\]]*)\]", PAGE).group(1)
-        self.assertEqual(["theme"] + re.findall(r"'(\w+)'", rains), list(themes.RAINS))
-        for r in themes.RAINS:
-            if r != "theme":
-                self.assertRegex(PAGE, rf"\n  {r}: \{{", f"no STYLES.{r} renderer")
-
-    def test_page_fonts(self):
-        names = re.findall(r"^  (\w+):\s*\[", block("const FONTS = {"), re.M)
-        self.assertEqual(["theme"] + names, list(themes.FONTS))
+    def test_every_background_has_a_renderer(self):
+        for r in L["backgrounds"]:
+            self.assertRegex(PAGE, rf"\n  {r}: \{{", f"no STYLES.{r} renderer")
 
     def test_theme_fields(self):
-        body = block("const THEMES = {") + "\n"
-        for name in themes.THEMES:
+        for name, t in L["themes"].items():
             with self.subTest(name):
-                m = re.search(rf"^  {name}:\s*\{{(.*?)\}},\n", body, re.M | re.S)
-                self.assertTrue(m)
-                f = dict(re.findall(r"(\w+):'([^']*)'", m.group(1)))
-                self.assertIn(f["display"], themes.FONTS)
-                self.assertIn(f["mono"], themes.FONTS)
-                self.assertIn(f["rain"], themes.RAINS)
-                self.assertIn(f["mode"], ("light", "dark"))
+                self.assertIn(t["display"], L["fonts"])
+                self.assertIn(t["mono"], L["fonts"])
+                self.assertIn(t["rain"], L["backgrounds"])
+                self.assertIn(t["transition"], L["transitions"])
+                self.assertIn(t["mode"], ("light", "dark"))
+                self.assertTrue(t["about"] and t["palette"])
                 for k in ("bg", "surface", "ink", "muted", "faint", "acc", "acc2", "err", "dim", "hi"):
-                    self.assertRegex(f[k], r"^#[0-9A-Fa-f]{6}$", k)   # the page's rgb() needs #rrggbb
+                    self.assertRegex(t[k], r"^#[0-9A-Fa-f]{6}$", k)   # the page's rgb() needs #rrggbb
+                for k in ("display", "mono"):
+                    self.assertNotIn(t[k], SYSTEM_FONTS, f"{name}.{k}")
 
-    def test_every_theme_has_a_transition(self):
-        m = re.search(r"const THEME_ANIM = \{(.*?)\};", PAGE, re.S)
-        pairs = dict(re.findall(r"(\w+): '(\w+)'", m.group(1)))
-        anims = re.findall(r"^  (\w+):\s*\['", block("const ANIMS = {") + "\n", re.M)
-        self.assertEqual(sorted(pairs), sorted(themes.THEMES))
-        for theme, anim in pairs.items():
-            self.assertIn(anim, anims, theme)
-        for name in re.findall(r"\['(\w+) ", block("const ANIMS = {")) + re.findall(r", '(\w+) ", block("const ANIMS = {")):
-            self.assertIn(f"@keyframes {name}", PAGE)
+    def test_transitions_have_keyframes(self):
+        for name, a in L["transitions"].items():
+            with self.subTest(name):
+                self.assertTrue(a["about"])
+                for k in ("in", "out"):
+                    self.assertIn(f"@keyframes {a[k].split()[0]} ", PAGE)
+                self.assertIn(a.get("place", "any"), ("any", "dock", "stack"))
 
-    def test_transition_names_match(self):
-        anims = re.findall(r"^  (\w+):\s*\['", block("const ANIMS = {") + "\n", re.M)
-        self.assertEqual(["theme"] + anims, list(themes.TRANSITIONS))
+    def test_fonts(self):
+        for name, f in L["fonts"].items():
+            with self.subTest(name):
+                self.assertTrue(f["about"] and f["family"])
+                self.assertGreater(f["scale"], 0)
+                self.assertIn(f["weight"], range(100, 1000, 100))
+
+    def test_color_keys_are_theme_fields(self):
+        fields = {k for t in L["themes"].values() for k in t}
+        for k in L["color_keys"]:
+            self.assertTrue(k in fields or k in ("off",), k)
+
+    def test_menus_follow_the_file(self):
+        self.assertEqual(list(themes.THEMES), list(L["themes"]))
+        self.assertEqual(list(themes.RAINS), ["theme", *L["backgrounds"]])
+        self.assertEqual(list(themes.FONTS), ["theme", *L["fonts"]])
+        self.assertEqual(list(themes.TRANSITIONS), ["theme", *L["transitions"]])
         self.assertEqual(list(themes.PALETTES)[1:], list(themes.THEMES))
 
     def test_bundled_fonts_exist_with_licenses(self):
@@ -65,15 +66,6 @@ class TestNamesMatch(unittest.TestCase):
         ttfs = list((WP / "fonts").glob("*.ttf"))
         self.assertEqual(len(ttfs), 15)
         self.assertEqual(len(list((WP / "fonts" / "licenses").glob("OFL-*.txt"))), len(ttfs))
-
-    def test_themes_use_only_bundled_fonts(self):
-        system = {"lucida", "segoe", "mono"}          # menu options that say they are system fonts
-        body = block("const THEMES = {") + "\n"
-        for name in themes.THEMES:
-            m = re.search(rf"^  {name}:\s*\{{(.*?)\}},\n", body, re.M | re.S)
-            f = dict(re.findall(r"(\w+):'([^']*)'", m.group(1)))
-            for k in ("display", "mono"):
-                self.assertNotIn(f[k], system, f"{name}.{k}")
 
 
 class TestLook(unittest.TestCase):

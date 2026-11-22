@@ -178,126 +178,25 @@
 <div id="grain"></div>
 <div id="scan"></div>
 <script src="config.js"></script>
+<script src="looks.js"></script>
 <script>
 // ---------- looks: themes, backgrounds, fonts ----------
-// Names here must match glitchwall/themes.py (a test checks).
-// The first eight follow the palettes and personalities of SUB/WAVE's themes (MIT, see README).
+// They all live in looks.js (window.LOOKS), shared with glitchwall/themes.py and the native renderer.
 // Per theme: mode (light/dark), bg, surface (card), ink (text), muted (bar text, status), faint,
 // acc (prompt, cursor, live dot), acc2, err, display + mono font, grain 0-1, texture, glow or misreg,
-// rain (default background) with its dim / hi colors. Optional overrides: bar barfg barb edge shadow status off solid filter scan.
-const THEMES = {
-  phosphor:   { mode:'dark',  bg:'#04110a', surface:'#0a1d12', ink:'#8cffb2', muted:'#4fae74', faint:'#357a51', acc:'#ffb02e', acc2:'#6fd3ff', err:'#ff7a5c',
-                display:'vt323', mono:'plex', grain:.06, texture:'tube', glow:true, rain:'pixel', dim:'#1f6b40', hi:'#8cffb2' },
-  drafting:   { mode:'dark',  bg:'#0a3a92', surface:'#0f409c', ink:'#f4f7ff', muted:'#b7c6ec', faint:'#7f92c6', acc:'#3fa9ff', acc2:'#8fd4ff', err:'#ffb3a8',
-                display:'chakra', mono:'plex', grain:.08, texture:'none', rain:'draft', dim:'#b7c6ec', hi:'#f4f7ff', solid:.72 },
-  newsprint:  { mode:'light', bg:'#f3efe6', surface:'#fdfbf4', ink:'#161412', muted:'#6d675e', faint:'#a8a096', acc:'#ee343b', acc2:'#236b8f', err:'#ee343b',
-                display:'georgia', mono:'dmmono', grain:.4, texture:'none', rain:'broadsheet', dim:'#d9d2c4', hi:'#a8a096' },
-  nightprint: { mode:'dark',  bg:'#100e0c', surface:'#1b1815', ink:'#ece6dc', muted:'#c1c0bd', faint:'#8a837a', acc:'#ee343b', acc2:'#69aed5', err:'#ff6a5c',
-                display:'georgia', mono:'dmmono', grain:.25, texture:'none', rain:'broadsheet', dim:'#3a342e', hi:'#8a837a', solid:.82 },
-  neon:       { mode:'dark',  bg:'#08080d', surface:'#101019', ink:'#a8f0ff', muted:'#5b6a8a', faint:'#47566f', acc:'#ff3ada', acc2:'#9850ff', err:'#ff5c8a',
-                display:'doto', mono:'fira', grain:.12, texture:'scan', scan:.3, glow:true, rain:'signs', dim:'#4a2a8c', hi:'#ff3ada' },
-  fieldops:   { mode:'light', bg:'#d4c8a9', surface:'#dccfb0', ink:'#161009', muted:'#463c2e', faint:'#78694f', acc:'#ff6201', acc2:'#a84408', err:'#c42a00',
-                display:'stencil', mono:'overpass', grain:.08, texture:'none', rain:'topo', dim:'#ff6201', hi:'#161009', solid:.86 },
-  duplicator: { mode:'light', bg:'#f3eee1', surface:'#f8f4ea', ink:'#1f45c2', muted:'#4f62a8', faint:'#6f7db8', acc:'#f02d84', acc2:'#00838a', err:'#f02d84',
-                display:'dmmono', mono:'dmmono', grain:.08, texture:'halftone', misreg:true, rain:'halftone', dim:'#1f45c2', hi:'#f02d84', solid:.84 },
-  sleeve:     { mode:'light', bg:'#efe4cf', surface:'#f7efdf', ink:'#2a1a10', muted:'#8a6f55', faint:'#b09a7e', acc:'#c58b18', acc2:'#a04130', err:'#a04130',
-                display:'serif', mono:'courierprime', grain:.4, texture:'none', rain:'record', dim:'#2a1a10', hi:'#c58b18', solid:.86 },
-  // extras
-  matrix:     { mode:'dark',  bg:'#0C0E0C', surface:'#2c302c', ink:'#00FF41', muted:'#7DFF9E', faint:'#2a3a2c', acc:'#C8FFD4', acc2:'#7DFF9E', err:'#ff8a7a',
-                display:'departure', mono:'departure', grain:0, texture:'scan', scan:.42, glow:true, rain:'cascade', dim:'#0f6b28', hi:'#7DFF9E',
-                bar:'rgba(6,42,15,.55)', status:'#3d8f55', edge:'rgba(0,255,65,.22)' },
-  amber:      { mode:'dark',  bg:'#0d0a05', surface:'#30281c', ink:'#FFB000', muted:'#FFCC66', faint:'#3a2e1a', acc:'#FFE4B0', acc2:'#FFCC66', err:'#ff6a5a',
-                display:'departure', mono:'departure', grain:0, texture:'scan', scan:.42, glow:true, rain:'radar', dim:'#8a5f08', hi:'#FFCC66',
-                bar:'rgba(50,32,0,.55)', status:'#9a6d10' },
-  synthwave:  { mode:'dark',  bg:'#12002b', surface:'#240a46', ink:'#ff71ce', muted:'#01cdfe', faint:'#2a1a44', acc:'#fffb96', acc2:'#01cdfe', err:'#ff5c7a',
-                display:'departure', mono:'departure', grain:0, texture:'scan', scan:.3, glow:true, rain:'grid', dim:'#b967ff', hi:'#01cdfe',
-                bar:'rgba(1,205,254,.14)', status:'#8a5fd0', edge:'rgba(255,113,206,.4)' },
-  msdos:      { mode:'dark',  bg:'#0000AA', surface:'#0000AA', ink:'#AAAAAA', muted:'#0000AA', faint:'#000066', acc:'#FFFF55', acc2:'#55FFFF', err:'#FF5555',
-                display:'vt323', mono:'vt323', grain:0, texture:'scan', scan:.18, rain:'textmode', dim:'#5555FF', hi:'#FFFFFF', solid:1,
-                bar:'#AAAAAA', barb:'#000000', edge:'#AAAAAA', shadow:'8px 8px 0 rgba(0,0,0,.65)', filter:'none', status:'#AAAAAA', line:'#5555FF' },
-  // the old blue screen: white VGA text straight on blue, a grey title chip, a stop screen behind
-  bsod:       { mode:'dark',  bg:'#0000AA', surface:'#0000AA', ink:'#FFFFFF', muted:'#AAAAAA', faint:'#5555FF', acc:'#FFFFFF', acc2:'#AAAAAA', err:'#FFFF55',
-                display:'vt323', mono:'vt323', grain:0, texture:'scan', scan:.12, rain:'stop', dim:'#AAAAAA', hi:'#FFFFFF', solid:1,
-                bar:'#AAAAAA', barfg:'#0000AA', barb:'#0000AA', edge:'rgba(170,170,170,.45)', shadow:'none', filter:'none', line:'rgba(255,255,255,.35)' },
-  // blueprint's older cousin: a sun print in Prussian blue, paper grain, pale cyan
-  cyanotype:  { mode:'dark',  bg:'#14376b', surface:'#1a4179', ink:'#eaf1f8', muted:'#a9bfd9', faint:'#6f8fb8', acc:'#9fd8f5', acc2:'#ffffff', err:'#ffd0c0',
-                display:'serif', mono:'plex', grain:.35, texture:'none', rain:'sunprint', dim:'#a9bfd9', hi:'#eaf1f8', solid:.7 },
-  // a school notebook: ruled paper, red margin, ballpoint-blue handwriting, pencil doodles in the margins
-  notebook:   { mode:'light', bg:'#fbf9f1', surface:'#fffef8', ink:'#22337a', muted:'#5d6b9a', faint:'#a9b4d0', acc:'#d64545', acc2:'#6e6e6e', err:'#d64545',
-                display:'hand', mono:'hand', grain:.22, texture:'none', rain:'notebook', dim:'#9ec1e3', hi:'#707070', solid:.94, rules:true,
-                bar:'rgba(214,69,69,.05)', edge:'rgba(0,0,0,.08)', shadow:'0 3px 12px rgba(0,0,0,.12)', filter:'none' },
-  // an all-seeing machine: one great ring of jagged data strokes on black, redrawing itself; white ink, one signal red
-  oracle:     { mode:'dark',  bg:'#050506', surface:'#0b0b0d', ink:'#e4e6e8', muted:'#8a8f96', faint:'#43474d', acc:'#ff4b2b', acc2:'#b9bec4', err:'#ff6a4f',
-                display:'chakra', mono:'dmmono', grain:.07, texture:'none', rain:'oracle', dim:'#c9ccd0', hi:'#ffffff',
-                bar:'rgba(228,230,232,.035)', barfg:'#8a8f96', edge:'rgba(228,230,232,.12)', shadow:'0 0 0 1px #000, 0 18px 50px rgba(0,0,0,.65)',
-                filter:'blur(18px) saturate(0) brightness(.7)' },
-  // the machine itself: a ribbed black sphere studded with red lights, sunk in the floor of a vast, empty data hall; the same red
-  orb:        { mode:'dark',  bg:'#030304', surface:'#0a0a0c', ink:'#dfe3e8', muted:'#858b93', faint:'#3f434a', acc:'#ff3d2e', acc2:'#aab0b8', err:'#ff6a4f',
-                display:'chakra', mono:'dmmono', grain:.07, texture:'none', rain:'orb', dim:'#c3c8ce', hi:'#ffffff',
-                bar:'rgba(223,227,232,.035)', barfg:'#858b93', edge:'rgba(223,227,232,.12)', shadow:'0 0 0 1px #000, 0 18px 50px rgba(0,0,0,.7)',
-                filter:'blur(18px) saturate(0) brightness(.65)' },
-  // a lab oscilloscope: a blue-white beam sweeping a graticule, its trace glowing yellow-green and fading slowly
-  scope:      { mode:'dark',  bg:'#05080b', surface:'#0b1117', ink:'#d8ebff', muted:'#7d9bb8', faint:'#3b5268', acc:'#c6f25a', acc2:'#6fd3ff', err:'#ff7a5c',
-                display:'overpass', mono:'plex', grain:.05, texture:'tube', glow:true, rain:'scope', dim:'#a8e64e', hi:'#eef6ff' },
-  // a blackboard: chalk white on a dark board, yellow and blue chalk, handwriting; written up, then wiped
-  chalkboard: { mode:'dark', bg:'#1e2622', surface:'#232d28', ink:'#e8ebe4', muted:'#a8b2aa', faint:'#56635b', acc:'#f1e07c', acc2:'#9fd0ea', err:'#f0a0a0',
-                display:'hand', mono:'hand', grain:.18, texture:'none', rain:'chalk', dim:'#a8b2aa', hi:'#e8ebe4', solid:.86,
-                bar:'rgba(232,235,228,.05)', edge:'rgba(232,235,228,.3)', shadow:'none', filter:'none' },
-};
-const RAINS = ['pixel', 'code', 'stars', 'static', 'snow', 'grid', 'draft', 'halftone', 'record', 'jukebox', 'starburst', 'testcard', 'print', 'stop', 'notebook', 'oracle', 'orb', 'cascade', 'scope', 'radar', 'textmode', 'broadsheet', 'signs', 'topo', 'sunprint', 'chalk', 'none'];
+// rain (default background) with its dim / hi colors, and its transition. Optional overrides: bar barfg barb edge shadow status off solid filter scan line rules.
+const LOOKS = window.LOOKS;
+const THEMES = LOOKS.themes;
+const RAINS = Object.keys(LOOKS.backgrounds);
 // family, size scale (pixel and display faces run small), weight for title bars
-const FONTS = {
-  departure:    ["'Departure Mono', 'Cascadia Mono', Consolas, monospace", 1, 400],
-  plex:         ["'IBM Plex Mono', Consolas, monospace", 1, 400],
-  vt323:        ["'VT323', 'Lucida Console', monospace", 1.4, 400],
-  chakra:       ["'Chakra Petch', 'Segoe UI', sans-serif", 1.08, 400],
-  doto:         ["'Doto', 'Lucida Console', monospace", 1.2, 800],
-  stencil:      ["'Saira Stencil One', Impact, sans-serif", 1.1, 400],
-  serif:        ["'Instrument Serif', Georgia, serif", 1.3, 400],
-  georgia:      ["'Gelasio', Georgia, serif", 1.08, 700],
-  courierprime: ["'Courier Prime', 'Courier New', monospace", 1, 400],
-  dmmono:       ["'DM Mono', Consolas, monospace", 1, 400],
-  fira:         ["'Fira Code', Consolas, monospace", 1, 400],
-  overpass:     ["'Overpass Mono', Consolas, monospace", 1, 400],
-  cascadia:     ["'Cascadia Mono', Consolas, monospace", 1, 400],
-  consolas:     ["'Inconsolata', Consolas, monospace", 1.05, 400],
-  lucida:       ["'Lucida Console', 'Lucida Sans Typewriter', Monaco, monospace", 1, 400],
-  courier:      ["'Courier Prime', 'Courier New', monospace", 1, 400],
-  segoe:        ["'Segoe UI', system-ui, -apple-system, sans-serif", 1, 600],
-  hand:         ["'Caveat', 'Ink Free', cursive", 1.3, 500],
-  mono:         ["ui-monospace, Menlo, monospace", 1, 400],
-};
-// how cards arrive and leave, per theme (keyframes in the CSS); exits stay under 0.65 s, when the card is removed.
+const FONTS = Object.fromEntries(Object.entries(LOOKS.fonts).map(([k, f]) => [k, [f.family, f.scale, f.weight]]));
+// how cards arrive and leave (keyframes in the CSS); exits stay under 0.65 s, when the card is removed.
 // An optional third field says where cards go: 'dock' beside the last one, 'stack' in a pile in the corner;
 // otherwise anywhere, wherever covers the live cards least
-const ANIMS = {
-  glitch: ['glitchIn .55s steps(1) both', 'glitchOut .6s linear both'],
-  crt:    ['crtIn .5s cubic-bezier(.2,.7,.3,1) both', 'crtOut .45s ease-in both'],
-  draft:  ['draftIn .6s ease-out both', 'draftOut .55s ease-in both'],
-  press:  ['pressIn .4s ease-out both', 'pressOut .35s ease-in both'],
-  neon:   ['neonIn .7s linear both', 'neonOut .5s linear both'],
-  stamp:  ['stampIn .35s cubic-bezier(.3,1.4,.5,1) both', 'stampOut .4s ease-in both'],
-  riso:   ['risoIn .5s ease-out both', 'risoOut .5s ease-in both'],
-  sleeve: ['sleeveIn .55s cubic-bezier(.2,.8,.2,1) both', 'sleeveOut .45s ease-in both'],
-  dos:    ['dosIn .3s steps(6) both', 'dosOut .05s linear both'],
-  write:  ['writeIn .7s ease-out both', 'writeOut .5s ease-in both'],
-  iris:   ['irisIn .7s cubic-bezier(.2,.7,.2,1) both', 'irisOut .5s cubic-bezier(.6,0,.8,.4) both'],
-  eclipse: ['eclipseIn .8s cubic-bezier(.3,.6,.2,1) both', 'eclipseOut .55s cubic-bezier(.5,0,.8,.5) both'],
-  trace:  ['traceIn .6s cubic-bezier(.3,.6,.3,1) both', 'traceOut .6s ease-out both'],
-  chalk:  ['chalkIn .7s steps(14) both', 'chalkOut .55s ease-in both'],
-  slide:  ['slideIn .6s cubic-bezier(.2,.8,.2,1) both', 'slideOut .55s cubic-bezier(.6,0,.9,.4) both'],
-  fade:   ['fadeIn .9s ease-out both', 'fadeOut .6s ease-in both'],
-  dock:   ['dockIn .45s cubic-bezier(.2,.8,.2,1) both', 'dockOut .4s ease-in both', 'dock'],     // beside the last card
-  toast:  ['toastIn .5s cubic-bezier(.2,.8,.2,1) both', 'toastOut .45s ease-in both', 'stack'], // stacked in the corner
-  zoom:   ['zoomIn .6s cubic-bezier(.2,.7,.2,1) both', 'zoomOut .5s ease-in both'],
-};
-const THEME_ANIM = { phosphor: 'crt', amber: 'crt', matrix: 'glitch', synthwave: 'slide', drafting: 'draft', cyanotype: 'fade',
-  newsprint: 'press', nightprint: 'press', neon: 'neon', fieldops: 'stamp', duplicator: 'riso', sleeve: 'sleeve', msdos: 'dock', bsod: 'dos',
-  notebook: 'write', oracle: 'iris', orb: 'eclipse', scope: 'trace', chalkboard: 'chalk' };
+const ANIMS = Object.fromEntries(Object.entries(LOOKS.transitions).map(([k, a]) => [k, a.place ? [a.in, a.out, a.place] : [a.in, a.out]]));
+const THEME_ANIM = Object.fromEntries(Object.entries(THEMES).map(([k, t]) => [k, t.transition]));
 // what a palette carries when you borrow another theme's colors; fonts, background, texture and transition stay
-const COLOR_KEYS = ['mode', 'bg', 'surface', 'ink', 'muted', 'faint', 'acc', 'acc2', 'err', 'dim', 'hi', 'glow', 'misreg', 'grain',
-                    'solid', 'bar', 'barfg', 'barb', 'edge', 'shadow', 'filter', 'status', 'off', 'line'];
-
+const COLOR_KEYS = LOOKS.color_keys;
 const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
 const rgba = (h, a) => `rgba(${rgb(h).join(',')},${a})`;
 const mixHex = (p, q, t) => { const a = rgb(p), z = rgb(q); return '#' + a.map((v, i) => Math.round(v + (z[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
