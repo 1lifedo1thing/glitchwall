@@ -55,10 +55,10 @@ def py_bugfix(p):
     fn = _pick(f"list_{n}s", f"get_{n}", f"load_{n}s", f"total_for_{n}")
     total = random.randint(14, 120)
     old, new = _pick(
-        (f"    return {{'items': rows}}", f"    return {{'items': rows, 'total': len(rows)}}"),
+        ("    return {'items': rows}", "    return {'items': rows, 'total': len(rows)}"),
         (f"    if not {n}_id:", f"    if {n}_id is None:"),
-        (f"    for row in rows[1:]:", f"    for row in rows:"),
-        (f"    timeout = 5", f"    timeout = settings.get('timeout', 30)"),
+        ("    for row in rows[1:]:", "    for row in rows:"),
+        ("    timeout = 5", "    timeout = settings.get('timeout', 30)"),
     )
     return [
         ("$", "git status -sb", f"## {random.choice(BRANCHES)}...origin\n M {f}", False),
@@ -147,7 +147,7 @@ def research(p):
     return [
         ("agent", task, "", False),
         ("web", random.choice(DOCS), "", False),
-        ("find", "def retry|fn retry|func Retry", f"src/util/retry.py:8: def retry(fn, attempts=3):\nsrc/jobs/sync.py:51:     return retry(lambda: client.push(batch))", False),
+        ("find", "def retry|fn retry|func Retry", "src/util/retry.py:8: def retry(fn, attempts=3):\nsrc/jobs/sync.py:51:     return retry(lambda: client.push(batch))", False),
         ("read", f"~/code/{p}/src/util/retry.py", "", False),
         ("edit", f"~/code/{p}/src/util/retry.py\n-         time.sleep(1)\n+         time.sleep(min(2 ** i, 30) + random.random())", "", False),
     ]

@@ -32,15 +32,21 @@ LOCAL_ORIGIN = re.compile(r"^(null|https?://([a-z0-9-]+\.)*localhost(:\d{1,5})?)
 
 
 class EventStore:
-    """Redacts on the way in, so unredacted text is never kept or served."""
+    """Redacts on the way in, so unredacted text is never kept or served.
+    While hidden() is true (paused), new events are dropped, and hide_all() puts everything so far out
+    of reach: resuming never replays what happened during a pause."""
 
-    def __init__(self, redactor=None):
+    def __init__(self, redactor=None, hidden=None):
         self.redact = redactor or Redactor()
+        self.hidden = hidden or (lambda: False)
         self.events: list[dict] = []
         self.lock = threading.Lock()
         self.seq = 0
+        self.floor = 0   # events up to this id are never served again
 
     def add(self, ev: dict) -> None:
+        if self.hidden():
+            return
         ev = dict(ev)
         ev["text"] = self.redact(str(ev.get("text", "")))[:1600]
         ev["proj"] = self.redact(str(ev.get("proj", "")))[:60]
@@ -50,8 +56,13 @@ class EventStore:
             self.events.append(ev)
             del self.events[:-KEEP]
 
+    def hide_all(self) -> None:
+        with self.lock:
+            self.floor = self.seq
+
     def since(self, n: int, commands_only: bool = False) -> list[dict]:
         with self.lock:
+            n = max(n, self.floor)
             out = [e for e in self.events if e["id"] > n]
         if commands_only:
             out = [e for e in out if e.get("kind") not in ("out", "err")]
@@ -125,9 +136,13 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
             except ValueError:
                 since = 0
             s = live.get() if live else cfg.DEFAULTS
-            out = [] if s.get("paused") else store.since(since, bool(s.get("commands_only")))
+            m = mode or cfg.mode(s)
+            hidden = bool(s.get("paused")) or m == "art"
+            if hidden:   # the page clears the screen; what it hadn't shown yet must not come back later
+                store.hide_all()
+            out = [] if hidden else store.since(since, bool(s.get("commands_only")))
             body = json.dumps({"events": out, "paused": bool(s.get("paused")), "last": store.seq,
-                               "look": look or themes.look(s), "mode": mode or cfg.mode(s),
+                               "look": look or themes.look(s), "mode": m,
                                "label": cfg.display_label(s) if label is None else label}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -177,7 +192,8 @@ def run_feed(port: int | None = None) -> None:
     live = LiveSettings()
     s = live.get()
     port = port or int(s["port"])
-    store = EventStore(Redactor(mask_user=s.get("mask_user", True), mask_email=s.get("mask_email", True)))
+    store = EventStore(Redactor(mask_user=s.get("mask_user", True), mask_email=s.get("mask_email", True)),
+                       hidden=lambda: bool(live.get().get("paused")))
     threading.Thread(target=follow_mode, args=(store, live), daemon=True).start()
     handler = make_handler(store, cfg.load_key(), port, live, refusal_log=cfg.state_dir() / "last-refused.txt")
     serve(handler, port).serve_forever()

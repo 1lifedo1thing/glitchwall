@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from glitchwall.claude_logs import ClaudeLogTailer, describe
+from glitchwall.claude_logs import ClaudeLogTailer, _output_text, clip, describe
 from glitchwall.demo import SCRIPT
 from glitchwall.redact import MASK, Redactor
 
@@ -60,6 +60,24 @@ class TestTailer(unittest.TestCase):
     def test_describe(self):
         self.assertEqual(describe("PowerShell", {"command": "dir"}), ("PS>", "dir"))
         self.assertEqual(describe("mcp__ccd_turn__update_plan", {})[0], None)
+
+    def test_long_text_never_cut_inside_a_key(self):
+        # a key straddling a length limit used to keep its first characters, too few to be masked
+        tok = "ghp_" + "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8"
+        r = Redactor(home="", user="", mask_user=False)
+        texts = {
+            "write": describe("Write", {"file_path": "a", "content": "x " * 295 + tok})[1],
+            "edit": describe("Edit", {"file_path": "a", "old_string": "y " * 115 + tok, "new_string": ""})[1],
+            "tool": describe("mcp__x__y", {"q": "z " * 90 + tok})[1],
+            "output": _output_text("w " * 445 + tok),
+        }
+        for name, text in texts.items():
+            with self.subTest(name):
+                self.assertNotIn("ghp_", r(text))
+                self.assertIn(" …", text)
+        self.assertEqual(clip("short", 10), "short")
+        self.assertEqual(clip("one two three", 9), "one two …")
+        self.assertEqual(clip("one two three", 8), "one two …")
 
 
 class TestDemoIsSafe(unittest.TestCase):

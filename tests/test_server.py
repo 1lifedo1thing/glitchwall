@@ -132,6 +132,34 @@ class TestLiveServer(unittest.TestCase):
             httpd2.shutdown()
             httpd2.server_close()
             cfg.save_settings(cfg.DEFAULTS)
+            self.store.floor = 0   # the pause hid the shared store; other tests read it from the start
+
+    def test_resume_never_replays_the_pause(self):
+        paused = {"on": False}
+        store = EventStore(Redactor(home="", user=""), hidden=lambda: paused["on"])
+        store.add({"kind": "$", "text": "seen before the pause"})
+        store.add({"kind": "$", "text": "queued, not yet shown"})
+        s = dict(cfg.DEFAULTS)
+        live = type("L", (), {"get": lambda self: s})()
+        httpd2 = serve(make_handler(store, KEY, PORT + 2, live), PORT + 2)
+        threading.Thread(target=httpd2.serve_forever, daemon=True).start()
+        try:
+            def fetch(since):
+                return json.loads(self.get(f"/feed?key={KEY}&since={since}", port=PORT + 2)[1])
+            s["paused"] = paused["on"] = True
+            self.assertEqual(fetch(1)["events"], [])
+            store.add({"kind": "$", "text": "typed while paused"})
+            s["paused"] = paused["on"] = False
+            store.add({"kind": "$", "text": "after resume"})
+            self.assertEqual([e["text"] for e in fetch(1)["events"]], ["after resume"])
+            s["mode"] = "art"                         # art mode clears the screen the same way
+            store.add({"kind": "$", "text": "during art"})
+            fetch(0)
+            s["mode"] = "live"
+            self.assertEqual(fetch(0)["events"], [])
+        finally:
+            httpd2.shutdown()
+            httpd2.server_close()
 
     def test_binds_loopback_only(self):
         self.assertEqual(self.httpd.server_address[0], "127.0.0.1")

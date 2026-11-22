@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 from pathlib import Path
 from typing import Callable
@@ -21,6 +22,17 @@ def logs_root() -> Path:
     return (Path(base) if base else Path.home() / ".claude") / "projects"
 
 
+def clip(s: str, n: int) -> str:
+    """Shorten to at most n characters without cutting a word in two. Redaction runs later, and a key cut
+    in half is too short to be recognized as one, so its first characters would show."""
+    if len(s) <= n:
+        return s
+    cut = s[:n]
+    if not s[n].isspace():
+        cut = re.sub(r"\S+$", "", cut)
+    return cut.rstrip() + " …"
+
+
 def describe(name: str, inp: dict) -> tuple[str | None, str]:
     """A tool call -> (kind, text) as it should appear on the wall. kind None = skip."""
     def g(k):
@@ -30,9 +42,9 @@ def describe(name: str, inp: dict) -> tuple[str | None, str]:
     if name == "Read":
         return ("read", g("file_path"))
     if name == "Write":
-        return ("write", g("file_path") + "\n" + g("content")[:600])
+        return ("write", g("file_path") + "\n" + clip(g("content"), 600))
     if name == "Edit":
-        return ("edit", g("file_path") + "\n- " + g("old_string")[:240] + "\n+ " + g("new_string")[:360])
+        return ("edit", g("file_path") + "\n- " + clip(g("old_string"), 240) + "\n+ " + clip(g("new_string"), 360))
     if name in ("Grep", "Glob"):
         return ("find", g("pattern") + ("  in " + g("path") if g("path") else ""))
     if name in ("WebFetch", "WebSearch"):
@@ -44,7 +56,7 @@ def describe(name: str, inp: dict) -> tuple[str | None, str]:
     if "computer" in name:
         return ("mouse", g("action") + " " + g("action_summary"))
     short = name.split("__")[-1]
-    return ("tool", short + " " + json.dumps(inp, ensure_ascii=False)[:200])
+    return ("tool", short + " " + clip(json.dumps(inp, ensure_ascii=False), 200))
 
 
 def project_label(f: Path) -> str:
@@ -60,7 +72,7 @@ def _output_text(content) -> str:
     lines = out.splitlines()
     if len(lines) > MAX_OUT_LINES:
         out = "\n".join(lines[:MAX_OUT_LINES]) + f"\n… {len(lines) - MAX_OUT_LINES} more lines"
-    return out[:900]
+    return clip(out, 900)
 
 
 class ClaudeLogTailer:

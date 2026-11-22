@@ -9,7 +9,6 @@ from __future__ import annotations
 import random
 import secrets
 import threading
-import time
 from datetime import datetime, timezone
 from importlib import resources
 from pathlib import Path
