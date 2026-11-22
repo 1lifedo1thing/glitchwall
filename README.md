@@ -62,7 +62,12 @@ glitchwall install
 .\glitchwall.exe install
 ```
 
-`install` starts the feed in the background, adds a start-at-logon entry, and puts the wallpaper behind
+`install` first checks that everything it needs is there (Windows 10 1803 or newer, .NET Framework 4.7.2,
+the WebView2 runtime) and offers to fetch what isn't: the WebView2 runtime comes straight from Microsoft, and
+runs only if Windows confirms Microsoft signed it. Nothing is downloaded without a yes (`--yes` answers yes
+for scripts). `glitchwall doctor` runs the same checks any time.
+
+Then it starts the feed in the background, adds a start-at-logon entry, and puts the wallpaper behind
 your desktop icons on every screen. No wallpaper app needed: glitchwall opens one borderless window per
 screen with the page in WebView2, the Edge engine built into Windows 11 (Windows 10 gets it with Edge).
 A screen with a fullscreen game or video in front sleeps until it's uncovered.
@@ -254,6 +259,7 @@ Want a lighter option? `glitchwall config --commands-only on` shows the calls bu
 | `glitchwall settings` | the settings window: every setting below, with a live preview (`--browser` opens it in your browser) |
 | `glitchwall config --mode live\|ambient\|art` | real activity, made-up sessions, or background only |
 | `glitchwall status` | what's installed and running |
+| `glitchwall doctor` | check everything glitchwall needs, offer to fetch what's missing |
 | `glitchwall start` / `stop` | start or stop the background feed |
 | `glitchwall pause` / `resume` | stream-safe switch: serve nothing / back to live |
 | `glitchwall config --commands-only on` | show calls, hide all output |
@@ -393,6 +399,7 @@ Standard library only at runtime, Python 3.9+; on Windows, plus [pywebview](http
 | `src/glitchwall/server.py` | the local feed and its access checks |
 | `src/glitchwall/themes.py` | theme, background and font names (the colors live in the page) |
 | `src/glitchwall/winhost.py` | Windows: the page behind the desktop icons, one window per screen |
+| `src/glitchwall/prereqs.py` | what `install` and `doctor` check for, and fetching what's missing |
 | `src/glitchwall/platforms.py` | Lively, autostart, background process, standalone exe |
 | `src/glitchwall/wallpaper/` | the page itself (`index.html?still` renders without animation, for screenshots) and the settings window (`settings.html`) |
 

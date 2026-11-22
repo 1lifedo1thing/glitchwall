@@ -106,6 +106,32 @@ def cmd_status(a) -> int:
     return 0
 
 
+def _asker(a):
+    """Yes/no questions: --yes answers yes; with no one at the keyboard the answer is no."""
+    def ask(q: str) -> bool:
+        if getattr(a, "yes", False):
+            say(f"{q} yes (--yes)")
+            return True
+        if not (sys.stdin and sys.stdin.isatty()):
+            say(f"{q} skipped (not interactive; --yes says yes to these)")
+            return False
+        try:
+            return input(f"{q} [Y/n] ").strip().lower() in ("", "y", "yes")
+        except EOFError:
+            return False
+    return ask
+
+
+def cmd_doctor(a) -> int:
+    """Check everything glitchwall needs, and offer to fetch what's missing."""
+    from . import prereqs
+    s = cfg.load_settings()
+    host = cfg.host(s) if plat.WIN else None
+    ok = prereqs.preflight(host, cfg.mode(s), say, _asker(a))
+    say("everything glitchwall needs is here" if ok else "")
+    return 0 if ok else 1
+
+
 def cmd_install(a) -> int:
     for msg in plat.migrate_legacy():
         say(msg)
@@ -122,13 +148,18 @@ def cmd_install(a) -> int:
     say(f"mode: {cfg.mode(s)} ({cfg.MODES[cfg.mode(s)]})")
     say(f"state dir: {cfg.state_dir()}")
 
-    # 0. on Windows, what shows it: glitchwall's own windows when it can, else Lively
+    # 0. on Windows, what shows it: glitchwall's own windows when it can, else Lively. First check that
+    # everything it needs is here, offering to fetch what isn't.
     own = False
+    ask = _asker(a)
     if plat.WIN:
-        from . import winhost
-        want = a.host or ("glitchwall" if winhost.available() else "lively")
-        if want == "glitchwall" and not winhost.available():
-            say("host: glitchwall's own needs pywebview and the WebView2 runtime; using Lively instead")
+        from . import prereqs
+        want = a.host or "glitchwall"
+        if not prereqs.preflight(want, cfg.mode(s), say, ask):
+            if a.host or not plat.lively_exe():
+                say("install stopped: fix what's missing above, then run install again (glitchwall doctor re-checks)")
+                return 1
+            say("host: glitchwall's own windows can't run here yet; using Lively Wallpaper, which is installed")
             want = "lively"
         s["host"], s["screens"] = want, a.screens
         cfg.save_settings(s)
@@ -438,7 +469,12 @@ def parser() -> argparse.ArgumentParser:
     i.add_argument("--host", choices=list(cfg.HOSTS),
                    help="Windows: glitchwall's own windows (default when WebView2 is there) or Lively Wallpaper")
     i.add_argument("--force", action="store_true", help="add autostart even from a temporary uvx environment")
+    i.add_argument("--yes", "-y", action="store_true", help="say yes to fetching anything missing (WebView2, Lively)")
     i.set_defaults(fn=cmd_install)
+
+    dr = sub.add_parser("doctor", help="check everything glitchwall needs; offer to fetch what's missing")
+    dr.add_argument("--yes", "-y", action="store_true", help="say yes to every fix offered")
+    dr.set_defaults(fn=cmd_doctor)
 
     sub.add_parser("uninstall", help="remove everything install added").set_defaults(fn=cmd_uninstall)
     sub.add_parser("start", help="start the feed in the background").set_defaults(fn=cmd_start)
