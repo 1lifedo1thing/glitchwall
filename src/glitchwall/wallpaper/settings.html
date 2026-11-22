@@ -53,6 +53,14 @@
   #motion { flex:1; min-height:0; display:flex; flex-direction:column; }
   .mod { position:relative; min-width:0; border:1px solid var(--ph-line); border-radius:4px; padding:24px 12px 12px; background:rgba(3,16,8,.55); }
   .mod > h2 { position:absolute; top:7px; left:11px; margin:0; font-weight:400; }
+  /* a module's DEFAULT key, top right; lit only when something in it differs from the default */
+  .reset { position:absolute; top:4px; right:8px; padding:1px 7px; font-size:9px; letter-spacing:.14em; cursor:pointer;
+           background:none; border:1px solid var(--ph-line); border-radius:2px; color:var(--ph-dim); opacity:.45; }
+  .reset.live { opacity:1; color:var(--ph); border-color:var(--ph); text-shadow:var(--glow); }
+  .reset.live:hover { background:rgba(93,255,122,.12); }
+  .reset:focus-visible { outline:1px dashed var(--ph-hi); outline-offset:2px; }
+  /* a control that differs from its default gets a mark by its name */
+  .changed .name::after { content:' *'; color:var(--ph); text-shadow:var(--glow); }
 
   /* the preview */
   .monitor { grid-area:mon; display:flex; flex-direction:column; min-height:0; padding-bottom:8px; }
@@ -150,16 +158,16 @@
   </div>
 
   <div class="side">
-    <div class="mod"><h2 class="tag">SELECT</h2><div class="knobs" id="knobs"></div></div>
+    <div class="mod"><h2 class="tag">SELECT</h2><button class="reset" data-group="select" data-help="reset:select">DEFAULT</button><div class="knobs" id="knobs"></div></div>
     <div class="mod"><h2 class="tag">THEME</h2>
       <div class="drum" id="drum" tabindex="0" data-help="theme" role="listbox" aria-label="theme"><div class="window"></div></div>
       <div class="drumfoot"><span>&lt; TURN &gt;</span><span id="drumpos">--</span></div>
     </div>
-    <div class="mod" id="motion"><h2 class="tag">MOTION</h2><div class="faders" id="faders"></div></div>
+    <div class="mod" id="motion"><h2 class="tag">MOTION</h2><button class="reset" data-group="motion" data-help="reset:motion">DEFAULT</button><div class="faders" id="faders"></div></div>
   </div>
 
   <div class="mod" id="readout" aria-live="polite"><div class="l1">CONNECTING…</div><div class="l2"></div></div>
-  <div class="mod" id="priv"><h2 class="tag">PRIVACY</h2>
+  <div class="mod" id="priv"><h2 class="tag">PRIVACY</h2><button class="reset" data-group="privacy" data-help="reset:privacy">DEFAULT</button>
     <div class="switches" id="switches"></div>
     <div class="labelrow"><label for="label">LABEL</label><input id="label" maxlength="80" spellcheck="false" data-help="label"></div>
   </div>
@@ -170,6 +178,7 @@
   <span><kbd>←</kbd><kbd>→</kbd>turn the theme · slide a fader</span>
   <span><kbd>↑</kbd><kbd>↓</kbd>change a setting</span>
   <span><kbd>SPACE</kbd><kbd>ENTER</kbd>press · flip</span>
+  <span><kbd>BKSP</kbd>back to default</span>
   <span><kbd>P</kbd>pause / resume</span>
   <span><kbd>M</kbd>sound</span>
 </footer>
@@ -193,7 +202,17 @@ const SWITCHES = {
 };
 const KNOB_HELP = { mode: 'MODE', palette: 'COLORS', rain: 'BACKGROUND', font: 'FONT', transition: 'TRANSITION (how cards arrive and leave)' };
 const MODE_SHORT = { live: 'LIVE', ambient: 'AMBIENT', art: 'ART' };
-let S = {}, C = {}, focusHelp = null, pending = {}, timer = null, busy = false;
+let S = {}, C = {}, D = {}, focusHelp = null, pending = {}, timer = null, busy = false, cleared = false;
+// what each DEFAULT key puts back. Mode stays as it is: switching to live would start showing real tool calls
+const GROUPS = { select: ['palette', 'rain', 'font', 'transition'], motion: Object.keys(FADERS),
+                 privacy: [...Object.keys(SWITCHES), 'label'] };
+const THEME_OWNS = [...GROUPS.select, ...GROUPS.motion];   // a new theme starts clean: no tweaks carried over
+const GROUP_HELP = {
+  select: ['COLORS · BACKDROP · FONT · ARRIVAL', 'back to what the theme comes with. Mode stays as it is.'],
+  motion: ['TYPING · LINGER · CARDS · MOTION · GLASS', 'back to the standard values.'],
+  privacy: ['CALLS ONLY · MASKS · LABEL', 'back to the safe defaults: user name and emails masked, the stock label.'],
+};
+const differs = k => D[k] !== undefined && S[k] !== D[k];
 
 // ---------- words: what each option is, said once, plainly
 const clean = t => String(t || '').replace(/^extra: /, '');
@@ -227,7 +246,9 @@ function help(h) {
   if (kind === 'pause') return say(S.paused ? 'PAUSE · ON' : 'PAUSE · OFF', S.paused ? 'The wallpaper shows nothing at all until you resume. Safe to stream.' : 'Press before you stream or share your screen: the wallpaper goes blank at once.');
   if (kind === 'sound') return say(`SOUND · ${muted ? 'OFF' : 'ON'}`, 'Clicks and clacks in this window as you turn and flip things. Never on the wallpaper. M toggles it.');
   if (kind === 'label') return say('CORNER LABEL', 'The text in the bottom-right corner of the wallpaper. Enter saves it.');
-  if (kind === 'theme') { const v = extra || S.theme; return say(`THEME · ${v.toUpperCase()}${v === S.theme ? '' : '  (CLICK TO PICK)'}`, optText('theme', v)); }
+  if (kind === 'theme') { const v = extra || S.theme; return say(`THEME · ${v.toUpperCase()}${v === S.theme ? '' : '  (CLICK TO PICK)'}`,
+                          optText('theme', v) + (cleared && v === S.theme ? ' Earlier tweaks cleared: the theme starts as it comes.' : '')); }
+  if (kind === 'reset') { const [a, b] = GROUP_HELP[extra]; return say(`DEFAULT · ${extra.toUpperCase()}`, `${a}: ${b}`); }
   if (FADERS[kind]) return say(`${FADERS[kind][0]} · ${S[kind]}`, FADERS[kind][1]);
   if (SWITCHES[kind]) return say(`${SWITCHES[kind][0]} · ${S[kind] ? 'ON' : 'OFF'}`, SWITCHES[kind][1]);
   if (KNOB_HELP[kind]) return say(`${KNOB_HELP[kind]} · ${optName(kind, S[kind])}`, optText(kind, S[kind]));
@@ -241,6 +262,10 @@ async function api(changes) {
 }
 function set(k, v, now) {
   if (S[k] !== v && SOUND_OF(k)) snd(SOUND_OF(k));
+  if (k === 'theme' && v !== S.theme) {   // a new theme: drop the tweaks made under the old one
+    cleared = cleared || THEME_OWNS.some(differs);
+    for (const x of THEME_OWNS) if (differs(x)) { S[x] = D[x]; pending[x] = D[x]; }
+  } else if (k !== 'paused') cleared = false;
   S[k] = v; pending[k] = v; render(); help();
   clearTimeout(timer); timer = setTimeout(flush, now ? 0 : 220);
 }
@@ -373,6 +398,14 @@ function toggleSound() {
   try { localStorage.setItem('gw-sound', muted ? 'off' : 'on'); } catch {}
   snd('clack'); render(); help('sound');
 }
+function resetGroup(g) {
+  const keys = GROUPS[g].filter(differs);
+  if (!keys.length) return help('reset:' + g);
+  snd('thunk');
+  for (const k of keys) { S[k] = D[k]; pending[k] = D[k]; }
+  render(); help('reset:' + g);
+  clearTimeout(timer); timer = setTimeout(flush, 0);
+}
 function build() {
   const kn = $('knobs'); KNOBS.forEach(([k, n]) => kn.appendChild(knob(k, n)));
   const fd = $('faders'); Object.keys(FADERS).forEach(k => fd.appendChild(fader(k)));
@@ -380,6 +413,11 @@ function build() {
   drum();
   $('pause').addEventListener('click', () => set('paused', !S.paused, true));
   $('snd').addEventListener('click', toggleSound);
+  document.querySelectorAll('.reset').forEach(b => b.addEventListener('click', () => resetGroup(b.dataset.group)));
+  // one control back to its default: Backspace/Delete on it, or a double-click
+  const one = el => { const k = el && el.closest('[data-help]') && el.closest('[data-help]').dataset.help;
+                      if (k && D[k] !== undefined && k !== 'mode' && k !== 'label' && differs(k)) { set(k, D[k], true); return true; } };
+  document.addEventListener('dblclick', e => { if (e.target.closest('.fader, .knob')) one(e.target); });
   $('label').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } e.stopPropagation(); });
   $('label').addEventListener('change', e => set('label', e.target.value, true));
   // the tape explains whatever is under the mouse or has the keyboard
@@ -389,6 +427,7 @@ function build() {
     if (e.target.tagName === 'INPUT') return;
     if (e.key === 'p' || e.key === 'P') { e.preventDefault(); set('paused', !S.paused, true); }
     if (e.key === 'm' || e.key === 'M') { e.preventDefault(); toggleSound(); }
+    if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); one(document.activeElement); }
   });
 }
 
@@ -420,6 +459,8 @@ function render() {
     it.classList.toggle('sel', d === 0); it.setAttribute('aria-selected', d === 0);
   });
   $('drumpos').textContent = `${String(si + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')}`;
+  document.querySelectorAll('.knob, .fader, .sw').forEach(b => b.classList.toggle('changed', b.dataset.help !== 'mode' && differs(b.dataset.help)));
+  document.querySelectorAll('.reset').forEach(b => b.classList.toggle('live', GROUPS[b.dataset.group].some(differs)));
   $('led-snd').className = 'led ' + (muted ? '' : 'g');
   if (document.activeElement !== $('label')) $('label').value = S.label || '';
   $('pause').classList.toggle('on', !!S.paused);
@@ -446,7 +487,7 @@ document.fonts.ready.then(() => { fit(); if (S.theme) render(); });   // sizes m
   const other = location.hostname === 'localhost' ? '127.0.0.1' : 'localhost';
   $('pv').src = `${location.protocol}//${other}:${location.port}/?preview=1#key=${encodeURIComponent(KEY)}`;
   try {
-    const d = await api(); S = d.settings; C = { ...d.choices, ranges: d.ranges };
+    const d = await api(); S = d.settings; C = { ...d.choices, ranges: d.ranges }; D = d.defaults || {};
     build(); render(); led('feed', 'g'); help('theme');
   } catch (e) { led('feed', 'r'); say('FEED NOT REACHABLE', String(e.message || e), true); return; }
   setInterval(async () => {   // follow changes made elsewhere (the command line, another window)

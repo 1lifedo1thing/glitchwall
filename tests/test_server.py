@@ -253,7 +253,9 @@ class TestSettingsWindow(unittest.TestCase):
         self.assertEqual(st, 200)
         self.assertIn("phosphor", d["choices"]["theme"])
         self.assertEqual(d["ranges"]["cards"], [1, 6])
-        self.assertNotIn("key", json.dumps(d["settings"]).lower().replace("mask", ""))
+        self.assertEqual((d["defaults"]["glass"], d["defaults"]["palette"]), (58, "theme"))   # for the reset buttons
+        self.assertNotIn("port", d["defaults"])
+        self.assertNotIn("key",json.dumps(d["settings"]).lower().replace("mask", ""))
 
     def test_change_saves_and_tells_the_feed(self):
         st, d = self.req("POST", body={"cards": 2, "mask_email": False, "port": 1})

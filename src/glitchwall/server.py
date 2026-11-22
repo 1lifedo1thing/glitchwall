@@ -192,6 +192,7 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
             s = cfg.load_settings()
             body_out = json.dumps({
                 "settings": {k: s.get(k, v) for k, v in cfg.DEFAULTS.items()}, "refused": refused,
+                "defaults": {k: v for k, v in cfg.DEFAULTS.items() if k not in ("port", "host", "screens")},
                 "choices": {**themes.KINDS, "mode": cfg.MODES},
                 "ranges": {k: [lo, hi] for k, (_, lo, hi) in cfg.TUNE.items()},
                 "running": True,
