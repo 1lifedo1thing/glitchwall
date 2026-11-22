@@ -93,7 +93,7 @@ or OFF, with the CORNER selector. It never fires while a fullscreen game or vide
 Every screen shows the same live calls, with the cards laid out differently. Only on the main screen?
 `glitchwall install --screens primary`.
 
-Your previous wallpaper comes back on `uninstall`, each screen its own.
+Your own wallpaper is never changed: glitchwall sits on top of it, and `uninstall` (or `stop`) uncovers it again.
 
 The exe version copies `glitchwall.exe` and `glitchwall-feed.exe` (the windowed feed that starts
 at logon, no console window) into `%USERPROFILE%\.glitchwall\bin`, so you can delete the download.
@@ -292,8 +292,6 @@ In `ambient` and `art` mode it reads no logs at all, only its own settings. In `
   opened **read-only**, only logs touched in the last 30 minutes, only the newly appended part.
   From each line it takes tool calls and their results.
 - **Its own files:** a random key, `settings.json`, a pid file.
-- **On Windows, only if [Lively Wallpaper](https://github.com/rocksdanister/lively) is installed:** its `Settings.json` and
-  `WallpaperLayout.json`, so `install` and `uninstall` can take glitchwall back out of it.
 
 ### 🚫 It never
 
@@ -320,7 +318,7 @@ In `ambient` and `art` mode it reads no logs at all, only its own settings. In `
 
 | Where | What |
 | --- | --- |
-| `%USERPROFILE%\.glitchwall\` (Windows), `~/Library/Application Support/glitchwall/` (macOS), `~/.local/state/glitchwall/` (Linux) | key, settings, pid file, refusal note, previous-wallpaper note, `webview\` and `webview-settings\` (WebView2's caches for glitchwall's own windows), and `bin\` for the exe version |
+| `%USERPROFILE%\.glitchwall\` (Windows), `~/Library/Application Support/glitchwall/` (macOS), `~/.local/state/glitchwall/` (Linux) | key, settings, pid file, refusal note, `webview\` and `webview-settings\` (WebView2's caches for glitchwall's own windows), and `bin\` for the exe version |
 | `HKCU\...\CurrentVersion\Run\glitchwall` / `~/.config/autostart/glitchwall.desktop` / `~/Library/LaunchAgents/io.github.glitchwall.plist` | start at logon |
 | `%APPDATA%\Microsoft\Windows\Start Menu\Programs\glitchwall settings.lnk` | Windows: the settings window in the Start menu |
 | `HKCU\Software\Classes\DesktopBackground\Shell\glitchwall` | Windows: *glitchwall settings* in the desktop's right-click menu |

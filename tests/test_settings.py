@@ -12,7 +12,6 @@ class TestStateDir(unittest.TestCase):
     def test_override(self):
         with mock.patch.dict(os.environ, {"GLITCHWALL_HOME": "/tmp/x"}):
             self.assertEqual(cfg.state_dir(), Path("/tmp/x"))
-            self.assertEqual(cfg.legacy_state_dirs(), [])
 
     @unittest.skipUnless(sys.platform == "win32", "Windows layout")
     def test_windows_not_in_appdata(self):
@@ -21,8 +20,6 @@ class TestStateDir(unittest.TestCase):
             d = cfg.state_dir()
             self.assertEqual(d, Path.home() / ".glitchwall")
             self.assertNotIn("appdata", str(d).lower())
-            self.assertEqual(cfg.legacy_state_dirs(), [Path.home() / ".agent-live-wallpaper",
-                                                       Path(os.environ["LOCALAPPDATA"]) / "agent-live-wallpaper"])
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 """The looks the wallpaper knows. The page (wallpaper/index.html) holds the actual colors;
-these names must match it and LivelyProperties.json (tests/test_themes.py checks).
+these names must match it (tests/test_themes.py checks).
 
 The first eight follow the palettes and personalities of SUB/WAVE's themes
 (https://github.com/perminder-klair/subwave, MIT)."""

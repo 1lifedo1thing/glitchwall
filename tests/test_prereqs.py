@@ -18,7 +18,7 @@ def run(found, answers):
         asked.append(q)
         return answers.pop(0)
     with mock.patch.object(prereqs, "checks", return_value=found):
-        ok = prereqs.preflight("glitchwall", "live", said.append, ask)
+        ok = prereqs.preflight("live", said.append, ask)
     return ok, said, asked
 
 
@@ -67,7 +67,7 @@ class TestAsker(unittest.TestCase):
 class TestRealChecks(unittest.TestCase):
     def test_lists_without_fetching(self):
         with mock.patch.object(prereqs, "download", side_effect=AssertionError("no downloads in checks")):
-            found = prereqs.checks("glitchwall", "ambient")
+            found = prereqs.checks("ambient")
         self.assertIn("Python", [c.name for c in found])
         self.assertNotIn("Claude Code logs", [c.name for c in found])   # ambient reads no logs
 

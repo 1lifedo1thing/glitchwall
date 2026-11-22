@@ -177,11 +177,6 @@ class TestLiveServer(unittest.TestCase):
             httpd3.shutdown()
             httpd3.server_close()
 
-    def test_host_setting(self):
-        self.assertEqual(cfg.host({}), "lively")              # upgrades keep what they had until install picks
-        self.assertEqual(cfg.host({"host": "glitchwall"}), "glitchwall")
-        self.assertEqual(cfg.host({"host": "bogus"}), "lively")
-
     def test_tune_is_clamped(self):
         t = cfg.tune({"linger": 99, "cards": 0, "glass": "x", "intensity": 3})
         self.assertEqual((t["linger"], t["cards"], t["glass"], t["rain"]), (30, 1, 58, 3))
@@ -239,7 +234,7 @@ class TestSettingsWindow(unittest.TestCase):
     def test_apply_changes_validates(self):
         s, refused = cfg.apply_changes(dict(cfg.DEFAULTS), {
             "theme": "phosphor", "mode": "ambient", "paused": True, "cards": 3, "label": "hi",
-            "glass": 5, "cards_x": 1, "port": 1, "host": "lively", "screens": "primary", "theme_bad": 1,
+            "glass": 5, "cards_x": 1, "port": 1, "host": "x", "screens": "primary", "theme_bad": 1,
             "mask_user": "yes", "linger": True, "label2": "x"})
         self.assertEqual((s["mode"], s["paused"], s["cards"], s["label"]), ("ambient", True, 3, "hi"))
         self.assertEqual(s["glass"], cfg.DEFAULTS["glass"])

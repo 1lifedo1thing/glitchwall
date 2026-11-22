@@ -22,7 +22,6 @@ FROZEN = bool(getattr(sys, "frozen", False))
 WEBVIEW2_URL = "https://go.microsoft.com/fwlink/p/?LinkId=2124703"   # Microsoft's Evergreen bootstrapper
 WEBVIEW2_PAGE = "https://developer.microsoft.com/microsoft-edge/webview2/"
 DOTNET_PAGE = "https://dotnet.microsoft.com/download/dotnet-framework/net481"
-LIVELY_WINGET = "rocksdanister.LivelyWallpaper"
 DOTNET_472 = 461808   # the .NET Framework 4.7.2 release number; pywebview's Windows backend needs it
 
 
@@ -124,17 +123,6 @@ def install_webview2(say: Callable[[str], None]) -> bool:
     return webview2_version() is not None
 
 
-def install_lively(say: Callable[[str], None]) -> bool:
-    say("  installing Lively Wallpaper with winget (it may ask you to accept its terms)…")
-    try:
-        subprocess.run(["winget", "install", "--id", LIVELY_WINGET, "-e"], timeout=1800, check=False)
-    except (OSError, subprocess.SubprocessError) as e:
-        say(f"  winget did not run: {e}")
-        return False
-    from . import platforms
-    return platforms.lively_exe() is not None
-
-
 def open_page(url: str) -> bool:
     import webbrowser
     webbrowser.open(url)
@@ -142,8 +130,8 @@ def open_page(url: str) -> bool:
 
 
 # ---------------------------------------------------------------- the list
-def checks(host: str | None = None, mode: str = "live") -> list[Check]:
-    """Everything `install` needs for this host and mode. host: "glitchwall", "lively" or None (decide)."""
+def checks(mode: str = "live") -> list[Check]:
+    """Everything `install` needs for this mode."""
     out: list[Check] = []
     v = sys.version_info
     out.append(Check("Python", FROZEN or v >= (3, 9),
@@ -153,31 +141,22 @@ def checks(host: str | None = None, mode: str = "live") -> list[Check]:
         b = windows_build()
         out.append(Check("Windows", b >= 17134, f"build {b} (needs Windows 10 1803 or newer)",
                          hint="update Windows"))
-        if host != "lively":
-            rel = dotnet_release()
-            out.append(Check(".NET Framework 4.7.2+", rel >= DOTNET_472,
-                             "present" if rel >= DOTNET_472 else
-                             "missing: glitchwall's own desktop windows need it (built into Windows 10 1803 and later)",
-                             fix_prompt="Open Microsoft's .NET Framework 4.8.1 download page?",
-                             fix=lambda: open_page(DOTNET_PAGE), hint=DOTNET_PAGE))
-            wv = webview2_version()
-            out.append(Check("WebView2 runtime", wv is not None,
-                             f"{wv}" if wv else "missing: the engine that draws the wallpaper behind your icons",
-                             fix_prompt="Download Microsoft's WebView2 runtime installer (about 2 MB, from "
-                                        "go.microsoft.com) and install it?",
-                             fix=None, hint=WEBVIEW2_PAGE))   # fix filled in by preflight (needs `say`)
-            out.append(Check("pywebview", pywebview_ok(),
-                             "bundled" if FROZEN else ("installed" if pywebview_ok() else
-                                                       "missing: the library that opens those windows"),
-                             hint="uv tool install --reinstall glitchwall   (it's a dependency on Windows)"))
-        if host == "lively":
-            from . import platforms
-            lively = platforms.lively_exe()
-            out.append(Check("Lively Wallpaper", lively is not None,
-                             str(lively) if lively else "missing: you picked --host lively",
-                             fix_prompt=f"Install Lively Wallpaper (free, open source) with winget ({LIVELY_WINGET})?"
-                             if shutil.which("winget") else "Open Lively Wallpaper's download page?",
-                             fix=None, hint="https://github.com/rocksdanister/lively/releases"))
+        rel = dotnet_release()
+        out.append(Check(".NET Framework 4.7.2+", rel >= DOTNET_472,
+                         "present" if rel >= DOTNET_472 else
+                         "missing: glitchwall's own desktop windows need it (built into Windows 10 1803 and later)",
+                         fix_prompt="Open Microsoft's .NET Framework 4.8.1 download page?",
+                         fix=lambda: open_page(DOTNET_PAGE), hint=DOTNET_PAGE))
+        wv = webview2_version()
+        out.append(Check("WebView2 runtime", wv is not None,
+                         f"{wv}" if wv else "missing: the engine that draws the wallpaper behind your icons",
+                         fix_prompt="Download Microsoft's WebView2 runtime installer (about 2 MB, from "
+                                    "go.microsoft.com) and install it?",
+                         fix=None, hint=WEBVIEW2_PAGE))   # fix filled in by preflight (needs `say`)
+        out.append(Check("pywebview", pywebview_ok(),
+                         "bundled" if FROZEN else ("installed" if pywebview_ok() else
+                                                   "missing: the library that opens those windows"),
+                         hint="uv tool install --reinstall glitchwall   (it's a dependency on Windows)"))
     if mode == "live":
         logs = claude_logs()
         out.append(Check("Claude Code logs", logs is not None, str(logs) if logs else
@@ -187,15 +166,12 @@ def checks(host: str | None = None, mode: str = "live") -> list[Check]:
     return out
 
 
-def preflight(host: str | None, mode: str, say: Callable[[str], None], ask: Callable[[str], bool]) -> bool:
+def preflight(mode: str, say: Callable[[str], None], ask: Callable[[str], bool]) -> bool:
     """Check, offer to fix what's missing, check again. True if everything required is there."""
-    found = checks(host, mode)
+    found = checks(mode)
     for c in found:
         if c.name == "WebView2 runtime":
             c.fix = lambda: install_webview2(say)
-        if c.name == "Lively Wallpaper":
-            c.fix = (lambda: install_lively(say)) if shutil.which("winget") else \
-                (lambda: open_page("https://github.com/rocksdanister/lively/releases"))
     say("checking what glitchwall needs:")
     for c in found:
         say(f"  {'ok ' if c.ok else ('-- ' if not c.required else 'XX ')} {c.name}: {c.detail}")

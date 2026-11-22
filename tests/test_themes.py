@@ -1,5 +1,4 @@
-"""The theme names live in three places (Python, the page, Lively's dropdowns); keep them in step."""
-import json
+"""The theme names live in two places (Python and the page); keep them in step."""
 import re
 import unittest
 from pathlib import Path
@@ -8,7 +7,6 @@ from glitchwall import themes
 
 WP = Path(__file__).resolve().parents[1] / "src" / "glitchwall" / "wallpaper"
 PAGE = (WP / "index.html").read_text(encoding="utf-8")
-PROPS = json.loads((WP / "LivelyProperties.json").read_text(encoding="utf-8"))
 
 
 def block(start: str) -> str:
@@ -76,12 +74,6 @@ class TestNamesMatch(unittest.TestCase):
             f = dict(re.findall(r"(\w+):'([^']*)'", m.group(1)))
             for k in ("display", "mono"):
                 self.assertNotIn(f[k], system, f"{name}.{k}")
-
-    def test_lively_dropdowns(self):
-        for prop, kind in (("themeSel", "theme"), ("paletteSel", "palette"), ("rainSel", "rain"),
-                           ("fontSel", "font"), ("animSel", "transition")):
-            self.assertEqual(PROPS[prop]["items"][1:], list(themes.KINDS[kind]))
-            self.assertEqual(PROPS[prop]["value"], 0)
 
 
 class TestLook(unittest.TestCase):

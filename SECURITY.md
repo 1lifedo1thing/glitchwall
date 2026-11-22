@@ -23,7 +23,7 @@ than usual. Its promises:
   streaming or screen sharing, or `--commands-only`.
 - Any program already running as you can read the key file and the logs
   themselves; this tool doesn't protect against local malware.
-- Other Lively web wallpapers also run on `*.localhost` origins. They still
+- Pages from other wallpaper apps may also run on `*.localhost` origins. They still
   need the key, which only this wallpaper's `config.js` has.
 - `config.js` contains the key. Don't publish an exported wallpaper folder.
   If you did, delete the `key` file in the state dir and run

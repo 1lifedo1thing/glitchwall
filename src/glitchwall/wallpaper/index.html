@@ -152,7 +152,7 @@
 <script src="config.js"></script>
 <script>
 // ---------- looks: themes, backgrounds, fonts ----------
-// Names here must match glitchwall/themes.py and LivelyProperties.json (a test checks).
+// Names here must match glitchwall/themes.py (a test checks).
 // The first eight follow the palettes and personalities of SUB/WAVE's themes (MIT, see README).
 // Per theme: mode (light/dark), bg, surface (card), ink (text), muted (bar text, status), faint,
 // acc (prompt, cursor, live dot), acc2, err, display + mono font, grain 0-1, texture, glow or misreg,
@@ -244,9 +244,6 @@ const ANIMS = {
 const THEME_ANIM = { phosphor: 'crt', amber: 'crt', matrix: 'glitch', synthwave: 'glitch', drafting: 'draft', cyanotype: 'draft',
   newsprint: 'press', nightprint: 'press', neon: 'neon', fieldops: 'stamp', duplicator: 'riso', sleeve: 'sleeve', msdos: 'dos', bsod: 'dos',
   notebook: 'write', oracle: 'iris' };
-// Lively dropdown order: index 0 = "use glitchwall config", then these
-const LIVELY = { theme: Object.keys(THEMES), palette: ['theme', ...Object.keys(THEMES)], rain: ['theme', ...RAINS],
-                 font: ['theme', ...Object.keys(FONTS)], transition: ['theme', ...Object.keys(ANIMS)] };
 // what a palette carries when you borrow another theme's colors; fonts, background, texture and transition stay
 const COLOR_KEYS = ['mode', 'bg', 'surface', 'ink', 'muted', 'faint', 'acc', 'acc2', 'err', 'dim', 'hi', 'glow', 'misreg', 'grain',
                     'solid', 'bar', 'barfg', 'barb', 'edge', 'shadow', 'filter', 'status', 'off', 'line'];
@@ -255,11 +252,11 @@ const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
 const rgba = (h, a) => `rgba(${rgb(h).join(',')},${a})`;
 const glowOf = h => `0 0 1px ${h}, 0 0 5px ${rgba(h, .8)}, 0 0 14px ${rgba(h, .45)}`;
 
-// where a look comes from, strongest first: ?theme=  >  Lively dropdown  >  glitchwall config  >  theme default
+// where a look comes from, strongest first: ?theme=  >  glitchwall config  >  theme default
 const Q = new URLSearchParams(location.search);
 let FEED_MODE = Q.get('mode') || 'live';   // set from the feed; the record's label shows it
-const layers = { url: Object.fromEntries(['theme', 'palette', 'rain', 'font', 'transition'].map(k => [k, Q.get(k)])), lively: {}, feed: {} };
-const pick = k => layers.url[k] || layers.lively[k] || layers.feed[k] || '';
+const layers = { url: Object.fromEntries(['theme', 'palette', 'rain', 'font', 'transition'].map(k => [k, Q.get(k)])), feed: {} };
+const pick = k => layers.url[k] || layers.feed[k] || '';
 let T = THEMES.phosphor, GLASS = .58, look = '', MONO = FONTS.plex[0];
 
 function applyLook() {
@@ -304,23 +301,18 @@ function applyLook() {
 }
 function setAlpha() { document.documentElement.style.setProperty('--alpha', (T.solid ?? GLASS).toFixed(2)); }
 
-// ---------- settings (Lively sliders and dropdowns) ----------
+// ---------- settings (the sliders) ----------
 let TYPE_CPS = 240, RAIN = .5, LINGER = 7000, MAXCARDS = 4;
 // ?still : for screenshots (headless browsers): no glitch, instant typing, cards stay
 const STILL = Q.has('still');
 if (STILL) { LINGER = 1e9; document.documentElement.classList.add('still'); }
-// Lively calls this with its customize panel; the feed sends the same values from `glitchwall config`.
-// A value Lively has set wins over the feed's.
-const fromLively = new Set();
-function livelyPropertyListener(name, val) { fromLively.add(name); setProperty(name, val); }
+// the feed sends these from `glitchwall config` and the settings window
 function setProperty(name, val) {
   if (name === 'typeSpeed') TYPE_CPS = 60 + val * 40;
   if (name === 'rain') { RAIN = val / 10; if (R && R.still) R.init(); }
   if (name === 'linger' && !STILL) LINGER = val * 1000;
   if (name === 'cards') MAXCARDS = val;
   if (name === 'glass') { GLASS = val / 100; setAlpha(); }
-  const k = { themeSel: 'theme', paletteSel: 'palette', rainSel: 'rain', fontSel: 'font', animSel: 'transition' }[name];
-  if (k) { layers.lively[k] = val > 0 ? LIVELY[k][val - 1] : ''; applyLook(); }
 }
 
 // ---------- the background: one canvas, several styles ----------
@@ -1062,7 +1054,7 @@ function next() {
 }
 
 const live = document.getElementById('live'), label = document.getElementById('label');
-// the feed's address: config.js (Lively, other wallpaper apps), or for glitchwall's own host the page is
+// the feed's address: config.js (other wallpaper apps), or for glitchwall's own windows the page is
 // served by the feed and the key comes in the address after # (never sent to any server)
 const F = window.FEED || (location.hash.startsWith('#key=') && location.protocol === 'http:'
   ? { port: location.port, key: decodeURIComponent(location.hash.slice(5)) } : {});
@@ -1101,7 +1093,7 @@ async function poll() {
     if (data.look) { layers.feed = data.look; applyLook(); }  // `glitchwall config --theme ...` applies live
     SLEEP = !!data.sleep;
     for (const [k, v] of Object.entries(data.tune || {}))   // `glitchwall config --linger 12` etc.
-      if (!fromLively.has(k) && tuned[k] !== v) { tuned[k] = v; setProperty(k, v); }
+      if (tuned[k] !== v) { tuned[k] = v; setProperty(k, v); }
     if (data.last < since) since = 0;                          // the feed restarted: start over
     FEED_MODE = Q.get('mode') || data.mode || 'live';
     const art = FEED_MODE === 'art';           // art mode: background only

@@ -8,7 +8,7 @@ license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "src/glitchwall/wallpaper/
 requires-python = ">=3.9"
 # Windows only: glitchwall's own wallpaper windows (WebView2). Elsewhere it needs nothing outside the standard library.
 dependencies = ["pywebview==6.2.1; sys_platform == 'win32'"]
-keywords = ["wallpaper", "lively", "claude-code", "terminal", "retro", "glitch"]
+keywords = ["wallpaper", "claude-code", "terminal", "retro", "glitch"]
 classifiers = [
     "Environment :: Win32 (MS Windows)",
     "Operating System :: Microsoft :: Windows",

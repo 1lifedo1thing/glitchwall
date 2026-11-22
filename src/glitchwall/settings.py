@@ -36,14 +36,13 @@ DEFAULTS = {
     "rain": "theme",         # background style; "theme" = the theme's own
     "font": "theme",
     "transition": "theme",   # how cards arrive and leave
-    # the page's sliders (Lively shows them in its customize panel; with any other host set them here)
+    # the page's sliders
     "type_speed": 5,         # 1-20
     "linger": 7,             # seconds a block stays after it finishes, 2-30
     "cards": 4,              # blocks on screen at once, 1-6
     "intensity": 5,          # background intensity, 0 (still) - 10
     "glass": 58,             # card opacity, 20-95
     "corner": "top-left",    # rest the mouse in this screen corner to open the settings; see CORNERS
-    "host": "lively",        # Windows: what puts the page behind the icons, see HOSTS (install picks)
     "screens": "all",        # all | primary
 }
 
@@ -65,7 +64,7 @@ def tune(s: dict) -> dict:
 
 
 def apply_changes(s: dict, changes: dict) -> tuple[dict, list[str]]:
-    """Settings changed from the settings window: only known keys, only valid values. Port, host and
+    """Settings changed from the settings window: only known keys, only valid values. Port and
     screens stay command-line only (they need a restart or a reinstall). Returns (new settings, refused keys)."""
     from . import themes
     out, refused = dict(s), []
@@ -105,17 +104,6 @@ def corner(s: dict) -> str:
     return c if c in CORNERS else DEFAULTS["corner"]
 
 
-HOSTS = {
-    "glitchwall": "glitchwall's own windows behind the desktop icons (WebView2), no other app needed",
-    "lively": "Lively Wallpaper shows it",
-}
-
-
-def host(s: dict) -> str:
-    h = str(s.get("host", "")).lower()
-    return h if h in HOSTS else "lively"
-
-
 MODES = {
     "live": "your real Claude Code tool calls, as they happen",
     "ambient": "made-up but realistic coding sessions; reads nothing, no Claude Code needed",
@@ -145,22 +133,6 @@ def state_dir() -> Path:
     if sys.platform == "darwin":
         return Path.home() / "Library" / "Application Support" / APP
     return Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local" / "state") / APP
-
-
-LEGACY_NAME = "agent-live-wallpaper"   # this project's name before 0.2.0
-
-
-def legacy_state_dirs() -> list[Path]:
-    """Where earlier versions kept their state. Cleaned up by install/uninstall.
-    0.1.0: %LOCALAPPDATA%\\agent-live-wallpaper (see module docstring); 0.1.1: ~/.agent-live-wallpaper."""
-    if os.environ.get("GLITCHWALL_HOME"):
-        return []
-    if sys.platform == "win32":
-        out = [Path.home() / f".{LEGACY_NAME}"]
-        if os.environ.get("LOCALAPPDATA"):
-            out.append(Path(os.environ["LOCALAPPDATA"]) / LEGACY_NAME)
-        return out
-    return [state_dir().parent / LEGACY_NAME]
 
 
 def _private_write(path: Path, text: str) -> None:
@@ -211,7 +183,7 @@ def load_settings() -> dict:
     return s
 
 
-KEEP_ON_RESET = ("port", "host", "screens", "mode", "paused")   # how it's installed, what it shows, stream-safety
+KEEP_ON_RESET = ("port", "screens", "mode", "paused")   # how it's installed, what it shows, stream-safety
 
 
 def reset_settings(s: dict) -> dict:

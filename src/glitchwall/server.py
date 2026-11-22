@@ -2,9 +2,9 @@
 
 Who may read /feed:
   1. Host header must be 127.0.0.1:<port> or localhost:<port>   (blocks DNS rebinding)
-  2. Origin must be absent, "null" (a local file page) or http(s)://*.localhost
-     (Lively serves web wallpapers as https://<hash>.localhost; browsers pin
-     *.localhost to this machine, so no internet site can send it)
+  2. Origin must be absent, "null" (a local file page), http(s)://*.localhost
+     (some wallpaper apps serve pages that way; browsers pin *.localhost to this
+     machine, so no internet site can send it) or the feed's own address
   3. ?key= must equal the per-install random key, which only the wallpaper's
      config.js has. Compared in constant time.
 The socket binds 127.0.0.1 only. Nothing is sent anywhere; the page pulls.
@@ -276,7 +276,7 @@ def run_feed(port: int | None = None) -> None:
     threading.Thread(target=follow_mode, args=(store, live), daemon=True).start()
     key = cfg.load_key()
     host = None
-    if cfg.host(s) == "glitchwall":
+    if os.name == "nt":
         from . import winhost
         if winhost.available():
             # the page is served from here and finds its key in the address (#key=, never sent over the wire)
