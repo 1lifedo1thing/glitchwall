@@ -33,6 +33,8 @@ def cmd_run(a) -> int:
         return 1
     plat.pid_file().parent.mkdir(parents=True, exist_ok=True)
     plat.pid_file().write_text(str(os.getpid()))
+    import threading   # in the background: at logon Lively may not be up yet, and the feed must not wait for it
+    threading.Thread(target=_heal_wallpaper, args=(s,), daemon=True).start()
     try:
         run_feed(port)
     except KeyboardInterrupt:
@@ -273,6 +275,35 @@ def cmd_themes(a) -> int:
     say("Changes reach the running wallpaper within a second. Lively's own dropdowns win over these.")
     say("Preview any mix: glitchwall demo --open --theme synthwave --rain stars")
     return 0
+
+
+def _installed_wallpaper() -> Path:
+    lib = plat.lively_library() if plat.WIN else None
+    return (lib / plat.FOLDER) if lib else cfg.state_dir() / "wallpaper"
+
+
+def sync_config(dest: Path, s: dict) -> bool:
+    """Make the installed wallpaper's config.js match the feed's key, port and label. True if it was stale.
+    The key is made anew if its file goes missing; without this the wallpaper would be refused for good."""
+    if not dest.is_dir():
+        return False
+    want = cfg.config_js(int(s["port"]), cfg.load_key(), cfg.display_label(s))
+    try:
+        if (dest / "config.js").read_text(encoding="utf-8") == want:
+            return False
+    except OSError:
+        pass
+    (dest / "config.js").write_text(want, encoding="utf-8")
+    return True
+
+
+def _heal_wallpaper(s: dict) -> None:
+    try:
+        dest = _installed_wallpaper()
+        if sync_config(dest, s) and plat.WIN and any(Path(c) == dest for c in plat.lively_current()):
+            plat.lively("setwp", "--file", str(dest))   # reload it so the page reads the new config.js
+    except Exception:
+        pass
 
 
 def _refresh_config(s: dict) -> None:

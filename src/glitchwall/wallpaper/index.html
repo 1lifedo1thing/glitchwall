@@ -1077,6 +1077,7 @@ async function poll() {
     if (evs.length) {
       if (since === 0) evs.splice(0, Math.max(0, evs.length - 6));   // on start, replay just the last few
       since = evs[evs.length - 1].id; lastEvent = Date.now(); queue.push(...evs);
+      if (queue.length > 24) queue.splice(0, queue.length - 24);   // never fall minutes behind: skip the oldest
       if (!typing) next();
     }
     live.classList.toggle('on', Date.now() - lastEvent < 60000);

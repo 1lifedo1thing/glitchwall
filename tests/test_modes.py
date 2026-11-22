@@ -4,6 +4,7 @@ import tempfile
 import threading
 import time
 import unittest
+from pathlib import Path
 from unittest import mock
 
 os.environ.setdefault("GLITCHWALL_HOME", tempfile.mkdtemp(prefix="alw-test-"))
@@ -75,6 +76,19 @@ class TestFollowMode(unittest.TestCase):
     def test_art_starts_nothing(self):
         stop = server.start_source("art", EventStore(Redactor(home="", user="")))
         self.assertIsInstance(stop, threading.Event)
+
+
+class TestHealConfig(unittest.TestCase):
+    def test_stale_key_in_wallpaper_is_rewritten(self):
+        # the key file went missing and the feed made a new one: the wallpaper's copy must follow
+        from glitchwall.cli import sync_config
+        dest = Path(tempfile.mkdtemp())
+        (dest / "config.js").write_text(cfg.config_js(1, "old-key", "x"), encoding="utf-8")
+        s = cfg.load_settings()
+        self.assertTrue(sync_config(dest, s))
+        self.assertIn(cfg.load_key(), (dest / "config.js").read_text(encoding="utf-8"))
+        self.assertFalse(sync_config(dest, s))                   # already right: left alone
+        self.assertFalse(sync_config(dest / "missing", s))       # nothing installed: nothing written
 
 
 if __name__ == "__main__":
