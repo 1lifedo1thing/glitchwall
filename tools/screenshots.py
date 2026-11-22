@@ -43,6 +43,8 @@ SHOTS = [
     ("art-orb", "theme=orb&mode=art"),
     ("scope", "theme=scope"),
     ("art-scope", "theme=scope&mode=art"),
+    ("chalkboard", "theme=chalkboard"),
+    ("art-chalkboard", "theme=chalkboard&mode=art"),
     ("neon", "theme=neon"),
     ("bsod", "theme=bsod"),
     ("art-synthwave", "theme=synthwave&mode=art"),

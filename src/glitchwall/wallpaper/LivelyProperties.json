@@ -22,7 +22,8 @@
       "notebook",
       "oracle",
       "orb",
-      "scope"
+      "scope",
+      "chalkboard"
     ]
   },
   "paletteSel": {
@@ -49,7 +50,8 @@
       "notebook",
       "oracle",
       "orb",
-      "scope"
+      "scope",
+      "chalkboard"
     ]
   },
   "rainSel": {
@@ -78,6 +80,13 @@
       "orb",
       "cascade",
       "scope",
+      "radar",
+      "textmode",
+      "broadsheet",
+      "signs",
+      "topo",
+      "sunprint",
+      "chalk",
       "none"
     ]
   },
@@ -128,7 +137,8 @@
       "write",
       "iris",
       "eclipse",
-      "trace"
+      "trace",
+      "chalk"
     ]
   },
   "typeSpeed": {
