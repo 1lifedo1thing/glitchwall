@@ -36,6 +36,9 @@
   .led.r { background:var(--red); border-color:var(--red); box-shadow:0 0 6px var(--red); }
   .grow { flex:1; }
   #snd { display:flex; align-items:center; gap:7px; background:none; border:1px solid var(--ph-line); cursor:pointer; font-size:10px; letter-spacing:.15em; padding:6px 10px; border-radius:3px; }
+  #resetall { display:flex; align-items:center; gap:7px; background:none; border:1px solid var(--ph-line); cursor:pointer; font-size:10px; letter-spacing:.15em; padding:6px 10px; border-radius:3px; }
+  #resetall.armed { color:var(--amber); border-color:var(--amber); box-shadow:0 0 8px rgba(255,176,0,.5); text-shadow:0 0 5px rgba(255,176,0,.6); }
+  #resetall:focus-visible { outline:1px dashed var(--ph-hi); outline-offset:3px; }
   #pause { display:flex; align-items:center; gap:12px; background:none; border:1px solid var(--ph); cursor:pointer; padding:5px 14px 5px 6px; border-radius:3px; box-shadow:var(--glow); }
   #pause .cap { width:30px; height:30px; display:grid; place-items:center; font-size:14px; color:var(--bg); background:var(--ph); border-radius:2px; box-shadow:var(--glow); }
   #pause .t { text-align:left; font-size:11px; letter-spacing:.2em; color:var(--ph); text-shadow:var(--glow); }
@@ -147,6 +150,7 @@
     <div class="ind"><span class="led" id="led-air"></span><span id="air">ON AIR</span></div>
   </div>
   <span class="grow"></span>
+  <button id="resetall" data-help="resetall"><span class="led" id="led-reset"></span><span id="resetall-t">RESET ALL</span></button>
   <button id="snd" data-help="sound"><span class="led" id="led-snd"></span>SOUND</button>
   <button id="pause" data-help="pause"><span class="cap">P</span><span class="t"><b id="pause-t">PAUSE</b><small id="pause-s">STREAM-SAFE</small></span></button>
 </header>
@@ -202,7 +206,7 @@ const SWITCHES = {
 };
 const KNOB_HELP = { mode: 'MODE', palette: 'COLORS', rain: 'BACKGROUND', font: 'FONT', transition: 'TRANSITION (how cards arrive and leave)' };
 const MODE_SHORT = { live: 'LIVE', ambient: 'AMBIENT', art: 'ART' };
-let S = {}, C = {}, D = {}, focusHelp = null, pending = {}, timer = null, busy = false, cleared = false;
+let PV = '', S = {}, C = {}, D = {}, focusHelp = null, pending = {}, timer = null, busy = false, cleared = false;
 // what each DEFAULT key puts back. Mode stays as it is: switching to live would start showing real tool calls
 const GROUPS = { select: ['palette', 'rain', 'font', 'transition'], motion: Object.keys(FADERS),
                  privacy: [...Object.keys(SWITCHES), 'label'] };
@@ -248,6 +252,9 @@ function help(h) {
   if (kind === 'label') return say('CORNER LABEL', 'The text in the bottom-right corner of the wallpaper. Enter saves it.');
   if (kind === 'theme') { const v = extra || S.theme; return say(`THEME · ${v.toUpperCase()}${v === S.theme ? '' : '  (CLICK TO PICK)'}`,
                           optText('theme', v) + (cleared && v === S.theme ? ' Earlier tweaks cleared: the theme starts as it comes.' : '')); }
+  if (kind === 'resetall') return say(armed ? 'RESET ALL · PRESS AGAIN' : 'RESET ALL',
+    armed ? 'Press again within 4 seconds to reset. Anything else cancels it.'
+          : 'Frozen, crashed or stuck? Puts every setting back to the default (phosphor, no tweaks) and restarts the wallpaper fresh. Mode, pause and privacy safety stay as they are. If even this window is stuck: glitchwall reset');
   if (kind === 'reset') { const [a, b] = GROUP_HELP[extra]; return say(`DEFAULT · ${extra.toUpperCase()}`, `${a}: ${b}`); }
   if (FADERS[kind]) return say(`${FADERS[kind][0]} · ${S[kind]}`, FADERS[kind][1]);
   if (SWITCHES[kind]) return say(`${SWITCHES[kind][0]} · ${S[kind] ? 'ON' : 'OFF'}`, SWITCHES[kind][1]);
@@ -398,6 +405,31 @@ function toggleSound() {
   try { localStorage.setItem('gw-sound', muted ? 'off' : 'on'); } catch {}
   snd('clack'); render(); help('sound');
 }
+// RESET ALL: two presses (the first arms it for 4 s), then defaults and a fresh wallpaper
+let armed = false, armTimer = null;
+function disarm() { armed = false; clearTimeout(armTimer); $('resetall').classList.remove('armed'); $('resetall-t').textContent = 'RESET ALL'; led('reset', ''); }
+async function resetAll() {
+  if (!armed) {
+    armed = true; snd('click'); $('resetall').classList.add('armed'); $('resetall-t').textContent = 'PRESS AGAIN'; led('reset', 'a');
+    armTimer = setTimeout(() => { disarm(); help(); }, 4000); return help('resetall');
+  }
+  disarm(); snd('thunk'); busy = true; pending = {}; clearTimeout(timer);
+  say('RESETTING…', 'Settings back to the defaults.');
+  try {
+    const d = await api({ reset: true }); S = d.settings; cleared = false; render();
+    if ((d.refused || []).includes('reset')) { busy = false; return say('RESET NOT AVAILABLE', 'This feed is an older version. Run: glitchwall reset', true); }
+    if (!d.restarting) { busy = false; return say('RESET DONE', 'Every setting is back to the default.'); }
+    say('RESTARTING THE WALLPAPER…', 'A fresh start: it will be back in a few seconds.'); led('feed', 'a');
+    $('pv').removeAttribute('src');
+    await new Promise(r => setTimeout(r, 2000));   // the old feed lets go first
+    for (let i = 0; i < 40; i++) {
+      try { const e = await api(); S = e.settings; break; } catch { await new Promise(r => setTimeout(r, 500)); }
+    }
+    $('pv').src = PV; render(); led('feed', 'g');
+    say('RESET DONE', 'Every setting is back to the default and the wallpaper restarted fresh.');
+  } catch (e) { led('feed', 'r'); say('RESET FAILED', String(e.message || e) + ' Try: glitchwall reset', true); }
+  busy = false;
+}
 function resetGroup(g) {
   const keys = GROUPS[g].filter(differs);
   if (!keys.length) return help('reset:' + g);
@@ -413,6 +445,9 @@ function build() {
   drum();
   $('pause').addEventListener('click', () => set('paused', !S.paused, true));
   $('snd').addEventListener('click', toggleSound);
+  $('resetall').addEventListener('click', resetAll);
+  document.addEventListener('pointerdown', e => { if (armed && !e.target.closest('#resetall')) disarm(); }, true);
+  document.addEventListener('keydown', e => { if (armed && e.target.id !== 'resetall') disarm(); }, true);
   document.querySelectorAll('.reset').forEach(b => b.addEventListener('click', () => resetGroup(b.dataset.group)));
   // one control back to its default: Backspace/Delete on it, or a double-click
   const one = el => { const k = el && el.closest('[data-help]') && el.closest('[data-help]').dataset.help;
@@ -485,7 +520,8 @@ document.fonts.ready.then(() => { fit(); if (S.theme) render(); });   // sizes m
   // the preview comes from the other loopback name (localhost vs 127.0.0.1): a different site, so the browser
   // runs it in its own process and a heavy theme can never freeze these controls
   const other = location.hostname === 'localhost' ? '127.0.0.1' : 'localhost';
-  $('pv').src = `${location.protocol}//${other}:${location.port}/?preview=1#key=${encodeURIComponent(KEY)}`;
+  PV = `${location.protocol}//${other}:${location.port}/?preview=1#key=${encodeURIComponent(KEY)}`;
+  $('pv').src = PV;
   try {
     const d = await api(); S = d.settings; C = { ...d.choices, ranges: d.ranges }; D = d.defaults || {};
     build(); render(); led('feed', 'g'); help('theme');

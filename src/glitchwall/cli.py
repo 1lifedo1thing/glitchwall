@@ -64,6 +64,19 @@ def cmd_start(a) -> int:
     return 1
 
 
+def cmd_reset(a) -> int:
+    """Settings back to the defaults and the feed (and with it the wallpaper's browser) started fresh."""
+    cfg.save_settings(cfg.reset_settings(cfg.load_settings()))
+    say("settings back to the defaults (mode, pause and install choices kept)")
+    if plat.running_pid():
+        cmd_stop(a)
+        for _ in range(20):   # let the old one let go of the port
+            if not plat.port_open(int(cfg.load_settings()["port"])):
+                break
+            time.sleep(0.25)
+    return cmd_start(a)
+
+
 def cmd_stop(a) -> int:
     if plat.stop_background():
         say("feed stopped")
@@ -484,6 +497,8 @@ def parser() -> argparse.ArgumentParser:
     sub.add_parser("start", help="start the feed in the background").set_defaults(fn=cmd_start)
     sub.add_parser("stop", help="stop the background feed").set_defaults(fn=cmd_stop)
     sub.add_parser("status", help="show what is installed and running").set_defaults(fn=cmd_status)
+    sub.add_parser("reset", help="frozen or broken? every setting back to the default, wallpaper restarted fresh"
+                   ).set_defaults(fn=cmd_reset)
     sub.add_parser("pause", help="stream-safe: serve nothing until resume").set_defaults(fn=lambda a: cmd_pause(a, True))
     sub.add_parser("resume", help="undo pause").set_defaults(fn=lambda a: cmd_pause(a, False))
 

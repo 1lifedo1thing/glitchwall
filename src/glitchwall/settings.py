@@ -194,6 +194,15 @@ def load_settings() -> dict:
     return s
 
 
+KEEP_ON_RESET = ("port", "host", "screens", "mode", "paused")   # how it's installed, what it shows, stream-safety
+
+
+def reset_settings(s: dict) -> dict:
+    """Everything back to the defaults (phosphor, no overrides, standard motion, masks on), except how it is
+    installed, the mode (resetting to live would start showing real tool calls) and pause."""
+    return {**DEFAULTS, **{k: s[k] for k in KEEP_ON_RESET if k in s}}
+
+
 def save_settings(s: dict) -> None:
     _private_write(settings_file(), json.dumps({k: s[k] for k in DEFAULTS if k in s}, indent=2) + "\n")
 

@@ -266,6 +266,17 @@ class TestSettingsWindow(unittest.TestCase):
         self.assertEqual(cfg.load_settings()["port"], cfg.DEFAULT_PORT)
         self.assertFalse(self.changed[-1]["mask_email"])
 
+    def test_reset_all(self):
+        self.req("POST", body={"theme": "neon", "cards": 1, "font": "doto", "mask_user": False, "mode": "ambient", "paused": True})
+        st, d = self.req("POST", body={"reset": True})
+        self.assertEqual(st, 200)
+        got = {k: d["settings"][k] for k in ("theme", "cards", "font", "mask_user", "mode", "paused")}
+        self.assertEqual(got, {"theme": "phosphor", "cards": 4, "font": "theme", "mask_user": True,
+                               "mode": "ambient", "paused": True})   # mode and pause are kept
+        self.assertEqual(d["refused"], [])
+        self.assertFalse(d["restarting"])   # no built-in host here, so nothing to restart
+        self.req("POST", body={"paused": False, "mode": cfg.DEFAULTS["mode"]})
+
     def test_refusals(self):
         cases = {
             "wrong key": dict(method="POST", key="x" * 43, body={"paused": True}),

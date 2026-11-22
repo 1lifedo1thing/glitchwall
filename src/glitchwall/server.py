@@ -105,7 +105,7 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
                  extra_origins: tuple[str, ...] = (), refusal_log: Path | None = None,
                  look: dict | None = None, mode: str | None = None, label: str | None = None,
                  sleeping: Callable[[str], bool] | None = None, editable: bool = False,
-                 on_change: Callable[[dict], None] | None = None):
+                 on_change: Callable[[dict], None] | None = None, on_reset: Callable[[], None] | None = None):
     class Handler(BaseHTTPRequestHandler):
         server_version = "glitchwall"
         sys_version = ""
@@ -177,7 +177,7 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
             q, origin = parse_qs(u.query), self.headers.get("Origin")
             if not check_access(self.headers.get("Host"), origin, q.get("key", [""])[0], key, port, extra_origins):
                 return self.refuse(403)
-            refused = []
+            refused, reset = [], False
             if body is not None:
                 if origin is None or self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
                     return self.refuse(403)
@@ -185,7 +185,10 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
                     changes = json.loads(body)
                 except ValueError:
                     return self.refuse(400)
-                s, refused = cfg.apply_changes(cfg.load_settings(), changes if isinstance(changes, dict) else {})
+                changes = changes if isinstance(changes, dict) else {}
+                reset = changes.pop("reset", None) is True   # RESET ALL: defaults, then a fresh wallpaper
+                s = cfg.reset_settings(cfg.load_settings()) if reset else cfg.load_settings()
+                s, refused = cfg.apply_changes(s, changes)
                 cfg.save_settings(s)
                 if on_change:
                     on_change(s)
@@ -195,7 +198,7 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
                 "defaults": {k: v for k, v in cfg.DEFAULTS.items() if k not in ("port", "host", "screens")},
                 "choices": {**themes.KINDS, "mode": cfg.MODES},
                 "ranges": {k: [lo, hi] for k, (_, lo, hi) in cfg.TUNE.items()},
-                "running": True,
+                "running": True, "restarting": bool(reset and on_reset),
             }).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -206,6 +209,8 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(body_out)
+            if reset and on_reset:   # after the answer is out: the page knows to wait for the restart
+                threading.Timer(0.5, on_reset).start()
 
         def static(self, path):
             if self.headers.get("Host") not in (f"127.0.0.1:{port}", f"localhost:{port}"):
@@ -241,14 +246,14 @@ def serve(handler, port: int) -> ThreadingHTTPServer:
 RESTARTS = "GLITCHWALL_RESTARTS"
 
 
-def restart_self(httpd) -> None:
-    """WebView2 went away under the wallpaper: free the port and start this same command again, fresh.
-    Gives up after a few quick restarts in a row, so a broken WebView2 can't make it loop forever."""
+def restart_self(httpd, manual: bool = False) -> None:
+    """Free the port and start this same command again, fresh: a new WebView2 and a new page. Used when WebView2
+    went away under the wallpaper (gives up after a few quick restarts in a row, so a broken WebView2 can't make
+    it loop forever) and for RESET ALL in the settings window (`manual`: always restarts)."""
     import subprocess
     import sys
-    import time
     n, since = (os.environ.get(RESTARTS, "0:0").split(":") + ["0"])[:2]
-    n = int(n) + 1 if time.time() - float(since or 0) < 300 else 1
+    n = int(n) + 1 if not manual and time.time() - float(since or 0) < 300 else 1
     httpd.socket.close()
     if n <= 3:
         args = [sys.executable] + (sys.argv[1:] if getattr(sys, "frozen", False) else ["-m", "glitchwall"] + sys.argv[1:])
@@ -287,7 +292,8 @@ def run_feed(port: int | None = None) -> None:
                            static_dir=wallpaper_source(), config_js="// the key is in the page address\n",
                            extra_origins=(f"http://127.0.0.1:{port}", f"http://localhost:{port}"),
                            sleeping=(lambda scr: scr.isdigit() and int(scr) in host.asleep) if host else None,
-                           editable=True, on_change=on_change)
+                           editable=True, on_change=on_change,
+                           on_reset=(lambda: restart_self(httpd, manual=True)) if host else None)
     httpd = serve(handler, port)
     if not host:
         httpd.serve_forever()
