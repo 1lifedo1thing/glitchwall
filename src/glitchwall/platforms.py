@@ -369,6 +369,48 @@ def autostart_entry() -> str | None:
     return str(f) if f.exists() else None
 
 
+# ---------------------------------------------------------------- Start menu (Windows)
+def shortcut_file() -> Path | None:
+    if not WIN or not os.environ.get("APPDATA"):
+        return None
+    return Path(os.environ["APPDATA"]) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "glitchwall settings.lnk"
+
+
+def settings_command() -> list[str]:
+    if FROZEN:
+        return [str(bin_dir() / FEED_EXE), "settings"]
+    return [pythonw(), "-m", "glitchwall", "settings"]
+
+
+def add_shortcut() -> str | None:
+    """A Start menu entry that opens the settings window. Made with the Windows Script Host (built in)."""
+    f = shortcut_file()
+    if f is None:
+        return None
+    cmd = settings_command()
+
+    def q(v) -> str:   # a PowerShell single-quoted string
+        return "'" + str(v).replace("'", "''") + "'"
+    ps =(f"$s=(New-Object -ComObject WScript.Shell).CreateShortcut({q(f)});$s.TargetPath={q(cmd[0])};"
+          f"$s.Arguments={q(subprocess.list2cmdline(cmd[1:]))};$s.Description='glitchwall settings';"
+          f"$s.WorkingDirectory={q(Path.home())};$s.Save()")
+    try:
+        f.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps], capture_output=True,
+                       timeout=30, creationflags=subprocess.CREATE_NO_WINDOW)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return str(f) if f.exists() else None
+
+
+def remove_shortcut() -> bool:
+    f = shortcut_file()
+    if f and f.exists():
+        f.unlink()
+        return True
+    return False
+
+
 # ---------------------------------------------------------------- background process
 def pid_file() -> Path:
     return cfg.state_dir() / "feed.pid"

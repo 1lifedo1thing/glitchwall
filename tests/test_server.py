@@ -200,3 +200,93 @@ class TestKey(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestSettingsWindow(unittest.TestCase):
+    """The settings window's API: reads and changes, behind the same checks as the feed, plus JSON + Origin."""
+
+    P = PORT + 4
+    ME = f"http://127.0.0.1:{PORT + 4}"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.changed = []
+        h = make_handler(EventStore(), KEY, cls.P, LiveSettings(), extra_origins=(cls.ME,), editable=True,
+                         on_change=cls.changed.append)
+        cls.httpd = serve(h, cls.P)
+        threading.Thread(target=cls.httpd.serve_forever, daemon=True).start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.httpd.shutdown()
+        cls.httpd.server_close()
+        cfg.save_settings(dict(cfg.DEFAULTS))
+
+    def req(self, method="GET", key=KEY, body=None, origin=ME, ctype="application/json", host=None):
+        c = http.client.HTTPConnection("127.0.0.1", self.P, timeout=5)
+        hd = {"Host": host or f"127.0.0.1:{self.P}"}
+        if origin:
+            hd["Origin"] = origin
+        if body is not None:
+            hd["Content-Type"] = ctype
+            body = body if isinstance(body, bytes) else json.dumps(body).encode()
+        c.request(method, f"/settings?key={key}", body=body, headers=hd)
+        r = c.getresponse()
+        data = r.read()
+        c.close()
+        return r.status, (json.loads(data) if data else None)
+
+    def test_apply_changes_validates(self):
+        s, refused = cfg.apply_changes(dict(cfg.DEFAULTS), {
+            "theme": "phosphor", "mode": "ambient", "paused": True, "cards": 3, "label": "hi",
+            "glass": 5, "cards_x": 1, "port": 1, "host": "lively", "screens": "primary", "theme_bad": 1,
+            "mask_user": "yes", "linger": True, "label2": "x"})
+        self.assertEqual((s["mode"], s["paused"], s["cards"], s["label"]), ("ambient", True, 3, "hi"))
+        self.assertEqual(s["glass"], cfg.DEFAULTS["glass"])
+        self.assertEqual(sorted(refused), sorted(["glass", "cards_x", "port", "host", "screens", "theme_bad",
+                                                  "mask_user", "linger", "label2"]))
+        self.assertIn("label", cfg.apply_changes({}, {"label": "a\nb"})[1])
+        self.assertIn("theme", cfg.apply_changes({}, {"theme": "no-such-theme"})[1])
+
+    def test_read(self):
+        st, d = self.req(origin=None)
+        self.assertEqual(st, 200)
+        self.assertIn("phosphor", d["choices"]["theme"])
+        self.assertEqual(d["ranges"]["cards"], [1, 6])
+        self.assertNotIn("key", json.dumps(d["settings"]).lower().replace("mask", ""))
+
+    def test_change_saves_and_tells_the_feed(self):
+        st, d = self.req("POST", body={"cards": 2, "mask_email": False, "port": 1})
+        self.assertEqual(st, 200)
+        self.assertEqual((d["settings"]["cards"], d["settings"]["mask_email"]), (2, False))
+        self.assertEqual(d["refused"], ["port"])
+        self.assertEqual(cfg.load_settings()["cards"], 2)
+        self.assertEqual(cfg.load_settings()["port"], cfg.DEFAULT_PORT)
+        self.assertFalse(self.changed[-1]["mask_email"])
+
+    def test_refusals(self):
+        cases = {
+            "wrong key": dict(method="POST", key="x" * 43, body={"paused": True}),
+            "no origin": dict(method="POST", origin=None, body={"paused": True}),
+            "other site": dict(method="POST", origin="https://evil.example", body={"paused": True}),
+            "form post": dict(method="POST", body=b"paused=true", ctype="application/x-www-form-urlencoded"),
+            "text post": dict(method="POST", body=b'{"paused": true}', ctype="text/plain"),
+            "rebinding": dict(method="POST", body={"paused": True}, host=f"evil.example:{self.P}"),
+        }
+        for name, kw in cases.items():
+            with self.subTest(name):
+                self.assertEqual(self.req(**kw)[0], 403)
+        self.assertEqual(self.req("POST", body=b"{nope")[0], 400)
+        self.assertFalse(cfg.load_settings()["paused"])
+
+    def test_off_unless_editable(self):
+        h = make_handler(EventStore(), KEY, self.P + 1)
+        httpd = serve(h, self.P + 1)
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        try:
+            c = http.client.HTTPConnection("127.0.0.1", self.P + 1, timeout=5)
+            c.request("GET", f"/settings?key={KEY}", headers={"Host": f"127.0.0.1:{self.P + 1}"})
+            self.assertEqual(c.getresponse().status, 404)
+        finally:
+            httpd.shutdown()
+            httpd.server_close()

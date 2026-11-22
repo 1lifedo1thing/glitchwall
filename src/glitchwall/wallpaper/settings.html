@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>glitchwall settings</title>
+<style>
+  @font-face { font-family:'Departure Mono'; src:url('DepartureMono-Regular.otf') format('opentype'); font-display:block; }
+  @font-face { font-family:'IBM Plex Mono'; src:url('fonts/IBMPlexMono-Regular.ttf'); font-display:block; }
+  :root {
+    --bg:#0b0d0b; --panel:#121512; --line:#1f261f; --ink:#d6e8d6; --muted:#7f957f; --acc:#00ff41; --acc-ink:#031a08;
+    --warn:#ffb000; --hi:#172017;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--ink); font:13px/1.5 'IBM Plex Mono', Consolas, monospace; }
+  body { display:grid; grid-template-columns:minmax(380px, 460px) 1fr; grid-template-rows:auto 1fr; }
+  header { grid-column:1 / -1; display:flex; align-items:center; gap:16px; padding:14px 22px; border-bottom:1px solid var(--line); }
+  h1 { font:400 20px 'Departure Mono', monospace; letter-spacing:.35em; margin:0; color:var(--acc); text-shadow:0 0 8px rgba(0,255,65,.35); }
+  .chip { padding:3px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); }
+  .chip.on { color:var(--acc); border-color:rgba(0,255,65,.4); }
+  .chip.paused { color:var(--warn); border-color:rgba(255,176,0,.45); }
+  header .grow { flex:1; }
+  button { font:inherit; cursor:pointer; }
+  #pause { padding:8px 16px; border-radius:6px; border:1px solid var(--acc); background:transparent; color:var(--acc); font-family:'Departure Mono', monospace; letter-spacing:.08em; }
+  #pause.paused { background:var(--warn); border-color:var(--warn); color:#1a1200; }
+  #pause:hover { filter:brightness(1.2); }
+  main { overflow:auto; padding:6px 22px 28px; border-right:1px solid var(--line); }
+  section { padding:16px 0; border-bottom:1px solid var(--line); }
+  section:last-child { border-bottom:0; }
+  h2 { font:400 12px 'Departure Mono', monospace; letter-spacing:.25em; text-transform:uppercase; color:var(--muted); margin:0 0 10px; }
+  .seg { display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; }
+  .seg button, .themes button { text-align:left; padding:8px 10px; border-radius:6px; border:1px solid var(--line); background:var(--panel); color:var(--ink); }
+  .seg button small, .themes button small { display:block; color:var(--muted); font-size:11px; line-height:1.35; margin-top:2px; }
+  .seg button.sel, .themes button.sel { border-color:var(--acc); background:var(--hi); box-shadow:inset 0 0 0 1px rgba(0,255,65,.25); }
+  .seg button b, .themes button b { font-weight:400; font-family:'Departure Mono', monospace; color:var(--acc); }
+  .themes { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .row { display:grid; grid-template-columns:120px 1fr 44px; align-items:center; gap:10px; margin:8px 0; }
+  .row.two { grid-template-columns:120px 1fr; }
+  label { color:var(--muted); }
+  select, input[type=text] { width:100%; padding:7px 8px; border-radius:6px; border:1px solid var(--line); background:var(--panel); color:var(--ink); font:inherit; }
+  select:focus, input:focus { outline:1px solid var(--acc); }
+  input[type=range] { width:100%; accent-color:var(--acc); }
+  output { text-align:right; color:var(--acc); font-family:'Departure Mono', monospace; }
+  .toggle { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:7px 0; }
+  .toggle small { display:block; color:var(--muted); font-size:11px; }
+  .sw { position:relative; width:40px; height:22px; flex:none; }
+  .sw input { opacity:0; width:0; height:0; }
+  .sw span { position:absolute; inset:0; border-radius:999px; background:var(--line); transition:.15s; }
+  .sw span::after { content:''; position:absolute; width:16px; height:16px; left:3px; top:3px; border-radius:50%; background:var(--muted); transition:.15s; }
+  .sw input:checked + span { background:rgba(0,255,65,.35); }
+  .sw input:checked + span::after { left:21px; background:var(--acc); }
+  .preview { display:flex; flex-direction:column; padding:18px 22px; min-width:0; }
+  .frame { position:relative; width:100%; aspect-ratio:16 / 9; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#000; }
+  .frame iframe { position:absolute; left:0; top:0; width:1600px; height:900px; border:0; transform-origin:0 0; pointer-events:none; }
+  .note { color:var(--muted); margin-top:10px; font-size:12px; }
+  .err { color:#ff5050; }
+  #toast { position:fixed; right:18px; bottom:16px; padding:6px 12px; border-radius:6px; background:var(--hi); border:1px solid var(--line); color:var(--acc); opacity:0; transition:opacity .2s; }
+  #toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>GLITCHWALL</h1>
+  <span id="state" class="chip">connecting…</span>
+  <span class="grow"></span>
+  <button id="pause" title="Stream-safe: the wallpaper shows nothing until you resume">PAUSE</button>
+</header>
+
+<main>
+  <section>
+    <h2>Mode</h2>
+    <div class="seg" id="mode"></div>
+  </section>
+
+  <section>
+    <h2>Theme</h2>
+    <div class="themes" id="themes"></div>
+  </section>
+
+  <section>
+    <h2>Mix and match</h2>
+    <div class="row two"><label for="palette">Colors</label><select id="palette"></select></div>
+    <div class="row two"><label for="rain">Background</label><select id="rain"></select></div>
+    <div class="row two"><label for="font">Font</label><select id="font"></select></div>
+    <div class="row two"><label for="transition">Transition</label><select id="transition"></select></div>
+  </section>
+
+  <section>
+    <h2>Motion</h2>
+    <div id="tune"></div>
+  </section>
+
+  <section>
+    <h2>Privacy</h2>
+    <div class="toggle"><div>Commands only<small>show the calls, never their output</small></div>
+      <label class="sw"><input type="checkbox" id="commands_only"><span></span></label></div>
+    <div class="toggle"><div>Mask my user name<small>shown as "user"</small></div>
+      <label class="sw"><input type="checkbox" id="mask_user"><span></span></label></div>
+    <div class="toggle"><div>Mask email addresses<small>the part before the @ becomes ••••</small></div>
+      <label class="sw"><input type="checkbox" id="mask_email"><span></span></label></div>
+  </section>
+
+  <section>
+    <h2>Corner label</h2>
+    <div class="row two"><label for="label">Text</label><input type="text" id="label" maxlength="80"></div>
+  </section>
+</main>
+
+<div class="preview">
+  <div class="frame" id="frame"><iframe id="pv" title="live preview" tabindex="-1"></iframe></div>
+  <p class="note">Live preview of your wallpaper. Every change reaches your desktop within a second.</p>
+  <p class="note" id="msg"></p>
+</div>
+<div id="toast">saved</div>
+
+<script>
+const KEY = decodeURIComponent(location.hash.startsWith('#key=') ? location.hash.slice(5) : '');
+const API = `/settings?key=${encodeURIComponent(KEY)}`;
+const TUNE = { type_speed: 'Typing speed', linger: 'Linger (s)', cards: 'Cards at once', intensity: 'Background', glass: 'Glass' };
+const LOOK = ['palette', 'rain', 'font', 'transition'];
+const $ = id => document.getElementById(id);
+let S = {}, C = {}, built = false;
+
+function toast(t = 'saved') { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 900); }
+function msg(t, bad) { $('msg').textContent = t || ''; $('msg').className = 'note' + (bad ? ' err' : ''); }
+
+async function api(changes) {
+  const r = await fetch(API, changes ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) } : {});
+  if (!r.ok) throw new Error(r.status === 403 ? 'refused: open settings with `glitchwall settings`' : 'feed error ' + r.status);
+  return r.json();
+}
+async function save(changes) {
+  try {
+    const d = await api(changes);
+    S = d.settings; render();
+    if (d.refused && d.refused.length) msg('not saved: ' + d.refused.join(', '), true); else { msg(''); toast(); }
+  } catch (e) { msg(String(e.message || e), true); }
+}
+
+function build() {
+  // mode
+  $('mode').innerHTML = '';
+  for (const [m, desc] of Object.entries(C.mode)) {
+    const b = document.createElement('button'); b.dataset.v = m;
+    b.innerHTML = '<b></b><small></small>'; b.querySelector('b').textContent = m; b.querySelector('small').textContent = desc.split(';')[0].split(':')[0];
+    b.onclick = () => save({ mode: m }); $('mode').appendChild(b);
+  }
+  // themes
+  $('themes').innerHTML = '';
+  for (const [t, desc] of Object.entries(C.theme)) {
+    const b = document.createElement('button'); b.dataset.v = t;
+    b.innerHTML = '<b></b><small></small>'; b.querySelector('b').textContent = t; b.querySelector('small').textContent = desc.replace(/^extra: /, '');
+    b.onclick = () => save({ theme: t }); $('themes').appendChild(b);
+  }
+  // selects
+  for (const k of LOOK) {
+    const sel = $(k); sel.innerHTML = '';
+    for (const [v, desc] of Object.entries(C[k])) {
+      const o = document.createElement('option'); o.value = v; o.textContent = v === 'theme' ? "theme's own" : `${v}  ·  ${desc}`; sel.appendChild(o);
+    }
+    sel.onchange = () => save({ [k]: sel.value });
+  }
+  // sliders
+  $('tune').innerHTML = '';
+  for (const [k, name] of Object.entries(TUNE)) {
+    const [lo, hi] = C.ranges[k];
+    const row = document.createElement('div'); row.className = 'row';
+    row.innerHTML = `<label for="${k}"></label><input type="range" id="${k}" min="${lo}" max="${hi}" step="1"><output id="${k}_v"></output>`;
+    row.querySelector('label').textContent = name;
+    $('tune').appendChild(row);
+    const r = row.querySelector('input');
+    r.oninput = () => { $(k + '_v').textContent = r.value; };
+    r.onchange = () => save({ [k]: +r.value });
+  }
+  for (const k of ['commands_only', 'mask_user', 'mask_email']) $(k).onchange = e => save({ [k]: e.target.checked });
+  $('label').onchange = e => save({ label: e.target.value });
+  $('label').onkeydown = e => { if (e.key === 'Enter') e.target.blur(); };
+  $('pause').onclick = () => save({ paused: !S.paused });
+  built = true;
+}
+
+function render() {
+  if (!built) build();
+  document.querySelectorAll('#mode button').forEach(b => b.classList.toggle('sel', b.dataset.v === S.mode));
+  document.querySelectorAll('#themes button').forEach(b => b.classList.toggle('sel', b.dataset.v === S.theme));
+  for (const k of LOOK) $(k).value = S[k];
+  for (const k of Object.keys(TUNE)) { $(k).value = S[k]; $(k + '_v').textContent = S[k]; }
+  for (const k of ['commands_only', 'mask_user', 'mask_email']) $(k).checked = !!S[k];
+  if (document.activeElement !== $('label')) $('label').value = S.label || '';
+  $('pause').textContent = S.paused ? 'RESUME' : 'PAUSE';
+  $('pause').classList.toggle('paused', !!S.paused);
+  const st = $('state');
+  st.textContent = S.paused ? 'paused · showing nothing' : `${S.mode} · running`;
+  st.className = 'chip ' + (S.paused ? 'paused' : 'on');
+}
+
+function fit() { const f = $('frame'); $('pv').style.transform = `scale(${f.clientWidth / 1600})`; }
+addEventListener('resize', fit);
+
+(async () => {
+  if (!KEY) { msg('No key: open this with `glitchwall settings`.', true); return; }
+  $('pv').src = `/?preview=1#key=${encodeURIComponent(KEY)}`;
+  fit();
+  try { const d = await api(); S = d.settings; C = { ...d.choices, ranges: d.ranges }; render(); }
+  catch (e) { msg(String(e.message || e), true); $('state').textContent = 'feed not reachable'; }
+  // follow changes made elsewhere (the command line, the tray), every few seconds
+  setInterval(async () => { try { const d = await api(); if (JSON.stringify(d.settings) !== JSON.stringify(S)) { S = d.settings; render(); } } catch {} }, 3000);
+})();
+</script>
+</body></html>

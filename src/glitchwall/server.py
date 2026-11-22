@@ -103,7 +103,8 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
                  static_dir: Path | None = None, config_js: str | None = None,
                  extra_origins: tuple[str, ...] = (), refusal_log: Path | None = None,
                  look: dict | None = None, mode: str | None = None, label: str | None = None,
-                 sleeping: Callable[[str], bool] | None = None):
+                 sleeping: Callable[[str], bool] | None = None, editable: bool = False,
+                 on_change: Callable[[dict], None] | None = None):
     class Handler(BaseHTTPRequestHandler):
         server_version = "glitchwall"
         sys_version = ""
@@ -124,7 +125,9 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
             u = urlsplit(self.path)
             if u.path == "/feed":
                 return self.feed(u)
-            if static_dir is not None:   # demo mode only: serve the wallpaper page itself
+            if u.path == "/settings":
+                return self.settings_api(u, None)
+            if static_dir is not None:   # the page itself (demo mode, glitchwall's own host, the settings window)
                 return self.static(u.path)
             return self.refuse(404)
 
@@ -157,6 +160,50 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(body)
+
+        def do_POST(self):
+            u = urlsplit(self.path)
+            n = int(self.headers.get("Content-Length") or 0)
+            if u.path != "/settings" or not 0 < n <= 8192:
+                return self.refuse(404 if u.path != "/settings" else 400)
+            return self.settings_api(u, self.rfile.read(n))
+
+        def settings_api(self, u, body: bytes | None):
+            """The settings window: GET reads, POST changes. Same key/Host/Origin checks as the feed; a change
+            must also be a JSON POST from an allowed page (a plain form from elsewhere can't be one)."""
+            if not editable:
+                return self.refuse(404)
+            q, origin = parse_qs(u.query), self.headers.get("Origin")
+            if not check_access(self.headers.get("Host"), origin, q.get("key", [""])[0], key, port, extra_origins):
+                return self.refuse(403)
+            refused = []
+            if body is not None:
+                if origin is None or self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
+                    return self.refuse(403)
+                try:
+                    changes = json.loads(body)
+                except ValueError:
+                    return self.refuse(400)
+                s, refused = cfg.apply_changes(cfg.load_settings(), changes if isinstance(changes, dict) else {})
+                cfg.save_settings(s)
+                if on_change:
+                    on_change(s)
+            s = cfg.load_settings()
+            body_out = json.dumps({
+                "settings": {k: s.get(k, v) for k, v in cfg.DEFAULTS.items()}, "refused": refused,
+                "choices": {**themes.KINDS, "mode": cfg.MODES},
+                "ranges": {k: [lo, hi] for k, (_, lo, hi) in cfg.TUNE.items()},
+                "running": True,
+            }).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body_out)))
+            if origin:
+                self.send_header("Access-Control-Allow-Origin", origin)
+                self.send_header("Vary", "Origin")
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body_out)
 
         def static(self, path):
             if self.headers.get("Host") not in (f"127.0.0.1:{port}", f"localhost:{port}"):
@@ -208,10 +255,16 @@ def run_feed(port: int | None = None) -> None:
             host = winhost.Host(lambda n: f"http://127.0.0.1:{port}/?screen={n}#key={key}",
                                 s.get("screens", "all"), cfg.state_dir() / "webview")
     from .platforms import wallpaper_source
+
+    def on_change(new: dict) -> None:   # the settings window changed the masking: applies to what comes next
+        store.redact = Redactor(mask_user=new.get("mask_user", True), mask_email=new.get("mask_email", True))
+
+    # the feed also serves the page (glitchwall's own host) and the settings window, both from its own origin
     handler = make_handler(store, key, port, live, refusal_log=cfg.state_dir() / "last-refused.txt",
-                           static_dir=wallpaper_source() if host else None,
-                           extra_origins=(f"http://127.0.0.1:{port}", f"http://localhost:{port}") if host else (),
-                           sleeping=(lambda scr: scr.isdigit() and int(scr) in host.asleep) if host else None)
+                           static_dir=wallpaper_source(), config_js="// the key is in the page address\n",
+                           extra_origins=(f"http://127.0.0.1:{port}", f"http://localhost:{port}"),
+                           sleeping=(lambda scr: scr.isdigit() and int(scr) in host.asleep) if host else None,
+                           editable=True, on_change=on_change)
     httpd = serve(handler, port)
     if not host:
         httpd.serve_forever()

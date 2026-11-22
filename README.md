@@ -34,7 +34,7 @@ Your agent is doing a hundred things a minute in a terminal you're not watching.
 - 🖥️ **Every screen, no extra app.** On Windows it shows itself behind the desktop icons on every monitor and naps while a game or video is fullscreen. [Lively Wallpaper](https://github.com/rocksdanister/lively) works too, if you prefer it.
 - 🎨 **Sixteen themes, seventeen backgrounds, eleven transitions.** An oscilloscope, a blueprint, newsprint by day and night, neon, a field-ops poster, a risograph print, a record sleeve, a school notebook, an old blue stop screen, an all-seeing machine's ring of data and more. Each is a finished bundle of colors, fonts, background, texture and its own way of bringing cards in and out, and you can swap any single part.
 - 🌙 **No code of your own needed.** Ambient mode plays made-up but realistic coding sessions forever, and art mode shows just the background. Neither one reads anything. See [Not a coder?](#not-a-coder-).
-- 🎛️ **Tweakable.** Typing speed, linger time, cards on screen, background intensity and glass opacity, with `glitchwall config` (or Lively's sliders).
+- 🎛️ **Tweakable.** Typing speed, linger time, cards on screen, background intensity and glass opacity, in a settings window with a live preview (`glitchwall settings`, or *glitchwall settings* in the Start menu), with `glitchwall config`, or with Lively's sliders.
 
 ## Quick start
 
@@ -66,6 +66,11 @@ glitchwall install
 your desktop icons on every screen. No wallpaper app needed: glitchwall opens one borderless window per
 screen with the page in WebView2, the Edge engine built into Windows 11 (Windows 10 gets it with Edge).
 A screen with a fullscreen game or video in front sleeps until it's uncovered.
+
+To change anything, open **glitchwall settings** from the Start menu (or run `glitchwall settings`): mode,
+theme, colors, background, font, transitions, the five sliders, masking and the corner label, each one
+saved the moment you change it, with a live preview of the wallpaper beside them. The big button at the
+top is the stream-safe pause.
 
 Every screen shows the same live calls, with the cards laid out differently. Only on the main screen?
 `glitchwall install --screens primary`.
@@ -237,7 +242,7 @@ glitchwall pause     # before you stream or share your screen
 glitchwall resume    # after
 ```
 
-Pausing happens **in the feed**: it serves nothing at all, and the wallpaper wipes every card on screen
+Or press **PAUSE** at the top of the settings window. Pausing happens **in the feed**: it serves nothing at all, and the wallpaper wipes every card on screen
 the moment it notices. Put `pause` in your stream-start script and forget about it.
 Want a lighter option? `glitchwall config --commands-only on` shows the calls but never their output.
 
@@ -246,6 +251,7 @@ Want a lighter option? `glitchwall config --commands-only on` shows the calls bu
 | Command | What it does |
 | --- | --- |
 | `glitchwall install` | set everything up (`--mode ambient`, `--commands-only`, `--no-autostart`, `--screens primary`, `--host lively`, `--no-set`, `--port N`) |
+| `glitchwall settings` | the settings window: every setting below, with a live preview (`--browser` opens it in your browser) |
 | `glitchwall config --mode live\|ambient\|art` | real activity, made-up sessions, or background only |
 | `glitchwall status` | what's installed and running |
 | `glitchwall start` / `stop` | start or stop the background feed |
@@ -287,15 +293,20 @@ In `ambient` and `art` mode it reads no logs at all, only its own settings. In `
   - no `Origin`, `null` (a local file page), `*.localhost` (how Lively serves wallpapers), or the feed's
     own address (glitchwall's own windows load the page from the feed).
 
+  Changing a setting from the settings window needs all of that too, plus a JSON request sent by a page
+  (with an `Origin`), so neither a website nor a plain form can change one. Port, host and screens can't
+  be changed from it at all.
+
   Websites you visit can't read it. Refused requests are noted in `last-refused.txt`, without the key.
 
 ### 📁 Files it adds (all removed by `uninstall`)
 
 | Where | What |
 | --- | --- |
-| `%USERPROFILE%\.glitchwall\` (Windows), `~/Library/Application Support/glitchwall/` (macOS), `~/.local/state/glitchwall/` (Linux) | key, settings, pid file, refusal note, previous-wallpaper note, `webview\` (WebView2's cache for glitchwall's own windows), and `bin\` for the exe version |
+| `%USERPROFILE%\.glitchwall\` (Windows), `~/Library/Application Support/glitchwall/` (macOS), `~/.local/state/glitchwall/` (Linux) | key, settings, pid file, refusal note, previous-wallpaper note, `webview\` and `webview-settings\` (WebView2's caches for glitchwall's own windows), and `bin\` for the exe version |
 | `<Lively library>\wallpapers\glitchwall\` | only with `--host lively`: the wallpaper page and its `config.js` |
 | `HKCU\...\CurrentVersion\Run\glitchwall` / `~/.config/autostart/glitchwall.desktop` / `~/Library/LaunchAgents/io.github.glitchwall.plist` | start at logon |
+| `%APPDATA%\Microsoft\Windows\Start Menu\Programs\glitchwall settings.lnk` | Windows: the settings window in the Start menu |
 
 **Why the home folder on Windows, not `%LOCALAPPDATA%`?** Packaged (MSIX) apps such as Claude Desktop
 or Store terminals get new AppData folders redirected into a private copy. `install` run from one of
@@ -382,7 +393,7 @@ Standard library only at runtime, Python 3.9+; on Windows, plus [pywebview](http
 | `src/glitchwall/themes.py` | theme, background and font names (the colors live in the page) |
 | `src/glitchwall/winhost.py` | Windows: the page behind the desktop icons, one window per screen |
 | `src/glitchwall/platforms.py` | Lively, autostart, background process, standalone exe |
-| `src/glitchwall/wallpaper/` | the page itself (`index.html?still` renders without animation, for screenshots) |
+| `src/glitchwall/wallpaper/` | the page itself (`index.html?still` renders without animation, for screenshots) and the settings window (`settings.html`) |
 
 ## Support ☕
 

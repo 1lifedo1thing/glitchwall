@@ -8,10 +8,9 @@ import sys
 import time
 from pathlib import Path
 
-from . import __version__
+from . import __version__, themes
 from . import platforms as plat
 from . import settings as cfg
-from . import themes
 
 ON_OFF = {"on": True, "off": False, "true": True, "false": False, "yes": True, "no": False, "1": True, "0": False}
 
@@ -32,7 +31,7 @@ def cmd_run(a) -> int:
         return 1
     plat.pid_file().parent.mkdir(parents=True, exist_ok=True)
     plat.pid_file().write_text(str(os.getpid()))
-    import threading   # in the background: at logon Lively may not be up yet, and the feed must not wait for it
+    import threading  # in the background: at logon Lively may not be up yet, and the feed must not wait for it
     threading.Thread(target=_heal_wallpaper, args=(s,), daemon=True).start()
     try:
         run_feed(port)
@@ -166,6 +165,9 @@ def cmd_install(a) -> int:
             "  then run:  glitchwall install")
     else:
         say(f"autostart: {plat.add_autostart()}")
+    if plat.WIN and not (plat.ephemeral_env() and not plat.FROZEN):
+        lnk = plat.add_shortcut()
+        say(f"Start menu: {'glitchwall settings' if lnk else 'could not add the settings shortcut'}")
 
     # 3. (re)start the feed so it uses the current port and code
     plat.stop_background()
@@ -208,6 +210,7 @@ def cmd_install(a) -> int:
         say("You can delete the downloaded copy.")
     else:
         say("done. Stream-safe switch:  glitchwall pause   /   glitchwall resume")
+    say("Settings window: glitchwall settings" + ("  (also in the Start menu)" if plat.WIN else ""))
     return 0
 
 
@@ -217,6 +220,8 @@ def cmd_uninstall(a) -> int:
         removed.append("stopped the feed")
     if plat.remove_autostart():
         removed.append("removed autostart entry")
+    if plat.remove_shortcut():
+        removed.append("removed the Start menu shortcut")
     if plat.WIN:
         lib = plat.lively_library()
         dest = lib / plat.FOLDER if lib else None
@@ -251,6 +256,50 @@ def cmd_demo(a) -> int:
         import webbrowser
         threading.Timer(0.8, webbrowser.open, [f"http://127.0.0.1:{port}/"]).start()
     run_demo(port, a.pace, {k: getattr(a, k) for k in themes.KINDS if getattr(a, k)}, a.mode)
+    return 0
+
+
+def _settings_api_up(port: int, key: str) -> bool:
+    """True if the feed on this port answers the settings window (an older feed doesn't)."""
+    import urllib.error
+    import urllib.request
+    from urllib.parse import quote
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/settings?key={quote(key)}", timeout=3) as r:
+            return r.status == 200
+    except (urllib.error.URLError, OSError):
+        return False
+
+
+def cmd_settings(a) -> int:
+    """The settings window: every setting with a live preview. Starts the feed if it isn't running."""
+    s, key = cfg.load_settings(), cfg.load_key()
+    port = int(s["port"])
+    if not _settings_api_up(port, key):
+        if plat.running_pid():   # an older feed without the settings window: restart it on this version
+            plat.stop_background()
+            time.sleep(0.5)
+        if cmd_start(a) != 0:
+            return 1
+        for _ in range(20):
+            if _settings_api_up(port, key):
+                break
+            time.sleep(0.25)
+        else:
+            say(f"the feed on port {port} does not answer the settings window; run `glitchwall status`")
+            return 1
+    url = f"http://127.0.0.1:{port}/settings.html#key={key}"
+    if not a.browser:
+        try:
+            import webview
+            webview.create_window("glitchwall settings", url, width=1180, height=760, min_size=(820, 560),
+                                  background_color="#0b0d0b")
+            webview.start(private_mode=True, storage_path=str(cfg.state_dir() / "webview-settings"))
+            return 0
+        except Exception as e:   # no pywebview / WebView2 here: a browser tab does the same job
+            say(f"no settings window available ({type(e).__name__}); opening it in your browser")
+    import webbrowser
+    webbrowser.open(url)
     return 0
 
 
@@ -419,6 +468,10 @@ def parser() -> argparse.ArgumentParser:
         c.add_argument(f"--{k.replace('_', '-')}", dest=k, type=int, choices=range(lo, hi + 1), metavar=f"{lo}-{hi}",
                        help=helps[k])
     c.set_defaults(fn=cmd_config)
+
+    st = sub.add_parser("settings", help="open the settings window (every setting, with a live preview)")
+    st.add_argument("--browser", action="store_true", help="open it in your browser instead of its own window")
+    st.set_defaults(fn=cmd_settings)
 
     sub.add_parser("themes", help="list themes, rain styles and fonts").set_defaults(fn=cmd_themes)
 

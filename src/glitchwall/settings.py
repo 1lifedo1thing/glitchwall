@@ -63,6 +63,31 @@ def tune(s: dict) -> dict:
     return out
 
 
+def apply_changes(s: dict, changes: dict) -> tuple[dict, list[str]]:
+    """Settings changed from the settings window: only known keys, only valid values. Port, host and
+    screens stay command-line only (they need a restart or a reinstall). Returns (new settings, refused keys)."""
+    from . import themes
+    out, refused = dict(s), []
+    for k, v in (changes or {}).items():
+        ok = False
+        if k in themes.KINDS:
+            ok = isinstance(v, str) and v in themes.KINDS[k]
+        elif k == "mode":
+            ok = v in MODES
+        elif k in ("paused", "commands_only", "mask_user", "mask_email"):
+            ok = isinstance(v, bool)
+        elif k in TUNE:
+            _, lo, hi = TUNE[k]
+            ok = isinstance(v, int) and not isinstance(v, bool) and lo <= v <= hi
+        elif k == "label":
+            ok = isinstance(v, str) and len(v) <= 80 and "\n" not in v
+        if ok:
+            out[k] = v
+        else:
+            refused.append(k)
+    return out, refused
+
+
 HOSTS = {
     "glitchwall": "glitchwall's own windows behind the desktop icons (WebView2), no other app needed",
     "lively": "Lively Wallpaper shows it",
