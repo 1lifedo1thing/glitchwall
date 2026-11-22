@@ -23,6 +23,26 @@ glitchwall d4a280d in ambient mode with phosphor. CPU, GPU and memory cover each
 | Private memory | 331-347 MB | **87 MB** |
 | Processes | 7 | 1 |
 
+### Rust
+
+[../native-rs](../native-rs) is the same picture in Rust (the `windows` crate, 0.58, GNU toolchain). One change: the rain is
+drawn into a buffer in memory and copied to the GPU once per frame, instead of thousands of one-pixel draws. The exe is
+277 KB and needs no runtime. A second run, all three versions in turn, same method:
+
+| | WebView2 | C# | Rust |
+|---|---|---|---|
+| CPU | 18.2-18.9% | 4.1-4.4% | **3.3-3.6%** |
+| GPU (3D engine) | 7.7-7.8% | 5.2-5.4% | **4.7-5.0%** |
+| Private memory | 327-339 MB | 92-93 MB | **63-64 MB** |
+| Processes | 7 | 1 | 1 |
+
+Rust saves about another 0.8% CPU and 30 MB over C#. That's mostly the .NET runtime's memory and the cheaper rain,
+not the language. Most of what's left is Direct2D and DWM composing a full-screen window 30 times a second.
+
+Rust build note: the `windows` crate from 0.59 on links with `raw-dylib`, which on the GNU toolchain needs `dlltool`
+plus an assembler that rustup doesn't ship. 0.58 brings its own import libraries, so it builds with nothing else
+installed.
+
 ## What the prototype leaves out (so the real thing would cost a bit more)
 
 - **Card glass blur.** Direct2D 1.0 has no blur; it needs Direct2D 1.1 effects on a DXGI swap chain. It costs about 2% in WebView2.
