@@ -23,7 +23,7 @@
   .tag::before { content:'> '; color:var(--ph-dim); text-shadow:none; }
 
   /* ---------- header: name, status lamps, sound, the pause key */
-  header { display:flex; align-items:center; gap:20px; padding:10px 16px; border-bottom:1px solid var(--ph-line); }
+  header { display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; padding:10px 14px; border-bottom:1px solid var(--ph-line); }
   .brand { font:21px/1 'Departure Mono', monospace; letter-spacing:.4em; color:var(--ph); text-shadow:var(--glow), 0 0 16px rgba(93,255,122,.3); }
   .brand small { display:block; font-size:9px; letter-spacing:.3em; color:var(--ph-dim); margin-top:5px; text-shadow:none; }
   .brand .cur { display:inline-block; width:.55em; height:.9em; margin-left:.1em; vertical-align:-2px; background:var(--ph); box-shadow:var(--glow); animation:blink 1.1s steps(1) infinite; }
@@ -48,11 +48,13 @@
   #pause.on .cap { background:var(--amber); box-shadow:0 0 8px var(--amber); }
   #pause.on .t { color:var(--amber); text-shadow:0 0 5px rgba(255,176,0,.6); }
 
-  /* ---------- layout: the preview takes two-thirds of the width and all the height it can */
-  main { display:grid; gap:12px; padding:12px 14px; min-height:0; overflow:hidden;
-         grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.2fr); grid-template-rows:minmax(0,1fr) auto;
-         grid-template-areas:"mon mon side" "read priv side"; }
-  .side { grid-area:side; display:flex; flex-direction:column; gap:12px; min-width:0; min-height:0; }
+  /* one compact column: the wallpaper itself is the preview, so this window only needs the controls */
+  main { display:flex; flex-direction:column; gap:10px; padding:10px 12px; min-height:0; overflow:auto; }
+  .side { display:flex; flex-direction:column; gap:10px; min-width:0; }
+  #readout { order:-1; min-height:76px; }
+  .drum.still .item { transition:none; }   /* the first placement: straight into position, no pile-up */
+  footer { gap:4px 14px !important; padding:6px 14px !important; }
+  main > *, .side > * { flex-shrink:0; }   /* never squash a module: scroll instead */
   #motion { flex:1; min-height:0; display:flex; flex-direction:column; }
   .mod { position:relative; min-width:0; border:1px solid var(--ph-line); border-radius:4px; padding:24px 12px 12px; background:rgba(3,16,8,.55); }
   .mod > h2 { position:absolute; top:7px; left:11px; margin:0; font-weight:400; }
@@ -65,18 +67,9 @@
   /* a control that differs from its default gets a mark by its name */
   .changed .name::after { content:' *'; color:var(--ph); text-shadow:var(--glow); }
 
-  /* the preview */
-  .monitor { grid-area:mon; display:flex; flex-direction:column; min-height:0; padding-bottom:8px; }
-  .bezel { flex:1; min-height:0; display:grid; place-items:center; }
-  .screen { position:relative; width:100%; aspect-ratio:16/9; overflow:hidden; background:#000; border:1px solid var(--ph); box-shadow:var(--glow), 0 0 22px rgba(93,255,122,.12); }
-  .screen iframe { position:absolute; left:0; top:0; width:1280px; height:720px; border:0; transform-origin:0 0; pointer-events:none; }
-  .monitor .under { display:flex; justify-content:space-between; align-items:center; margin-top:7px; font-size:10px; letter-spacing:.15em; }
-  #chan { font:18px/1 'VT323', monospace; color:var(--ph); text-shadow:var(--glow); letter-spacing:.1em; }
-  .monitor > h2 { display:none; }
-  .monitor { padding-top:10px; }
 
   /* the readout: what the control under the mouse or keyboard does */
-  #readout { grid-area:read; min-width:0; min-height:0; overflow:hidden; color:var(--ph); text-shadow:var(--glow); }
+  #readout { min-width:0; min-height:0; overflow:hidden; color:var(--ph); text-shadow:var(--glow); }
   #readout .l1 { font:22px/1 'VT323', monospace; letter-spacing:.08em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   #readout .l1::before { content:'$ '; color:var(--ph-dim); }
   #readout .l2 { font:18px/1.15 'VT323', monospace; margin-top:7px; color:var(--ph-dim); text-shadow:none; overflow-wrap:anywhere; }
@@ -135,11 +128,6 @@
   footer { display:flex; flex-wrap:wrap; gap:6px 18px; padding:7px 16px; border-top:1px solid var(--ph-line); font-size:10px; letter-spacing:.05em; }
   kbd { display:inline-block; min-width:18px; padding:0 4px; margin-right:4px; text-align:center; font:10px/16px 'Departure Mono', monospace; color:var(--ph); border:1px solid var(--ph-dim); border-radius:2px; }
 
-  @media (max-width:900px) {
-    main { overflow:auto; grid-template-columns:minmax(0,1fr); grid-template-rows:none; grid-auto-rows:max-content; grid-template-areas:"mon" "side" "read" "priv"; }
-    main > *, .side, .side > .mod { min-height:auto; }
-    .bezel { flex:none; } .faders { gap:10px; }
-  }
 </style>
 </head>
 <body>
@@ -156,11 +144,6 @@
 </header>
 
 <main>
-  <div class="mod monitor">
-    <div class="bezel" id="bezel"><div class="screen" id="screen"><iframe id="pv" title="live preview" tabindex="-1"></iframe></div></div>
-    <div class="under"><span class="tag">LIVE PREVIEW</span><span id="chan">--</span></div>
-  </div>
-
   <div class="side">
     <div class="mod"><h2 class="tag">SELECT</h2><button class="reset" data-group="select" data-help="reset:select">DEFAULT</button><div class="knobs" id="knobs"></div></div>
     <div class="mod"><h2 class="tag">THEME</h2>
@@ -206,7 +189,7 @@ const SWITCHES = {
 };
 const KNOB_HELP = { mode: 'MODE', palette: 'COLORS', rain: 'BACKGROUND', font: 'FONT', transition: 'TRANSITION (how cards arrive and leave)' };
 const MODE_SHORT = { live: 'LIVE', ambient: 'AMBIENT', art: 'ART' };
-let PV = '', S = {}, C = {}, D = {}, focusHelp = null, pending = {}, timer = null, busy = false, cleared = false;
+let S = {}, C = {}, D = {}, focusHelp = null, pending = {}, timer = null, busy = false, cleared = false;
 // what each DEFAULT key puts back. Mode stays as it is: switching to live would start showing real tool calls
 const GROUPS = { select: ['palette', 'rain', 'font', 'transition'], motion: Object.keys(FADERS),
                  privacy: [...Object.keys(SWITCHES), 'label'] };
@@ -267,8 +250,19 @@ async function api(changes) {
   if (!r.ok) throw new Error(r.status === 403 ? 'Refused: open this with glitchwall settings.' : 'Feed error ' + r.status + '.');
   return r.json();
 }
+// peek: while you change something the window fades nearly away, so the real wallpaper behind it is the preview;
+// it comes back a moment after you stop. Only in the settings window (pywebview); a browser tab stays as it is.
+let peekTimer = null;
+const winFade = to => { try { const a = window.pywebview && window.pywebview.api; if (a && a.fade) a.fade(to); } catch {} };
+function peek() {
+  if (!peekTimer) winFade(0.12);
+  clearTimeout(peekTimer);
+  const back = () => { if (busy) { peekTimer = setTimeout(back, 300); return; } peekTimer = null; winFade(1); };
+  peekTimer = setTimeout(back, 1300);
+}
 function set(k, v, now) {
   if (S[k] !== v && SOUND_OF(k)) snd(SOUND_OF(k));
+  if (S[k] !== v && k !== 'paused' && k !== 'label') peek();
   if (k === 'theme' && v !== S.theme) {   // a new theme: drop the tweaks made under the old one
     cleared = cleared || THEME_OWNS.some(differs);
     for (const x of THEME_OWNS) if (differs(x)) { S[x] = D[x]; pending[x] = D[x]; }
@@ -420,12 +414,11 @@ async function resetAll() {
     if ((d.refused || []).includes('reset')) { busy = false; return say('RESET NOT AVAILABLE', 'This feed is an older version. Run: glitchwall reset', true); }
     if (!d.restarting) { busy = false; return say('RESET DONE', 'Every setting is back to the default.'); }
     say('RESTARTING THE WALLPAPER…', 'A fresh start: it will be back in a few seconds.'); led('feed', 'a');
-    $('pv').removeAttribute('src');
     await new Promise(r => setTimeout(r, 2000));   // the old feed lets go first
     for (let i = 0; i < 40; i++) {
       try { const e = await api(); S = e.settings; break; } catch { await new Promise(r => setTimeout(r, 500)); }
     }
-    $('pv').src = PV; render(); led('feed', 'g');
+    render(); led('feed', 'g');
     say('RESET DONE', 'Every setting is back to the default and the wallpaper restarted fresh.');
   } catch (e) { led('feed', 'r'); say('RESET FAILED', String(e.message || e) + ' Try: glitchwall reset', true); }
   busy = false;
@@ -433,7 +426,7 @@ async function resetAll() {
 function resetGroup(g) {
   const keys = GROUPS[g].filter(differs);
   if (!keys.length) return help('reset:' + g);
-  snd('thunk');
+  snd('thunk'); peek();
   for (const k of keys) { S[k] = D[k]; pending[k] = D[k]; }
   render(); help('reset:' + g);
   clearTimeout(timer); timer = setTimeout(flush, 0);
@@ -502,29 +495,16 @@ function render() {
   $('pause-t').textContent = S.paused ? 'PAUSED' : 'PAUSE';
   $('pause-s').textContent = S.paused ? 'PRESS TO RESUME' : 'STREAM-SAFE';
   led('air', S.paused ? 'a' : 'g'); $('air').textContent = S.paused ? 'PAUSED' : `ON AIR · ${MODE_SHORT[S.mode] || S.mode}`;
-  $('chan').textContent = String(S.theme).toUpperCase();
 }
 
-function fit() {   // the biggest 16:9 screen the bezel has room for, and the page scaled to it
-  const bz = $('bezel'), w = bz.clientWidth - 2, h = bz.clientHeight - 2;
-  const s = Math.max(0, Math.min(w / 16, (h > 40 ? h : w * 9 / 16) / 9));
-  $('screen').style.width = `${16 * s}px`;
-  $('pv').style.transform = `scale(${16 * s / 1280})`;
-}
-new ResizeObserver(fit).observe($('bezel'));
-addEventListener('resize', fit);
-document.fonts.ready.then(() => { fit(); if (S.theme) render(); });   // sizes measured with the real fonts
+document.fonts.ready.then(() => { if (S.theme) render(); });   // sizes measured with the real fonts
 
 (async () => {
   if (!KEY) { say('NO KEY', 'Open this with: glitchwall settings', true); return; }
-  // the preview comes from the other loopback name (localhost vs 127.0.0.1): a different site, so the browser
-  // runs it in its own process and a heavy theme can never freeze these controls
-  const other = location.hostname === 'localhost' ? '127.0.0.1' : 'localhost';
-  PV = `${location.protocol}//${other}:${location.port}/?preview=1#key=${encodeURIComponent(KEY)}`;
-  $('pv').src = PV;
   try {
     const d = await api(); S = d.settings; C = { ...d.choices, ranges: d.ranges }; D = d.defaults || {};
-    build(); render(); led('feed', 'g'); help('theme');
+    $('drum').classList.add('still'); build(); render(); led('feed', 'g'); help('theme');
+    requestAnimationFrame(() => requestAnimationFrame(() => $('drum').classList.remove('still')));
   } catch (e) { led('feed', 'r'); say('FEED NOT REACHABLE', String(e.message || e), true); return; }
   setInterval(async () => {   // follow changes made elsewhere (the command line, another window)
     if (busy || Object.keys(pending).length) return;

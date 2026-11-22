@@ -34,7 +34,7 @@ Your agent is doing a hundred things a minute in a terminal you're not watching.
 - 🖥️ **Every screen, no extra app.** On Windows it shows itself behind the desktop icons on every monitor and naps while a game or video is fullscreen. [Lively Wallpaper](https://github.com/rocksdanister/lively) works too, if you prefer it.
 - 🎨 **Sixteen themes, seventeen backgrounds, eleven transitions.** An oscilloscope, a blueprint, newsprint by day and night, neon, a field-ops poster, a risograph print, a record sleeve, a school notebook, an old blue stop screen, an all-seeing machine's ring of data and more. Each is a finished bundle of colors, fonts, background, texture and its own way of bringing cards in and out, and you can swap any single part.
 - 🌙 **No code of your own needed.** Ambient mode plays made-up but realistic coding sessions forever, and art mode shows just the background. Neither one reads anything. See [Not a coder?](#not-a-coder-).
-- 🎛️ **Tweakable.** Typing speed, linger time, cards on screen, background intensity and glass opacity, in a settings window with a live preview (`glitchwall settings`, or *glitchwall settings* in the Start menu), with `glitchwall config`, or with Lively's sliders.
+- 🎛️ **Tweakable.** Typing speed, linger time, cards on screen, background intensity and glass opacity, in a settings window that applies each change to the real wallpaper as you make it (`glitchwall settings`, or *glitchwall settings* in the Start menu), with `glitchwall config`, or with Lively's sliders.
 
 ## Quick start
 
@@ -75,8 +75,10 @@ A screen with a fullscreen game or video in front sleeps until it's uncovered.
 To change anything, open **glitchwall settings** from the Start menu, from the desktop's right-click menu
 (on Windows 11 under *Show more options*), or run `glitchwall settings`: mode,
 theme, colors, background, font, transitions, the five sliders, masking and the corner label, each one
-saved the moment you change it, with a live preview of the wallpaper beside them. The big button at the
-top is the stream-safe pause.
+saved and shown on the real wallpaper the moment you change it. While you change something the window
+fades nearly away so you can watch the wallpaper behind it, then comes back. The big button at the top is
+the stream-safe pause; RESET ALL (press twice, or `glitchwall reset`) puts every setting back and restarts
+the wallpaper fresh if it ever freezes.
 
 Every screen shows the same live calls, with the cards laid out differently. Only on the main screen?
 `glitchwall install --screens primary`.
@@ -257,7 +259,7 @@ Want a lighter option? `glitchwall config --commands-only on` shows the calls bu
 | Command | What it does |
 | --- | --- |
 | `glitchwall install` | set everything up (`--mode ambient`, `--commands-only`, `--no-autostart`, `--screens primary`, `--host lively`, `--no-set`, `--port N`) |
-| `glitchwall settings` | the settings window: every setting below, with a live preview (`--browser` opens it in your browser) |
+| `glitchwall settings` | the settings window: every setting below, applied as you change them (`--browser` opens it in your browser) |
 | `glitchwall config --mode live\|ambient\|art` | real activity, made-up sessions, or background only |
 | `glitchwall status` | what's installed and running |
 | `glitchwall doctor` | check everything glitchwall needs, offer to fetch what's missing |

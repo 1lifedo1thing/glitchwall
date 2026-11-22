@@ -319,8 +319,43 @@ def _settings_api_up(port: int, key: str) -> bool:
         return False
 
 
+class _WindowFade:
+    """What the settings page may ask of its window (pywebview's js_api): fade it, so that while you change
+    something you see the real wallpaper behind it. Windows only; elsewhere a no-op."""
+
+    def __init__(self):
+        self._window, self._gen, self._alpha = None, 0, 1.0
+
+    def fade(self, to: float, ms: int = 260) -> bool:
+        if not plat.WIN or self._window is None or getattr(self._window, "native", None) is None:
+            return False
+        import ctypes
+        import threading
+        u32 = ctypes.windll.user32
+        u32.GetWindowLongPtrW.restype = ctypes.c_ssize_t
+        u32.SetWindowLongPtrW.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_ssize_t]
+        h = ctypes.c_void_p(int(str(self._window.native.Handle)))
+        ex = u32.GetWindowLongPtrW(h, -20)                       # GWL_EXSTYLE
+        if not ex & 0x80000:
+            u32.SetWindowLongPtrW(h, -20, ex | 0x80000)          # WS_EX_LAYERED: the window can be see-through
+        to = min(1.0, max(0.05, float(to)))
+        self._gen += 1
+        gen, start, steps = self._gen, self._alpha, max(1, int(ms) // 16)
+
+        def run():
+            for i in range(1, steps + 1):
+                if gen != self._gen:
+                    return                                       # a newer fade took over
+                self._alpha = start + (to - start) * i / steps
+                u32.SetLayeredWindowAttributes(h, 0, int(self._alpha * 255), 2)   # LWA_ALPHA
+                time.sleep(0.016)
+        threading.Thread(target=run, daemon=True).start()
+        return True
+
+
 def cmd_settings(a) -> int:
-    """The settings window: every setting with a live preview. Starts the feed if it isn't running."""
+    """The settings window: every setting, applied to the real wallpaper as you change it (the window fades
+    while you do, so you see it). Starts the feed if it isn't running."""
     s, key = cfg.load_settings(), cfg.load_key()
     port = int(s["port"])
     if not _settings_api_up(port, key):
@@ -340,8 +375,9 @@ def cmd_settings(a) -> int:
     if not a.browser:
         try:
             import webview
-            webview.create_window("glitchwall settings", url, width=1180, height=760, min_size=(820, 560),
-                                  background_color="#0b0d0b")
+            fader = _WindowFade()
+            fader._window = webview.create_window("glitchwall settings", url, width=560, height=940, min_size=(480, 600),
+                                                  background_color="#010401", js_api=fader)
             if plat.WIN:   # its own taskbar button with its own icon, not grouped under Python
                 import ctypes
                 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("glitchwall.settings")
@@ -528,7 +564,7 @@ def parser() -> argparse.ArgumentParser:
                        help=helps[k])
     c.set_defaults(fn=cmd_config)
 
-    st = sub.add_parser("settings", help="open the settings window (every setting, with a live preview)")
+    st = sub.add_parser("settings", help="open the settings window (every setting, applied to the wallpaper as you change it)")
     st.add_argument("--browser", action="store_true", help="open it in your browser instead of its own window")
     st.set_defaults(fn=cmd_settings)
 
