@@ -83,7 +83,8 @@ and restarts the wallpaper fresh if it ever freezes.
 The settings come in two sizes, and **MINI** / **FULL** at the top switches between them:
 
 - **Full** (the default): bars along the screen edges with your wallpaper live in the middle, where clicks
-  go straight through to the desktop. Esc or ✕ hides it.
+  go straight through to the desktop. Your app windows on that screen step aside (minimized) while it is
+  open and come back when it closes. Esc or ✕ hides it.
 - **Mini** (`glitchwall settings --mini`): one small window. Drag it to the left, right or top edge of a
   screen and it docks there, then tucks itself into a thin strip after a few idle seconds; touch the strip
   to bring it back. Maximize it and it turns into the full version.
