@@ -31,32 +31,34 @@ Your agent is doing a hundred things a minute in a terminal you're not watching.
 - 🔒 **Paranoid by design.** 50 secret formats, credential assignments, high-entropy strings, your home path, user name and email are all masked *before* anything is stored. Localhost only. No telemetry. Read-only on your logs.
 - 🎥 **Stream-safe.** One command (`glitchwall pause`) and the screen is clean, enforced by the feed itself, not the wallpaper.
 - 🪶 **Tiny.** Pure Python standard library and a single HTML page; on Windows, one small library ([pywebview](https://github.com/r0x0r/pywebview)) to put it behind your desktop icons. Or a standalone `.exe` if you don't have Python.
-- 🖥️ **Every screen, no extra app.** On Windows it shows itself behind the desktop icons on every monitor and naps while a game or video is fullscreen. [Lively Wallpaper](https://github.com/rocksdanister/lively) works too, if you prefer it.
+- 🖥️ **Every screen, no extra app.** On Windows it shows itself behind the desktop icons on every monitor and naps while a game or video is fullscreen.
 - 🎨 **Sixteen themes, seventeen backgrounds, eleven transitions.** An oscilloscope, a blueprint, newsprint by day and night, neon, a field-ops poster, a risograph print, a record sleeve, a school notebook, an old blue stop screen, an all-seeing machine's ring of data and more. Each is a finished bundle of colors, fonts, background, texture and its own way of bringing cards in and out, and you can swap any single part.
 - 🌙 **No code of your own needed.** Ambient mode plays made-up but realistic coding sessions forever, and art mode shows just the background. Neither one reads anything. See [Not a coder?](#not-a-coder-).
-- 🎛️ **Tweakable.** Typing speed, linger time, cards on screen, background intensity and glass opacity, in a settings window that applies each change to the real wallpaper as you make it (`glitchwall settings`, or *glitchwall settings* in the Start menu), with `glitchwall config`, or with Lively's sliders.
+- 🎛️ **Tweakable.** Typing speed, linger time, cards on screen, background intensity and glass opacity, in a settings window that applies each change to the real wallpaper as you make it (`glitchwall settings`, or *glitchwall settings* in the Start menu), or with `glitchwall config`.
 
 ## Quick start
 
 ### 1 · Just look at it (nothing installed, no logs read)
 
+From a clone of this repo:
+
 ```
-uvx glitchwall demo --open
+uvx --from . glitchwall demo --open
 ```
 
 Starts a fake feed and opens the wallpaper in your browser at `http://127.0.0.1:47834/`. Ctrl+C to stop.
-<sub>Not on PyPI yet. From a clone of this repo: `uvx --from . glitchwall demo --open`.</sub>
 
 ### 2 · Windows
 
-**With Python / uv:**
+**With Python / uv**, from a clone of this repo:
 
 ```
-uv tool install glitchwall
+uv tool install .
 glitchwall install
 ```
 
-**Without Python:** grab `glitchwall-<version>-windows.zip` from [Releases](https://github.com/marklesterb28/glitchwall/releases), unzip, then in that folder:
+**Without Python:** build the standalone exes (see [Development](#development)), unzip
+`glitchwall-<version>-windows.zip`, then in that folder:
 
 ```
 .\glitchwall.exe install
@@ -78,7 +80,8 @@ theme, colors, background, font, transitions, the five sliders, masking and the 
 saved and shown on the real wallpaper the moment you change it. Hold a slider, selector or the theme drum
 and the settings fade nearly away so you can watch the wallpaper; let go and they're back. The big button
 at the top is the stream-safe pause; RESET ALL (press twice, or `glitchwall reset`) puts every setting back
-and restarts the wallpaper fresh if it ever freezes.
+and restarts the wallpaper fresh if it ever freezes. SOUND (or the M key) turns the window's clicks and clacks
+on or off; they never play on the wallpaper.
 
 Drag the settings window to the left, right or top edge of a screen and it docks there, then tucks itself
 into a thin strip after a few idle seconds; touch the strip to bring it back.
@@ -90,20 +93,17 @@ or OFF, with the CORNER selector. It never fires while a fullscreen game or vide
 Every screen shows the same live calls, with the cards laid out differently. Only on the main screen?
 `glitchwall install --screens primary`.
 
-**Prefer [Lively Wallpaper](https://github.com/rocksdanister/lively)** (free, open source)? `glitchwall install --host lively`
-copies the wallpaper into Lively's library and switches each screen to it instead; Lively's span and
-duplicate layouts then apply. Either way, your previous wallpaper comes back on `uninstall`, each screen its own.
+Your previous wallpaper comes back on `uninstall`, each screen its own.
 
 The exe version copies `glitchwall.exe` and `glitchwall-feed.exe` (the windowed feed that starts
 at logon, no console window) into `%USERPROFILE%\.glitchwall\bin`, so you can delete the download.
 Use `%USERPROFILE%\.glitchwall\bin\glitchwall.exe pause` (or `resume`, `status`, `uninstall`) from then on.
-The exes aren't code-signed yet, so SmartScreen may say "unknown publisher". Each release lists
-SHA-256 hashes to check your download against.
+The exes aren't code-signed, so SmartScreen may say "unknown publisher".
 
 ### 3 · macOS / Linux
 
 ```
-uv tool install glitchwall
+uv tool install .
 glitchwall install
 ```
 
@@ -158,9 +158,8 @@ glitchwall demo --open --theme notebook             # try one without touching y
 
 Fonts are bundled or already on your system; nothing is downloaded at run time. The sliders are
 `glitchwall config --type-speed 1-20 --linger 2-30 --cards 1-6 --intensity 0-10 --glass 20-95`, and they
-apply within a second. In Lively, the wallpaper's customize panel has the same five dropdowns and sliders,
-and anything other than *Use glitchwall config* there wins over the command line. In a browser, URL parameters (`?theme=sleeve&rain=jukebox&transition=stamp`) win over both,
-and `?cycle=10` steps through every theme. The background slider sets how busy any background is (0 stills it).
+apply within a second. In a browser, URL parameters (`?theme=sleeve&rain=jukebox&transition=stamp`) win over
+your settings, and `?cycle=10` steps through every theme. The background slider sets how busy any background is (0 stills it).
 
 ### Up close
 
@@ -265,11 +264,12 @@ Want a lighter option? `glitchwall config --commands-only on` shows the calls bu
 
 | Command | What it does |
 | --- | --- |
-| `glitchwall install` | set everything up (`--mode ambient`, `--commands-only`, `--no-autostart`, `--screens primary`, `--host lively`, `--no-set`, `--port N`) |
+| `glitchwall install` | set everything up (`--mode ambient`, `--commands-only`, `--no-autostart`, `--screens primary`, `--yes`, `--port N`) |
 | `glitchwall settings` | the settings: every setting below, applied as you change them (`--browser` opens it in your browser) |
 | `glitchwall config --mode live\|ambient\|art` | real activity, made-up sessions, or background only |
 | `glitchwall status` | what's installed and running |
 | `glitchwall doctor` | check everything glitchwall needs, offer to fetch what's missing |
+| `glitchwall reset` | every setting back to the default, wallpaper restarted fresh |
 | `glitchwall start` / `stop` | start or stop the background feed |
 | `glitchwall pause` / `resume` | stream-safe switch: serve nothing / back to live |
 | `glitchwall config --commands-only on` | show calls, hide all output |
@@ -292,7 +292,8 @@ In `ambient` and `art` mode it reads no logs at all, only its own settings. In `
   opened **read-only**, only logs touched in the last 30 minutes, only the newly appended part.
   From each line it takes tool calls and their results.
 - **Its own files:** a random key, `settings.json`, a pid file.
-- **On Windows, two Lively files** (if Lively is installed): `Settings.json` and `WallpaperLayout.json`, to find the library and to know which wallpaper to put back.
+- **On Windows, only if [Lively Wallpaper](https://github.com/rocksdanister/lively) is installed:** its `Settings.json` and
+  `WallpaperLayout.json`, so `install` and `uninstall` can take glitchwall back out of it.
 
 ### 🚫 It never
 
@@ -306,7 +307,7 @@ In `ambient` and `art` mode it reads no logs at all, only its own settings. In `
   - the per-install random key, which only the wallpaper has (in its `config.js`, or after the `#` in the
     address of glitchwall's own windows, which is never sent to a server), compared in constant time;
   - a `Host` of `127.0.0.1`/`localhost` on the right port, which blocks DNS rebinding;
-  - no `Origin`, `null` (a local file page), `*.localhost` (how Lively serves wallpapers), or the feed's
+  - no `Origin`, `null` (a local file page), `*.localhost` (how some wallpaper apps serve pages), or the feed's
     own address (glitchwall's own windows load the page from the feed).
 
   Changing a setting from the settings window needs all of that too, plus a JSON request sent by a page
@@ -320,7 +321,6 @@ In `ambient` and `art` mode it reads no logs at all, only its own settings. In `
 | Where | What |
 | --- | --- |
 | `%USERPROFILE%\.glitchwall\` (Windows), `~/Library/Application Support/glitchwall/` (macOS), `~/.local/state/glitchwall/` (Linux) | key, settings, pid file, refusal note, previous-wallpaper note, `webview\` and `webview-settings\` (WebView2's caches for glitchwall's own windows), and `bin\` for the exe version |
-| `<Lively library>\wallpapers\glitchwall\` | only with `--host lively`: the wallpaper page and its `config.js` |
 | `HKCU\...\CurrentVersion\Run\glitchwall` / `~/.config/autostart/glitchwall.desktop` / `~/Library/LaunchAgents/io.github.glitchwall.plist` | start at logon |
 | `%APPDATA%\Microsoft\Windows\Start Menu\Programs\glitchwall settings.lnk` | Windows: the settings window in the Start menu |
 | `HKCU\Software\Classes\DesktopBackground\Shell\glitchwall` | Windows: *glitchwall settings* in the desktop's right-click menu |
@@ -358,7 +358,7 @@ secrets through it, plus ordinary text that must survive untouched.
 - **`config.js` holds your feed key.** Don't publish an exported wallpaper folder. If you did, delete
   the `key` file in the state folder and run `glitchwall install` again.
 - **Provided as is, with no warranty**, under the MIT license. See [LICENSE](LICENSE) and [SECURITY.md](SECURITY.md).
-- **Not affiliated with Anthropic or Lively Wallpaper.** "Claude" and "Claude Code" are trademarks of
+- **Not affiliated with Anthropic.** "Claude" and "Claude Code" are trademarks of
   Anthropic; they're named here only to say which logs glitchwall reads.
 - **Free and open source, forever.** No accounts, no paid tier, no ads. Donations are appreciated but never
   required, and they don't unlock anything. See [Support](#support-).
@@ -367,27 +367,22 @@ secrets through it, plus ordinary text that must survive untouched.
 
 **Will it slow my PC down?** It's one small Python process that checks for new log lines once a second,
 and one web page per screen. A screen with a fullscreen app (game, video) in front sleeps until it's
-uncovered; Lively does the same if you use it. `glitchwall config --intensity 0` stills the background.
+uncovered. `glitchwall config --intensity 0` stills the background.
 
 **Does it work with other agents?** It reads Claude Code's logs today. The parser is one small file
 ([`claude_logs.py`](src/glitchwall/claude_logs.py)), and pull requests for other agents are welcome.
 
 **Can I change the look?** Yes: see [Themes](#themes-). A new theme is one entry in `THEMES` in
 [`index.html`](src/glitchwall/wallpaper/index.html) plus its name in [`themes.py`](src/glitchwall/themes.py);
-`LivelyProperties.json` is generated from those names and a test checks they all agree. Pull requests welcome.
+a test checks they agree. Pull requests welcome.
 
-**Do I need Lively?** No. On Windows glitchwall puts itself behind your icons; Lively is an option
-(`--host lively`). The wallpaper is a plain web page and the feed is a local web server, so anything
-that can show a web page can show it:
-`glitchwall export DIR` writes the page and its `config.js` to a folder. Use that folder in Wallpaper Engine
+**Can I use another wallpaper app?** You don't need one: on Windows glitchwall puts itself behind your
+icons. But the wallpaper is a plain web page and the feed is a local web server, so anything that can show
+a web page can show it. `glitchwall export DIR` writes the page and its `config.js` to a folder. Use that folder in Wallpaper Engine
 (Windows, as a web wallpaper), [Plash](https://github.com/sindresorhus/Plash) (macOS), a KDE or GNOME web
 wallpaper plugin (Linux), a browser window in kiosk mode, or an OBS **browser source** to put your agent on
-stream as an overlay (`glitchwall pause` still clears it instantly). Only glitchwall's own host and Lively
-are tested so far; reports welcome.
-
-**Upgrading from 0.1.x (then called `agent-live-wallpaper`)?** `glitchwall install` stops the old feed,
-keeps its settings (with a new key), and removes the old state folder, autostart entry and Lively folder.
-Then run `uv tool uninstall agent-live-wallpaper`.
+stream as an overlay (`glitchwall pause` still clears it instantly). Only glitchwall's own windows are tested so far;
+reports welcome.
 
 ## Development
 
@@ -411,7 +406,7 @@ Standard library only at runtime, Python 3.9+; on Windows, plus [pywebview](http
 | `src/glitchwall/themes.py` | theme, background and font names (the colors live in the page) |
 | `src/glitchwall/winhost.py` | Windows: the page behind the desktop icons, one window per screen |
 | `src/glitchwall/prereqs.py` | what `install` and `doctor` check for, and fetching what's missing |
-| `src/glitchwall/platforms.py` | Lively, autostart, background process, standalone exe |
+| `src/glitchwall/platforms.py` | autostart, background process, standalone exe |
 | `src/glitchwall/wallpaper/` | the page itself (`index.html?still` renders without animation, for screenshots) and the settings window (`settings.html`) |
 
 ## Support ☕
@@ -436,7 +431,6 @@ The first eight themes' palettes, and the grain, scanline and halftone textures,
 [SUB/WAVE](https://github.com/perminder-klair/subwave) by Parminder Klair (MIT). Go check it out, it's a lovely
 self-hosted radio station. Notice in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 Desktop windows on Windows: [pywebview](https://github.com/r0x0r/pywebview) (BSD-3-Clause) with
-[pythonnet](https://github.com/pythonnet/pythonnet) (MIT) and Microsoft's WebView2. Optional host:
-[Lively Wallpaper](https://github.com/rocksdanister/lively) by rocksdanister.
+[pythonnet](https://github.com/pythonnet/pythonnet) (MIT) and Microsoft's WebView2.
 
 <div align="center"><sub>made for people who like watching the machine think</sub></div>

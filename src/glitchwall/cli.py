@@ -471,7 +471,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--version", action="version", version=__version__)
     sub = p.add_subparsers(dest="cmd", metavar="command")
 
-    i = sub.add_parser("install", help="put the wallpaper into Lively, start the feed, start it at logon")
+    i = sub.add_parser("install", help="put the wallpaper behind your icons, start the feed, start it at logon")
     i.add_argument("--port", type=int)
     i.add_argument("--commands-only", action="store_true", help="never show tool output, only the calls")
     _mode_arg(i)
