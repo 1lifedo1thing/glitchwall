@@ -305,12 +305,12 @@ In `ambient` and `art` mode it reads no logs at all, only its own settings. In `
   - the per-install random key, which only the wallpaper has (in its `config.js`, or after the `#` in the
     address of glitchwall's own windows, which is never sent to a server), compared in constant time;
   - a `Host` of `127.0.0.1`/`localhost` on the right port, which blocks DNS rebinding;
-  - no `Origin`, `null` (a local file page), `*.localhost` (how some wallpaper apps serve pages), or the feed's
-    own address (glitchwall's own windows load the page from the feed).
+  - no `Origin`, `null` (a local file page), or the feed's own address (glitchwall's own windows load the
+    page from the feed). Pages from other local servers are refused too.
 
-  Changing a setting from the settings window needs all of that too, plus a JSON request sent by a page
-  (with an `Origin`), so neither a website nor a plain form can change one. Port, host and screens can't
-  be changed from it at all.
+  Changing a setting from the settings window needs all of that too, plus a JSON request sent from the
+  feed's own address, so neither a website, a file page nor a plain form can change one. Port and screens
+  can't be changed from it at all.
 
   Websites you visit can't read it. Refused requests are noted in `last-refused.txt`, without the key.
 

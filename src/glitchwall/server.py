@@ -2,11 +2,12 @@
 
 Who may read /feed:
   1. Host header must be 127.0.0.1:<port> or localhost:<port>   (blocks DNS rebinding)
-  2. Origin must be absent, "null" (a local file page), http(s)://*.localhost
-     (some wallpaper apps serve pages that way; browsers pin *.localhost to this
-     machine, so no internet site can send it) or the feed's own address
+  2. Origin must be absent, "null" (a local file page: Plash, Komorebi, a kiosk browser)
+     or the feed's own address (glitchwall's own windows and the settings window).
+     Pages from any other address, other local servers included, are refused.
   3. ?key= must equal the per-install random key, which only the wallpaper's
      config.js has. Compared in constant time.
+Changing a setting also needs a JSON POST from the feed's own address (the settings window).
 The socket binds 127.0.0.1 only. Nothing is sent anywhere; the page pulls.
 """
 from __future__ import annotations
@@ -15,7 +16,6 @@ import hmac
 import json
 import mimetypes
 import os
-import re
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -30,7 +30,10 @@ from .redact import Redactor
 KEEP = 300   # events kept in memory
 BATCH = 60   # most events per response
 
-LOCAL_ORIGIN = re.compile(r"^(null|https?://([a-z0-9-]+\.)*localhost(:\d{1,5})?)$")
+LOCAL_ORIGIN = "null"   # a page opened from a file
+# every response: never sniffed into another type, never framed by another page, no address passed on in a Referer
+SAFE_HEADERS = (("X-Content-Type-Options", "nosniff"), ("X-Frame-Options", "DENY"),
+                ("Content-Security-Policy", "frame-ancestors 'none'"), ("Referrer-Policy", "no-referrer"))
 
 
 class EventStore:
@@ -76,7 +79,7 @@ def check_access(host: str | None, origin: str | None, given_key: str, key: str,
     """True if this request may read the feed. Pure function, unit-tested."""
     if host not in (f"127.0.0.1:{port}", f"localhost:{port}"):
         return False
-    if origin is not None and not (LOCAL_ORIGIN.match(origin) or origin in extra_origins):
+    if origin is not None and not (origin == LOCAL_ORIGIN or origin in extra_origins):
         return False
     if not key or not given_key:
         return False
@@ -109,6 +112,11 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
     class Handler(BaseHTTPRequestHandler):
         server_version = "glitchwall"
         sys_version = ""
+
+        def end_headers(self):
+            for k, v in SAFE_HEADERS:
+                self.send_header(k, v)
+            super().end_headers()
 
         def refuse(self, code: int) -> None:
             if code == 403 and refusal_log:   # note who was turned away (never the key) to help debug a new host
@@ -165,14 +173,18 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
 
         def do_POST(self):
             u = urlsplit(self.path)
-            n = int(self.headers.get("Content-Length") or 0)
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                n = -1
             if u.path != "/settings" or not 0 < n <= 8192:
                 return self.refuse(404 if u.path != "/settings" else 400)
             return self.settings_api(u, self.rfile.read(n))
 
         def settings_api(self, u, body: bytes | None):
             """The settings window: GET reads, POST changes. Same key/Host/Origin checks as the feed; a change
-            must also be a JSON POST from an allowed page (a plain form from elsewhere can't be one)."""
+            must also be a JSON POST from the feed's own address, where the settings window lives (a plain form
+            can't be one, and a file page or a sandboxed frame, which send Origin: null, can't make one)."""
             if not editable:
                 return self.refuse(404)
             q, origin = parse_qs(u.query), self.headers.get("Origin")
@@ -180,7 +192,7 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
                 return self.refuse(403)
             refused, reset = [], False
             if body is not None:
-                if origin is None or self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
+                if origin not in extra_origins or self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
                     return self.refuse(403)
                 try:
                     changes = json.loads(body)

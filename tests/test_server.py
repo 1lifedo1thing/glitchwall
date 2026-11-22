@@ -26,8 +26,8 @@ class TestCheckAccess(unittest.TestCase):
         self.assertTrue(self.ok())
         self.assertTrue(self.ok(host=f"localhost:{PORT}"))
         self.assertTrue(self.ok(origin="null"))
-        self.assertTrue(self.ok(origin="https://a1b2c3.localhost"))
-        self.assertTrue(self.ok(origin="http://localhost:8080"))
+        self.assertTrue(check_access(f"127.0.0.1:{PORT}", f"http://127.0.0.1:{PORT}", KEY, KEY, PORT,
+                                     extra_origins=(f"http://127.0.0.1:{PORT}",)))
 
     def test_wrong_or_missing_key(self):
         self.assertFalse(self.ok(key=""))
@@ -43,7 +43,8 @@ class TestCheckAccess(unittest.TestCase):
 
     def test_bad_origin(self):
         for o in ("https://evil.example", "http://127.0.0.1:8000", "https://localhost.evil.example",
-                  "https://evil.example/.localhost", "file://", "https://x.localhost.evil.example", ""):
+                  "https://evil.example/.localhost", "file://", "https://x.localhost.evil.example", "",
+                  "https://a1b2c3.localhost", "http://localhost:8080", f"http://localhost:{PORT + 1}", "NULL"):
             with self.subTest(o):
                 self.assertFalse(self.ok(origin=o))
 
@@ -82,9 +83,17 @@ class TestLiveServer(unittest.TestCase):
         self.assertNotIn("abc123secretvalue", body.decode())
 
     def test_cors_echo_only_for_allowed_origin(self):
-        r, _ = self.get(f"/feed?key={KEY}", {"Host": f"127.0.0.1:{PORT}", "Origin": "https://ab12.localhost"})
+        r, _ = self.get(f"/feed?key={KEY}", {"Host": f"127.0.0.1:{PORT}", "Origin": "null"})
         self.assertEqual(r.status, 200)
-        self.assertEqual(r.getheader("Access-Control-Allow-Origin"), "https://ab12.localhost")
+        self.assertEqual(r.getheader("Access-Control-Allow-Origin"), "null")
+
+    def test_safe_headers_everywhere(self):
+        for path in (f"/feed?key={KEY}", "/feed", "/nope"):
+            with self.subTest(path):
+                r, _ = self.get(path)
+                self.assertEqual(r.getheader("X-Content-Type-Options"), "nosniff")
+                self.assertEqual(r.getheader("X-Frame-Options"), "DENY")
+                self.assertEqual(r.getheader("Referrer-Policy"), "no-referrer")
 
     def test_refusals(self):
         cases = {
@@ -280,6 +289,8 @@ class TestSettingsWindow(unittest.TestCase):
             "wrong key": dict(method="POST", key="x" * 43, body={"paused": True}),
             "no origin": dict(method="POST", origin=None, body={"paused": True}),
             "other site": dict(method="POST", origin="https://evil.example", body={"paused": True}),
+            "file page": dict(method="POST", origin="null", body={"paused": True}),   # or a sandboxed frame
+            "other local server": dict(method="POST", origin="http://localhost:3000", body={"paused": True}),
             "form post": dict(method="POST", body=b"paused=true", ctype="application/x-www-form-urlencoded"),
             "text post": dict(method="POST", body=b'{"paused": true}', ctype="text/plain"),
             "rebinding": dict(method="POST", body={"paused": True}, host=f"evil.example:{self.P}"),
@@ -288,6 +299,13 @@ class TestSettingsWindow(unittest.TestCase):
             with self.subTest(name):
                 self.assertEqual(self.req(**kw)[0], 403)
         self.assertEqual(self.req("POST", body=b"{nope")[0], 400)
+        c = http.client.HTTPConnection("127.0.0.1", self.P, timeout=5)   # a Content-Length that isn't a number
+        c.putrequest("POST", f"/settings?key={KEY}", skip_host=True)
+        for k, v in {"Host": f"127.0.0.1:{self.P}", "Origin": self.ME, "Content-Length": "abc"}.items():
+            c.putheader(k, v)
+        c.endheaders()
+        self.assertEqual(c.getresponse().status, 400)
+        c.close()
         self.assertFalse(cfg.load_settings()["paused"])
 
     def test_off_unless_editable(self):

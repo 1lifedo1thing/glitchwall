@@ -75,6 +75,13 @@ SECRETS = {
     "htpasswd -nb": "htpasswd -nb bob " + "htnopass1" + " | tee x",
     "net user": "net user bob " + "N3tUserPw" + " /add",
     "securestring": "ConvertTo-SecureString '" + "Plain!Pass1" + "' -AsPlainText -Force",
+    "aws secret bare": "wJalrXUtnFEMI/K7MDENG/bPxRfiCY" + "EXAMPLEKEY",
+    "aws secret csv": "AKIA" + "QX7Z5T3NBM4WPL2R," + "wJalrXUtnFEMI/K7MDENG/bPxRfiCY" + "EXAMPLEKEY",
+    "cmdkey": "cmdkey /add:srv /user:bob /pass:" + "Cmdk3yPass",
+    "net use": r"net use Z: \\srv\share " + "N3tUsePass" + " /user:bob",
+    "7z": "7z a -p" + "Sev3nZipPw" + " out.7z src",
+    "zip -P": "zip -r -P " + "Z1pPassw0" + " out.zip src",
+    "wifi key": "    Key Content            : " + "W1fiPassphrase",
 }
 
 # the part of each sample that must not appear in the output
@@ -90,6 +97,8 @@ LEAK = {
     "vault pass": "becomeme123", "slack webhook": "xYz123AbC456", "discord webhook": "AbCdEf_GhIjKl",
     "sshpass": "Tr0ub4dor", "sshpass attached": "sshp4ssword", "docker login": "D0ckerPw", "htpasswd -b": "htpassw0rd",
     "htpasswd -nb": "htnopass1", "net user": "N3tUserPw", "securestring": "Plain!Pass1",
+    "aws secret bare": "wJalrXUtnFEMI", "aws secret csv": "wJalrXUtnFEMI", "cmdkey": "Cmdk3yPass",
+    "net use": "N3tUsePass", "7z": "Sev3nZipPw", "zip -P": "Z1pPassw0", "wifi key": "W1fiPassphrase",
 }
 
 
@@ -125,12 +134,18 @@ class TestSecrets(unittest.TestCase):
             "https://docs.python.org/3/library/http.server.html",
             "src/api/auth.py:41: # TODO rotate session keys",
             "tokenizer.py:12:def split(text):",
-            "C:/Program Files/Lively Wallpaper/Lively.exe",
+            "C:/Program Files/Some App/App.exe",
             "-     if not session_id:\n+     if session_id is None:",   # a diff: the "+" line is not a value
             "docker login registry.example.test",
             "htpasswd -c .htpasswd bob",
             "net user bob /delete",
             "sshpass -f pwfile ssh admin@box",
+            "src/Components/Button2/Index3/Helpers999",           # 40 characters with slashes, but words
+            r"net use Z: \\srv\share /user:bob",
+            r"net use Z: \\srv\share * /user:bob",
+            "cmdkey /list",
+            "7z x archive.7z -ooutdir",
+            "https://example.test/api/token/refresh",
         ]
         for s in keep:
             with self.subTest(s):

@@ -132,6 +132,15 @@ BY_NAME = [
     (re.compile(rf"(?m)(\bhtpasswd\b[^\n|;&]*?\s-\w*b\w*\s[^\n|;&]*\s)({_VALUE})(?=[ \t]*(?:$|[|;&]))"), r"\1" + MASK),
     (re.compile(rf"(?i)(\bnet\s+user\s+(?:\"[^\"\n]*\"|\S+)\s+)(?!/)({_VALUE})"), r"\1" + MASK),
     (re.compile(rf"(?i)(\bConvertTo-SecureString\s+(?:-String\s+)?)({_VALUE})"), r"\1" + MASK),
+    # Windows-style switches:  cmdkey /pass:x   tool /password:x
+    (re.compile(rf"(?i)((?<![\w/:.])/{_NAME}[:=])({_VALUE})"), r"\1" + MASK),
+    # net use Z: \\server\share PASSWORD /user:bob   (* asks for it instead)
+    (re.compile(rf"(?i)(\bnet\s+use\s+(?:[a-z]:\s+)?\\\\\S+\s+)(?![/*])({_VALUE})"), r"\1" + MASK),
+    # archivers:  7z a -pSECRET   rar a -pSECRET   zip -P SECRET
+    (re.compile(r"(\b(?:7z[ar]?|rar|unrar)\b[^\n|;&]*?\s-p)(\S+)"), r"\1" + MASK),
+    (re.compile(rf"(\bzip\b[^\n|;&]*?\s-P\s+)({_VALUE})"), r"\1" + MASK),
+    # netsh wlan show profile ... key=clear
+    (re.compile(r"(?i)(\bKey Content\s*:\s*)(\S.*)"), r"\1" + MASK),
 ]
 
 # ---------------------------------------------------------------- 3. entropy
@@ -145,9 +154,21 @@ def entropy(s: str) -> float:
     return -sum(c / n * math.log2(c / n) for c in Counter(s).values()) if n else 0.0
 
 
+def _aws_secret_shaped(tok: str) -> bool:
+    """40 base64 characters with a / in them (an AWS secret access key, printed bare). Told from a path by how
+    often the letters flip case: random text flips about every other letter, words in a path about once each."""
+    if not re.fullmatch(r"[A-Za-z0-9+/]{40}", tok) or "/" not in tok or tok.startswith("/"):
+        return False
+    letters = [c for c in tok if c.isalpha()]
+    flips = sum(a.isupper() != b.isupper() for a, b in zip(letters, letters[1:]))
+    return flips >= 10 and any(c.isdigit() for c in tok)
+
+
 def looks_random(tok: str) -> bool:
     """Token-shaped and random enough to be a key, not a word, path or identifier."""
     parts = [p for p in re.split(r"[/]", tok) if p]
+    if len(parts) > 1 and _aws_secret_shaped(tok):
+        return True
     if len(parts) > 1:  # a path: only mask if one of its pieces itself looks random
         return any(len(p) >= 20 and looks_random(p) for p in parts)
     core = tok.strip("=")

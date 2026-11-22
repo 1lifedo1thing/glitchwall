@@ -12,8 +12,12 @@ than usual. Its promises:
 4. **Only the wallpaper may read the feed.** Per-install random key (32 bytes,
    `secrets.token_urlsafe`) compared in constant time, `Host` pinned to
    `127.0.0.1:<port>` / `localhost:<port>` against DNS rebinding, `Origin`
-   limited to absent, `null` or `*.localhost`. CORS headers are only sent to
-   allowed origins.
+   limited to absent, `null` (a local file page) or the feed's own address.
+   Other local servers' pages are refused too. CORS headers are only sent to
+   allowed origins. Changing a setting also needs a JSON POST from the feed's
+   own address, where the settings window lives.
+5. **Not framed, not sniffed.** Every response says `X-Frame-Options: DENY`,
+   `frame-ancestors 'none'`, `nosniff` and `Referrer-Policy: no-referrer`.
 
 ## Known limits
 
@@ -23,8 +27,9 @@ than usual. Its promises:
   streaming or screen sharing, or `--commands-only`.
 - Any program already running as you can read the key file and the logs
   themselves; this tool doesn't protect against local malware.
-- Pages from other wallpaper apps may also run on `*.localhost` origins. They still
-  need the key, which only this wallpaper's `config.js` has.
+- Any page opened from a file sends `Origin: null`, as does a sandboxed frame on
+  a website. Those can read the feed only with the key, which only this
+  wallpaper's `config.js` has, and can't change settings at all.
 - `config.js` contains the key. Don't publish an exported wallpaper folder.
   If you did, delete the `key` file in the state dir and run
   `glitchwall install` again to make a new one.
