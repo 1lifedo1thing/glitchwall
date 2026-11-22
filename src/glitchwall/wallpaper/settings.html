@@ -9,6 +9,7 @@
   @font-face { font-family:'Departure Mono'; src:url('DepartureMono-Regular.otf') format('opentype'); font-display:block; }
   @font-face { font-family:'Stencil'; src:url('fonts/SairaStencilOne-Regular.ttf'); font-display:block; }
   @font-face { font-family:'Courier Prime'; src:url('fonts/CourierPrime-Regular.ttf'); font-display:block; }
+  @font-face { font-family:'VT323'; src:url('fonts/VT323-Regular.ttf'); font-display:block; }
   :root {
     --wood:#4a2c17; --wood-hi:#6b4123; --wood-lo:#2c180b;
     --panel:#161514; --panel-hi:#24221f; --seam:#060505;
@@ -152,6 +153,24 @@
   footer { display:flex; flex-wrap:wrap; gap:6px 18px; padding:8px 18px; border-top:1px solid var(--seam); font-size:10px; color:var(--print-dim); letter-spacing:.06em; }
   kbd { display:inline-grid; place-items:center; min-width:20px; height:20px; padding:0 5px; margin-right:4px; border-radius:10px; font:700 10px 'Courier Prime', monospace; color:#f3ecd8;
         background:radial-gradient(circle at 40% 35%, #3a3632, #141210 70%); box-shadow:0 0 0 1.5px #d8d0bb, 0 2px 0 1.5px #000; }
+
+  /* green phosphor: the lamps, the readout, the rotor windows and the values glow green on black glass */
+  :root { --lamp:#5dff7a; --focus:#5dff7a; --glass:#061208; --phos:#7dff8f; --phos-dim:#4fc463; }
+  .led.g { background:radial-gradient(circle at 40% 35%, #e6ffe9, var(--lamp) 55%, #1f9a35); box-shadow:0 0 0 2px #0c0b0a, 0 0 0 3px var(--brass-lo), 0 0 12px rgba(93,255,122,.7); }
+  .key.sel .lamp { color:#063812; background:radial-gradient(circle at 40% 35%, #eaffed, var(--lamp) 55%, #1f9a35);
+                   box-shadow:0 0 0 2px #0b0a09, 0 0 0 3px var(--brass), 0 0 16px rgba(93,255,122,.75); }
+  #readout { -webkit-mask:none; mask:none; border-radius:6px; color:var(--phos); text-shadow:0 0 6px rgba(125,255,143,.55);
+             background:repeating-linear-gradient(transparent 0 2px, rgba(0,0,0,.25) 2px 3px), radial-gradient(120% 140% at 50% 40%, #0b2210, var(--glass));
+             box-shadow:0 0 0 2px #0b0a09, 0 0 0 4px var(--brass-lo), inset 0 0 24px rgba(0,0,0,.8); }
+  #readout .l1 { font:22px/1 'VT323', monospace; letter-spacing:.08em; }
+  #readout .l2 { font:18px/1.15 'VT323', monospace; color:var(--phos-dim); }
+  #readout .err { color:#ff7a6e; text-shadow:0 0 6px rgba(255,59,48,.5); }
+  #label { color:var(--phos); background:var(--glass); font:19px 'VT323', monospace; text-shadow:0 0 6px rgba(125,255,143,.5);
+           box-shadow:inset 0 0 10px #000, 0 0 0 2px #0b0a09, 0 0 0 3px var(--brass-lo); }
+  #label:focus { box-shadow:inset 0 0 10px #000, 0 0 0 2px var(--focus); }
+  .win { background:radial-gradient(ellipse at 50% 50%, #0c2412, var(--glass)); box-shadow:0 0 0 2px #0b0a09, 0 0 0 4px var(--brass-lo), inset 0 6px 8px rgba(0,0,0,.7), inset 0 -6px 8px rgba(0,0,0,.7); }
+  .win .val { color:var(--phos); text-shadow:0 0 5px rgba(125,255,143,.6); }
+  .fader .val { color:var(--phos); background:var(--glass); text-shadow:0 0 5px rgba(125,255,143,.6); }
 
   @media (max-width:900px) {
     main { grid-template-columns:1fr; grid-template-rows:none; grid-template-areas:"mon" "side" "tape" "priv" "motion"; }
