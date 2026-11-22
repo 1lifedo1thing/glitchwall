@@ -201,8 +201,9 @@ class Host:
                 continue                                         # not created yet: next tick
             h = int(str(native.Handle))
             parent = desktop_layer()[0]
-            # (re)attach when new, after Explorer restarted (new desktop layer) or the screen moved/resized
-            if self.attached.get(n) != (parent, rect) or u32.GetParent(h) != parent:
+            # (re)attach when new, after Explorer restarted (new desktop layer), when the screen moved or
+            # resized, or when the window itself drifted from its screen for any reason
+            if self.attached.get(n) != (parent, rect) or u32.GetParent(h) != parent or _rect(h) != rect:
                 attach(h, rect)
                 self.attached[n] = (parent, rect)
         self.asleep = fullscreen_screens(mons)
