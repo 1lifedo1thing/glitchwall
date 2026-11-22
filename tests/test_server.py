@@ -161,6 +161,31 @@ class TestLiveServer(unittest.TestCase):
             httpd2.shutdown()
             httpd2.server_close()
 
+    def test_sleep_flag_per_screen(self):
+        # glitchwall's own host: a screen covered by a fullscreen app is told to stop animating
+        asleep = {2}
+        httpd3 = serve(make_handler(self.store, KEY, PORT + 3, sleeping=lambda scr: scr.isdigit() and int(scr) in asleep), PORT + 3)
+        threading.Thread(target=httpd3.serve_forever, daemon=True).start()
+        try:
+            def sleep(q):
+                return json.loads(self.get(f"/feed?key={KEY}{q}", port=PORT + 3)[1])["sleep"]
+            self.assertFalse(sleep("&screen=1"))
+            self.assertTrue(sleep("&screen=2"))
+            self.assertFalse(sleep(""))
+            self.assertFalse(sleep("&screen=x"))
+        finally:
+            httpd3.shutdown()
+            httpd3.server_close()
+
+    def test_host_setting(self):
+        self.assertEqual(cfg.host({}), "lively")              # upgrades keep what they had until install picks
+        self.assertEqual(cfg.host({"host": "glitchwall"}), "glitchwall")
+        self.assertEqual(cfg.host({"host": "bogus"}), "lively")
+
+    def test_tune_is_clamped(self):
+        t = cfg.tune({"linger": 99, "cards": 0, "glass": "x", "intensity": 3})
+        self.assertEqual((t["linger"], t["cards"], t["glass"], t["rain"]), (30, 1, 58, 3))
+
     def test_binds_loopback_only(self):
         self.assertEqual(self.httpd.server_address[0], "127.0.0.1")
 

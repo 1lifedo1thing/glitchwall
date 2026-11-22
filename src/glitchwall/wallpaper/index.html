@@ -309,10 +309,14 @@ let TYPE_CPS = 240, RAIN = .5, LINGER = 7000, MAXCARDS = 4;
 // ?still : for screenshots (headless browsers): no glitch, instant typing, cards stay
 const STILL = Q.has('still');
 if (STILL) { LINGER = 1e9; document.documentElement.classList.add('still'); }
-function livelyPropertyListener(name, val) {
+// Lively calls this with its customize panel; the feed sends the same values from `glitchwall config`.
+// A value Lively has set wins over the feed's.
+const fromLively = new Set();
+function livelyPropertyListener(name, val) { fromLively.add(name); setProperty(name, val); }
+function setProperty(name, val) {
   if (name === 'typeSpeed') TYPE_CPS = 60 + val * 40;
   if (name === 'rain') { RAIN = val / 10; if (R && R.still) R.init(); }
-  if (name === 'linger') LINGER = val * 1000;
+  if (name === 'linger' && !STILL) LINGER = val * 1000;
   if (name === 'cards') MAXCARDS = val;
   if (name === 'glass') { GLASS = val / 100; setAlpha(); }
   const k = { themeSel: 'theme', paletteSel: 'palette', rainSel: 'rain', fontSel: 'font', animSel: 'transition' }[name];
@@ -954,9 +958,10 @@ function setRain(name) {
   resize();
 }
 addEventListener('resize', resize);
-let last = performance.now();
+let last = performance.now(), SLEEP = false;   // SLEEP: a fullscreen app covers this screen (built-in host)
 function loop(t) {
   const dt = Math.min(.1, (t - last) / 1000); last = t;
+  if (SLEEP) { setTimeout(() => requestAnimationFrame(loop), 1000); return; }   // nearly idle until it wakes
   R && R.frame(dt);
   requestAnimationFrame(loop);
 }
@@ -1057,16 +1062,25 @@ function next() {
 }
 
 const live = document.getElementById('live'), label = document.getElementById('label');
-const F = window.FEED || {};
+// the feed's address: config.js (Lively, other wallpaper apps), or for glitchwall's own host the page is
+// served by the feed and the key comes in the address after # (never sent to any server)
+const F = window.FEED || (location.hash.startsWith('#key=') && location.protocol === 'http:'
+  ? { port: location.port, key: decodeURIComponent(location.hash.slice(5)) } : {});
+const SCREEN = Q.get('screen'), tuned = {};
+if (SCREEN) document.title = 'glitchwall screen ' + SCREEN;
 const LABEL = F.label || 'live tool feed';
 label.textContent = F.key ? LABEL : 'no config.js here: run  glitchwall install';
 async function poll() {
   try {
     if (!F.key) throw new Error('no config.js');
-    const r = await fetch(`http://127.0.0.1:${F.port}/feed?since=${since}&key=${encodeURIComponent(F.key)}`, { cache: 'no-store' });
+    const r = await fetch(`http://127.0.0.1:${F.port}/feed?since=${since}&key=${encodeURIComponent(F.key)}` +
+                          (SCREEN ? `&screen=${encodeURIComponent(SCREEN)}` : ''), { cache: 'no-store' });
     if (!r.ok) throw new Error('refused: ' + r.status);
     const data = await r.json(), evs = data.events || [];
     if (data.look) { layers.feed = data.look; applyLook(); }  // `glitchwall config --theme ...` applies live
+    SLEEP = !!data.sleep;
+    for (const [k, v] of Object.entries(data.tune || {}))   // `glitchwall config --linger 12` etc.
+      if (!fromLively.has(k) && tuned[k] !== v) { tuned[k] = v; setProperty(k, v); }
     if (data.last < since) since = 0;                          // the feed restarted: start over
     FEED_MODE = Q.get('mode') || data.mode || 'live';
     const art = FEED_MODE === 'art';           // art mode: background only

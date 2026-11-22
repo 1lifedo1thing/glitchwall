@@ -36,7 +36,42 @@ DEFAULTS = {
     "rain": "theme",         # background style; "theme" = the theme's own
     "font": "theme",
     "transition": "theme",   # how cards arrive and leave
+    # the page's sliders (Lively shows them in its customize panel; with any other host set them here)
+    "type_speed": 5,         # 1-20
+    "linger": 7,             # seconds a block stays after it finishes, 2-30
+    "cards": 4,              # blocks on screen at once, 1-6
+    "intensity": 5,          # background intensity, 0 (still) - 10
+    "glass": 58,             # card opacity, 20-95
+    "host": "lively",        # Windows: what puts the page behind the icons, see HOSTS (install picks)
+    "screens": "all",        # all | primary
 }
+
+TUNE = {   # setting -> (page slider name, lowest, highest)
+    "type_speed": ("typeSpeed", 1, 20), "linger": ("linger", 2, 30), "cards": ("cards", 1, 6),
+    "intensity": ("rain", 0, 10), "glass": ("glass", 20, 95),
+}
+
+
+def tune(s: dict) -> dict:
+    """The slider settings as the page names them, each kept in its range."""
+    out = {}
+    for k, (name, lo, hi) in TUNE.items():
+        try:
+            out[name] = min(hi, max(lo, int(s.get(k, DEFAULTS[k]))))
+        except (TypeError, ValueError):
+            out[name] = DEFAULTS[k]
+    return out
+
+
+HOSTS = {
+    "glitchwall": "glitchwall's own windows behind the desktop icons (WebView2), no other app needed",
+    "lively": "Lively Wallpaper shows it",
+}
+
+
+def host(s: dict) -> str:
+    h = str(s.get("host", "")).lower()
+    return h if h in HOSTS else "lively"
 
 
 MODES = {

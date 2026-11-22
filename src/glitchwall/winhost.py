@@ -1,0 +1,226 @@
+"""Windows: show the wallpaper page behind the desktop icons on every screen, no wallpaper app needed.
+
+How: one frameless window per screen with the page in WebView2 (the Edge engine built into Windows),
+via pywebview. Each window is made a child of the desktop layer (Progman, or the WorkerW behind the
+icons on older builds), just under the icon layer: the same trick wallpaper apps use. The windows
+open off-screen and only appear once they are behind the icons.
+
+Runs on the feed's main thread (window code must). Every 2 seconds it re-checks: screens added,
+removed or resized, Explorer restarted (a new desktop layer), and which screens have a fullscreen app
+in front (a game, a video), whose page then sleeps.
+"""
+from __future__ import annotations
+
+import ctypes
+import os
+import re
+import threading
+from ctypes import wintypes
+from pathlib import Path
+from typing import Callable
+
+u32 = ctypes.windll.user32 if os.name == "nt" else None
+if u32:
+    for _f in ("FindWindowW", "FindWindowExW", "SetParent", "GetParent", "GetForegroundWindow"):
+        getattr(u32, _f).restype = wintypes.HWND
+    u32.GetWindowLongPtrW.restype = ctypes.c_ssize_t
+    u32.SetWindowLongPtrW.argtypes = [wintypes.HWND, ctypes.c_int, ctypes.c_ssize_t]
+    u32.SetWindowLongPtrW.restype = ctypes.c_ssize_t
+    u32.SendMessageTimeoutW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM, wintypes.UINT,
+                                        wintypes.UINT, ctypes.POINTER(ctypes.c_size_t)]
+    u32.MonitorFromWindow.restype = wintypes.HMONITOR
+
+ENUM = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+MONENUM = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HMONITOR, wintypes.HDC, ctypes.POINTER(wintypes.RECT), wintypes.LPARAM)
+OFFSCREEN = -32000
+
+
+class MONITORINFOEXW(ctypes.Structure):
+    _fields_ = [("cbSize", wintypes.DWORD), ("rcMonitor", wintypes.RECT), ("rcWork", wintypes.RECT),
+                ("dwFlags", wintypes.DWORD), ("szDevice", wintypes.WCHAR * 32)]
+
+
+def available() -> bool:
+    """True if this machine can run the built-in host: Windows, pywebview installed, WebView2 runtime present."""
+    if os.name != "nt":
+        return False
+    try:
+        import webview  # noqa: F401
+    except Exception:
+        return False
+    import winreg
+    guid = r"{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"   # the WebView2 runtime's id
+    for hive, key in ((winreg.HKEY_LOCAL_MACHINE, rf"SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{guid}"),
+                      (winreg.HKEY_LOCAL_MACHINE, rf"SOFTWARE\Microsoft\EdgeUpdate\Clients\{guid}"),
+                      (winreg.HKEY_CURRENT_USER, rf"Software\Microsoft\EdgeUpdate\Clients\{guid}")):
+        try:
+            with winreg.OpenKey(hive, key) as k:
+                if winreg.QueryValueEx(k, "pv")[0] not in ("", "0.0.0.0"):
+                    return True
+        except OSError:
+            continue
+    return False
+
+
+def _cls(h) -> str:
+    b = ctypes.create_unicode_buffer(256)
+    u32.GetClassNameW(h, b, 256)
+    return b.value
+
+
+def _rect(h) -> tuple[int, int, int, int]:
+    r = wintypes.RECT()
+    u32.GetWindowRect(h, ctypes.byref(r))
+    return r.left, r.top, r.right, r.bottom
+
+
+def monitors() -> dict[int, tuple[int, int, int, int]]:
+    """Screen number (\\\\.\\DISPLAY<n>) -> its rectangle in desktop coordinates, primary first."""
+    found = []
+
+    def one(hmon, hdc, rect, data):
+        mi = MONITORINFOEXW()
+        mi.cbSize = ctypes.sizeof(mi)
+        if u32.GetMonitorInfoW(hmon, ctypes.byref(mi)):
+            m = re.search(r"DISPLAY(\d+)$", mi.szDevice)
+            if m:
+                r = mi.rcMonitor
+                found.append((not mi.dwFlags & 1, int(m.group(1)), (r.left, r.top, r.right, r.bottom)))
+        return True
+
+    u32.EnumDisplayMonitors(None, None, MONENUM(one), 0)
+    return {n: r for _, n, r in sorted(found)}
+
+
+def desktop_layer() -> tuple[int, int]:
+    """(parent window, window to sit just under) for a wallpaper: behind the icons, in front of the
+    Windows wallpaper. Asks Explorer to create the layer first (message 0x052C)."""
+    progman = u32.FindWindowW("Progman", None)
+    res = ctypes.c_size_t()
+    u32.SendMessageTimeoutW(progman, 0x052C, 0xD, 0x1, 0, 1000, ctypes.byref(res))
+    defview = u32.FindWindowExW(progman, None, "SHELLDLL_DefView", None)
+    if defview:   # Windows 11 24H2 and later: icons and wallpaper layers are children of Progman
+        return progman, defview
+    # earlier builds: the icons live in a top-level WorkerW; the wallpaper layer is the WorkerW after it
+    found = []
+
+    def one(h, l):
+        if u32.FindWindowExW(h, None, "SHELLDLL_DefView", None):
+            found.append(h)
+        return True
+
+    u32.EnumWindows(ENUM(one), 0)
+    worker = u32.FindWindowExW(None, found[0], "WorkerW", None) if found else None
+    return (worker or progman), 0
+
+
+def attach(h: int, rect: tuple[int, int, int, int]) -> None:
+    """Make our window a child of the desktop layer covering `rect` (desktop coordinates)."""
+    parent, after = desktop_layer()
+    GWL_STYLE, GWL_EXSTYLE = -16, -20
+    WS_CHILD, WS_POPUP, WS_CAPTION, WS_THICKFRAME = 0x40000000, 0x80000000, 0x00C00000, 0x00040000
+    WS_EX_APPWINDOW, WS_EX_TOOLWINDOW = 0x40000, 0x80
+    st = u32.GetWindowLongPtrW(h, GWL_STYLE)
+    u32.SetWindowLongPtrW(h, GWL_STYLE, (st | WS_CHILD) & ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME))
+    ex = u32.GetWindowLongPtrW(h, GWL_EXSTYLE)
+    u32.SetWindowLongPtrW(h, GWL_EXSTYLE, (ex | WS_EX_TOOLWINDOW) & ~WS_EX_APPWINDOW)
+    if u32.GetParent(h) != parent:
+        u32.SetParent(h, parent)
+    x0, y0, x1, y1 = rect
+    pts = (wintypes.POINT * 2)(wintypes.POINT(x0, y0), wintypes.POINT(x1, y1))
+    u32.MapWindowPoints(None, parent, pts, 2)   # desktop -> parent's client coordinates
+    u32.SetWindowPos(h, after or 0, pts[0].x, pts[0].y, pts[1].x - pts[0].x, pts[1].y - pts[0].y,
+                     0x40 | 0x20 | 0x10)       # show, frame changed, no activate
+
+
+def fullscreen_screens(mons: dict[int, tuple]) -> set[int]:
+    """Screens where the app in front covers the whole screen (a game, a video)."""
+    h = u32.GetForegroundWindow()
+    if not h or _cls(h) in ("Progman", "WorkerW", "Shell_TrayWnd", "Shell_SecondaryTrayWnd"):
+        return set()
+    r = _rect(h)
+    return {n for n, m in mons.items() if r[0] <= m[0] and r[1] <= m[1] and r[2] >= m[2] and r[3] >= m[3]}
+
+
+def shown_screens() -> list[tuple[int, int, int, int]]:
+    """Where our wallpaper windows are right now (any process): their rectangles in the desktop layer."""
+    if os.name != "nt":
+        return []
+    parent, out = desktop_layer()[0], []
+    c = u32.FindWindowExW(parent, None, None, None)
+    while c:
+        b = ctypes.create_unicode_buffer(64)
+        u32.GetWindowTextW(c, b, 64)
+        if b.value.startswith("glitchwall screen") and u32.IsWindowVisible(c):
+            out.append(_rect(c))
+        c = u32.FindWindowExW(parent, c, None, None)
+    return out
+
+
+def dpi_aware() -> None:
+    """Work in real pixels, so windows line up with screens at any display scaling."""
+    try:
+        u32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))   # per-monitor v2
+    except Exception:
+        pass
+
+
+class Host:
+    """One page window per screen. `url(n)` is the page address for screen n."""
+
+    def __init__(self, url: Callable[[int], str], which: str = "all", storage: Path | None = None):
+        self.url, self.which, self.storage = url, which, storage
+        self.windows: dict[int, object] = {}   # screen -> pywebview window
+        self.attached: dict[int, tuple] = {}   # screen -> (parent, rect) it was last attached with
+        self.asleep: set[int] = set()
+
+    def screens(self) -> dict[int, tuple]:
+        mons = monitors()
+        if self.which == "primary" and mons:
+            first = next(iter(mons))
+            return {first: mons[first]}
+        return mons
+
+    def new_window(self, n: int):
+        import webview
+        w = webview.create_window(f"glitchwall screen {n}", self.url(n), frameless=True, focus=False,
+                                  x=OFFSCREEN, y=OFFSCREEN, width=800, height=600, background_color="#000000")
+        self.windows[n] = w
+        return w
+
+    def tick(self) -> None:
+        mons = self.screens()
+        for n in [n for n in self.windows if n not in mons]:   # a screen went away
+            self.windows.pop(n).destroy()
+            self.attached.pop(n, None)
+        for n, rect in mons.items():
+            w = self.windows.get(n) or self.new_window(n)
+            native = getattr(w, "native", None)
+            if native is None:
+                continue                                         # not created yet: next tick
+            h = int(str(native.Handle))
+            parent = desktop_layer()[0]
+            # (re)attach when new, after Explorer restarted (new desktop layer) or the screen moved/resized
+            if self.attached.get(n) != (parent, rect) or u32.GetParent(h) != parent:
+                attach(h, rect)
+                self.attached[n] = (parent, rect)
+        self.asleep = fullscreen_screens(mons)
+
+    def manage(self, stop: threading.Event) -> None:
+        while not stop.is_set():
+            try:
+                self.tick()
+            except Exception:
+                pass
+            stop.wait(2)
+        for w in list(self.windows.values()):
+            w.destroy()
+
+    def run(self, stop: threading.Event) -> None:
+        """Blocks: runs the window loop on this (the main) thread until `stop` is set."""
+        import webview
+        dpi_aware()
+        first = next(iter(self.screens()), 1)
+        self.new_window(first)
+        webview.start(self.manage, (stop,), gui="edgechromium", private_mode=True,
+                      storage_path=str(self.storage) if self.storage else None)

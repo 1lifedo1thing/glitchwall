@@ -195,6 +195,32 @@ def remember_previous(layout: list[dict], dest: Path) -> None:
         previous_file().write_text(json.dumps(list(keep.values())), encoding="utf-8")
 
 
+def close_in_lively(dest: Path) -> list[str]:
+    """Close glitchwall wherever Lively shows it (switching to glitchwall's own host). The note of what
+    each screen showed before stays, for uninstall."""
+    done = []
+    for x in [x for x in lively_layout() if Path(x["path"]) == dest]:
+        n = str(x["index"]) if x["index"] is not None else "-1"
+        if lively("closewp", "--monitor", n):
+            done.append(f"closed glitchwall on screen {n if n != '-1' else 'all'}")
+    if done:
+        time.sleep(1.5)   # let Lively let go of the folder
+    return done
+
+
+def put_back_previous() -> list[str]:
+    """Uninstalling glitchwall's own host: give each screen the Lively wallpaper it had before, if any."""
+    if not lively_exe():
+        return []
+    done = []
+    for p in load_previous():
+        if Path(p["path"]).exists():
+            on = ["--monitor", str(p["index"])] if p["index"] is not None else []
+            if lively("setwp", "--file", p["path"], *on):
+                done.append(f"put back {Path(p['path']).name} in Lively" + (f" on screen {p['index']}" if on else ""))
+    return done
+
+
 def restore_in_lively(dest: Path) -> list[str]:
     """Take glitchwall off every screen: put back what each one showed before, or close it there."""
     prev = load_previous()

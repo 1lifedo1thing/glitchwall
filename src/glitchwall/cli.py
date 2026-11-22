@@ -83,9 +83,15 @@ def cmd_status(a) -> int:
     say(f"  outputs     {'hidden (commands only)' if s['commands_only'] else 'shown'}")
     say(f"  state dir   {cfg.state_dir()}")
     say(f"  autostart   {plat.autostart_entry() or 'off'}")
-    if plat.WIN:
+    if plat.WIN and cfg.host(s) == "glitchwall":
+        from . import winhost
+        shown, n = winhost.shown_screens(), len(winhost.monitors())
+        say(f"  host        glitchwall's own (WebView2){'' if winhost.available() else ', NOT AVAILABLE: pywebview or WebView2 missing'}")
+        say(f"  showing     {f'yes, on {len(shown)} of {n} screen' + ('s' if n > 1 else '') if shown else 'no'}")
+    elif plat.WIN:
         lib = plat.lively_library()
         dest = lib / plat.FOLDER if lib else None
+        say("  host        Lively Wallpaper")
         say(f"  wallpaper   {dest if dest and dest.exists() else 'not installed in Lively'}")
         layout, nums = plat.lively_layout(), plat.screens()
         if dest and layout:
@@ -117,17 +123,39 @@ def cmd_install(a) -> int:
     say(f"mode: {cfg.mode(s)} ({cfg.MODES[cfg.mode(s)]})")
     say(f"state dir: {cfg.state_dir()}")
 
+    # 0. on Windows, what shows it: glitchwall's own windows when it can, else Lively
+    own = False
+    if plat.WIN:
+        from . import winhost
+        want = a.host or ("glitchwall" if winhost.available() else "lively")
+        if want == "glitchwall" and not winhost.available():
+            say("host: glitchwall's own needs pywebview and the WebView2 runtime; using Lively instead")
+            want = "lively"
+        s["host"], s["screens"] = want, a.screens
+        cfg.save_settings(s)
+        own = want == "glitchwall"
+        say(f"host: {want} ({cfg.HOSTS[want]})")
+
     # 1. wallpaper files
     lib = plat.lively_library() if plat.WIN else None
-    if lib is not None:
+    if own:
+        if lib is not None:   # switching from Lively: take it off Lively's screens and out of its library
+            old = lib / plat.FOLDER
+            plat.remember_previous(plat.lively_layout(), old)
+            for msg in plat.close_in_lively(old):
+                say(f"Lively: {msg}")
+            if old.exists():
+                shutil.rmtree(old, ignore_errors=True)
+        lib, dest = None, None
+    elif lib is not None:
         dest = lib / plat.FOLDER
         plat.remember_previous(plat.lively_layout(), dest)   # each screen's wallpaper, for uninstall to put back
     else:
         dest = cfg.state_dir() / "wallpaper"
-    lib_root = dest.parent
-    lib_root.mkdir(parents=True, exist_ok=True)
-    plat.copy_wallpaper(dest, port, key, label)
-    say(f"wallpaper: {dest}")
+    if dest is not None:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        plat.copy_wallpaper(dest, port, key, label)
+        say(f"wallpaper: {dest}")
 
     # 2. autostart
     if a.no_autostart:
@@ -148,7 +176,17 @@ def cmd_install(a) -> int:
         return 1
 
     # 4. show it
-    if lib is not None:
+    if own:
+        from . import winhost
+        for _ in range(40):   # the feed opens one window per screen behind the icons
+            shown = winhost.shown_screens()
+            if len(shown) >= (1 if a.screens == "primary" else len(winhost.monitors())):
+                break
+            time.sleep(0.25)
+        n = len(winhost.monitors())
+        say(f"showing on {len(shown)} of {n} screen{'s' if n > 1 else ''}, behind the desktop icons" if shown else
+            "the feed is running but no wallpaper window appeared yet; run `glitchwall status` in a moment")
+    elif lib is not None:
         if a.no_set:
             say("Lively: wallpaper added to the library, not set (--no-set)")
         elif not plat.lively_exe():
@@ -182,7 +220,9 @@ def cmd_uninstall(a) -> int:
     if plat.WIN:
         lib = plat.lively_library()
         dest = lib / plat.FOLDER if lib else None
-        if dest:
+        if cfg.host(cfg.load_settings()) == "glitchwall":
+            removed += plat.put_back_previous()       # the feed is stopped: our windows are gone
+        elif dest:
             removed += plat.restore_in_lively(dest)   # every screen showing glitchwall
         if dest and dest.exists():
             shutil.rmtree(dest, ignore_errors=True)
@@ -239,7 +279,7 @@ def cmd_config(a) -> int:
     if a.mode is not None:
         s["mode"] = a.mode   # the running feed switches source by itself within a second
         changed = True
-    for k in themes.KINDS:
+    for k in [*themes.KINDS, *cfg.TUNE]:
         if getattr(a, k) is not None:
             s[k] = getattr(a, k)
             changed = True
@@ -342,6 +382,8 @@ def parser() -> argparse.ArgumentParser:
     i.add_argument("--no-set", action="store_true", help="add to Lively's library but don't switch to it")
     i.add_argument("--screens", choices=["all", "primary"], default="all",
                    help="with several monitors: show it on all of them (default) or only the main one")
+    i.add_argument("--host", choices=list(cfg.HOSTS),
+                   help="Windows: glitchwall's own windows (default when WebView2 is there) or Lively Wallpaper")
     i.add_argument("--force", action="store_true", help="add autostart even from a temporary uvx environment")
     i.set_defaults(fn=cmd_install)
 
@@ -370,6 +412,12 @@ def parser() -> argparse.ArgumentParser:
     c.add_argument("--label", help="text in the corner of the wallpaper")
     c.add_argument("--port", type=int)
     _look_args(c)
+    helps = {"type_speed": "typing speed", "linger": "seconds a block stays after it finishes",
+             "cards": "blocks on screen at once", "intensity": "background intensity (0 = still)",
+             "glass": "card opacity (lower = more see-through)"}
+    for k, (_, lo, hi) in cfg.TUNE.items():
+        c.add_argument(f"--{k.replace('_', '-')}", dest=k, type=int, choices=range(lo, hi + 1), metavar=f"{lo}-{hi}",
+                       help=helps[k])
     c.set_defaults(fn=cmd_config)
 
     sub.add_parser("themes", help="list themes, rain styles and fonts").set_defaults(fn=cmd_themes)

@@ -19,6 +19,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import Callable
 from urllib.parse import parse_qs, urlsplit
 
 from . import settings as cfg
@@ -101,7 +102,8 @@ class LiveSettings:
 def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | None = None,
                  static_dir: Path | None = None, config_js: str | None = None,
                  extra_origins: tuple[str, ...] = (), refusal_log: Path | None = None,
-                 look: dict | None = None, mode: str | None = None, label: str | None = None):
+                 look: dict | None = None, mode: str | None = None, label: str | None = None,
+                 sleeping: Callable[[str], bool] | None = None):
     class Handler(BaseHTTPRequestHandler):
         server_version = "glitchwall"
         sys_version = ""
@@ -143,7 +145,9 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
             out = [] if hidden else store.since(since, bool(s.get("commands_only")))
             body = json.dumps({"events": out, "paused": bool(s.get("paused")), "last": store.seq,
                                "look": look or themes.look(s), "mode": m,
-                               "label": cfg.display_label(s) if label is None else label}).encode()
+                               "label": cfg.display_label(s) if label is None else label, "tune": cfg.tune(s),
+                               # the built-in host: a fullscreen app covers this screen, so stop animating
+                               "sleep": bool(sleeping and sleeping(q.get("screen", [""])[0]))}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))
@@ -195,8 +199,25 @@ def run_feed(port: int | None = None) -> None:
     store = EventStore(Redactor(mask_user=s.get("mask_user", True), mask_email=s.get("mask_email", True)),
                        hidden=lambda: bool(live.get().get("paused")))
     threading.Thread(target=follow_mode, args=(store, live), daemon=True).start()
-    handler = make_handler(store, cfg.load_key(), port, live, refusal_log=cfg.state_dir() / "last-refused.txt")
-    serve(handler, port).serve_forever()
+    key = cfg.load_key()
+    host = None
+    if cfg.host(s) == "glitchwall":
+        from . import winhost
+        if winhost.available():
+            # the page is served from here and finds its key in the address (#key=, never sent over the wire)
+            host = winhost.Host(lambda n: f"http://127.0.0.1:{port}/?screen={n}#key={key}",
+                                s.get("screens", "all"), cfg.state_dir() / "webview")
+    from .platforms import wallpaper_source
+    handler = make_handler(store, key, port, live, refusal_log=cfg.state_dir() / "last-refused.txt",
+                           static_dir=wallpaper_source() if host else None,
+                           extra_origins=(f"http://127.0.0.1:{port}", f"http://localhost:{port}") if host else (),
+                           sleeping=(lambda scr: scr.isdigit() and int(scr) in host.asleep) if host else None)
+    httpd = serve(handler, port)
+    if not host:
+        httpd.serve_forever()
+        return
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    host.run(threading.Event())   # the windows need this (the main) thread; runs until the process ends
 
 
 def start_source(mode: str, store: EventStore) -> threading.Event:

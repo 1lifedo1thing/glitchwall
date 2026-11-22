@@ -28,3 +28,18 @@ SOFTWARE.
 ```
 
 Fonts: see src/glitchwall/wallpaper/OFL.txt and src/glitchwall/wallpaper/fonts/licenses/ (SIL Open Font License 1.1).
+
+On Windows, glitchwall uses these libraries for its desktop windows. The standalone Windows exes
+bundle them, and their license texts are in the release zip's `licenses/` folder:
+
+| Library | License |
+| --- | --- |
+| [pywebview](https://github.com/r0x0r/pywebview) | BSD-3-Clause |
+| [pythonnet](https://github.com/pythonnet/pythonnet) | MIT |
+| [clr-loader](https://github.com/pythonnet/clr-loader) | MIT |
+| [cffi](https://github.com/python-cffi/cffi) | MIT-0 |
+| [pycparser](https://github.com/eliben/pycparser) | BSD-3-Clause |
+| [bottle](https://github.com/bottlepy/bottle) | MIT |
+| [proxy_tools](https://github.com/jtushman/proxy_tools) | MIT |
+| [typing_extensions](https://github.com/python/typing_extensions) | PSF-2.0 |
+| Microsoft WebView2 SDK (`Microsoft.Web.WebView2.*.dll`, shipped inside pywebview) | [Microsoft WebView2 SDK license](https://www.nuget.org/packages/Microsoft.Web.WebView2/License) |

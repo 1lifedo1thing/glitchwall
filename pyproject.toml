@@ -1,12 +1,13 @@
 [project]
 name = "glitchwall"
 version = "0.5.0"
-description = "Your coding agent's tool calls as a live, glitchy retro-terminal desktop wallpaper. Local only, secrets masked, stdlib only."
+description = "Your coding agent's tool calls as a live, glitchy retro-terminal desktop wallpaper. Local only, secrets masked, no wallpaper app needed on Windows."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "src/glitchwall/wallpaper/OFL.txt", "src/glitchwall/wallpaper/fonts/licenses/*.txt"]
 requires-python = ">=3.9"
-dependencies = []
+# Windows only: glitchwall's own wallpaper windows (WebView2). Elsewhere it needs nothing outside the standard library.
+dependencies = ["pywebview==6.2.1; sys_platform == 'win32'"]
 keywords = ["wallpaper", "lively", "claude-code", "terminal", "retro", "glitch"]
 classifiers = [
     "Environment :: Win32 (MS Windows)",
