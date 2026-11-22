@@ -5,206 +5,434 @@
 <title>glitchwall settings</title>
 <link rel="icon" href="glitchwall.png">
 <style>
+  /* A cipher machine in a wooden box: black crinkle panel, rotors, a lampboard, paper tape. All fonts bundled. */
   @font-face { font-family:'Departure Mono'; src:url('DepartureMono-Regular.otf') format('opentype'); font-display:block; }
-  @font-face { font-family:'IBM Plex Mono'; src:url('fonts/IBMPlexMono-Regular.ttf'); font-display:block; }
+  @font-face { font-family:'Stencil'; src:url('fonts/SairaStencilOne-Regular.ttf'); font-display:block; }
+  @font-face { font-family:'Courier Prime'; src:url('fonts/CourierPrime-Regular.ttf'); font-display:block; }
   :root {
-    --bg:#0b0d0b; --panel:#121512; --line:#1f261f; --ink:#d6e8d6; --muted:#7f957f; --acc:#00ff41; --acc-ink:#031a08;
-    --warn:#ffb000; --hi:#172017;
+    --wood:#4a2c17; --wood-hi:#6b4123; --wood-lo:#2c180b;
+    --panel:#161514; --panel-hi:#24221f; --seam:#060505;
+    --print:#d9d1bb; --print-dim:#8d8572; --brass:#b8955a; --brass-hi:#e3c88f; --brass-lo:#6e5431;
+    --lamp-off:#2a2620; --lamp:#ffd36b; --paper:#e9e0c8; --ink:#2b2620; --red:#c8362b; --focus:#ffd36b;
   }
   * { box-sizing:border-box; }
-  html, body { margin:0; height:100%; background:var(--bg); color:var(--ink); font:13px/1.5 'IBM Plex Mono', Consolas, monospace; }
-  body { display:grid; grid-template-columns:minmax(380px, 460px) 1fr; grid-template-rows:auto 1fr; }
-  header { grid-column:1 / -1; display:flex; align-items:center; gap:16px; padding:14px 22px; border-bottom:1px solid var(--line); }
-  h1 { font:400 20px 'Departure Mono', monospace; letter-spacing:.35em; margin:0; color:var(--acc); text-shadow:0 0 8px rgba(0,255,65,.35); }
-  .chip { padding:3px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); }
-  .chip.on { color:var(--acc); border-color:rgba(0,255,65,.4); }
-  .chip.paused { color:var(--warn); border-color:rgba(255,176,0,.45); }
-  header .grow { flex:1; }
-  button { font:inherit; cursor:pointer; }
-  #pause { padding:8px 16px; border-radius:6px; border:1px solid var(--acc); background:transparent; color:var(--acc); font-family:'Departure Mono', monospace; letter-spacing:.08em; }
-  #pause.paused { background:var(--warn); border-color:var(--warn); color:#1a1200; }
-  #pause:hover { filter:brightness(1.2); }
-  main { overflow:auto; padding:6px 22px 28px; border-right:1px solid var(--line); }
-  section { padding:16px 0; border-bottom:1px solid var(--line); }
-  section:last-child { border-bottom:0; }
-  h2 { font:400 12px 'Departure Mono', monospace; letter-spacing:.25em; text-transform:uppercase; color:var(--muted); margin:0 0 10px; }
-  .seg { display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; }
-  .seg button, .themes button { text-align:left; padding:8px 10px; border-radius:6px; border:1px solid var(--line); background:var(--panel); color:var(--ink); }
-  .seg button small, .themes button small { display:block; color:var(--muted); font-size:11px; line-height:1.35; margin-top:2px; }
-  .seg button.sel, .themes button.sel { border-color:var(--acc); background:var(--hi); box-shadow:inset 0 0 0 1px rgba(0,255,65,.25); }
-  .seg button b, .themes button b { font-weight:400; font-family:'Departure Mono', monospace; color:var(--acc); }
-  .themes { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-  .row { display:grid; grid-template-columns:120px 1fr 44px; align-items:center; gap:10px; margin:8px 0; }
-  .row.two { grid-template-columns:120px 1fr; }
-  label { color:var(--muted); }
-  select, input[type=text] { width:100%; padding:7px 8px; border-radius:6px; border:1px solid var(--line); background:var(--panel); color:var(--ink); font:inherit; }
-  select:focus, input:focus { outline:1px solid var(--acc); }
-  input[type=range] { width:100%; accent-color:var(--acc); }
-  output { text-align:right; color:var(--acc); font-family:'Departure Mono', monospace; }
-  .toggle { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:7px 0; }
-  .toggle small { display:block; color:var(--muted); font-size:11px; }
-  .sw { position:relative; width:40px; height:22px; flex:none; }
-  .sw input { opacity:0; width:0; height:0; }
-  .sw span { position:absolute; inset:0; border-radius:999px; background:var(--line); transition:.15s; }
-  .sw span::after { content:''; position:absolute; width:16px; height:16px; left:3px; top:3px; border-radius:50%; background:var(--muted); transition:.15s; }
-  .sw input:checked + span { background:rgba(0,255,65,.35); }
-  .sw input:checked + span::after { left:21px; background:var(--acc); }
-  .preview { display:flex; flex-direction:column; padding:18px 22px; min-width:0; }
-  .frame { position:relative; width:100%; aspect-ratio:16 / 9; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#000; }
-  .frame iframe { position:absolute; left:0; top:0; width:1600px; height:900px; border:0; transform-origin:0 0; pointer-events:none; }
-  .note { color:var(--muted); margin-top:10px; font-size:12px; }
-  .err { color:#ff5050; }
-  #toast { position:fixed; right:18px; bottom:16px; padding:6px 12px; border-radius:6px; background:var(--hi); border:1px solid var(--line); color:var(--acc); opacity:0; transition:opacity .2s; }
-  #toast.show { opacity:1; }
+  html, body { margin:0; height:100%; background:var(--wood-lo); color:var(--print); font:12px/1.4 'Departure Mono', Consolas, monospace; }
+  /* the wooden box */
+  body { display:grid; grid-template-rows:auto minmax(0,1fr) auto; height:100vh; overflow:hidden; padding:10px;
+         background:
+           repeating-linear-gradient(92deg, rgba(0,0,0,.0) 0 7px, rgba(0,0,0,.12) 7px 9px, rgba(255,255,255,.03) 9px 13px, rgba(0,0,0,.08) 13px 21px),
+           linear-gradient(180deg, var(--wood-hi), var(--wood) 40%, var(--wood-lo)); }
+  /* the black crinkle-finish lid everything sits in */
+  header, main, footer { background-color:var(--panel);
+    background-image:radial-gradient(rgba(255,255,255,.035) 1px, transparent 1.2px), radial-gradient(rgba(0,0,0,.5) 1px, transparent 1.2px);
+    background-size:3px 3px, 4px 4px; background-position:0 0, 1px 2px; }
+  header { border-radius:8px 8px 0 0; box-shadow:inset 0 1px 0 #333; }
+  footer { border-radius:0 0 8px 8px; }
+  button { font:inherit; color:inherit; }
+  .scr { position:absolute; width:8px; height:8px; border-radius:50%; background:radial-gradient(circle at 35% 35%, var(--brass-hi), var(--brass-lo) 75%); box-shadow:0 1px 1px #000; }
+  .scr::after { content:''; position:absolute; left:1px; right:1px; top:3.5px; height:1px; background:#3d2e18; transform:rotate(35deg); }
+  .plate { display:inline-block; padding:1px 7px; border-radius:2px; font:10px/1.5 'Stencil', sans-serif; letter-spacing:.18em; color:#1d160c;
+           background:linear-gradient(var(--brass-hi), var(--brass) 55%, var(--brass-lo)); box-shadow:0 1px 1px #000, inset 0 1px 0 rgba(255,255,255,.35); }
+
+  /* ---------- header */
+  header { display:flex; align-items:center; gap:18px; padding:10px 18px; border-bottom:1px solid var(--seam); }
+  .brand { font:26px/1 'Stencil', sans-serif; letter-spacing:.32em; color:var(--print); text-shadow:0 1px 0 #000; }
+  .brand small { display:block; font:9px 'Departure Mono', monospace; letter-spacing:.32em; color:var(--print-dim); margin-top:4px; }
+  .status { display:flex; gap:16px; margin-left:6px; }
+  .ind { display:flex; align-items:center; gap:7px; font-size:10px; letter-spacing:.15em; color:var(--print-dim); }
+  .led { width:11px; height:11px; border-radius:50%; flex:none; transition:background .15s, box-shadow .15s;
+         background:radial-gradient(circle at 40% 35%, #4a443a, var(--lamp-off) 70%); box-shadow:0 0 0 2px #0c0b0a, 0 0 0 3px var(--brass-lo); }
+  .led.g { background:radial-gradient(circle at 40% 35%, #fff6cf, var(--lamp) 60%, #c98f1d); box-shadow:0 0 0 2px #0c0b0a, 0 0 0 3px var(--brass-lo), 0 0 12px rgba(255,211,107,.7); }
+  .led.a { background:radial-gradient(circle at 40% 35%, #ffd2c4, var(--red) 60%, #7d1a12); box-shadow:0 0 0 2px #0c0b0a, 0 0 0 3px var(--brass-lo), 0 0 12px rgba(200,54,43,.8); }
+  .led.r { background:radial-gradient(circle at 40% 35%, #ffd2c4, var(--red) 60%, #7d1a12); box-shadow:0 0 0 2px #0c0b0a, 0 0 0 3px var(--brass-lo), 0 0 12px rgba(200,54,43,.8); }
+  .grow { flex:1; }
+  /* the pause: a big round key */
+  #pause { position:relative; display:flex; align-items:center; gap:12px; background:none; border:0; cursor:pointer; padding:2px 6px; border-radius:30px; }
+  #pause .cap { width:46px; height:46px; border-radius:50%; display:grid; place-items:center; font:15px 'Stencil', sans-serif; color:#f3ecd8;
+                background:radial-gradient(circle at 40% 35%, #3a3632, #141210 70%); box-shadow:0 0 0 3px #d8d0bb, 0 0 0 5px #3a352c, 0 4px 0 5px #000; transition:transform .06s; }
+  #pause:active .cap, #pause.on .cap { transform:translateY(3px); box-shadow:0 0 0 3px #d8d0bb, 0 0 0 5px #3a352c, 0 1px 0 5px #000; }
+  #pause.on .cap { background:radial-gradient(circle at 40% 35%, #e0584b, var(--red) 60%, #6d140d); color:#fff; box-shadow:0 0 0 3px #d8d0bb, 0 0 0 5px #3a352c, 0 1px 0 5px #000, 0 0 22px rgba(200,54,43,.7); }
+  #pause .t { text-align:left; font-size:11px; letter-spacing:.2em; color:var(--print); }
+  #pause .t small { display:block; font-size:9px; letter-spacing:.12em; color:var(--print-dim); }
+
+  /* ---------- deck */
+  /* the preview gets the most room: two-thirds of the width, all of the height the rest doesn't need */
+  main { display:grid; gap:12px; padding:12px 14px; min-height:0; overflow:auto;
+         grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.28fr); grid-template-rows:minmax(0,1fr) auto;
+         grid-template-areas:"mon mon side" "tape priv motion"; }
+  .side { grid-area:side; display:flex; flex-direction:column; gap:12px; min-width:0; min-height:0; }
+  .side > .mod:last-child { flex:1; }
+  #tapebox { grid-area:tape; display:flex; } #priv { grid-area:priv; } #motion { grid-area:motion; }
+  .monitor { grid-area:mon; display:flex; flex-direction:column; min-height:0; }
+  .mod { position:relative; border:1px solid #000; border-radius:5px; padding:24px 14px 12px;
+         background:linear-gradient(rgba(255,255,255,.03), rgba(0,0,0,.25)); box-shadow:inset 0 1px 0 rgba(255,255,255,.06), inset 0 0 0 1px rgba(0,0,0,.6); }
+  .mod > h2 { position:absolute; top:5px; left:12px; margin:0; font-weight:400; }
+  .mod > .scr.tl { top:6px; right:22px; } .mod > .scr.tr { top:6px; right:8px; }
+
+  /* the monitor, in a brass-rimmed porthole bezel */
+  .monitor { padding:10px 12px 8px; }
+  .bezel { position:relative; flex:1; min-height:200px; display:grid; place-items:center; border-radius:14px; padding:8px; background:#0b0a09;
+           box-shadow:0 0 0 2px var(--brass-lo), 0 0 0 4px #0b0a09, inset 0 6px 18px #000; }
+  .screen { position:relative; width:100%; aspect-ratio:16/9; border-radius:10px / 14px; overflow:hidden; background:#000; }   /* sized by fit() */
+  .screen iframe { position:absolute; left:0; top:0; width:1600px; height:900px; border:0; transform-origin:0 0; pointer-events:none; }
+  .screen::after { content:''; position:absolute; inset:0; pointer-events:none; border-radius:inherit;
+                   background:repeating-linear-gradient(transparent 0 2px, rgba(0,0,0,.16) 2px 3px), radial-gradient(130% 120% at 50% 50%, transparent 60%, rgba(0,0,0,.55));
+                   box-shadow:inset 0 0 40px rgba(0,0,0,.7); }
+  .monitor .under { display:flex; justify-content:space-between; align-items:center; margin-top:9px; }
+  #chan { font:11px 'Courier Prime', monospace; color:var(--print); letter-spacing:.1em; }
+
+  /* the readout: a strip of paper tape, typed */
+  #readout { position:relative; flex:1; padding:12px 14px 12px 20px; min-height:66px; color:var(--ink); border-radius:2px;
+             background:linear-gradient(90deg, rgba(0,0,0,.08), transparent 6%, transparent 94%, rgba(0,0,0,.08)), var(--paper);
+             box-shadow:0 2px 3px #000, inset 0 0 14px rgba(120,100,60,.25);
+             -webkit-mask:radial-gradient(circle 4px at 7px 50%, transparent 3.5px, #000 4px); mask:radial-gradient(circle 4px at 7px 50%, transparent 3.5px, #000 4px); }
+  #readout .l1 { font:700 15px/1.1 'Courier Prime', monospace; letter-spacing:.14em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #readout .l2 { font:13px/1.35 'Courier Prime', monospace; margin-top:8px; color:#3d362c; }
+  #readout .err { color:var(--red); }
+
+  /* switches: lever toggles on a brass plate */
+  .switches { display:flex; gap:10px; align-items:stretch; }
+  .sw { flex:1; display:flex; flex-direction:column; align-items:center; gap:7px; padding:4px 2px; border-radius:6px; cursor:pointer; background:none; border:0; }
+  .sw .slot { position:relative; width:28px; height:46px; border-radius:6px; background:radial-gradient(circle at 50% 50%, #0b0a09 30%, transparent 31%), linear-gradient(var(--brass-hi), var(--brass-lo));
+              box-shadow:0 2px 2px #000, inset 0 1px 0 rgba(255,255,255,.3); }
+  .sw .lever { position:absolute; left:10px; width:8px; height:22px; border-radius:4px; background:linear-gradient(90deg, #888, #f4f1ea 45%, #777);
+               box-shadow:0 2px 2px #000; top:22px; transition:top .1s, height .1s; }
+  .sw .lever::after { content:''; position:absolute; left:-3px; width:14px; height:9px; border-radius:50%; background:radial-gradient(circle at 40% 35%, #fff, #9a978f); bottom:-3px; }
+  .sw.on .lever { top:2px; }
+  .sw.on .lever::after { bottom:auto; top:-3px; }
+  .sw .name { font:10px 'Stencil', sans-serif; letter-spacing:.14em; color:var(--print); text-align:center; }
+  .labelrow { display:flex; gap:10px; align-items:center; margin-top:12px; }
+  #label { flex:1; min-width:0; border:0; padding:7px 12px; font:15px 'Courier Prime', monospace; color:var(--ink); background:var(--paper); border-radius:2px; outline:none;
+           box-shadow:inset 0 0 10px rgba(120,100,60,.3), 0 2px 3px #000; }
+  #label:focus { box-shadow:inset 0 0 10px rgba(120,100,60,.3), 0 0 0 2px var(--focus); }
+
+  /* rotors: a window showing the setting, a ridged thumbwheel beside it */
+  .knobs { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:6px; }
+  .knob { display:flex; flex-direction:column; align-items:center; gap:7px; background:none; border:0; padding:4px 0; cursor:ns-resize; border-radius:6px; min-width:0; }
+  .rotor { display:flex; align-items:stretch; gap:3px; width:100%; max-width:118px; height:54px; padding:0 2px; }
+  .win { flex:1; min-width:0; display:grid; place-items:center; border-radius:3px; padding:0 4px; overflow:hidden;
+         background:radial-gradient(ellipse at 50% 50%, #f1ead6, #cfc5aa); box-shadow:0 0 0 2px #0b0a09, 0 0 0 4px var(--brass-lo), inset 0 6px 8px rgba(0,0,0,.5), inset 0 -6px 8px rgba(0,0,0,.5); }
+  .win .val { display:block; text-align:center; font:700 11px 'Courier Prime', monospace; color:var(--ink); letter-spacing:.04em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  .wheel { width:11px; border-radius:7px / 18px; background-color:#1b1916; transition:background-position .18s;
+           background-image:repeating-linear-gradient(180deg, #5c574d 0 2px, #12100e 2px 5px), linear-gradient(90deg, rgba(0,0,0,.7), rgba(255,255,255,.18) 45%, rgba(0,0,0,.75));
+           background-blend-mode:multiply; box-shadow:0 2px 3px #000; }
+  .knob .name { font:10px 'Stencil', sans-serif; letter-spacing:.14em; color:var(--print); }
+
+  /* the lampboard: one glass lamp per theme */
+  .keypad { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:5px 6px; }
+  .key { display:flex; align-items:center; gap:6px; height:27px; padding:0 4px 0 3px; border-radius:14px; cursor:pointer; text-align:left; min-width:0;
+         border:0; background:none; color:var(--print-dim); font:11px 'Courier Prime', monospace; letter-spacing:.02em; }
+  .key .lamp { flex:none; width:22px; height:22px; border-radius:50%; display:grid; place-items:center; font:700 12px 'Courier Prime', monospace; color:#7a7262;
+               background:radial-gradient(circle at 40% 35%, #4a453c, #1d1b18 70%); box-shadow:0 0 0 2px #0b0a09, 0 0 0 3px #3b362e, inset 0 2px 3px rgba(0,0,0,.6); transition:all .15s; }
+  .key span:last-child { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .key:hover { color:var(--print); }
+  .key.sel { color:var(--lamp); }
+  .key.sel .lamp { color:#5a3a00; background:radial-gradient(circle at 40% 35%, #fff8d8, var(--lamp) 55%, #d69a22);
+                   box-shadow:0 0 0 2px #0b0a09, 0 0 0 3px var(--brass), 0 0 16px rgba(255,211,107,.75); }
+  .key:active .lamp { transform:scale(.94); }
+
+  /* faders: black slots, brass-edged caps */
+  /* faders, lying flat: name, slot, value */
+  .faders { display:flex; flex-direction:column; gap:3px; }
+  .fader { display:grid; grid-template-columns:62px 1fr 34px; align-items:center; gap:8px; padding:1px 4px; border-radius:6px; min-width:0; }
+  .fader .val { text-align:center; font:700 12px/1.45 'Courier Prime', monospace; color:var(--ink); background:var(--paper); border-radius:2px; box-shadow:0 0 0 2px #0b0a09, 0 0 0 3px var(--brass-lo); }
+  .track { position:relative; height:20px; touch-action:none; cursor:ew-resize; }
+  .track .slotv { position:absolute; left:4px; right:4px; top:7px; height:6px; border-radius:3px; background:#030303; box-shadow:inset 0 1px 3px #000, 0 0 0 1px #3b362e; }
+  .track .ticks { position:absolute; inset:0 4px; background:repeating-linear-gradient(90deg, var(--brass-lo) 0 1px, transparent 1px 10%);
+                  -webkit-mask:linear-gradient(#000 0 4px, transparent 4px 16px, #000 16px); mask:linear-gradient(#000 0 4px, transparent 4px 16px, #000 16px); }
+  .track .capf { position:absolute; top:1px; width:14px; height:18px; margin-left:-7px; border-radius:3px;
+                 background:linear-gradient(90deg, #3b3732, #151311); box-shadow:0 0 0 1px var(--brass), 0 2px 3px #000; }
+  .track .capf::after { content:''; position:absolute; top:3px; bottom:3px; left:6px; width:2px; background:var(--brass-hi); }
+  .fader .name { font:10px 'Stencil', sans-serif; letter-spacing:.1em; color:var(--print); }
+
+  .sw:focus-visible, .knob:focus-visible, .fader:focus-visible, .key:focus-visible, #pause:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
+  :focus { outline:none; }
+
+  /* the legend */
+  footer { display:flex; flex-wrap:wrap; gap:6px 18px; padding:8px 18px; border-top:1px solid var(--seam); font-size:10px; color:var(--print-dim); letter-spacing:.06em; }
+  kbd { display:inline-grid; place-items:center; min-width:20px; height:20px; padding:0 5px; margin-right:4px; border-radius:10px; font:700 10px 'Courier Prime', monospace; color:#f3ecd8;
+        background:radial-gradient(circle at 40% 35%, #3a3632, #141210 70%); box-shadow:0 0 0 1.5px #d8d0bb, 0 2px 0 1.5px #000; }
+
+  @media (max-width:900px) {
+    main { grid-template-columns:1fr; grid-template-rows:none; grid-template-areas:"mon" "side" "tape" "priv" "motion"; }
+    body { overflow:auto; height:auto; min-height:100vh; } .bezel { min-height:0; }
+  }
 </style>
 </head>
 <body>
 <header>
-  <h1>GLITCHWALL</h1>
-  <span id="state" class="chip">connecting…</span>
+  <div class="brand">GLITCHWALL<small>SETTINGS · MODEL G</small></div>
+  <div class="status">
+    <div class="ind"><span class="led" id="led-feed"></span>FEED</div>
+    <div class="ind"><span class="led" id="led-air"></span><span id="air">ON AIR</span></div>
+  </div>
   <span class="grow"></span>
-  <button id="pause" title="Stream-safe: the wallpaper shows nothing until you resume">PAUSE</button>
+  <button id="pause" data-help="pause"><span class="cap">P</span><span class="t"><b id="pause-t">PAUSE</b><small id="pause-s">STREAM-SAFE</small></span></button>
 </header>
 
 <main>
-  <section>
-    <h2>Mode</h2>
-    <div class="seg" id="mode"></div>
-  </section>
+  <div class="mod monitor"><span class="scr tl"></span><span class="scr tr"></span>
+    <div class="bezel" id="bezel"><div class="screen" id="screen"><iframe id="pv" title="live preview" tabindex="-1"></iframe></div></div>
+    <div class="under"><span class="plate">LIVE PREVIEW</span><span id="chan">--</span></div>
+  </div>
 
-  <section>
-    <h2>Theme</h2>
-    <div class="themes" id="themes"></div>
-  </section>
+  <div class="side">
+    <div class="mod"><h2 class="plate">ROTORS</h2><span class="scr tl"></span><span class="scr tr"></span>
+      <div class="knobs" id="knobs"></div>
+    </div>
+    <div class="mod"><h2 class="plate">THEME</h2><span class="scr tl"></span><span class="scr tr"></span>
+      <div class="keypad" id="keypad" role="radiogroup" aria-label="theme"></div>
+    </div>
+  </div>
 
-  <section>
-    <h2>Mix and match</h2>
-    <div class="row two"><label for="palette">Colors</label><select id="palette"></select></div>
-    <div class="row two"><label for="rain">Background</label><select id="rain"></select></div>
-    <div class="row two"><label for="font">Font</label><select id="font"></select></div>
-    <div class="row two"><label for="transition">Transition</label><select id="transition"></select></div>
-  </section>
-
-  <section>
-    <h2>Motion</h2>
-    <div id="tune"></div>
-  </section>
-
-  <section>
-    <h2>Privacy</h2>
-    <div class="toggle"><div>Commands only<small>show the calls, never their output</small></div>
-      <label class="sw"><input type="checkbox" id="commands_only"><span></span></label></div>
-    <div class="toggle"><div>Mask my user name<small>shown as "user"</small></div>
-      <label class="sw"><input type="checkbox" id="mask_user"><span></span></label></div>
-    <div class="toggle"><div>Mask email addresses<small>the part before the @ becomes ••••</small></div>
-      <label class="sw"><input type="checkbox" id="mask_email"><span></span></label></div>
-  </section>
-
-  <section>
-    <h2>Corner label</h2>
-    <div class="row two"><label for="label">Text</label><input type="text" id="label" maxlength="80"></div>
-  </section>
+  <div id="tapebox"><div id="readout" aria-live="polite"><div class="l1">CONNECTING…</div><div class="l2"></div></div></div>
+  <div class="mod" id="priv"><h2 class="plate">PRIVACY</h2><span class="scr tl"></span><span class="scr tr"></span>
+    <div class="switches" id="switches"></div>
+    <div class="labelrow"><label class="plate" for="label">LABEL</label><input id="label" maxlength="80" spellcheck="false" data-help="label"></div>
+  </div>
+  <div class="mod" id="motion"><h2 class="plate">MOTION</h2><span class="scr tl"></span><span class="scr tr"></span>
+    <div class="faders" id="faders"></div>
+  </div>
 </main>
 
-<div class="preview">
-  <div class="frame" id="frame"><iframe id="pv" title="live preview" tabindex="-1"></iframe></div>
-  <p class="note">Live preview of your wallpaper. Every change reaches your desktop within a second.</p>
-  <p class="note" id="msg"></p>
-</div>
-<div id="toast">saved</div>
+<footer>
+  <span><kbd>TAB</kbd>next control</span>
+  <span><kbd>←</kbd><kbd>→</kbd>move on the lampboard</span>
+  <span><kbd>↑</kbd><kbd>↓</kbd>turn a rotor</span>
+  <span><kbd>←</kbd><kbd>→</kbd>slide a fader</span>
+  <span><kbd>SPACE</kbd><kbd>ENTER</kbd>press · flip</span>
+  <span><kbd>P</kbd>pause / resume</span>
+</footer>
 
 <script>
 const KEY = decodeURIComponent(location.hash.startsWith('#key=') ? location.hash.slice(5) : '');
 const API = `/settings?key=${encodeURIComponent(KEY)}`;
-const TUNE = { type_speed: 'Typing speed', linger: 'Linger (s)', cards: 'Cards at once', intensity: 'Background', glass: 'Glass' };
-const LOOK = ['palette', 'rain', 'font', 'transition'];
 const $ = id => document.getElementById(id);
-let S = {}, C = {}, built = false;
+const KNOBS = [['mode', 'MODE'], ['palette', 'COLORS'], ['rain', 'BACKDROP'], ['font', 'FONT'], ['transition', 'ARRIVAL']];
+const FADERS = {
+  type_speed: ['TYPING', 'How fast each call types itself out: 1 is a slow crawl, 20 is nearly instant.'],
+  linger: ['LINGER', 'Seconds a card stays on screen after it finishes.'],
+  cards: ['CARDS', 'How many cards share the screen at once.'],
+  intensity: ['MOTION', 'How busy the background is: 0 holds it still, 10 is full motion.'],
+  glass: ['GLASS', 'Card opacity: low lets the background show through, high is solid.'],
+};
+const SWITCHES = {
+  commands_only: ['CALLS ONLY', 'Show each call, never its output.'],
+  mask_user: ['MASK USER', 'Your user name shows as "user" everywhere.'],
+  mask_email: ['MASK EMAIL', 'Email addresses lose everything before the @.'],
+};
+const KNOB_HELP = { mode: 'MODE', palette: 'COLORS', rain: 'BACKGROUND', font: 'FONT', transition: 'TRANSITION (how cards arrive and leave)' };
+const MODE_SHORT = { live: 'LIVE', ambient: 'AMBIENT', art: 'ART' };
+let S = {}, C = {}, focusHelp = null, pending = {}, timer = null, busy = false;
 
-function toast(t = 'saved') { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 900); }
-function msg(t, bad) { $('msg').textContent = t || ''; $('msg').className = 'note' + (bad ? ' err' : ''); }
+// ---------- words: what each option is, said once, plainly
+const clean = t => String(t || '').replace(/^extra: /, '');
+function optName(kind, v) { return v === 'theme' ? 'AUTO' : kind === 'mode' ? MODE_SHORT[v] || v : v.toUpperCase(); }
+function optText(kind, v) {
+  if (kind === 'theme') return clean(C.theme[v]);
+  if (kind === 'mode') return C.mode[v][0].toUpperCase() + C.mode[v].slice(1) + '.';
+  if (v === 'theme') {
+    const t = S.theme;
+    if (kind === 'palette') return `Follows the theme: ${t}'s own, ${C.palette[t] || ''}.`;
+    return `Follows the theme: the ${{ rain: 'background', font: 'fonts', transition: 'transition' }[kind]} ${t} comes with.`;
+  }
+  if (kind === 'palette') return `Borrows ${v}'s colors: ${C.palette[v]}.`;
+  if (kind === 'font') {
+    const d = C.font[v];
+    if (/system font/.test(d)) return `${d.replace(/ \(.*/, '')}: uses the copy on your system, so it may look different elsewhere.`;
+    const m = d.match(/^(.*?) \(bundled(?:; (.*))?\)$/);
+    return m ? (m[2] ? `${m[1]}, ${m[2]}.` : `${m[1]}.`) : d;
+  }
+  const d = C[kind][v]; return d ? d[0].toUpperCase() + d.slice(1) + '.' : '';
+}
+function say(l1, l2, bad) {
+  const [a, b] = $('readout').children;
+  a.textContent = l1; b.textContent = l2 || ''; b.className = 'l2' + (bad ? ' err' : '');
+}
+function help(h) {
+  focusHelp = h || focusHelp;
+  h = focusHelp;
+  if (!h || !S.theme) return;
+  const [kind, extra] = h.split(':');
+  if (kind === 'pause') return say(S.paused ? 'PAUSE · ON' : 'PAUSE · OFF', S.paused ? 'The wallpaper shows nothing at all until you resume. Safe to stream.' : 'Press before you stream or share your screen: the wallpaper goes blank at once.');
+  if (kind === 'label') return say('CORNER LABEL', 'The text in the bottom-right corner of the wallpaper. Enter saves it.');
+  if (kind === 'theme') { const v = extra || S.theme; return say(`THEME · ${v.toUpperCase()}${v === S.theme ? '' : '  (ENTER TO PICK)'}`, optText('theme', v)); }
+  if (FADERS[kind]) return say(`${FADERS[kind][0]} · ${S[kind]}`, FADERS[kind][1]);
+  if (SWITCHES[kind]) return say(`${SWITCHES[kind][0]} · ${S[kind] ? 'ON' : 'OFF'}`, SWITCHES[kind][1]);
+  if (KNOB_HELP[kind]) return say(`${KNOB_HELP[kind]} · ${optName(kind, S[kind])}`, optText(kind, S[kind]));
+}
 
+// ---------- talking to the feed: changes show at once and go out together
 async function api(changes) {
   const r = await fetch(API, changes ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) } : {});
-  if (!r.ok) throw new Error(r.status === 403 ? 'refused: open settings with `glitchwall settings`' : 'feed error ' + r.status);
+  if (!r.ok) throw new Error(r.status === 403 ? 'Refused: open this with glitchwall settings.' : 'Feed error ' + r.status + '.');
   return r.json();
 }
-async function save(changes) {
-  try {
-    const d = await api(changes);
-    S = d.settings; render();
-    if (d.refused && d.refused.length) msg('not saved: ' + d.refused.join(', '), true); else { msg(''); toast(); }
-  } catch (e) { msg(String(e.message || e), true); }
+function set(k, v, now) {
+  S[k] = v; pending[k] = v; render(); help();
+  clearTimeout(timer); timer = setTimeout(flush, now ? 0 : 220);
 }
+async function flush() {
+  const ch = pending; pending = {};
+  if (!Object.keys(ch).length) return;
+  try {
+    const d = await api(ch);
+    if (!Object.keys(pending).length) { S = d.settings; render(); }
+    if (d.refused && d.refused.length) say('NOT SAVED', d.refused.join(', '), true);
+    led('feed', 'g');
+  } catch (e) { led('feed', 'r'); say('NO CONNECTION', String(e.message || e), true); }
+}
+function led(id, c) { $('led-' + id).className = 'led ' + (c || ''); }
 
+// ---------- building the machine
+function knob(kind, name) {   // a rotor: up/down (or the wheel, a drag, a click) turns it a notch
+  const b = document.createElement('button'); b.className = 'knob'; b.dataset.help = kind;
+  b.innerHTML = `<div class="name"></div><div class="rotor"><div class="win"><span class="val"></span></div><div class="wheel"></div></div>`;
+  b.querySelector('.name').textContent = name;
+  const opts = () => Object.keys(C[kind]);
+  const step = d => { const o = opts(); const i = Math.max(0, o.indexOf(S[kind])); set(kind, o[Math.min(o.length - 1, Math.max(0, i + d))]); };
+  b.addEventListener('keydown', e => {
+    const d = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key];
+    if (d) { e.preventDefault(); step(d); }
+    if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); const o = opts(); set(kind, e.key === 'Home' ? o[0] : o[o.length - 1]); }
+  });
+  b.addEventListener('click', e => {   // a click (or space/enter) turns it one notch on; shift turns it back
+    if (!b.dragged) { const o = opts(); const i = o.indexOf(S[kind]); set(kind, o[(i + (e.shiftKey ? o.length - 1 : 1)) % o.length]); }
+    b.dragged = false;
+  });
+  b.addEventListener('wheel', e => { e.preventDefault(); step(e.deltaY < 0 ? 1 : -1); }, { passive: false });
+  b.addEventListener('pointerdown', e => {
+    let y0 = e.clientY; b.dragged = false;
+    const mv = ev => { if (Math.abs(ev.clientY - y0) > 12) { step(ev.clientY < y0 ? 1 : -1); y0 = ev.clientY; b.dragged = true; } };
+    const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); };
+    addEventListener('pointermove', mv); addEventListener('pointerup', up);
+  });
+  return b;
+}
+function fader(kind) {
+  const [lo, hi] = C.ranges[kind];
+  const b = document.createElement('div'); b.className = 'fader'; b.tabIndex = 0; b.dataset.help = kind;
+  b.setAttribute('role', 'slider'); b.setAttribute('aria-label', FADERS[kind][0]); b.setAttribute('aria-valuemin', lo); b.setAttribute('aria-valuemax', hi);
+  b.innerHTML = `<div class="name"></div><div class="track"><div class="ticks"></div><div class="slotv"></div><div class="capf"></div></div><div class="val"></div>`;
+  b.querySelector('.name').textContent = FADERS[kind][0];
+  const clamp = v => Math.min(hi, Math.max(lo, Math.round(v)));
+  b.addEventListener('keydown', e => {
+    const big = Math.max(1, Math.round((hi - lo) / 5));
+    const d = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1, PageUp: big, PageDown: -big }[e.key];
+    if (d) { e.preventDefault(); set(kind, clamp(S[kind] + d)); }
+    if (e.key === 'Home') { e.preventDefault(); set(kind, lo); }
+    if (e.key === 'End') { e.preventDefault(); set(kind, hi); }
+  });
+  const tr = b.querySelector('.track');
+  const at = x => { const r = tr.getBoundingClientRect(); return clamp(lo + (x - r.left - 4) / (r.width - 8) * (hi - lo)); };
+  tr.addEventListener('pointerdown', e => {
+    e.preventDefault(); b.focus(); busy = true; tr.setPointerCapture(e.pointerId); set(kind, at(e.clientX));
+    const mv = ev => { const v = at(ev.clientX); if (v !== S[kind]) set(kind, v); };
+    const up = () => { busy = false; tr.removeEventListener('pointermove', mv); tr.removeEventListener('pointerup', up); };
+    tr.addEventListener('pointermove', mv); tr.addEventListener('pointerup', up);
+  });
+  b.addEventListener('wheel', e => { e.preventDefault(); set(kind, clamp(S[kind] + (e.deltaY < 0 ? 1 : -1))); }, { passive: false });
+  return b;
+}
+function sw(kind) {
+  const b = document.createElement('button'); b.className = 'sw'; b.dataset.help = kind; b.setAttribute('role', 'switch');
+  b.innerHTML = `<span class="led"></span><span class="slot"><span class="lever"></span></span><span class="name"></span>`;
+  b.querySelector('.name').textContent = SWITCHES[kind][0];
+  b.addEventListener('click', () => set(kind, !S[kind], true));
+  return b;
+}
+function keypad() {
+  const kp = $('keypad'); kp.innerHTML = '';
+  for (const t of Object.keys(C.theme)) {
+    const k = document.createElement('button'); k.className = 'key'; k.dataset.v = t; k.dataset.help = 'theme:' + t; k.tabIndex = -1;
+    k.setAttribute('role', 'radio');
+    k.innerHTML = '<span class="lamp"></span><span></span>';
+    k.firstChild.textContent = t[0].toUpperCase(); k.lastChild.textContent = t;
+    k.addEventListener('click', () => set('theme', t, true));
+    kp.appendChild(k);
+  }
+  kp.addEventListener('keydown', e => {   // arrows move around the lampboard; space/enter press the key
+    const keys = [...kp.children], i = keys.indexOf(document.activeElement);
+    if (i < 0) return;
+    const cols = Math.max(1, Math.round(kp.clientWidth / (keys[0].offsetWidth + 8)));
+    const d = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols, Home: -i, End: keys.length - 1 - i }[e.key];
+    if (d === undefined) return;
+    e.preventDefault();
+    const j = Math.min(keys.length - 1, Math.max(0, i + d));
+    keys[i].tabIndex = -1; keys[j].tabIndex = 0; keys[j].focus();
+  });
+}
 function build() {
-  // mode
-  $('mode').innerHTML = '';
-  for (const [m, desc] of Object.entries(C.mode)) {
-    const b = document.createElement('button'); b.dataset.v = m;
-    b.innerHTML = '<b></b><small></small>'; b.querySelector('b').textContent = m; b.querySelector('small').textContent = desc.split(';')[0].split(':')[0];
-    b.onclick = () => save({ mode: m }); $('mode').appendChild(b);
-  }
-  // themes
-  $('themes').innerHTML = '';
-  for (const [t, desc] of Object.entries(C.theme)) {
-    const b = document.createElement('button'); b.dataset.v = t;
-    b.innerHTML = '<b></b><small></small>'; b.querySelector('b').textContent = t; b.querySelector('small').textContent = desc.replace(/^extra: /, '');
-    b.onclick = () => save({ theme: t }); $('themes').appendChild(b);
-  }
-  // selects
-  for (const k of LOOK) {
-    const sel = $(k); sel.innerHTML = '';
-    for (const [v, desc] of Object.entries(C[k])) {
-      const o = document.createElement('option'); o.value = v; o.textContent = v === 'theme' ? "theme's own" : `${v}  ·  ${desc}`; sel.appendChild(o);
-    }
-    sel.onchange = () => save({ [k]: sel.value });
-  }
-  // sliders
-  $('tune').innerHTML = '';
-  for (const [k, name] of Object.entries(TUNE)) {
-    const [lo, hi] = C.ranges[k];
-    const row = document.createElement('div'); row.className = 'row';
-    row.innerHTML = `<label for="${k}"></label><input type="range" id="${k}" min="${lo}" max="${hi}" step="1"><output id="${k}_v"></output>`;
-    row.querySelector('label').textContent = name;
-    $('tune').appendChild(row);
-    const r = row.querySelector('input');
-    r.oninput = () => { $(k + '_v').textContent = r.value; };
-    r.onchange = () => save({ [k]: +r.value });
-  }
-  for (const k of ['commands_only', 'mask_user', 'mask_email']) $(k).onchange = e => save({ [k]: e.target.checked });
-  $('label').onchange = e => save({ label: e.target.value });
-  $('label').onkeydown = e => { if (e.key === 'Enter') e.target.blur(); };
-  $('pause').onclick = () => save({ paused: !S.paused });
-  built = true;
+  const kn = $('knobs'); KNOBS.forEach(([k, n]) => kn.appendChild(knob(k, n)));
+  const fd = $('faders'); Object.keys(FADERS).forEach(k => fd.appendChild(fader(k)));
+  const sws = $('switches'); Object.keys(SWITCHES).forEach(k => sws.appendChild(sw(k)));
+  keypad();
+  $('pause').addEventListener('click', () => set('paused', !S.paused, true));
+  $('label').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } e.stopPropagation(); });
+  $('label').addEventListener('change', e => set('label', e.target.value, true));
+  // the tape explains whatever is under the mouse or has the keyboard
+  document.addEventListener('focusin', e => { const h = e.target.closest('[data-help]'); if (h) help(h.dataset.help); });
+  document.addEventListener('mouseover', e => { const h = e.target.closest('[data-help]'); if (h) help(h.dataset.help); });
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.key === 'p' || e.key === 'P') { e.preventDefault(); set('paused', !S.paused, true); }
+  });
 }
 
 function render() {
-  if (!built) build();
-  document.querySelectorAll('#mode button').forEach(b => b.classList.toggle('sel', b.dataset.v === S.mode));
-  document.querySelectorAll('#themes button').forEach(b => b.classList.toggle('sel', b.dataset.v === S.theme));
-  for (const k of LOOK) $(k).value = S[k];
-  for (const k of Object.keys(TUNE)) { $(k).value = S[k]; $(k + '_v').textContent = S[k]; }
-  for (const k of ['commands_only', 'mask_user', 'mask_email']) $(k).checked = !!S[k];
+  document.querySelectorAll('.knob').forEach(b => {
+    const kind = b.dataset.help, o = Object.keys(C[kind]), i = Math.max(0, o.indexOf(S[kind]));
+    const val = b.querySelector('.val'); val.textContent = optName(kind, S[kind]);
+    for (let px = 11; px >= 8; px--) { val.style.fontSize = px + 'px'; if (val.scrollWidth <= val.clientWidth) break; }   // long names shrink to fit
+    b.querySelector('.wheel').style.backgroundPosition = `0 ${i * 5}px, 0 0`;   // the ridges roll as it turns
+    b.setAttribute('aria-label', `${KNOB_HELP[kind]}: ${S[kind]}`);
+  });
+  document.querySelectorAll('.fader').forEach(b => {
+    const kind = b.dataset.help, [lo, hi] = C.ranges[kind];
+    b.querySelector('.val').textContent = S[kind];
+    b.querySelector('.capf').style.left = `calc(4px + ${(S[kind] - lo) / (hi - lo)} * (100% - 8px))`;
+    b.setAttribute('aria-valuenow', S[kind]);
+  });
+  document.querySelectorAll('.sw').forEach(b => {
+    const on = !!S[b.dataset.help];
+    b.classList.toggle('on', on); b.setAttribute('aria-checked', on);
+    b.querySelector('.led').className = 'led ' + (on ? 'g' : '');
+  });
+  const keys = [...$('keypad').children];
+  if (!keys.some(k => k.tabIndex === 0)) (keys.find(k => k.dataset.v === S.theme) || keys[0]).tabIndex = 0;
+  keys.forEach(k => { const sel = k.dataset.v === S.theme; k.classList.toggle('sel', sel); k.setAttribute('aria-checked', sel); });
   if (document.activeElement !== $('label')) $('label').value = S.label || '';
-  $('pause').textContent = S.paused ? 'RESUME' : 'PAUSE';
-  $('pause').classList.toggle('paused', !!S.paused);
-  const st = $('state');
-  st.textContent = S.paused ? 'paused · showing nothing' : `${S.mode} · running`;
-  st.className = 'chip ' + (S.paused ? 'paused' : 'on');
+  $('pause').classList.toggle('on', !!S.paused);
+  $('pause-t').textContent = S.paused ? 'PAUSED' : 'PAUSE';
+  $('pause-s').textContent = S.paused ? 'PRESS TO RESUME' : 'STREAM-SAFE';
+  led('air', S.paused ? 'a' : 'g'); $('air').textContent = S.paused ? 'PAUSED' : `ON AIR · ${MODE_SHORT[S.mode] || S.mode}`;
+  $('chan').textContent = String(S.theme).toUpperCase();
 }
 
-function fit() { const f = $('frame'); $('pv').style.transform = `scale(${f.clientWidth / 1600})`; }
+function fit() {   // the biggest 16:9 screen the bezel has room for, and the page scaled to it
+  const bz = $('bezel'), w = bz.clientWidth - 16, h = bz.clientHeight - 16;
+  const s = Math.max(0, Math.min(w / 16, (h > 40 ? h : w * 9 / 16) / 9));
+  $('screen').style.width = `${16 * s}px`;
+  $('pv').style.transform = `scale(${16 * s / 1600})`;
+}
+new ResizeObserver(fit).observe($('bezel'));
 addEventListener('resize', fit);
+document.fonts.ready.then(() => { fit(); if (S.theme) render(); });   // sizes measured with the real fonts
 
 (async () => {
-  if (!KEY) { msg('No key: open this with `glitchwall settings`.', true); return; }
+  if (!KEY) { say('NO KEY', 'Open this with: glitchwall settings', true); return; }
   $('pv').src = `/?preview=1#key=${encodeURIComponent(KEY)}`;
-  fit();
-  try { const d = await api(); S = d.settings; C = { ...d.choices, ranges: d.ranges }; render(); }
-  catch (e) { msg(String(e.message || e), true); $('state').textContent = 'feed not reachable'; }
-  // follow changes made elsewhere (the command line, the tray), every few seconds
-  setInterval(async () => { try { const d = await api(); if (JSON.stringify(d.settings) !== JSON.stringify(S)) { S = d.settings; render(); } } catch {} }, 3000);
+  try {
+    const d = await api(); S = d.settings; C = { ...d.choices, ranges: d.ranges };
+    build(); render(); led('feed', 'g'); help('theme');
+  } catch (e) { led('feed', 'r'); say('FEED NOT REACHABLE', String(e.message || e), true); return; }
+  setInterval(async () => {   // follow changes made elsewhere (the command line, another window)
+    if (busy || Object.keys(pending).length) return;
+    try {
+      const d = await api(); led('feed', 'g');
+      if (JSON.stringify(d.settings) !== JSON.stringify(S)) { S = d.settings; render(); help(); }
+    } catch { led('feed', 'r'); }
+  }, 3000);
 })();
 </script>
 </body></html>

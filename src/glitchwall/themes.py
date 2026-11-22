@@ -65,7 +65,28 @@ FONTS = {
     "hand": "Caveat handwriting (bundled)",
     "mono": "the system monospace font",
 }
-PALETTES = {"theme": "the theme's own colors", **{k: f"the colors of {k}" for k in THEMES}}
+PALETTE_NOTES = {   # what each theme's colors are, for borrowing them under another theme
+    "phosphor": "phosphor green on black glass, amber for anything live",
+    "drafting": "chalk white on cobalt blue",
+    "newsprint": "black ink on cream paper, vermilion accents",
+    "nightprint": "warm off-white on charcoal, vermilion accents",
+    "neon": "cyan and hot pink on near-black",
+    "fieldops": "khaki stock, dark ink, hot-orange accents",
+    "duplicator": "riso blue and fluorescent pink on off-white paper",
+    "sleeve": "brown ink and mustard on sepia paper",
+    "matrix": "bright CRT green on black",
+    "amber": "amber on black, one color only",
+    "synthwave": "hot pink and teal on deep purple",
+    "msdos": "white and yellow on DOS blue, grey shadows",
+    "bsod": "white on stop-screen blue, a grey title chip",
+    "cyanotype": "pale lines on Prussian blue",
+    "notebook": "blue ballpoint and a red margin on ruled white paper",
+    "oracle": "white data on black, one signal red",
+    "orb": "black and graphite, studded with red lights",
+    "scope": "a blue-white beam with yellow-green afterglow on black",
+    "chalkboard": "chalk white on a dark board",
+}
+PALETTES = {"theme": "the theme's own colors", **{k: PALETTE_NOTES.get(k, f"{k}'s colors") for k in THEMES}}
 TRANSITIONS = {
     "theme": "whatever the theme uses",
     "glitch": "torn slices and RGB split in, CRT collapse out",
