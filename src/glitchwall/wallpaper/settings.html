@@ -51,7 +51,10 @@
   /* one compact column: the wallpaper itself is the preview, so this window only needs the controls */
   main { display:flex; flex-direction:column; gap:10px; padding:10px 12px; min-height:0; overflow:auto; }
   .side { display:flex; flex-direction:column; gap:10px; min-width:0; }
-  #readout { order:-1; min-height:76px; }
+  /* the readout keeps one height whatever it says, so nothing below it ever jumps */
+  #readout { order:-1; height:112px; }
+  #readout .l2 { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; }
+  #pause { min-width:178px; }
   .drum.still .item { transition:none; }   /* the first placement: straight into position, no pile-up */
   footer { gap:4px 14px !important; padding:6px 14px !important; }
   main > *, .side > * { flex-shrink:0; }   /* never squash a module: scroll instead */
@@ -237,7 +240,7 @@ function help(h) {
                           optText('theme', v) + (cleared && v === S.theme ? ' Earlier tweaks cleared: the theme starts as it comes.' : '')); }
   if (kind === 'resetall') return say(armed ? 'RESET ALL · PRESS AGAIN' : 'RESET ALL',
     armed ? 'Press again within 4 seconds to reset. Anything else cancels it.'
-          : 'Frozen, crashed or stuck? Puts every setting back to the default (phosphor, no tweaks) and restarts the wallpaper fresh. Mode, pause and privacy safety stay as they are. If even this window is stuck: glitchwall reset');
+          : 'Frozen or stuck? Every setting back to the default, wallpaper restarted fresh. Mode and pause stay. Window stuck too? Run: glitchwall reset');
   if (kind === 'reset') { const [a, b] = GROUP_HELP[extra]; return say(`DEFAULT · ${extra.toUpperCase()}`, `${a}: ${b}`); }
   if (FADERS[kind]) return say(`${FADERS[kind][0]} · ${S[kind]}`, FADERS[kind][1]);
   if (SWITCHES[kind]) return say(`${SWITCHES[kind][0]} · ${S[kind] ? 'ON' : 'OFF'}`, SWITCHES[kind][1]);
