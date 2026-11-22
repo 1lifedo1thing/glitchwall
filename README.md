@@ -86,7 +86,7 @@ The settings come in two sizes, and **MINI** / **FULL** at the top switches betw
   go straight through to the desktop. Esc or ✕ hides it.
 - **Mini** (`glitchwall settings --mini`): one small window. Drag it to the left, right or top edge of a
   screen and it docks there, then tucks itself into a thin strip after a few idle seconds; touch the strip
-  to bring it back.
+  to bring it back. Maximize it and it turns into the full version.
 
 **Hot corner:** rest the mouse in the top-left corner of any screen for half a second and the full
 settings open. A small glitching glitchwall icon marks the corner on the wallpaper. Pick another corner,

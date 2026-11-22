@@ -200,6 +200,14 @@ class Settings:
                 h = self.hwnd(w)
                 if h is None or not u32.IsWindow(h):
                     return
+                if u32.IsZoomed(h):   # maximized (the button or a title-bar double-click): become the full version
+                    u32.ShowWindow(h, 9)                         # SW_RESTORE, so the mini plays its way out
+                    stop.set()
+                    try:
+                        w.evaluate_js("switchLayout()")         # the page animates, then asks for the switch
+                    except Exception:
+                        self.open("full")                       # the page isn't ready: switch without the show
+                    return
                 r, v = _rect(h), _visible_rect(h)                # r: as Windows places it; v: as you see it
                 pad = (v[0] - r[0], v[1] - r[1], r[2] - v[2], r[3] - v[3])
                 wa = _work_area(u32.MonitorFromWindow(h, 2))
