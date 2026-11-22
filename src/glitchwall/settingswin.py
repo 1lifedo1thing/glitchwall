@@ -114,7 +114,9 @@ class Settings:
             x0, y0, x1, y1 = work_area_at_cursor() if WIN else (0, 0, 1600, 900)
             scale = (ctypes.windll.user32.GetDpiForSystem() / 96) if WIN else 1.0
             h = max(560, min(940, int((y1 - y0) / scale) - 48))
-            w = webview.create_window("glitchwall settings", url, js_api=Api(self), width=560, height=h,
+            x = int(x0 / scale + ((x1 - x0) / scale - 560) / 2)   # centred on that screen, all of it on screen
+            y = int(y0 / scale + max(0, ((y1 - y0) / scale - h) / 2))
+            w = webview.create_window("glitchwall settings", url, js_api=Api(self), width=560, height=h, x=x, y=y,
                                       min_size=(480, 520), background_color="#010401")
             self._dock_stop = threading.Event()
             threading.Thread(target=self._dock_loop, args=(w, self._dock_stop), daemon=True).start()
@@ -192,7 +194,7 @@ class Settings:
         while not stop.is_set() and self.hwnd(w) is None:
             time.sleep(0.1)
         edge, hidden, last_in, was_down, moved = None, False, time.time(), False, False
-        prev = None
+        prev, was_fg = None, False
         while not stop.wait(0.08):
             try:
                 h = self.hwnd(w)
@@ -203,6 +205,8 @@ class Settings:
                 wa = _work_area(u32.MonitorFromWindow(h, 2))
                 down, cx, cy = _mouse_down(), *_cursor()
                 inside = r[0] <= cx < r[2] and r[1] <= cy < r[3]
+                fg = u32.GetForegroundWindow() == h.value
+                came_forward, was_fg = fg and not was_fg, fg    # alt-tab or the taskbar brought it forward just now
                 if down and prev is not None and r != prev:
                     moved = True                                 # the window is being dragged
                 if edge is None:
@@ -220,7 +224,7 @@ class Settings:
                             y = wa[1] - pad[1] if e == "top" else min(max(r[1], wa[1] - pad[1]), wa[3] - (v[3] - v[1]) - pad[1])
                             u32.SetWindowPos(h, HWND_TOPMOST, x, y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE)
                 else:
-                    if inside or self._keep or u32.GetForegroundWindow() == h.value and hidden and not down:
+                    if inside or self._keep or came_forward and hidden and not down:
                         last_in = time.time()
                         if hidden:                               # touched the strip: slide back in
                             hidden = False
