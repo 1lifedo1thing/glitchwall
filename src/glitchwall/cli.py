@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import shutil
 import sys
@@ -88,9 +87,14 @@ def cmd_status(a) -> int:
         lib = plat.lively_library()
         dest = lib / plat.FOLDER if lib else None
         say(f"  wallpaper   {dest if dest and dest.exists() else 'not installed in Lively'}")
-        cur = plat.lively_current()
-        if dest and cur:
-            say(f"  showing     {'yes' if any(Path(c) == dest for c in cur) else 'no'}")
+        layout, nums = plat.lively_layout(), plat.screens()
+        if dest and layout:
+            mine = [x for x in layout if Path(x["path"]) == dest]
+            on = sorted(x["index"] for x in mine if x["index"] is not None)
+            arr = plat.lively_arrangement()
+            where = (f"all screens ({arr})" if arr != "per" else
+                     "screen " + ", ".join(map(str, on)) + (f" of {len(nums)}" if len(nums) > 1 else ""))
+            say(f"  showing     {'yes, ' + where if mine else 'no'}")
     refused = cfg.state_dir() / "last-refused.txt"
     if refused.exists():
         say(f"  last refused request: {refused.read_text(encoding='utf-8').strip()}")
@@ -117,10 +121,7 @@ def cmd_install(a) -> int:
     lib = plat.lively_library() if plat.WIN else None
     if lib is not None:
         dest = lib / plat.FOLDER
-        prev = [c for c in plat.lively_current() if Path(c) != dest]
-        prev_file = cfg.state_dir() / "previous-wallpaper.json"
-        if prev:   # what's on screen now is what uninstall puts back (unchanged while glitchwall is showing)
-            prev_file.write_text(json.dumps(prev), encoding="utf-8")
+        plat.remember_previous(plat.lively_layout(), dest)   # each screen's wallpaper, for uninstall to put back
     else:
         dest = cfg.state_dir() / "wallpaper"
     lib_root = dest.parent
@@ -150,13 +151,14 @@ def cmd_install(a) -> int:
     if lib is not None:
         if a.no_set:
             say("Lively: wallpaper added to the library, not set (--no-set)")
-        elif plat.lively("setwp", "--file", str(dest)):
-            say("Lively: wallpaper set")
+        elif not plat.lively_exe():
+            say("Lively: could not set it automatically. Open Lively and pick 'glitchwall' from the library.")
+        else:
+            for msg in plat.show_in_lively(dest, a.screens):
+                say(msg)
             time.sleep(1.5)   # let Lively let go of an old-name folder it was showing
             for msg in plat.migrate_legacy():
                 say(msg)
-        else:
-            say("Lively: could not set it automatically. Open Lively and pick 'glitchwall' from the library.")
     else:
         say("")
         say("Point any web-wallpaper app at this page, or open it fullscreen in a browser:")
@@ -180,18 +182,8 @@ def cmd_uninstall(a) -> int:
     if plat.WIN:
         lib = plat.lively_library()
         dest = lib / plat.FOLDER if lib else None
-        if dest and any(Path(c) == dest for c in plat.lively_current()):
-            prev = []
-            try:
-                prev = json.loads((cfg.state_dir() / "previous-wallpaper.json").read_text(encoding="utf-8"))
-            except (OSError, ValueError):
-                pass
-            prev = [p for p in prev if Path(p).exists()]
-            if prev and plat.lively("setwp", "--file", prev[0]):
-                removed.append(f"put back previous wallpaper {prev[0]}")
-            elif plat.lively("closewp", "--monitor", "-1"):
-                removed.append("closed the wallpaper in Lively")
-            time.sleep(1.5)   # let Lively release the folder
+        if dest:
+            removed += plat.restore_in_lively(dest)   # every screen showing glitchwall
         if dest and dest.exists():
             shutil.rmtree(dest, ignore_errors=True)
             removed.append(f"deleted {dest}")
@@ -348,6 +340,8 @@ def parser() -> argparse.ArgumentParser:
     _mode_arg(i)
     i.add_argument("--no-autostart", action="store_true", help="don't start the feed at logon")
     i.add_argument("--no-set", action="store_true", help="add to Lively's library but don't switch to it")
+    i.add_argument("--screens", choices=["all", "primary"], default="all",
+                   help="with several monitors: show it on all of them (default) or only the main one")
     i.add_argument("--force", action="store_true", help="add autostart even from a temporary uvx environment")
     i.set_defaults(fn=cmd_install)
 

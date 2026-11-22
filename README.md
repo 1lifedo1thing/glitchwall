@@ -65,6 +65,11 @@ glitchwall install
 adds a start-at-logon entry and switches Lively to it. Your previous wallpaper is remembered
 and comes back on `uninstall`.
 
+**Several monitors?** It goes on every screen, and each screen's own previous wallpaper comes back on
+`uninstall`. Every screen shows the same live calls, with the cards laid out differently. Lively's
+screen layout setting still applies: with **span** one wallpaper stretches across all screens, with
+**duplicate** each screen gets the same one. Want it only on the main screen? `glitchwall install --screens primary`.
+
 The exe version copies `glitchwall.exe` and `glitchwall-feed.exe` (the windowed feed that starts
 at logon, no console window) into `%USERPROFILE%\.glitchwall\bin`, so you can delete the download.
 Use `%USERPROFILE%\.glitchwall\bin\glitchwall.exe pause` (or `resume`, `status`, `uninstall`) from then on.
@@ -235,7 +240,7 @@ Want a lighter option? `glitchwall config --commands-only on` shows the calls bu
 
 | Command | What it does |
 | --- | --- |
-| `glitchwall install` | set everything up (`--mode ambient`, `--commands-only`, `--no-autostart`, `--no-set`, `--port N`) |
+| `glitchwall install` | set everything up (`--mode ambient`, `--commands-only`, `--no-autostart`, `--no-set`, `--screens primary`, `--port N`) |
 | `glitchwall config --mode live\|ambient\|art` | real activity, made-up sessions, or background only |
 | `glitchwall status` | what's installed and running |
 | `glitchwall start` / `stop` | start or stop the background feed |
