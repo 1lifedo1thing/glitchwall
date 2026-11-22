@@ -60,10 +60,27 @@
   /* the preview gets the most room: two-thirds of the width, all of the height the rest doesn't need */
   main { display:grid; gap:12px; padding:12px 14px; min-height:0; overflow:auto;
          grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.28fr); grid-template-rows:minmax(0,1fr) auto;
-         grid-template-areas:"mon mon side" "tape priv motion"; }
+         grid-template-areas:"mon mon side" "tape priv side"; }
   .side { grid-area:side; display:flex; flex-direction:column; gap:12px; min-width:0; min-height:0; }
-  .side > .mod:last-child { flex:1; }
-  #tapebox { grid-area:tape; display:flex; } #priv { grid-area:priv; } #motion { grid-area:motion; }
+  .side > .mod:last-child { flex:1; display:flex; flex-direction:column; justify-content:center; }
+  #tapebox { grid-area:tape; display:flex; } #priv { grid-area:priv; }
+
+  /* the theme drum: a rotor lying on its side, the current theme in the window, neighbors rolling away */
+  .drum { position:relative; height:66px; overflow:hidden; border-radius:8px; cursor:ew-resize; touch-action:none;
+          background:linear-gradient(#000, #15140f 22%, #2a2822 50%, #15140f 78%, #000); box-shadow:0 0 0 2px #0b0a09, 0 0 0 3px #3b362e, inset 0 0 18px #000; }
+  .drum .window { position:absolute; left:50%; top:7px; bottom:7px; width:136px; margin-left:-68px; border-radius:4px; z-index:0;
+                  background:radial-gradient(ellipse at 50% 50%, #0c2412, var(--glass)); box-shadow:0 0 0 2px #0b0a09, 0 0 0 4px var(--brass-lo), inset 0 0 12px rgba(0,0,0,.8); }
+  .drum .item { position:absolute; left:50%; top:0; height:100%; width:124px; margin-left:-62px; z-index:1; display:grid; place-items:center;
+                font:22px 'VT323', monospace; letter-spacing:.06em; color:var(--print-dim); white-space:nowrap; transition:transform .22s, opacity .22s, color .22s; }
+  .drum .item.sel { color:var(--phos); text-shadow:0 0 6px rgba(125,255,143,.7); }
+  .drum::after { content:''; position:absolute; inset:0; z-index:2; pointer-events:none;
+                 background:linear-gradient(90deg, #000, transparent 30%, transparent 70%, #000); }
+  .drumfoot { display:flex; justify-content:space-between; align-items:center; margin-top:8px; font:16px 'VT323', monospace; color:var(--print-dim); }
+  .drum:focus-visible { outline:2px solid var(--focus); outline-offset:3px; }
+
+  /* the sound lever in the header */
+  #snd { display:flex; align-items:center; gap:7px; background:none; border:0; cursor:pointer; font-size:10px; letter-spacing:.15em; color:var(--print-dim); padding:4px 6px; border-radius:4px; }
+  #snd:focus-visible { outline:2px solid var(--focus); }
   .monitor { grid-area:mon; display:flex; flex-direction:column; min-height:0; }
   .mod { position:relative; border:1px solid #000; border-radius:5px; padding:24px 14px 12px;
          background:linear-gradient(rgba(255,255,255,.03), rgba(0,0,0,.25)); box-shadow:inset 0 1px 0 rgba(255,255,255,.06), inset 0 0 0 1px rgba(0,0,0,.6); }
@@ -120,9 +137,6 @@
   .knob .name { font:10px 'Stencil', sans-serif; letter-spacing:.14em; color:var(--print); }
 
   /* the lampboard: one glass lamp per theme */
-  .keypad { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:5px 6px; }
-  .key { display:flex; align-items:center; gap:6px; height:27px; padding:0 4px 0 3px; border-radius:14px; cursor:pointer; text-align:left; min-width:0;
-         border:0; background:none; color:var(--print-dim); font:11px 'Courier Prime', monospace; letter-spacing:.02em; }
   .key .lamp { flex:none; width:22px; height:22px; border-radius:50%; display:grid; place-items:center; font:700 12px 'Courier Prime', monospace; color:#7a7262;
                background:radial-gradient(circle at 40% 35%, #4a453c, #1d1b18 70%); box-shadow:0 0 0 2px #0b0a09, 0 0 0 3px #3b362e, inset 0 2px 3px rgba(0,0,0,.6); transition:all .15s; }
   .key span:last-child { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -173,7 +187,7 @@
   .fader .val { color:var(--phos); background:var(--glass); text-shadow:0 0 5px rgba(125,255,143,.6); }
 
   @media (max-width:900px) {
-    main { grid-template-columns:1fr; grid-template-rows:none; grid-template-areas:"mon" "side" "tape" "priv" "motion"; }
+    main { grid-template-columns:1fr; grid-template-rows:none; grid-template-areas:"mon" "side" "tape" "priv"; }
     body { overflow:auto; height:auto; min-height:100vh; } .bezel { min-height:0; }
   }
 </style>
@@ -186,6 +200,7 @@
     <div class="ind"><span class="led" id="led-air"></span><span id="air">ON AIR</span></div>
   </div>
   <span class="grow"></span>
+  <button id="snd" data-help="sound"><span class="led" id="led-snd"></span>SOUND</button>
   <button id="pause" data-help="pause"><span class="cap">P</span><span class="t"><b id="pause-t">PAUSE</b><small id="pause-s">STREAM-SAFE</small></span></button>
 </header>
 
@@ -200,7 +215,11 @@
       <div class="knobs" id="knobs"></div>
     </div>
     <div class="mod"><h2 class="plate">THEME</h2><span class="scr tl"></span><span class="scr tr"></span>
-      <div class="keypad" id="keypad" role="radiogroup" aria-label="theme"></div>
+      <div class="drum" id="drum" tabindex="0" data-help="theme" role="listbox" aria-label="theme"><div class="window"></div></div>
+      <div class="drumfoot"><span>◂ TURN ▸</span><span id="drumpos">--</span></div>
+    </div>
+    <div class="mod" id="motion"><h2 class="plate">MOTION</h2><span class="scr tl"></span><span class="scr tr"></span>
+      <div class="faders" id="faders"></div>
     </div>
   </div>
 
@@ -209,16 +228,13 @@
     <div class="switches" id="switches"></div>
     <div class="labelrow"><label class="plate" for="label">LABEL</label><input id="label" maxlength="80" spellcheck="false" data-help="label"></div>
   </div>
-  <div class="mod" id="motion"><h2 class="plate">MOTION</h2><span class="scr tl"></span><span class="scr tr"></span>
-    <div class="faders" id="faders"></div>
-  </div>
 </main>
 
 <footer>
   <span><kbd>TAB</kbd>next control</span>
-  <span><kbd>←</kbd><kbd>→</kbd>move on the lampboard</span>
+  <span><kbd>←</kbd><kbd>→</kbd>turn the theme drum · slide a fader</span>
   <span><kbd>↑</kbd><kbd>↓</kbd>turn a rotor</span>
-  <span><kbd>←</kbd><kbd>→</kbd>slide a fader</span>
+  <span><kbd>M</kbd>sound</span>
   <span><kbd>SPACE</kbd><kbd>ENTER</kbd>press · flip</span>
   <span><kbd>P</kbd>pause / resume</span>
 </footer>
@@ -274,8 +290,9 @@ function help(h) {
   if (!h || !S.theme) return;
   const [kind, extra] = h.split(':');
   if (kind === 'pause') return say(S.paused ? 'PAUSE · ON' : 'PAUSE · OFF', S.paused ? 'The wallpaper shows nothing at all until you resume. Safe to stream.' : 'Press before you stream or share your screen: the wallpaper goes blank at once.');
+  if (kind === 'sound') return say(`SOUND · ${muted ? 'OFF' : 'ON'}`, 'Clicks and clacks in this window as you turn and flip things. Never on the wallpaper. M toggles it.');
   if (kind === 'label') return say('CORNER LABEL', 'The text in the bottom-right corner of the wallpaper. Enter saves it.');
-  if (kind === 'theme') { const v = extra || S.theme; return say(`THEME · ${v.toUpperCase()}${v === S.theme ? '' : '  (ENTER TO PICK)'}`, optText('theme', v)); }
+  if (kind === 'theme') { const v = extra || S.theme; return say(`THEME · ${v.toUpperCase()}${v === S.theme ? '' : '  (CLICK TO PICK)'}`, optText('theme', v)); }
   if (FADERS[kind]) return say(`${FADERS[kind][0]} · ${S[kind]}`, FADERS[kind][1]);
   if (SWITCHES[kind]) return say(`${SWITCHES[kind][0]} · ${S[kind] ? 'ON' : 'OFF'}`, SWITCHES[kind][1]);
   if (KNOB_HELP[kind]) return say(`${KNOB_HELP[kind]} · ${optName(kind, S[kind])}`, optText(kind, S[kind]));
@@ -288,6 +305,7 @@ async function api(changes) {
   return r.json();
 }
 function set(k, v, now) {
+  if (S[k] !== v && SOUND_OF(k)) snd(SOUND_OF(k));
   S[k] = v; pending[k] = v; render(); help();
   clearTimeout(timer); timer = setTimeout(flush, now ? 0 : 220);
 }
@@ -360,33 +378,73 @@ function sw(kind) {
   b.addEventListener('click', () => set(kind, !S[kind], true));
   return b;
 }
-function keypad() {
-  const kp = $('keypad'); kp.innerHTML = '';
-  for (const t of Object.keys(C.theme)) {
-    const k = document.createElement('button'); k.className = 'key'; k.dataset.v = t; k.dataset.help = 'theme:' + t; k.tabIndex = -1;
-    k.setAttribute('role', 'radio');
-    k.innerHTML = '<span class="lamp"></span><span></span>';
-    k.firstChild.textContent = t[0].toUpperCase(); k.lastChild.textContent = t;
-    k.addEventListener('click', () => set('theme', t, true));
-    kp.appendChild(k);
+const THEMES = () => Object.keys(C.theme);
+function turnDrum(d) { const o = THEMES(), i = Math.max(0, o.indexOf(S.theme)); set('theme', o[(i + d + o.length * 4) % o.length]); }
+function drum() {   // the theme drum: ←/→, the wheel, a sideways drag or a click on a neighbor turns it; it wraps around
+  const dr = $('drum');
+  for (const t of THEMES()) {
+    const it = document.createElement('div'); it.className = 'item'; it.dataset.v = t; it.dataset.help = 'theme:' + t; it.setAttribute('role', 'option');
+    it.textContent = t.toUpperCase();
+    dr.appendChild(it);
   }
-  kp.addEventListener('keydown', e => {   // arrows move around the lampboard; space/enter press the key
-    const keys = [...kp.children], i = keys.indexOf(document.activeElement);
-    if (i < 0) return;
-    const cols = Math.max(1, Math.round(kp.clientWidth / (keys[0].offsetWidth + 8)));
-    const d = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols, Home: -i, End: keys.length - 1 - i }[e.key];
-    if (d === undefined) return;
-    e.preventDefault();
-    const j = Math.min(keys.length - 1, Math.max(0, i + d));
-    keys[i].tabIndex = -1; keys[j].tabIndex = 0; keys[j].focus();
+  dr.addEventListener('keydown', e => {
+    const d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    if (d) { e.preventDefault(); turnDrum(d); }
   });
+  dr.addEventListener('wheel', e => { e.preventDefault(); turnDrum((e.deltaY || e.deltaX) > 0 ? 1 : -1); }, { passive: false });
+  dr.addEventListener('pointerdown', e => {
+    let x0 = e.clientX, moved = false; dr.setPointerCapture(e.pointerId); busy = true;
+    const mv = ev => { if (Math.abs(ev.clientX - x0) > 46) { turnDrum(ev.clientX < x0 ? 1 : -1); x0 = ev.clientX; moved = true; } };
+    const up = ev => {
+      busy = false; dr.removeEventListener('pointermove', mv); dr.removeEventListener('pointerup', up);
+      if (!moved) { const it = document.elementsFromPoint(ev.clientX, ev.clientY).find(n => n.classList && n.classList.contains('item'));
+                    if (it && it.dataset.v !== S.theme) set('theme', it.dataset.v, true); }
+    };
+    dr.addEventListener('pointermove', mv); dr.addEventListener('pointerup', up);
+  });
+}
+
+// ---------- sound: made on the spot (Web Audio), no files; a lever in the header turns it off
+let AC = null, muted = false, lastTick = 0;
+try { muted = localStorage.getItem('gw-sound') === 'off'; } catch {}
+function noise(t, dur, type, freq, q, gain) {
+  const len = Math.ceil(AC.sampleRate * dur), buf = AC.createBuffer(1, len, AC.sampleRate), ch = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+  const src = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
+  src.buffer = buf; f.type = type; f.frequency.value = freq; f.Q.value = q; g.gain.value = gain;
+  src.connect(f).connect(g).connect(AC.destination); src.start(t);
+}
+function tone(t, f0, f1, dur, gain) {
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g).connect(AC.destination); o.start(t); o.stop(t + dur);
+}
+function snd(kind) {
+  if (muted) return;
+  try {
+    AC = AC || new AudioContext();
+    const t = AC.currentTime;
+    if (kind === 'tick') { if (performance.now() - lastTick < 35) return; lastTick = performance.now(); noise(t, .012, 'highpass', 3500, .7, .12); }
+    if (kind === 'click') { noise(t, .03, 'bandpass', 2600, 3, .5); noise(t + .018, .02, 'bandpass', 1700, 3, .25); }   // a detent, then its echo
+    if (kind === 'drum') { noise(t, .04, 'bandpass', 1500, 2.5, .55); tone(t, 260, 140, .05, .08); }
+    if (kind === 'clack') { noise(t, .05, 'lowpass', 1400, 1, .7); tone(t, 190, 90, .07, .25); }
+    if (kind === 'thunk') { tone(t, 120, 45, .16, .55); noise(t, .06, 'lowpass', 700, 1, .6); }
+  } catch {}
+}
+const SOUND_OF = k => k === 'theme' ? 'drum' : k === 'paused' ? 'thunk' : SWITCHES[k] ? 'clack' : FADERS[k] ? 'tick' : KNOB_HELP[k] ? 'click' : null;
+function toggleSound() {
+  muted = !muted;
+  try { localStorage.setItem('gw-sound', muted ? 'off' : 'on'); } catch {}
+  snd('clack'); render(); help('sound');
 }
 function build() {
   const kn = $('knobs'); KNOBS.forEach(([k, n]) => kn.appendChild(knob(k, n)));
   const fd = $('faders'); Object.keys(FADERS).forEach(k => fd.appendChild(fader(k)));
   const sws = $('switches'); Object.keys(SWITCHES).forEach(k => sws.appendChild(sw(k)));
-  keypad();
+  drum();
   $('pause').addEventListener('click', () => set('paused', !S.paused, true));
+  $('snd').addEventListener('click', toggleSound);
   $('label').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } e.stopPropagation(); });
   $('label').addEventListener('change', e => set('label', e.target.value, true));
   // the tape explains whatever is under the mouse or has the keyboard
@@ -395,6 +453,7 @@ function build() {
   document.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
     if (e.key === 'p' || e.key === 'P') { e.preventDefault(); set('paused', !S.paused, true); }
+    if (e.key === 'm' || e.key === 'M') { e.preventDefault(); toggleSound(); }
   });
 }
 
@@ -417,9 +476,16 @@ function render() {
     b.classList.toggle('on', on); b.setAttribute('aria-checked', on);
     b.querySelector('.led').className = 'led ' + (on ? 'g' : '');
   });
-  const keys = [...$('keypad').children];
-  if (!keys.some(k => k.tabIndex === 0)) (keys.find(k => k.dataset.v === S.theme) || keys[0]).tabIndex = 0;
-  keys.forEach(k => { const sel = k.dataset.v === S.theme; k.classList.toggle('sel', sel); k.setAttribute('aria-checked', sel); });
+  const items = [...$('drum').querySelectorAll('.item')], n = items.length, si = Math.max(0, THEMES().indexOf(S.theme));
+  items.forEach((it, j) => {   // each theme's place on the drum: the shortest way round from the current one
+    let d = ((j - si) % n + n) % n; if (d > n / 2) d -= n;
+    const a = Math.abs(d);
+    it.style.transform = `translateX(${d * 118}px) perspective(500px) rotateY(${-d * 24}deg) scale(${1 - Math.min(a, 3) * .1})`;
+    it.style.opacity = a > 2 ? 0 : 1 - a * .35;
+    it.classList.toggle('sel', d === 0); it.setAttribute('aria-selected', d === 0);
+  });
+  $('drumpos').textContent = `${String(si + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')}`;
+  $('led-snd').className = 'led ' + (muted ? '' : 'g');
   if (document.activeElement !== $('label')) $('label').value = S.label || '';
   $('pause').classList.toggle('on', !!S.paused);
   $('pause-t').textContent = S.paused ? 'PAUSED' : 'PAUSE';
