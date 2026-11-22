@@ -342,7 +342,7 @@ def cmd_settings(a) -> int:
         try:
             import webview  # noqa: F401  (no pywebview here: the browser below does the same job)
             from .settingswin import Settings
-            Settings(url, icon=str(plat.wallpaper_source() / "glitchwall.ico")).run("mini" if a.mini else "full")
+            Settings(url, icon=str(plat.wallpaper_source() / "glitchwall.ico")).run()
             return 0
         except Exception as e:   # no pywebview / WebView2 here: a browser tab does the same job
             say(f"no settings window available ({type(e).__name__}); opening it in your browser")
@@ -526,7 +526,6 @@ def parser() -> argparse.ArgumentParser:
 
     st = sub.add_parser("settings", help="open the settings window (every setting, applied to the wallpaper as you change it)")
     st.add_argument("--browser", action="store_true", help="open it in your browser instead of its own window")
-    st.add_argument("--mini", action="store_true", help="the small window (docks to a screen edge) instead of the full-screen one")
     st.set_defaults(fn=cmd_settings)
 
     sub.add_parser("themes", help="list themes, rain styles and fonts").set_defaults(fn=cmd_themes)

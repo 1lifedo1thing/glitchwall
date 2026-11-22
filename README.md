@@ -80,16 +80,10 @@ and the settings fade nearly away so you can watch the wallpaper; let go and the
 at the top is the stream-safe pause; RESET ALL (press twice, or `glitchwall reset`) puts every setting back
 and restarts the wallpaper fresh if it ever freezes.
 
-The settings come in two sizes, and **MINI** / **FULL** at the top switches between them:
+Drag the settings window to the left, right or top edge of a screen and it docks there, then tucks itself
+into a thin strip after a few idle seconds; touch the strip to bring it back.
 
-- **Full** (the default): bars along the screen edges with your wallpaper live in the middle, where clicks
-  go straight through to the desktop. Your app windows on that screen step aside (minimized) while it is
-  open and come back when it closes. Esc or ✕ hides it.
-- **Mini** (`glitchwall settings --mini`): one small window. Drag it to the left, right or top edge of a
-  screen and it docks there, then tucks itself into a thin strip after a few idle seconds; touch the strip
-  to bring it back. Maximize it and it turns into the full version.
-
-**Hot corner:** rest the mouse in the top-left corner of any screen for half a second and the full
+**Hot corner:** rest the mouse in the top-left corner of any screen for half a second and the
 settings open. A small glitching glitchwall icon marks the corner on the wallpaper. Pick another corner,
 or OFF, with the CORNER selector. It never fires while a fullscreen game or video is in front.
 
@@ -272,7 +266,7 @@ Want a lighter option? `glitchwall config --commands-only on` shows the calls bu
 | Command | What it does |
 | --- | --- |
 | `glitchwall install` | set everything up (`--mode ambient`, `--commands-only`, `--no-autostart`, `--screens primary`, `--host lively`, `--no-set`, `--port N`) |
-| `glitchwall settings` | the settings: every setting below, applied as you change them (`--mini` for the small docking window, `--browser` opens it in your browser) |
+| `glitchwall settings` | the settings: every setting below, applied as you change them (`--browser` opens it in your browser) |
 | `glitchwall config --mode live\|ambient\|art` | real activity, made-up sessions, or background only |
 | `glitchwall status` | what's installed and running |
 | `glitchwall doctor` | check everything glitchwall needs, offer to fetch what's missing |

@@ -132,52 +132,7 @@
   kbd { display:inline-block; min-width:18px; padding:0 4px; margin-right:4px; text-align:center; font:10px/16px 'Departure Mono', monospace; color:var(--ph); border:1px solid var(--ph-dim); border-radius:2px; }
 
 
-  #layoutbtn, #closebtn { display:flex; align-items:center; gap:7px; background:none; border:1px solid var(--ph-line); cursor:pointer; font-size:10px; letter-spacing:.15em; padding:6px 10px; border-radius:3px; }
-  #layoutbtn:hover, #closebtn:hover, #resetall:hover, #snd:hover { border-color:var(--ph); color:var(--ph); }
-  #layoutbtn:focus-visible, #closebtn:focus-visible { outline:1px dashed var(--ph-hi); outline-offset:3px; }
-  #closebtn { display:none; }
-
-  /* ---------- the full version: four bars along the screen edges. The middle is cut out of the window,
-     so the wallpaper shows there and clicks go through to the desktop. */
-  body.full { display:block; height:100vh; background:#010401; }
-  body.full::after { display:none; }
-  body.full > header, body.full > main { display:none; }
-  .bar { position:fixed; display:flex; gap:12px; background:rgba(2,10,5,.97); border:1px solid var(--ph-line); border-radius:4px;
-         box-shadow:inset 0 0 30px rgba(93,255,122,.05); overflow:hidden; }
-  .bar::after { content:''; position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(transparent 0 2px, rgba(0,0,0,.18) 2px 3px); }
-  .bar.top { left:12px; right:12px; top:12px; height:96px; align-items:center; padding:0 16px; gap:16px; }
-  .bar.left { left:12px; top:120px; bottom:192px; width:300px; flex-direction:column; padding:8px 10px; }
-  .bar.right { right:12px; top:120px; bottom:192px; width:330px; flex-direction:column; padding:8px 10px; }
-  .bar.bottom { left:12px; right:12px; bottom:12px; height:168px; display:grid; grid-template-columns:minmax(0,1.6fr) minmax(0,1fr); padding:4px 10px; }
-  .full #closebtn { display:flex; }
-  .full .bar .mod, .full .bar #priv { border:0; background:none; box-shadow:none; grid-area:auto; }
-  .full .bar.left, .full .bar.right { overflow-y:auto; scrollbar-width:thin; }   /* a short screen scrolls instead of cutting off */
-  .full .bar.bottom > .mod { padding-top:22px; }
-  .full .bar.bottom > #priv { border-left:1px solid var(--ph-line); border-radius:0; padding-left:18px; }
-  .full #readout { flex:1; order:0; height:78px; border:0; border-left:1px solid var(--ph-line); border-radius:0; background:none; padding:4px 0 0 18px; }
-  .full .knobs { grid-template-columns:1fr; gap:9px; }
-  .full .knob { flex-direction:row; justify-content:space-between; gap:10px; }
-  .full .knob .name { width:84px; text-align:left; }
-  .full .knob .rotor { flex:1; height:40px; }
-  .full #motion { flex:1; }
-  .full .bar.left footer { margin-top:auto; border-top:1px solid var(--ph-line); flex-direction:column; gap:5px; padding:8px 4px 2px !important; }
-  @keyframes inTop { from { transform:translateY(-130%); } }    @keyframes outTop { to { transform:translateY(-130%); } }
-  @keyframes inBottom { from { transform:translateY(130%); } }  @keyframes outBottom { to { transform:translateY(130%); } }
-  @keyframes inLeft { from { transform:translateX(-130%); } }   @keyframes outLeft { to { transform:translateX(-130%); } }
-  @keyframes inRight { from { transform:translateX(130%); } }   @keyframes outRight { to { transform:translateX(130%); } }
-  .full .bar.top { animation:inTop .34s cubic-bezier(.2,.8,.2,1) both; }
-  .full .bar.bottom { animation:inBottom .34s cubic-bezier(.2,.8,.2,1) .04s both; }
-  .full .bar.left { animation:inLeft .34s cubic-bezier(.2,.8,.2,1) .08s both; }
-  .full .bar.right { animation:inRight .34s cubic-bezier(.2,.8,.2,1) .08s both; }
-  .full.leaving .bar.top { animation:outTop .24s ease-in both; }
-  .full.leaving .bar.bottom { animation:outBottom .24s ease-in both; }
-  .full.leaving .bar.left { animation:outLeft .24s ease-in both; }
-  .full.leaving .bar.right { animation:outRight .24s ease-in both; }
-  /* the mini version grows in and shrinks away */
-  @keyframes miniIn { from { opacity:0; transform:scale(.94); } }
-  @keyframes miniOut { to { opacity:0; transform:scale(.94); } }
-  body.mini { animation:miniIn .26s cubic-bezier(.2,.8,.2,1) both; }
-  body.mini.leaving { animation:miniOut .22s ease-in both; }
+  #resetall:hover, #snd:hover { border-color:var(--ph); color:var(--ph); }
 </style>
 </head>
 <body>
@@ -190,9 +145,7 @@
   <span class="grow"></span>
   <button id="resetall" data-help="resetall"><span class="led" id="led-reset"></span><span id="resetall-t">RESET ALL</span></button>
   <button id="snd" data-help="sound"><span class="led" id="led-snd"></span>SOUND</button>
-  <button id="layoutbtn" data-help="layout"><span id="layoutbtn-t">FULL</span></button>
   <button id="pause" data-help="pause"><span class="cap">P</span><span class="t"><b id="pause-t">PAUSE</b><small id="pause-s">STREAM-SAFE</small></span></button>
-  <button id="closebtn" data-help="close">✕</button>
 </header>
 
 <main>
@@ -289,10 +242,6 @@ function help(h) {
   if (kind === 'label') return say('CORNER LABEL', 'The text in the bottom-right corner of the wallpaper. Enter saves it.');
   if (kind === 'theme') { const v = extra || S.theme; return say(`THEME · ${v.toUpperCase()}${v === S.theme ? '' : '  (CLICK TO PICK)'}`,
                           optText('theme', v) + (cleared && v === S.theme ? ' Earlier tweaks cleared: the theme starts as it comes.' : '')); }
-  if (kind === 'layout') return say(LAYOUT === 'full' ? 'MINI WINDOW' : 'FULL SCREEN', LAYOUT === 'full'
-    ? 'A small window instead. Drag it to a screen edge to dock it there; it tucks itself away when idle.'
-    : 'Bars along the screen edges, your wallpaper live in the middle. Esc hides it.');
-  if (kind === 'close') return say('CLOSE', 'Hide the settings. Every change is already saved. Esc does the same.');
   if (kind === 'resetall') return say(armed ? 'RESET ALL · PRESS AGAIN' : 'RESET ALL',
     armed ? 'Press again within 4 seconds to reset. Anything else cancels it.'
           : 'Frozen or stuck? Every setting back to the default, wallpaper restarted fresh. Mode and pause stay. Window stuck too? Run: glitchwall reset');
@@ -492,52 +441,7 @@ function resetGroup(g) {
   render(); help('reset:' + g);
   clearTimeout(timer); timer = setTimeout(flush, 0);
 }
-// ---------- full or mini: the same controls, laid out as four bars around the screen or as one small window
-const LAYOUT = new URLSearchParams(location.search).get('layout') === 'full' ? 'full' : 'mini';
 const winApi = () => { try { return window.pywebview && window.pywebview.api; } catch { return null; } };
-function arrange() {
-  $('layoutbtn-t').textContent = LAYOUT === 'full' ? 'MINI' : 'FULL';
-  if (LAYOUT !== 'full') { document.body.classList.add('mini'); return; }
-  document.body.classList.add('full');
-  fit(); addEventListener('resize', fit);
-  const bar = c => { const d = document.createElement('div'); d.className = 'bar ' + c; document.body.appendChild(d); return d; };
-  const top = bar('top'), left = bar('left'), right = bar('right'), bottom = bar('bottom');
-  const hd = document.querySelector('header'), mods = [...document.querySelectorAll('.side > .mod')];   // SELECT, THEME, MOTION
-  top.append(hd.querySelector('.brand'), hd.querySelector('.status'), $('readout'), $('resetall'), $('snd'), $('layoutbtn'), $('pause'), $('closebtn'));
-  left.append(mods[0], document.querySelector('footer'));
-  right.append(mods[2]);
-  bottom.append(mods[1], $('priv'));
-}
-// One zoom for the full layout, from a 1920x1080 reference: a laptop gets the same proportions as a 4K
-// monitor, an ultrawide grows by its height. Kept between 0.8 (text stays readable) and 2.
-function fit() {
-  const k = Math.max(0.8, Math.min(2, innerWidth / 1920, innerHeight / 1080));
-  document.body.style.zoom = String(Math.round(k * 100) / 100);
-}
-function sendRegion() {   // full: tell the window which parts are the bars; the rest is cut out
-  const a = winApi();
-  if (LAYOUT !== 'full' || !a || !a.region || !document.querySelector('.bar')) return;
-  fit();                     // the zoom first: on a resize this can run before fit's own listener
-  // Where each bar rests: measured on an invisible copy with no slide-in running. Engines differ on whether
-  // the page zoom is already in these numbers, so scale them so the top bar plus its two margins = the window.
-  const bars = [...document.querySelectorAll('.bar')];
-  const rs = bars.map(b => { const g = b.cloneNode(false);
-    g.style.cssText = 'animation:none;transform:none;visibility:hidden;pointer-events:none';
-    document.body.appendChild(g); const r = g.getBoundingClientRect(); g.remove(); return r; });
-  const t = rs[bars.findIndex(b => b.classList.contains('top'))], f = innerWidth / (2 * t.left + t.width);
-  a.region(rs.map(r => [Math.floor(r.left * f) - 1, Math.floor(r.top * f) - 1, Math.ceil(r.width * f) + 2, Math.ceil(r.height * f) + 2]),
-    innerWidth);
-}
-let leaving = false;
-async function leave(then) {   // play the way out, then switch or close
-  if (leaving) return; leaving = true;
-  snd('clack'); document.body.classList.add('leaving'); winFade(0, 240);
-  await new Promise(r => setTimeout(r, 250));
-  then();
-}
-const switchLayout = () => leave(() => { const a = winApi(), to = LAYOUT === 'full' ? 'mini' : 'full';
-  if (a && a.switch) a.switch(to); else location.search = '?layout=' + to; });
-const closeSettings = () => leave(() => { const a = winApi(); if (a && a.close) a.close(); else window.close(); });
 function build() {
   const kn = $('knobs'); KNOBS.forEach(([k, n]) => kn.appendChild(knob(k, n)));
   const fd = $('faders'); Object.keys(FADERS).forEach(k => fd.appendChild(fader(k)));
@@ -545,8 +449,6 @@ function build() {
   drum();
   $('pause').addEventListener('click', () => set('paused', !S.paused, true));
   $('snd').addEventListener('click', toggleSound);
-  $('layoutbtn').addEventListener('click', switchLayout);
-  $('closebtn').addEventListener('click', closeSettings);
   $('label').addEventListener('focus', () => { const a = winApi(); if (a && a.keep) a.keep(true); });
   $('label').addEventListener('blur', () => { const a = winApi(); if (a && a.keep) a.keep(false); });
   $('resetall').addEventListener('click', resetAll);
@@ -566,7 +468,6 @@ function build() {
     if (e.target.tagName === 'INPUT') return;
     if (e.key === 'p' || e.key === 'P') { e.preventDefault(); set('paused', !S.paused, true); }
     if (e.key === 'm' || e.key === 'M') { e.preventDefault(); toggleSound(); }
-    if (e.key === 'Escape' && LAYOUT === 'full') { e.preventDefault(); closeSettings(); }
     if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); one(document.activeElement); }
   });
 }
@@ -609,14 +510,13 @@ function render() {
   led('air', S.paused ? 'a' : 'g'); $('air').textContent = S.paused ? 'PAUSED' : `ON AIR · ${MODE_SHORT[S.mode] || S.mode}`;
 }
 
-document.fonts.ready.then(() => { if (S.theme) render(); sendRegion(); });
-addEventListener('pywebviewready', sendRegion); addEventListener('resize', sendRegion);   // sizes measured with the real fonts
+document.fonts.ready.then(() => { if (S.theme) render(); });
 
 (async () => {
   if (!KEY) { say('NO KEY', 'Open this with: glitchwall settings', true); return; }
   try {
     const d = await api(); S = d.settings; C = { ...d.choices, ranges: d.ranges }; D = d.defaults || {};
-    $('drum').classList.add('still'); arrange(); build(); sendRegion(); render(); led('feed', 'g'); help('theme');
+    $('drum').classList.add('still'); build(); render(); led('feed', 'g'); help('theme');
     requestAnimationFrame(() => requestAnimationFrame(() => $('drum').classList.remove('still')));
   } catch (e) { led('feed', 'r'); say('FEED NOT REACHABLE', String(e.message || e), true); return; }
   setInterval(async () => {   // follow changes made elsewhere (the command line, another window)

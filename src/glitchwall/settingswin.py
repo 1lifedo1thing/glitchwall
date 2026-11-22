@@ -1,15 +1,10 @@
-"""The settings window, in two versions on the same page (wallpaper/settings.html):
+"""The settings window (wallpaper/settings.html in a small native window).
 
-  full  the main one: one frameless window over the whole screen, cut down (a window region) to four bars
-        along the edges. The middle is not part of the window at all, so your wallpaper shows there live and
-        clicks go through to the desktop. Esc or the close key hides it.
-  mini  a compact window. Drag it to the left, right or top edge of a screen and it docks there, on top of
-        other windows; after a few idle seconds it slides away leaving a thin strip, and touching the strip
-        brings it back. Drag it off the edge to undock.
-
-Both fade while you hold a control, so the wallpaper behind is the preview. The page asks for that, and for
-the region and switching between versions, through pywebview's js_api (the `Api` below). Windows only for
-the fade, region and docking; elsewhere the mini page still works as a plain window.
+Drag it to the left, right or top edge of a screen and it docks there, on top of other windows; after a few
+idle seconds it slides away leaving a thin strip, and touching the strip brings it back. Drag it off the edge
+to undock. While you hold a control the window fades away, so the wallpaper behind is the preview: the page
+asks for that through pywebview's js_api (the `Api` below). Windows only for the fade and docking; elsewhere
+the page still works as a plain window.
 """
 from __future__ import annotations
 
@@ -21,20 +16,16 @@ from ctypes import wintypes
 
 WIN = os.name == "nt"
 if WIN:
-    u32, g32, dwm = ctypes.windll.user32, ctypes.windll.gdi32, ctypes.windll.dwmapi
+    u32, dwm = ctypes.windll.user32, ctypes.windll.dwmapi
     u32.GetWindowLongPtrW.restype = ctypes.c_ssize_t
     u32.GetWindowLongPtrW.argtypes = [wintypes.HWND, ctypes.c_int]
     u32.SetWindowLongPtrW.argtypes = [wintypes.HWND, ctypes.c_int, ctypes.c_ssize_t]
     u32.SetWindowPos.argtypes = [wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, wintypes.UINT]
     u32.SetLayeredWindowAttributes.argtypes = [wintypes.HWND, wintypes.COLORREF, wintypes.BYTE, wintypes.DWORD]
-    u32.SetWindowRgn.argtypes = [wintypes.HWND, wintypes.HANDLE, wintypes.BOOL]
     u32.MonitorFromWindow.restype = wintypes.HANDLE
     u32.MonitorFromPoint.restype = wintypes.HANDLE
     u32.MonitorFromPoint.argtypes = [wintypes.POINT, wintypes.DWORD]
     u32.GetMonitorInfoW.argtypes = [wintypes.HANDLE, ctypes.c_void_p]
-    g32.CreateRectRgn.restype = wintypes.HANDLE
-    g32.CombineRgn.argtypes = [wintypes.HANDLE, wintypes.HANDLE, wintypes.HANDLE, ctypes.c_int]
-    g32.DeleteObject.argtypes = [wintypes.HANDLE]
 
 HWND_TOPMOST, HWND_NOTOPMOST = wintypes.HWND(-1), wintypes.HWND(-2)
 SWP_NOSIZE, SWP_NOZORDER, SWP_NOACTIVATE, SWP_NOMOVE = 0x1, 0x4, 0x10, 0x2
@@ -87,78 +78,27 @@ def _another_screen_beyond(x: int, y: int) -> bool:
     return bool(u32.MonitorFromPoint(wintypes.POINT(x, y), 0))   # MONITOR_DEFAULTTONULL: 0 = no screen there
 
 
-SHELL_CLASSES = ("Shell_TrayWnd", "Shell_SecondaryTrayWnd", "Progman", "WorkerW")
-
-
-def windows_in_the_way(mon) -> list:
-    """Your app windows on screen `mon`, front to back: what would hide the wallpaper behind the full settings."""
-    out, me = [], os.getpid()
-
-    @ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
-    def each(h, _):
-        try:
-            if not u32.IsWindowVisible(h) or u32.IsIconic(h) or u32.GetWindow(h, 4):   # hidden, minimized, owned
-                return True
-            if u32.GetWindowLongW(h, -20) & 0x80 or u32.GetWindowTextLengthW(h) == 0:   # tool windows, untitled
-                return True
-            pid = wintypes.DWORD()
-            u32.GetWindowThreadProcessId(h, ctypes.byref(pid))
-            if pid.value == me:
-                return True
-            cls = ctypes.create_unicode_buffer(64)
-            u32.GetClassNameW(h, cls, 64)
-            if cls.value in SHELL_CLASSES:
-                return True
-            cloaked = ctypes.c_int(0)          # other virtual desktops, suspended store apps
-            ctypes.windll.dwmapi.DwmGetWindowAttribute(h, 14, ctypes.byref(cloaked), 4)
-            if cloaked.value or u32.MonitorFromWindow(h, 2) != mon:
-                return True
-            out.append(h)
-        except Exception:
-            pass
-        return True
-    u32.EnumWindows(each, 0)
-    return out
-
-
 class Settings:
-    """One settings window at a time, full or mini; switching opens the other and closes this one."""
+    """The one settings window."""
 
     def __init__(self, url: str, icon: str | None = None):
         self.url, self.icon = url, icon
-        self.window, self.layout = None, None
+        self.window = None
         self._fade_gen, self._alpha = 0, 1.0
         self._keep = False                      # the page says: don't hide now (typing in the label)
-        self._dock_stop = threading.Event()
-        self._cleared: list = []                # windows we minimized to show the wallpaper, front to back
 
-    # ---------- windows
-    def open(self, layout: str):
+    def open(self):
         import webview
-        old, self.layout, self._alpha = self.window, layout, 1.0
-        self._dock_stop.set()
-        url = f"{self.url.split('#')[0]}?layout={layout}#{self.url.split('#', 1)[1]}"
-        if layout == "full":
-            x0, y0, x1, y1 = work_area_at_cursor() if WIN else (0, 0, 1600, 900)
-            w = webview.create_window("glitchwall settings", url, js_api=Api(self), frameless=True, easy_drag=False,
-                                      on_top=True, hidden=True, x=x0, y=y0, width=x1 - x0, height=y1 - y0,
-                                      background_color="#010401", shadow=False)
-            self._full_area = (x0, y0, x1, y1)
-        else:
-            # as tall as it likes on a big screen, never taller than the screen it opens on (sizes in logical px)
-            x0, y0, x1, y1 = work_area_at_cursor() if WIN else (0, 0, 1600, 900)
-            scale = (ctypes.windll.user32.GetDpiForSystem() / 96) if WIN else 1.0
-            h = max(560, min(940, int((y1 - y0) / scale) - 48))
-            x = int(x0 / scale + ((x1 - x0) / scale - 560) / 2)   # centred on that screen, all of it on screen
-            y = int(y0 / scale + max(0, ((y1 - y0) / scale - h) / 2))
-            w = webview.create_window("glitchwall settings", url, js_api=Api(self), width=560, height=h, x=x, y=y,
-                                      min_size=(480, 520), background_color="#010401")
-            self._dock_stop = threading.Event()
-            threading.Thread(target=self._dock_loop, args=(w, self._dock_stop), daemon=True).start()
-        self.window = w
-        if old is not None:
-            threading.Timer(0.6, old.destroy).start()   # after the new one is up, so the app never has zero windows
-        return w
+        # as tall as it likes on a big screen, never taller than the screen it opens on (sizes in logical px)
+        x0, y0, x1, y1 = work_area_at_cursor() if WIN else (0, 0, 1600, 900)
+        scale = (ctypes.windll.user32.GetDpiForSystem() / 96) if WIN else 1.0
+        h = max(560, min(940, int((y1 - y0) / scale) - 48))
+        x = int(x0 / scale + ((x1 - x0) / scale - 560) / 2)   # centred on that screen, all of it on screen
+        y = int(y0 / scale + max(0, ((y1 - y0) / scale - h) / 2))
+        self.window = webview.create_window("glitchwall settings", self.url, js_api=Api(self), width=560, height=h,
+                                            x=x, y=y, min_size=(480, 520), background_color="#010401")
+        threading.Thread(target=self._dock_loop, args=(self.window,), daemon=True).start()
+        return self.window
 
     def hwnd(self, w=None):
         w = w or self.window
@@ -189,51 +129,10 @@ class Settings:
         threading.Thread(target=run, daemon=True).start()
         return True
 
-    def region(self, rects: list, css_width: float) -> bool:
-        """Full version: the window is only these rectangles (the bars, in page pixels); then it is shown."""
-        if self.layout != "full" or not WIN:
-            return False
-        h = self.hwnd()
-        if not h or not rects:
-            return False
-        x0, y0, x1, y1 = _rect(h)
-        s = (x1 - x0) / float(css_width or (x1 - x0))
-        rgn = g32.CreateRectRgn(0, 0, 0, 0)
-        for r in rects:
-            part = g32.CreateRectRgn(round(r[0] * s), round(r[1] * s), round((r[0] + r[2]) * s), round((r[1] + r[3]) * s))
-            g32.CombineRgn(rgn, rgn, part, 2)                    # RGN_OR
-            g32.DeleteObject(part)
-        u32.SetWindowRgn(h, rgn, True)                           # Windows owns the region from here
-        if not getattr(self.window, "_gw_shown", False):
-            self.window._gw_shown = True
-            self.window.show()
-            ax0, ay0, ax1, ay1 = self._full_area                 # exactly over the work area, in real pixels
-            u32.SetWindowPos(h, HWND_TOPMOST, ax0, ay0, ax1 - ax0, ay1 - ay0, SWP_NOACTIVATE)
-            self.clear_the_way(h)
-        return True
-
     def keep(self, on: bool) -> None:
         self._keep = bool(on)
 
-    def clear_the_way(self, h) -> None:
-        """Minimize the app windows on this screen so the middle shows the wallpaper; put back when we close."""
-        if not WIN:
-            return
-        ways = [w for w in windows_in_the_way(u32.MonitorFromWindow(h, 2)) if w not in self._cleared]
-        for w in ways:
-            u32.ShowWindowAsync(w, 7)                            # SW_SHOWMINNOACTIVE: no focus shuffling
-        self._cleared += ways
-
-    def put_back(self) -> None:
-        """Restore what we minimized (unless you already did), back to front so the stacking is as it was."""
-        if not WIN:
-            return
-        cleared, self._cleared = self._cleared, []
-        for w in reversed(cleared):
-            if u32.IsWindow(w) and u32.IsIconic(w):
-                u32.ShowWindowAsync(w, 4)                        # SW_SHOWNOACTIVATE: maximized ones come back maximized
-
-    # ---------- mini: dock to an edge, slide away when idle
+    # ---------- dock to an edge, slide away when idle
     def _slide(self, h, x: int, y: int, ms: int = 140) -> None:
         sx, sy = _rect(h)[:2]
         steps = max(1, ms // 16)
@@ -242,25 +141,18 @@ class Settings:
                              SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE)
             time.sleep(0.016)
 
-    def _dock_loop(self, w, stop: threading.Event) -> None:
+    def _dock_loop(self, w) -> None:
         if not WIN:
             return
-        while not stop.is_set() and self.hwnd(w) is None:
+        while self.hwnd(w) is None:
             time.sleep(0.1)
         edge, hidden, last_in, was_down, moved = None, False, time.time(), False, False
         prev, was_fg = None, False
-        while not stop.wait(0.08):
+        while True:
+            time.sleep(0.08)
             try:
                 h = self.hwnd(w)
                 if h is None or not u32.IsWindow(h):
-                    return
-                if u32.IsZoomed(h):   # maximized (the button or a title-bar double-click): become the full version
-                    u32.ShowWindow(h, 9)                         # SW_RESTORE, so the mini plays its way out
-                    stop.set()
-                    try:
-                        w.evaluate_js("switchLayout()")         # the page animates, then asks for the switch
-                    except Exception:
-                        self.open("full")                       # the page isn't ready: switch without the show
                     return
                 r, v = _rect(h), _visible_rect(h)                # r: as Windows places it; v: as you see it
                 pad = (v[0] - r[0], v[1] - r[1], r[2] - v[2], r[3] - v[3])
@@ -310,16 +202,13 @@ class Settings:
             except Exception:
                 pass
 
-    def run(self, layout: str) -> None:
+    def run(self) -> None:
         import webview
         if WIN:   # its own taskbar button with its own icon, not grouped under Python
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("glitchwall.settings")
-        self.open(layout)
+        self.open()
         from . import settings as cfg
-        try:
-            webview.start(private_mode=True, storage_path=str(cfg.state_dir() / "webview-settings"), icon=self.icon)
-        finally:
-            self.put_back()
+        webview.start(private_mode=True, storage_path=str(cfg.state_dir() / "webview-settings"), icon=self.icon)
 
 
 class Api:
@@ -331,20 +220,5 @@ class Api:
     def fade(self, to: float, ms: int = 260) -> bool:
         return self._s.fade(to, ms)
 
-    def region(self, rects: list, css_width: float) -> bool:
-        return self._s.region(rects, css_width)
-
     def keep(self, on: bool) -> None:
         self._s.keep(on)
-
-    def layout(self) -> str:
-        return self._s.layout or "mini"
-
-    def switch(self, layout: str) -> str:
-        layout = "full" if layout == "full" else "mini"
-        if layout != self._s.layout:
-            self._s.open(layout)
-        return layout
-
-    def close(self) -> None:
-        threading.Timer(0.05, self._s.window.destroy).start()
