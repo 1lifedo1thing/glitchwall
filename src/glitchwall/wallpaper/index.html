@@ -16,6 +16,7 @@
   @font-face { font-family:'Caveat'; src:url('fonts/Caveat.ttf'); font-weight:400 700; font-display:block; }
   @font-face { font-family:'Cascadia Mono'; src:url('fonts/CascadiaMono.ttf'); font-weight:200 700; font-display:block; }
   @font-face { font-family:'Inconsolata'; src:url('fonts/Inconsolata.ttf'); font-weight:200 900; font-display:block; }
+  @font-face { font-family:'DotGothic16'; src:url('fonts/DotGothic16-Rain.ttf'); font-display:block; }
 
   /* every color and font comes from the theme (THEMES below); applyLook() sets these */
   :root { --bg:#04110a; --g:#8cffb2; --s:#4fae74; --l:#ffb02e; --d:rgba(140,255,178,.3); --acc:#ffb02e;
@@ -111,20 +112,28 @@
                        18% { opacity:1; } 60% { filter:brightness(1.3); } 100% { clip-path:circle(75% at 50% 50%); filter:none; } }
   @keyframes irisOut { 0% { clip-path:circle(75% at 50% 50%); } 30% { filter:brightness(1.6); }
                        100% { clip-path:circle(0 at 50% 50%); opacity:.4; filter:brightness(2.4); } }
+  /* eclipse: a curved shadow edge sweeps across left to right, uncovering the card; leaving, a second one covers it */
+  @keyframes eclipseIn  { 0% { opacity:0; clip-path:circle(0 at -12% 50%); filter:brightness(1.8); }
+                          12% { opacity:1; } 100% { clip-path:circle(170% at -12% 50%); filter:none; } }
+  /* trace: swept in left to right by the beam, bright at first; leaving, it flares and fades like an afterglow */
+  @keyframes traceIn  { 0% { opacity:0; clip-path:inset(0 100% 0 0); filter:brightness(2.2); } 8% { opacity:1; }
+                        65% { clip-path:inset(0 0 0 0); filter:brightness(1.6); } 100% { clip-path:inset(0 0 0 0); filter:none; } }
+  @keyframes traceOut { 0% { opacity:1; filter:none; } 15% { filter:brightness(1.8); } 100% { opacity:0; filter:brightness(.7) blur(2px); } }
+  @keyframes eclipseOut { 0% { clip-path:circle(170% at 112% 50%); } 100% { clip-path:circle(0 at 112% 50%); opacity:.5; filter:brightness(.4); } }
   .still .card { animation:none; }
 
   /* oracle cards: instrument readouts with hairline corner brackets, a spaced title and one red signal mark */
-  html[data-theme="oracle"] .card { --k:color-mix(in srgb, var(--g) 55%, transparent);
+  html:is([data-theme="oracle"],[data-theme="orb"]) .card { --k:color-mix(in srgb, var(--g) 55%, transparent);
     background-image:linear-gradient(var(--k),var(--k)), linear-gradient(var(--k),var(--k)), linear-gradient(var(--k),var(--k)), linear-gradient(var(--k),var(--k)),
                      linear-gradient(var(--k),var(--k)), linear-gradient(var(--k),var(--k)), linear-gradient(var(--k),var(--k)), linear-gradient(var(--k),var(--k));
     background-size:12px 1px, 1px 12px, 12px 1px, 1px 12px, 12px 1px, 1px 12px, 12px 1px, 1px 12px;
     background-position:top left, top left, top right, top right, bottom left, bottom left, bottom right, bottom right;
     background-repeat:no-repeat; background-color:rgba(var(--card),var(--alpha)); }
-  html[data-theme="oracle"] .bar { text-transform:uppercase; letter-spacing:.22em; padding:6px 12px 5px; border-bottom-color:color-mix(in srgb, var(--g) 8%, transparent); }
-  html[data-theme="oracle"] .bar b::before { content:''; display:inline-block; width:5px; height:5px; margin:0 10px 1px 0; background:var(--acc);
+  html:is([data-theme="oracle"],[data-theme="orb"]) .bar { text-transform:uppercase; letter-spacing:.22em; padding:6px 12px 5px; border-bottom-color:color-mix(in srgb, var(--g) 8%, transparent); }
+  html:is([data-theme="oracle"],[data-theme="orb"]) .bar b::before { content:''; display:inline-block; width:5px; height:5px; margin:0 10px 1px 0; background:var(--acc);
     box-shadow:0 0 8px var(--acc); vertical-align:middle; }
-  html[data-theme="oracle"] .body { padding:10px 14px 12px; }
-  html[data-theme="oracle"] .out { border-left-color:color-mix(in srgb, var(--g) 14%, transparent); }
+  html:is([data-theme="oracle"],[data-theme="orb"]) .body { padding:10px 14px 12px; }
+  html:is([data-theme="oracle"],[data-theme="orb"]) .out { border-left-color:color-mix(in srgb, var(--g) 14%, transparent); }
 
   /* overlays, all static (no per-frame cost beyond compositing) */
   #grain { position:fixed; inset:0; pointer-events:none; z-index:2147483645; opacity:var(--grain); }
@@ -176,7 +185,7 @@ const THEMES = {
                 display:'serif', mono:'courierprime', grain:.4, texture:'none', rain:'record', dim:'#2a1a10', hi:'#c58b18', solid:.86 },
   // extras
   matrix:     { mode:'dark',  bg:'#0C0E0C', surface:'#2c302c', ink:'#00FF41', muted:'#7DFF9E', faint:'#2a3a2c', acc:'#C8FFD4', acc2:'#7DFF9E', err:'#ff8a7a',
-                display:'departure', mono:'departure', grain:0, texture:'scan', scan:.42, glow:true, rain:'pixel', dim:'#0f6b28', hi:'#7DFF9E',
+                display:'departure', mono:'departure', grain:0, texture:'scan', scan:.42, glow:true, rain:'cascade', dim:'#0f6b28', hi:'#7DFF9E',
                 bar:'rgba(6,42,15,.55)', status:'#3d8f55', edge:'rgba(0,255,65,.22)' },
   amber:      { mode:'dark',  bg:'#0d0a05', surface:'#30281c', ink:'#FFB000', muted:'#FFCC66', faint:'#3a2e1a', acc:'#FFE4B0', acc2:'#FFCC66', err:'#ff6a5a',
                 display:'departure', mono:'departure', grain:0, texture:'scan', scan:.42, glow:true, rain:'pixel', dim:'#8a5f08', hi:'#FFCC66',
@@ -203,8 +212,16 @@ const THEMES = {
                 display:'chakra', mono:'dmmono', grain:.07, texture:'none', rain:'oracle', dim:'#c9ccd0', hi:'#ffffff',
                 bar:'rgba(228,230,232,.035)', barfg:'#8a8f96', edge:'rgba(228,230,232,.12)', shadow:'0 0 0 1px #000, 0 18px 50px rgba(0,0,0,.65)',
                 filter:'blur(18px) saturate(0) brightness(.7)' },
+  // the machine itself: a ribbed black sphere studded with red lights, sunk in the floor of a vast, empty data hall; the same red
+  orb:        { mode:'dark',  bg:'#030304', surface:'#0a0a0c', ink:'#dfe3e8', muted:'#858b93', faint:'#3f434a', acc:'#ff3d2e', acc2:'#aab0b8', err:'#ff6a4f',
+                display:'chakra', mono:'dmmono', grain:.07, texture:'none', rain:'orb', dim:'#c3c8ce', hi:'#ffffff',
+                bar:'rgba(223,227,232,.035)', barfg:'#858b93', edge:'rgba(223,227,232,.12)', shadow:'0 0 0 1px #000, 0 18px 50px rgba(0,0,0,.7)',
+                filter:'blur(18px) saturate(0) brightness(.65)' },
+  // a lab oscilloscope: a blue-white beam sweeping a graticule, its trace glowing yellow-green and fading slowly
+  scope:      { mode:'dark',  bg:'#05080b', surface:'#0b1117', ink:'#d8ebff', muted:'#7d9bb8', faint:'#3b5268', acc:'#c6f25a', acc2:'#6fd3ff', err:'#ff7a5c',
+                display:'overpass', mono:'plex', grain:.05, texture:'tube', glow:true, rain:'scope', dim:'#a8e64e', hi:'#eef6ff' },
 };
-const RAINS = ['pixel', 'code', 'stars', 'static', 'snow', 'grid', 'draft', 'halftone', 'record', 'jukebox', 'starburst', 'testcard', 'print', 'stop', 'notebook', 'oracle', 'none'];
+const RAINS = ['pixel', 'code', 'stars', 'static', 'snow', 'grid', 'draft', 'halftone', 'record', 'jukebox', 'starburst', 'testcard', 'print', 'stop', 'notebook', 'oracle', 'orb', 'cascade', 'scope', 'none'];
 // family, size scale (pixel and display faces run small), weight for title bars
 const FONTS = {
   departure:    ["'Departure Mono', 'Cascadia Mono', Consolas, monospace", 1, 400],
@@ -240,10 +257,12 @@ const ANIMS = {
   dos:    ['dosIn .3s steps(6) both', 'dosOut .05s linear both'],
   write:  ['writeIn .7s ease-out both', 'writeOut .5s ease-in both'],
   iris:   ['irisIn .7s cubic-bezier(.2,.7,.2,1) both', 'irisOut .5s cubic-bezier(.6,0,.8,.4) both'],
+  eclipse: ['eclipseIn .8s cubic-bezier(.3,.6,.2,1) both', 'eclipseOut .55s cubic-bezier(.5,0,.8,.5) both'],
+  trace:  ['traceIn .6s cubic-bezier(.3,.6,.3,1) both', 'traceOut .6s ease-out both'],
 };
 const THEME_ANIM = { phosphor: 'crt', amber: 'crt', matrix: 'glitch', synthwave: 'glitch', drafting: 'draft', cyanotype: 'draft',
   newsprint: 'press', nightprint: 'press', neon: 'neon', fieldops: 'stamp', duplicator: 'riso', sleeve: 'sleeve', msdos: 'dos', bsod: 'dos',
-  notebook: 'write', oracle: 'iris' };
+  notebook: 'write', oracle: 'iris', orb: 'eclipse', scope: 'trace' };
 // Lively dropdown order: index 0 = "use glitchwall config", then these
 const LIVELY = { theme: Object.keys(THEMES), palette: ['theme', ...Object.keys(THEMES)], rain: ['theme', ...RAINS],
                  font: ['theme', ...Object.keys(FONTS)], transition: ['theme', ...Object.keys(ANIMS)] };
@@ -328,6 +347,7 @@ const cv = document.getElementById('c'), cx = cv.getContext('2d');
 let S = 3, W, H, R = null;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const TAU = Math.PI * 2;
+const KANA = "'DotGothic16'";   // the katakana rains' glyphs: a bundled cut of DotGothic16 holding just those
 // run a style's drawing at most `fps` times a second; returns the elapsed time or 0 to skip
 function every(st, fps, dt) { st.acc = (st.acc || 0) + dt; if (st.acc < 1 / fps) return 0; const d = st.acc; st.acc = 0; return d; }
 
@@ -359,7 +379,7 @@ const STYLES = {
       if (!(dt = every(this, 30, dt))) return;
       const FS = this.FS;
       cx.globalAlpha = 1; cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H);
-      cx.font = `${FS - 2}px ${MONO}`; cx.textBaseline = 'top';
+      cx.font = `${FS - 2}px ${KANA}, ${MONO}`; cx.textBaseline = 'top';
       this.cols.forEach((c, i) => {
         c.y += c.v * dt * FS;
         const row = Math.floor(c.y / FS);
@@ -941,6 +961,417 @@ const STYLES = {
       this.anom = { c: rnd(0, this.M) | 0, w: rnd(14, 28) | 0, k: rnd(0, this.K) | 0, n: 3 + (Math.random() * 3 | 0), pull: rnd(.05, .1),
                     age: age * life, life, val: rnd(.012, .09), id: '#' + (Math.random() * 0xffff | 0).toString(16).padStart(4, '0') };
       this.read = 1 - this.anom.val * rnd(.05, .15);
+    },
+  },
+  // the machine itself: a heavy black sphere sunk in the floor of a vast, empty, dark data hall. Its shell is
+  // stacked with slats carrying rows of tiny red lights: some steady, some flickering, packets streaming along them
+  // like data on a bus. Readouts point at parts of it as they turn into view, and where one points the lights burn.
+  orb: {
+    scale: 1, still: true, L: 30, N: 110,
+    LABELS: [['DIVERGENCE', v => `Δ ${(v * .09).toFixed(4)}`], ['RECALCULATING', v => `SECTOR ${(v * 96 | 0) + 1}`],
+             ['LOAD', v => `${(60 + v * 39).toFixed(1)} %`], ['VARIANCE', v => `σ ${(v * .3).toFixed(3)}`],
+             ['THREAD', v => '0x' + (v * 0xffff | 0).toString(16).padStart(4, '0').toUpperCase()], ['CONVERGENCE', v => `${(90 + v * 9.9).toFixed(2)} %`]],
+    init() {
+      const S = this.S = Math.min(W, H) * .29, ox = this.ox = W / 2, oy = this.oy = H * .44, light = T.mode === 'light';
+      const mk = (w, h) => { const o = document.createElement('canvas'); o.width = w; o.height = h; return [o, o.getContext('2d')]; };
+      this.t = rnd(0, 300); this.spin = rnd(-.5, .1); this.acc = 0;
+      this.body = light ? T.ink : '#000000'; this.skin = light ? T.bg : T.dim;    // a dark machine on any palette
+      const ink = T.ink, dark = this.body;
+      const mix = (p, q, t) => { const a = rgb(p), z = rgb(q); return '#' + a.map((v, i) => Math.round(v + (z[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
+      // the sphere sits sunk in a round opening in the floor of a vast, empty data hall: the opening's centre, half-width, squash
+      const cy = this.cy = oy + S * .45, ca = this.ca = S * .96, ce = .24;
+      // the hall in perspective: eye 5 units up, the opening 10 units away; racks 2.2 tall, ceiling 8 up
+      const vy = oy - S * .38, HC = 5, F = (cy - vy) * 10 / HC, RH = 2.2, CEIL = 8;
+      const sx = (X, Z) => ox + F * X / Z, sy = (Y, Z) => vy + F * (HC - Y) / Z;
+      const [b, g] = mk(W, H); this.back = b;
+      g.fillStyle = T.bg; g.fillRect(0, 0, W, H);
+      let gr = g.createLinearGradient(0, 0, 0, H);                  // a faint haze lying along the horizon
+      gr.addColorStop(0, rgba(ink, 0)); gr.addColorStop(vy / H * .8, rgba(ink, light ? .03 : .015));
+      gr.addColorStop(vy / H, rgba(ink, light ? .09 : .06)); gr.addColorStop(Math.min(1, cy / H), rgba(ink, light ? .03 : .02)); gr.addColorStop(1, rgba(ink, 0));
+      g.fillStyle = gr; g.fillRect(0, 0, W, H);
+      g.strokeStyle = ink; g.lineWidth = 1;
+      // the ceiling: long strips of light running away from us, most of them dark, the rest barely on
+      for (let X = -48.75; X <= 48.75; X += 7.5) {
+        g.globalAlpha = light ? .05 : .035; g.beginPath(); g.moveTo(sx(X, 4), sy(CEIL, 4)); g.lineTo(sx(X, 400), sy(CEIL, 400)); g.stroke();
+        for (let Z = 6; Z < 260; Z += 4.5) {                  // a fixture every few metres, a few of them dead
+          if (Math.random() < .2) continue;
+          const z2 = Z + 1.6, a = (light ? .14 : .2) * Math.min(1, 30 / Z) * rnd(.6, 1);
+          g.lineWidth = Math.max(1, Math.min(2.5, F * .12 / Z));
+          g.globalAlpha = a; g.beginPath(); g.moveTo(sx(X, Z), sy(CEIL, Z)); g.lineTo(sx(X, z2), sy(CEIL, z2)); g.stroke();
+        }
+        g.lineWidth = 1;
+      }
+      // the floor of the clearing: tiles running toward the racks
+      g.globalAlpha = light ? .06 : .045; g.beginPath();
+      for (let X = -40; X <= 40; X += 1.2) { g.moveTo(sx(X, 2.5), sy(0, 2.5)); g.lineTo(sx(X, 15), sy(0, 15)); }
+      for (let Z = 3; Z < 15; Z *= 1.12) { g.moveTo(0, sy(0, Z)); g.lineTo(W, sy(0, Z)); }
+      g.stroke();
+      // rows of racks from just behind the sphere to the horizon, broken by cross aisles; far ones sink into the haze
+      const fog = light ? T.bg : mix(T.bg, ink, .06), near = light ? mix(T.bg, ink, .12) : mix(T.bg, ink, .025), leds = this.leds = [];
+      const SEG = 6.6, GAPX = 2.2, half = (Z) => (ox + 40) * Z / F;           // racks .6 wide, eleven to a run
+      for (let k = 60; k >= 0; k--) {
+        const Z = 15 + k * 2.6 * (1 + k * .012), D = Z + 1.1, haze = Math.min(1, (Z - 15) / 160) ** .8;
+        const yT = sy(RH, Z), yB = sy(0, Z), yTB = sy(RH, D);
+        if (yB - yT < 1.2) continue;
+        const face = mix(near, fog, haze), top = mix(mix(near, ink, light ? .06 : .09), fog, haze);
+        for (let x0 = -Math.ceil(half(Z) / (SEG + GAPX)) * (SEG + GAPX) - GAPX / 2; x0 < half(Z); x0 += SEG + GAPX) {
+          const x1 = x0 + SEG, L = sx(x0, Z), R = sx(x1, Z);
+          if (R < 0 || L > W) continue;
+          g.globalAlpha = 1;
+          g.fillStyle = top; g.beginPath(); g.moveTo(sx(x0, D), yTB); g.lineTo(sx(x1, D), yTB); g.lineTo(R, yT); g.lineTo(L, yT); g.fill();
+          g.fillStyle = face; g.fillRect(L, yT, R - L, yB - yT);
+          // the run's end faces, where we see them down the cross aisles
+          g.fillStyle = mix(face, T.bg, .5);
+          if (x0 > 0) { g.beginPath(); g.moveTo(L, yT); g.lineTo(sx(x0, D), yTB); g.lineTo(sx(x0, D), sy(0, D)); g.lineTo(L, yB); g.fill(); }
+          if (x1 < 0) { g.beginPath(); g.moveTo(R, yT); g.lineTo(sx(x1, D), yTB); g.lineTo(sx(x1, D), sy(0, D)); g.lineTo(R, yB); g.fill(); }
+          g.strokeStyle = ink; g.globalAlpha = (light ? .22 : .2) * (1 - haze * .7);
+          g.beginPath(); g.moveTo(L, yT + .5); g.lineTo(R, yT + .5); g.stroke();
+          const rw = F * .6 / Z;
+          if (rw > 3.5) {                                                    // seams between the racks
+            g.globalAlpha = (light ? .1 : .07) * (1 - haze); g.beginPath();
+            for (let x = x0 + .6; x < x1 - .1; x += .6) { const q = Math.round(sx(x, Z)) + .5; g.moveTo(q, yT); g.lineTo(q, yB); }
+            g.stroke();
+          }
+          // status lights on the rack fronts, only on the part the next row nearer us leaves showing
+          if (Z < 70 && rw > 1.5) {
+            const next = 15 + (k - 1) * 2.6 * (1 + (k - 1) * .012), yHide = k ? Math.min(yB, sy(RH, next + 1.1)) : yB;
+            const U = (yB - yT) / 22;                                         // each rack: 22 slots, a light at the left of some
+            for (let r = 0; r < SEG / .6 - .5; r++) {
+              const x = Math.round(sx(x0 + r * .6 + .1, Z)), x2 = Math.round(sx(x0 + r * .6 + .32, Z));
+              for (let u = 1; u < 21; u++) {
+                const y = Math.round(yT + u * U);
+                if (y > yHide - 1 || Math.random() > .3) continue;
+                const red = Math.random() < .18, kind = Math.random();
+                leds.push({ x: Math.random() < .7 ? x : x2, y, s: Math.max(1, Math.min(2, rw / 10)), a: (red ? .95 : .6) * (1 - haze * .85) * rnd(.35, 1), red,
+                            kind: kind < .45 ? 0 : kind < .8 ? 1 : 2, f: rnd(.3, 2.2), p: rnd(0, TAU) });
+              }
+            }
+          }
+        }
+      }
+      g.globalAlpha = 1;
+      for (const [r, a] of [[1.14, .2], [1.36, .1], [1.75, .06], [2.4, .04]]) {   // rings in the floor round the opening
+        g.globalAlpha = a; g.beginPath(); g.ellipse(ox, cy, ca * r, ca * r * ce, 0, 0, TAU); g.stroke();
+      }
+      g.globalAlpha = 1; g.fillStyle = dark;      // the raised lip of the opening, and the dark well inside it
+      g.beginPath(); g.ellipse(ox, cy, ca * 1.07, ca * 1.07 * ce, 0, 0, TAU); g.fill();
+      g.fillStyle = rgba(ink, light ? .12 : .07); g.beginPath(); g.ellipse(ox, cy, ca * 1.07, ca * 1.07 * ce, 0, 0, TAU); g.ellipse(ox, cy, ca, ca * ce, 0, TAU, 0, true); g.fill();
+      g.strokeStyle = ink; g.globalAlpha = .28; g.beginPath(); g.ellipse(ox, cy, ca * 1.07, ca * 1.07 * ce, 0, 0, TAU); g.stroke();
+      g.globalAlpha = 1;
+      gr = g.createRadialGradient(ox, oy - S * .8, S * .2, ox, oy, S * 2.4);      // a little light falling on the sphere from above
+      gr.addColorStop(0, rgba(ink, light ? .06 : .05)); gr.addColorStop(1, rgba(ink, 0)); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+      if (!light) {
+        gr = g.createRadialGradient(ox, vy, S * 1.2, ox, vy, Math.hypot(W, H) * .6);
+        gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,.55)'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+      }
+      g.save(); g.translate(ox, cy); g.scale(1, ce);                                 // red light spilling onto the floor
+      gr = g.createRadialGradient(0, 0, ca, 0, 0, ca * 2.6); gr.addColorStop(0, rgba(T.acc, .15)); gr.addColorStop(1, rgba(T.acc, 0));
+      g.globalCompositeOperation = light ? 'source-over' : 'lighter'; g.fillStyle = gr; g.beginPath(); g.arc(0, 0, ca * 2.6, 0, TAU); g.fill(); g.restore();
+      // the sphere's body: near black, a faint sheen up and to the left, a fresnel glow and a thin rim of light
+      const c = S + 4, [o, s] = mk(c * 2, c * 2), gloss = light ? T.bg : T.ink; this.orbImg = o; this.c = c;
+      s.fillStyle = this.body; s.beginPath(); s.arc(c, c, S, 0, TAU); s.fill();
+      gr = s.createRadialGradient(c - S * .38, c - S * .42, 0, c - S * .2, c - S * .2, S * 1.35);
+      gr.addColorStop(0, rgba(gloss, .1)); gr.addColorStop(.45, rgba(gloss, .025)); gr.addColorStop(1, rgba(gloss, 0));
+      s.fillStyle = gr; s.beginPath(); s.arc(c, c, S, 0, TAU); s.fill();
+      gr = s.createRadialGradient(c, c, S * .7, c, c, S);
+      gr.addColorStop(0, rgba(gloss, 0)); gr.addColorStop(.8, rgba(gloss, .015)); gr.addColorStop(1, rgba(gloss, .16));
+      s.fillStyle = gr; s.beginPath(); s.arc(c, c, S, 0, TAU); s.fill();
+      gr = s.createLinearGradient(c + S * .7, c - S * .7, c - S * .7, c + S * .7);
+      gr.addColorStop(0, rgba(gloss, .7)); gr.addColorStop(.5, rgba(gloss, .12)); gr.addColorStop(1, rgba(gloss, .03));
+      s.strokeStyle = gr; s.lineWidth = 1.4; s.beginPath(); s.arc(c, c, S - .7, 0, TAU); s.stroke();
+      // the floor in front of the opening, drawn again over the sphere's lower part, and the opening's lit near edge
+      const [fo, f] = mk(W, H); this.front = fo;
+      f.save(); f.beginPath(); f.rect(0, cy, W, H - cy); f.ellipse(ox, cy, ca, ca * ce, 0, 0, Math.PI); f.closePath(); f.clip('evenodd');
+      f.drawImage(b, 0, 0); f.restore();
+      f.strokeStyle = ink; f.lineWidth = 1;
+      f.globalAlpha = .45; f.beginPath(); f.ellipse(ox, cy, ca, ca * ce, 0, .05, Math.PI - .05); f.stroke();
+      f.globalAlpha = .14; f.beginPath(); f.ellipse(ox, cy + S * .012, ca * 1.07, ca * 1.07 * ce, 0, 0, Math.PI); f.stroke();
+      f.globalAlpha = 1;
+      // the shell: stacked slats, each carrying a row of red lights. Some burn steadily, others flicker
+      this.ribs = Array.from({ length: this.L }, (_, k) => {
+        const phi = -1.4 + 2.8 * (k + .5) / this.L, n = Math.max(6, Math.round(Math.cos(phi) * 84));
+        const base = Float32Array.from({ length: n }, () => Math.random() < .17 ? rnd(.3, .65) : 0);
+        return { phi, n, o: rnd(0, TAU), base, b: Float32Array.from(base, v => Math.max(v, Math.random() < .12 ? rnd(.3, 1) : 0)) };
+      });
+      this.packets = Array.from({ length: 22 }, () => this.packet());
+      const [gs, gg] = mk(32, 32); this.glowImg = gs;     // one light's glow, drawn scaled for every light
+      gr = gg.createRadialGradient(16, 16, 0, 16, 16, 16);
+      gr.addColorStop(0, rgba(T.acc, .7)); gr.addColorStop(.3, rgba(T.acc, .28)); gr.addColorStop(1, rgba(T.acc, 0));
+      gg.fillStyle = gr; gg.fillRect(0, 0, 32, 32);
+      this.core = light ? T.acc : '#' + rgb(T.acc).map(v => Math.round(v + (255 - v) * .45).toString(16).padStart(2, '0')).join('');
+      this.calls = []; for (const i of [0, 1, 2]) this.calls[i] = this.callout(i, rnd(.15, .5));
+      this.burn(); this.paint();          // a first frame even when stilled
+    },
+    // a readout on one part of the sphere: each of the three keeps to its own band of slats, so they never collide
+    callout(i, age) {
+      const used = this.calls.filter(c => c && c.i !== i).map(c => c.lab), pool = this.LABELS.slice(1).filter(l => !used.includes(l));
+      const band = [[22, 26], [18, 21], [14, 16]][i], k = band[0] + (Math.random() * (band[1] - band[0] + 1) | 0), life = rnd(9, 15);
+      return { i, k, th: -this.spin + rnd(-.9, .45), age: age * life, life, lab: i ? pool[Math.random() * pool.length | 0] : this.LABELS[0],
+               v: Math.random(), id: '#' + (Math.random() * 0xffff | 0).toString(16).padStart(4, '0') };
+    },
+    burn() {                 // where a readout points, a run of lights on that slat burns together, pulsing
+      for (const cl of this.calls) {
+        const rb = this.ribs[cl.k];
+        for (let j = 0; j < rb.n; j++) {
+          const d = Math.abs(((rb.o + j / rb.n * TAU - cl.th + Math.PI) % TAU + TAU) % TAU - Math.PI);
+          if (d < .2) rb.b[j] = Math.max(rb.b[j], .75 + .25 * Math.sin(this.t * 4 + j));
+        }
+      }
+    },
+    packet() { const k = Math.random() * this.L | 0; return { k, pos: rnd(0, this.ribs[k].n), v: rnd(3, 11) * (Math.random() < .5 ? -1 : 1), len: 2 + (Math.random() * 6 | 0) }; },
+    // a point on the shell: latitude phi, body longitude th; returns [x, y, depth, light]
+    pt(phi, th) {
+      const a = th + this.spin, cp = Math.cos(phi), x = cp * Math.sin(a), y = Math.sin(phi), z = cp * Math.cos(a);
+      const T1 = .34, y2 = y * Math.cos(T1) - z * Math.sin(T1), z2 = y * Math.sin(T1) + z * Math.cos(T1);
+      const lam = Math.max(0, -.48 * x + .58 * y2 + .66 * z2);
+      return [this.ox + x * this.S, this.oy - y2 * this.S, z2, lam];
+    },
+    paint() {
+      if (!W || !H) return;     // no size yet (hidden, or before layout): resize() will init again
+      const N = this.N, S = this.S, light = T.mode === 'light';
+      cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over'; cx.drawImage(this.back, 0, 0);
+      // the racks' status lights: steady, blinking, or flickering with traffic
+      const tt = this.t;
+      for (const red of [false, true]) {
+        cx.fillStyle = red ? T.acc : T.ink;
+        for (const l of this.leds) {
+          if (l.red !== red) continue;
+          const on = l.kind === 0 ? 1 : l.kind === 1 ? (Math.sin(tt * l.f + l.p) > -.2 ? 1 : .08) : (Math.sin(tt * l.f * 9 + l.p) * Math.sin(tt * l.f * 4.3) > 0 ? 1 : .15);
+          cx.globalAlpha = l.a * on; cx.fillRect(l.x, l.y, l.s, l.s);
+        }
+      }
+      cx.globalAlpha = 1;
+      cx.drawImage(this.orbImg, this.ox - this.c, this.oy - this.c);
+      // the slats: a lit upper lip and a fainter lower one per slat, sorted into four steps by how far each
+      // stretch faces us and the light
+      const steps = [new Path2D(), new Path2D(), new Path2D(), new Path2D()], AL = [.04, .09, .17, .3], GAP = 2.8 / this.L;
+      for (const rb of this.ribs) {
+        for (const [dphi, dim] of [[GAP * .42, 0], [-GAP * .3, 1]]) {
+          let prev = null;
+          for (let i = 0; i <= N; i++) {
+            const p = this.pt(rb.phi + dphi, (i % N) / N * TAU);
+            if (prev && p[2] > 0 && prev[2] > 0) {
+              const b = Math.min(p[2], prev[2]) ** .7 * (.25 + .75 * p[3]) * (dim ? .45 : 1);
+              if (b > .04) { const st = steps[b < .18 ? 0 : b < .36 ? 1 : b < .6 ? 2 : 3]; st.moveTo(prev[0], prev[1]); st.lineTo(p[0], p[1]); }
+            }
+            prev = p;
+          }
+        }
+      }
+      cx.strokeStyle = this.skin; cx.lineWidth = .9;
+      steps.forEach((st, j) => { cx.globalAlpha = AL[j]; cx.stroke(st); });
+      // the lights: a soft glow under each, then the point itself, narrower toward the edge of the sphere
+      const lit = [];
+      for (const rb of this.ribs) for (let j = 0; j < rb.n; j++) {
+        if (rb.b[j] < .04) continue;
+        const p = this.pt(rb.phi, rb.o + j / rb.n * TAU);
+        if (p[2] > .04) lit.push(p[0], p[1], p[2], rb.b[j]);
+      }
+      if (!light) cx.globalCompositeOperation = 'lighter';
+      const u = Math.max(1, S / 160);
+      for (let i = 0; i < lit.length; i += 4) {      // soft glow first (a sprite, round and cheap)
+        const z = lit[i + 2], a = lit[i + 3] * z ** .5, gw = u * (7 + 13 * z), gh = u * 10;
+        cx.globalAlpha = a * .9; cx.drawImage(this.glowImg, lit[i] - gw / 2, lit[i + 1] - gh / 2, gw, gh);
+      }
+      cx.fillStyle = this.core;
+      for (let i = 0; i < lit.length; i += 4) {      // then the hot point
+        const z = lit[i + 2], a = lit[i + 3] * z ** .5, w = u * (.8 + 1.6 * z);
+        cx.globalAlpha = Math.min(1, a * 1.2); cx.fillRect(lit[i] - w / 2, lit[i + 1] - u * .5, w, u);
+      }
+      cx.globalCompositeOperation = 'source-over'; cx.globalAlpha = 1;
+      cx.drawImage(this.front, 0, 0);               // the floor in front of the opening, over the sphere's base
+      // the readouts, each pointing at its part of the sphere while that part faces us
+      const fs = Math.max(10, Math.round(S * .045));
+      cx.font = `${fs}px ${MONO}`; cx.textBaseline = 'middle'; cx.lineWidth = 1;
+      for (const cl of this.calls) {
+        const [mx, my, mz] = this.pt(this.ribs[cl.k].phi, cl.th);
+        const f = Math.max(0, Math.min(1, (mz - .2) * 4, cl.age / .8, (cl.life - cl.age) / .8));
+        if (f <= 0 || my > this.cy) continue;
+        const side = mx < this.ox ? -1 : 1, x2 = this.ox + side * Math.max(S * 1.05, Math.min(S * 1.4, W / 2 - fs * 16)), ty = my - S * .1 * (cl.i - 1);
+        cx.globalAlpha = .8 * f; cx.strokeStyle = cx.fillStyle = T.acc;
+        cx.beginPath(); cx.moveTo(mx, my); cx.lineTo(x2, ty); cx.lineTo(x2 + side * fs * 3, ty); cx.stroke();
+        cx.fillRect(mx - 2, my - 2, 4, 4);
+        cx.textAlign = side < 0 ? 'right' : 'left';
+        const tx = x2 + side * fs * 3.6;
+        cx.globalAlpha = .65 * f; cx.fillStyle = T.ink; cx.fillText(cl.lab[0], tx, ty - fs * .7);
+        cx.globalAlpha = .95 * f; cx.fillStyle = T.acc; cx.fillText(`${cl.lab[1](cl.v)}   ${cl.id}`, tx, ty + fs * .7);
+      }
+      cx.globalAlpha = 1; cx.textAlign = 'start';
+    },
+    frame(dt) {
+      if (RAIN <= 0 || !(dt = every(this, 20, dt))) return;     // 0 stills it: the frame from init() stays up
+      const sp = .4 + RAIN * 1.6;
+      this.t += dt * sp; this.spin += dt * .05 * sp;
+      const fade = Math.exp(-dt * sp * 1.1);         // lights die down to their resting glow
+      for (const rb of this.ribs) for (let j = 0; j < rb.n; j++) rb.b[j] = Math.max(rb.base[j], rb.b[j] * fade);
+      for (let n = dt * sp * 70; n > 0; n--) {       // flickers
+        if (n < 1 && Math.random() > n) break;
+        const rb = this.ribs[Math.random() * this.L | 0]; rb.b[Math.random() * rb.n | 0] = rnd(.5, 1);
+      }
+      this.packets.forEach((pk, i) => {              // packets streaming along the slats
+        const rb = this.ribs[pk.k];
+        pk.pos += pk.v * dt * sp;
+        for (let j = 0; j < pk.len; j++) { const q = ((Math.floor(pk.pos) - Math.sign(pk.v) * j) % rb.n + rb.n) % rb.n; rb.b[q] = Math.max(rb.b[q], 1 - j / pk.len * .6); }
+        if (Math.random() < dt * .12) this.packets[i] = this.packet();
+      });
+      this.calls.forEach((cl, i) => {                // readouts come and go; the numbers drift while they show
+        if ((cl.age += dt * sp) > cl.life) this.calls[i] = this.callout(i, 0);
+        else if (Math.random() < dt * .6) cl.v = Math.min(1, Math.max(0, cl.v + rnd(-.03, .03)));
+      });
+      this.burn();
+      this.paint();
+    },
+  },
+  // katakana falling at three depths: small, dim, slow columns far back; large, bright, fast ones near. Each column
+  // has a white-hot head, the trail cools behind it, and its glyphs (some mirrored) change as it falls
+  cascade: {
+    scale: 1, GL: 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789:=+*<>',
+    DEPTH: [[11, .35, .6], [15, .6, 1], [21, 1, 1.45]],     // font size, brightness, speed
+    g() { return [this.GL[Math.random() * this.GL.length | 0], Math.random() < .45]; },
+    col(d, y) {
+      const [fs] = this.DEPTH[d];
+      return { d, x: Math.floor(rnd(0, W / fs)) * fs, y, v: rnd(5, 13) * this.DEPTH[d][2], len: rnd(10, 32) | 0, trail: [], row: -1e9, on: Math.random() < .25 + RAIN * 1.2 };
+    },
+    init() {
+      this.cols = [];
+      this.DEPTH.forEach(([fs], d) => { for (let i = 0, n = Math.ceil(W / fs * [1, .6, .28][d]); i < n; i++) { const c = this.col(d, rnd(-H * .3, H * 1.2)); c.trail = Array.from({ length: c.len }, () => this.g()); this.cols.push(c); } });
+    },
+    frame(dt) {
+      if (!(dt = every(this, 30, dt))) return;
+      cx.globalAlpha = 1; cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H);
+      cx.textBaseline = 'top'; cx.textAlign = 'center';
+      const sp = .3 + RAIN * 1.4;
+      for (let d = 0; d < 3; d++) {
+        const [fs, br] = this.DEPTH[d];
+        cx.font = `${fs - 1}px ${KANA}, ${MONO}`;
+        this.cols.forEach((c, i) => {
+          if (c.d !== d) return;
+          c.y += c.v * dt * fs * sp;
+          const row = Math.floor(c.y / fs);
+          if (row !== c.row) { c.row = row; c.trail.unshift(this.g()); c.trail.length = Math.min(c.trail.length, c.len); }
+          if ((row - c.len) * fs > H) { this.cols[i] = this.col(d, rnd(-H / 2, 0)); return; }
+          if (!c.on) return;
+          if (Math.random() < .06) c.trail[1 + (Math.random() * (c.trail.length - 1) | 0)] = this.g();
+          const x = c.x + fs / 2;
+          c.trail.forEach(([ch, flip], k) => {
+            const y = (row - k) * fs;
+            if (y < -fs || y > H) return;
+            cx.globalAlpha = br * (k ? (1 - k / c.len) ** 1.4 : 1);
+            cx.fillStyle = k === 0 ? T.acc : k < 3 ? T.hi : T.ink;
+            if (flip) { cx.save(); cx.translate(x, y); cx.scale(-1, 1); cx.fillText(ch, 0, 0); cx.restore(); }
+            else cx.fillText(ch, x, y);
+          });
+        });
+      }
+      cx.globalAlpha = 1; cx.textAlign = 'start';
+    },
+  },
+  // a lab oscilloscope: a graticule on dark glass, one beam sweeping across it, the trace it leaves glowing on
+  // and fading slowly. Every few sweeps the signal changes: a clean sine, a ringing step, a square wave, a burst,
+  // and now and then the scope flips to X-Y and draws a figure. The readouts at the corners follow the signal.
+  scope: {
+    scale: 1, still: true,
+    MODES: [
+      { ch: '0.50 V', tb: '2.00 ms', f: '1.502 kHz', y: (u, t) => 2.3 * Math.sin(TAU * 3 * u + t * .12) + .55 * Math.sin(TAU * 9 * u + t * .5) },
+      { ch: '1.00 V', tb: '500 µs', f: '12.48 kHz', y: (u) => u < .14 ? 0 : 3.1 * Math.exp(-(u - .14) * 6) * Math.sin(TAU * 13 * (u - .14)) },
+      { ch: '0.20 V', tb: '1.00 ms', f: '2.000 kHz', y: (u) => { const q = (u * 4) % 1, e = Math.min(q, Math.abs(q - .5)); return (q < .5 ? 2 : -2) + (q < .5 ? 1 : -1) * .9 * Math.exp(-e * 60) * Math.cos(e * 260); } },
+      { ch: '2.00 V', tb: '5.00 µs', f: '6.250 MHz', y: (u, t) => 3 * Math.sin(TAU * 31 * u + t * .7) * Math.exp(-(((u - .5) / .17) ** 2)) },
+      { ch: '0.50 V', tb: 'X-Y', f: '3 : 2', xy: true },
+    ],
+    init() {
+      const div = this.div = Math.floor(Math.min(W / 10.8, H / 8.8)), gw = div * 10, gh = div * 8;
+      const gx = this.gx = Math.round((W - gw) / 2), gy = this.gy = Math.round((H - gh) / 2), light = T.mode === 'light';
+      this.gw = gw; this.gh = gh; this.cy0 = gy + gh / 2;
+      const mk = () => { const o = document.createElement('canvas'); o.width = W; o.height = H; return [o, o.getContext('2d')]; };
+      // the glass and its graticule: a solid frame, dotted divisions, the centre axes ticked in fifths
+      const [b, g] = mk(); this.back = b;
+      g.fillStyle = T.bg; g.fillRect(0, 0, W, H);
+      let gr = g.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.hypot(W, H) * .55);
+      gr.addColorStop(0, rgba(T.ink, light ? .05 : .045)); gr.addColorStop(1, rgba(T.ink, 0)); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+      g.strokeStyle = T.ink; g.fillStyle = T.ink; g.lineWidth = 1;
+      g.globalAlpha = light ? .3 : .22; g.strokeRect(gx + .5, gy + .5, gw, gh);
+      g.globalAlpha = light ? .26 : .2;
+      for (let i = 1; i < 10; i++) for (let y = gy; y <= gy + gh; y += div / 5) g.fillRect(gx + i * div, Math.round(y), 1, 1);
+      for (let j = 1; j < 8; j++) for (let x = gx; x <= gx + gw; x += div / 5) g.fillRect(Math.round(x), gy + j * div, 1, 1);
+      g.globalAlpha = light ? .32 : .26; g.beginPath();
+      const mx = gx + 5 * div + .5, my = gy + 4 * div + .5, tk = Math.max(3, div * .07);
+      for (let x = gx; x <= gx + gw + .1; x += div / 5) { g.moveTo(Math.round(x) + .5, my - tk); g.lineTo(Math.round(x) + .5, my + tk); }
+      for (let y = gy; y <= gy + gh + .1; y += div / 5) { g.moveTo(mx - tk, Math.round(y) + .5); g.lineTo(mx + tk, Math.round(y) + .5); }
+      g.stroke();
+      g.globalAlpha = 1;
+      // the persistence layer: what the beam has drawn, fading
+      [this.pc, this.p] = mk();
+      this.t = rnd(0, 100); this.u = 0; this.m = 0; this.sweeps = 0; this.acc = 0;
+      if (RAIN <= 0) {             // stilled: one whole trace, as if the beam had just passed
+        this.draw(0, 1);
+        this.u = 1;
+      }
+      this.paint();
+    },
+    // where the beam is at sweep position u (0-1) in the current mode
+    at(u) {
+      const M = this.MODES[this.m], d = this.div;
+      if (M.xy) { const s = u * TAU, ph = this.t * .25; return [this.gx + this.gw / 2 + 3.6 * d * Math.sin(3 * s + ph), this.cy0 - 3 * d * Math.sin(2 * s)]; }
+      return [this.gx + u * this.gw, this.cy0 - M.y(u, this.t) * d + rnd(-.4, .4)];
+    },
+    // draw the trace from u0 to u1 into the persistence layer: a wide soft pass, then the line
+    draw(u0, u1) {
+      const p = this.p, n = Math.max(2, Math.ceil((u1 - u0) * (this.MODES[this.m].xy ? 900 : this.gw / 1.5)));
+      const pts = u0 > 0 && this.last ? [this.last] : []; for (let i = pts.length; i <= n; i++) pts.push(this.at(u0 + (u1 - u0) * i / n));
+      this.last = pts[pts.length - 1];
+      p.globalCompositeOperation = T.mode === 'light' ? 'source-over' : 'lighter';
+      p.strokeStyle = T.dim; p.lineJoin = p.lineCap = 'round';
+      for (const [w, a] of [[Math.max(5, this.div * .09), .08], [1.6, .75]]) {
+        p.lineWidth = w; p.globalAlpha = a; p.beginPath(); p.moveTo(pts[0][0], pts[0][1]);
+        for (const q of pts) p.lineTo(q[0], q[1]);
+        p.stroke();
+      }
+      p.globalAlpha = 1; p.globalCompositeOperation = 'source-over';
+    },
+    paint() {
+      if (!W || !H) return;
+      const light = T.mode === 'light', M = this.MODES[this.m], d = this.div;
+      cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over'; cx.drawImage(this.back, 0, 0);
+      cx.drawImage(this.pc, 0, 0);
+      if (RAIN > 0 && this.u < 1) {                     // the beam itself: a short white-hot head on the trace
+        const n = 14, back = M.xy ? .012 : .025;
+        cx.globalCompositeOperation = light ? 'source-over' : 'lighter'; cx.strokeStyle = T.hi; cx.lineCap = 'round';
+        let prev = this.at(Math.max(0, this.u - back));
+        for (let i = 1; i <= n; i++) {
+          const q = this.at(Math.max(0, this.u - back * (1 - i / n)));
+          cx.globalAlpha = .9 * i / n; cx.lineWidth = 1 + 1.6 * i / n;
+          cx.beginPath(); cx.moveTo(prev[0], prev[1]); cx.lineTo(q[0], q[1]); cx.stroke(); prev = q;
+        }
+        const gr = cx.createRadialGradient(prev[0], prev[1], 0, prev[0], prev[1], d * .22);
+        gr.addColorStop(0, rgba(T.hi, .55)); gr.addColorStop(1, rgba(T.hi, 0));
+        cx.globalAlpha = 1; cx.fillStyle = gr; cx.fillRect(prev[0] - d * .22, prev[1] - d * .22, d * .44, d * .44);
+        cx.globalCompositeOperation = 'source-over';
+      }
+      // the readouts round the graticule
+      const fs = Math.max(11, Math.round(d * .15)), pad = fs * .8;
+      cx.font = `${fs}px ${MONO}`; cx.textBaseline = 'alphabetic'; cx.globalAlpha = .55; cx.fillStyle = T.ink;
+      cx.textAlign = 'left';
+      cx.fillText(`CH1  ${M.ch}/div   DC`, this.gx, this.gy - pad);
+      cx.fillText(M.xy ? 'X-Y   CH1 : CH2' : `M  ${M.tb}/div`, this.gx, this.gy + this.gh + pad + fs);
+      cx.textAlign = 'right';
+      cx.fillText(`f  ${M.f}`, this.gx + this.gw, this.gy + this.gh + pad + fs);
+      cx.globalAlpha = .85; cx.fillStyle = T.acc; cx.fillText(M.xy ? 'X-Y' : "TRIG'D", this.gx + this.gw, this.gy - pad);
+      cx.globalAlpha = 1; cx.textAlign = 'start';
+    },
+    frame(dt) {
+      if (RAIN <= 0 || !(dt = every(this, 30, dt))) return;      // 0 stills it: the frame from init() stays up
+      const sp = .4 + RAIN * 1.6, M = this.MODES[this.m];
+      this.t += dt * sp;
+      const p = this.p;                                         // the phosphor lets go slowly
+      p.globalCompositeOperation = 'destination-out'; p.fillStyle = `rgba(0,0,0,${1 - Math.exp(-dt * sp * (M.xy ? .5 : 1.3))})`;
+      p.fillRect(0, 0, W, H); p.globalCompositeOperation = 'source-over';
+      const u1 = Math.min(1, this.u + dt * sp / (M.xy ? 3.2 : 1.1));
+      this.draw(this.u, u1); this.u = u1;
+      if (this.u >= 1) {                                        // retrace, and every few sweeps a new signal
+        this.u = 0; this.last = null;
+        if (++this.sweeps >= (M.xy ? 2 : 4 + (Math.random() * 3 | 0))) { this.sweeps = 0; this.m = (this.m + 1 + (Math.random() * (this.MODES.length - 1) | 0)) % this.MODES.length; }
+      }
+      this.paint();
     },
   },
   none: { scale: 1, init() { cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H); }, frame() {} },

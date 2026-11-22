@@ -20,7 +20,9 @@
       "bsod",
       "cyanotype",
       "notebook",
-      "oracle"
+      "oracle",
+      "orb",
+      "scope"
     ]
   },
   "paletteSel": {
@@ -45,7 +47,9 @@
       "bsod",
       "cyanotype",
       "notebook",
-      "oracle"
+      "oracle",
+      "orb",
+      "scope"
     ]
   },
   "rainSel": {
@@ -71,6 +75,9 @@
       "stop",
       "notebook",
       "oracle",
+      "orb",
+      "cascade",
+      "scope",
       "none"
     ]
   },
@@ -119,7 +126,9 @@
       "sleeve",
       "dos",
       "write",
-      "iris"
+      "iris",
+      "eclipse",
+      "trace"
     ]
   },
   "typeSpeed": {

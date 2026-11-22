@@ -32,7 +32,7 @@ Your agent is doing a hundred things a minute in a terminal you're not watching.
 - 🎥 **Stream-safe.** One command (`glitchwall pause`) and the screen is clean, enforced by the feed itself, not the wallpaper.
 - 🪶 **Tiny.** Pure Python standard library and a single HTML page; on Windows, one small library ([pywebview](https://github.com/r0x0r/pywebview)) to put it behind your desktop icons. Or a standalone `.exe` if you don't have Python.
 - 🖥️ **Every screen, no extra app.** On Windows it shows itself behind the desktop icons on every monitor and naps while a game or video is fullscreen. [Lively Wallpaper](https://github.com/rocksdanister/lively) works too, if you prefer it.
-- 🎨 **Sixteen themes, seventeen backgrounds, eleven transitions.** An oscilloscope, a blueprint, newsprint by day and night, neon, a field-ops poster, a risograph print, a record sleeve, a school notebook, an old blue stop screen, an all-seeing machine's ring of data and more. Each is a finished bundle of colors, fonts, background, texture and its own way of bringing cards in and out, and you can swap any single part.
+- 🎨 **Eighteen themes, twenty backgrounds, thirteen transitions.** A green phosphor terminal, a lab oscilloscope, a blueprint, newsprint by day and night, neon, a field-ops poster, a risograph print, a record sleeve, a school notebook, an old blue stop screen, an all-seeing machine's ring of data, the black sphere it lives in and more. Each is a finished bundle of colors, fonts, background, texture and its own way of bringing cards in and out, and you can swap any single part.
 - 🌙 **No code of your own needed.** Ambient mode plays made-up but realistic coding sessions forever, and art mode shows just the background. Neither one reads anything. See [Not a coder?](#not-a-coder-).
 - 🎛️ **Tweakable.** Typing speed, linger time, cards on screen, background intensity and glass opacity, in a settings window with a live preview (`glitchwall settings`, or *glitchwall settings* in the Start menu), with `glitchwall config`, or with Lively's sliders.
 
@@ -108,14 +108,14 @@ A `file://` page sends `Origin: null`, which the feed accepts with the key.
 
 ## Themes 🎨
 
-![sixteen themes](docs/themes.png)
+![eighteen themes](docs/themes.png)
 
 Each theme is a finished bundle: colors, two fonts, a background, a texture and its own way of bringing cards
 in and taking them away. Use one as it is, or swap any single part.
 
 | Theme | Personality | Cards arrive / leave |
 | --- | --- | --- |
-| `phosphor` (default) | lab oscilloscope at night: green phosphor on black glass, amber for anything live, CRT tube | beam opens / collapses to a dot |
+| `phosphor` (default) | green phosphor terminal at night: green on black glass, amber for anything live, bit-glyph rain, CRT tube | beam opens / collapses to a dot |
 | `drafting` | blueprint: chalk-white linework on cobalt, shapes drafting and dimensioning themselves | ruled in / erased |
 | `newsprint` · `nightprint` | cream newsprint, black ink, hot vermilion; the same at night on charcoal | pressed on / lifted off |
 | `neon` | near-black neon: cyan ink, hot pink, dot-matrix titles, katakana rain | tube flickers on / off |
@@ -126,7 +126,9 @@ in and taking them away. Use one as it is, or swap any single part.
 | `bsod` | the old blue stop screen: white VGA text, grey title chips | drawn line by line / gone |
 | `cyanotype` | a sun print in Prussian blue, paper grain, a mid-century print | ruled in / erased |
 | `oracle` | an all-seeing machine: one great ring of jagged data strokes on black, slowly turning and always redrawing itself, white ink and one signal red | opens like an iris / closes to a point |
-| `matrix` · `amber` · `synthwave` · `msdos` | the original bright-green look, amber mono, a synthwave sunset, blue DOS boxes | glitch · beam · glitch · line by line |
+| `orb` | the same machine seen whole: a ribbed black sphere sunk in the floor of a vast, empty, dark data hall, rows of racks blinking away into the haze behind it, tiny red lights flickering and streaming along its slats, readouts pointing at its parts as they turn into view | a curved shadow sweeps off / over it |
+| `scope` | a lab oscilloscope: a blue-white beam sweeping a graticule, its trace glowing yellow-green and fading slowly, the signal changing every few sweeps, readouts at the corners | swept in by the beam / fades like an afterglow |
+| `matrix` · `amber` · `synthwave` · `msdos` | bright-green katakana falling at three depths, amber mono, a synthwave sunset, blue DOS boxes | glitch · beam · glitch · line by line |
 
 **Mix and match.** Five independent choices; `theme` means "whatever the theme uses":
 
@@ -142,9 +144,9 @@ glitchwall demo --open --theme notebook             # try one without touching y
 
 | Choice | Options |
 | --- | --- |
-| **Background** (`--rain`) | `pixel` bit-glyph rain · `code` katakana rain · `stars` · `static` · `snow` · `grid` synthwave sun · `draft` drawing grid · `halftone` two-ink dots · `record` · `jukebox` · `starburst` atomic age · `testcard` · `print` mid-century wallpaper · `stop` stop screen · `notebook` ruled paper · `oracle` ring of data · `none` |
+| **Background** (`--rain`) | `pixel` bit-glyph rain · `code` katakana rain · `stars` · `static` · `snow` · `grid` synthwave sun · `draft` drawing grid · `halftone` two-ink dots · `record` · `jukebox` · `starburst` atomic age · `testcard` · `print` mid-century wallpaper · `stop` stop screen · `notebook` ruled paper · `oracle` ring of data · `orb` the machine in its data hall · `cascade` katakana at three depths · `scope` oscilloscope · `none` |
 | **Font** | `departure` · `plex` · `vt323` · `chakra` · `doto` · `stencil` · `serif` · `courierprime` · `dmmono` · `fira` · `overpass` · `georgia` · `cascadia` · `consolas` · `lucida` · `courier` · `segoe` · `hand` · `mono` |
-| **Transition** | `glitch` · `crt` · `draft` · `press` · `neon` · `stamp` · `riso` · `sleeve` · `dos` · `write` · `iris` |
+| **Transition** | `glitch` · `crt` · `draft` · `press` · `neon` · `stamp` · `riso` · `sleeve` · `dos` · `write` · `iris` · `eclipse` |
 | **Palette** | any theme name |
 
 Fonts are bundled or already on your system; nothing is downloaded at run time. The sliders are
@@ -192,6 +194,24 @@ Full-size shots (click one to open it). They come from ambient mode, so every se
 </td><td>
 
 [![the oracle, art mode look](docs/shots/art-oracle.jpg)](docs/shots/art-oracle.jpg)<br><sub>oracle, art mode</sub>
+
+</td></tr>
+<tr><td>
+
+[![the orb look](docs/shots/orb.jpg)](docs/shots/orb.jpg)<br><sub>orb</sub>
+
+</td><td>
+
+[![the orb, art mode look](docs/shots/art-orb.jpg)](docs/shots/art-orb.jpg)<br><sub>orb, art mode</sub>
+
+</td></tr>
+<tr><td>
+
+[![the scope look](docs/shots/scope.jpg)](docs/shots/scope.jpg)<br><sub>scope</sub>
+
+</td><td>
+
+[![the scope, art mode look](docs/shots/art-scope.jpg)](docs/shots/art-scope.jpg)<br><sub>scope, art mode</sub>
 
 </td></tr>
 <tr><td>
@@ -421,7 +441,7 @@ Starring the repo, reporting a bug or showing it to a friend helps just as much.
 **MIT**, see [LICENSE](LICENSE). Free to use, change and share.
 [Departure Mono](https://departuremono.com) is © Helena Zhang, SIL Open Font License 1.1, see [OFL.txt](src/glitchwall/wallpaper/OFL.txt).
 VT323, IBM Plex Mono, Chakra Petch, Doto, Saira Stencil One, Instrument Serif, Courier Prime, DM Mono, Fira Code,
-Overpass Mono, Gelasio, Caveat, Cascadia Mono and Inconsolata are bundled under the SIL Open Font License 1.1 (from [Google Fonts](https://github.com/google/fonts));
+Overpass Mono, Gelasio, Caveat, Cascadia Mono, Inconsolata and DotGothic16 (cut down to the katakana the rains use) are bundled under the SIL Open Font License 1.1 (from [Google Fonts](https://github.com/google/fonts));
 each license is in [fonts/licenses](src/glitchwall/wallpaper/fonts/licenses).
 The first eight themes' palettes, and the grain, scanline and halftone textures, are adapted from the themes of
 [SUB/WAVE](https://github.com/perminder-klair/subwave) by Parminder Klair (MIT). Go check it out, it's a lovely
