@@ -117,7 +117,7 @@ def cmd_install(a) -> int:
         dest = lib / plat.FOLDER
         prev = [c for c in plat.lively_current() if Path(c) != dest]
         prev_file = cfg.state_dir() / "previous-wallpaper.json"
-        if prev and not prev_file.exists():
+        if prev:   # what's on screen now is what uninstall puts back (unchanged while glitchwall is showing)
             prev_file.write_text(json.dumps(prev), encoding="utf-8")
     else:
         dest = cfg.state_dir() / "wallpaper"

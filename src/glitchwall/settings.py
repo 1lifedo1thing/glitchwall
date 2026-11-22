@@ -17,6 +17,7 @@ import json
 import os
 import secrets
 import sys
+import time
 from pathlib import Path
 
 APP = "glitchwall"
@@ -86,11 +87,22 @@ def legacy_state_dirs() -> list[Path]:
 
 
 def _private_write(path: Path, text: str) -> None:
-    """Write a file only this user can read (mode 0600 on POSIX; on Windows the profile folder is per-user)."""
+    """Write a file only this user can read (mode 0600 on POSIX; on Windows the profile folder is per-user).
+    Written to a temp file and swapped in, so the running feed never reads a half-written settings file
+    (which would read as the defaults: not paused)."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(text)
+    for tries in range(40):   # Windows refuses the swap while the feed has the file open for a moment
+        try:
+            os.replace(tmp, path)
+            return
+        except PermissionError:
+            if tries == 39:
+                raise
+            time.sleep(0.05)
 
 
 def key_file() -> Path:

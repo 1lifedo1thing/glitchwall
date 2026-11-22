@@ -1,7 +1,10 @@
 """Log parsing: calls and their outputs are paired by tool_use id and each shown once."""
 import json
+import os
 import tempfile
+import time
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 
 from glitchwall.claude_logs import ClaudeLogTailer, _output_text, clip, describe
@@ -9,8 +12,9 @@ from glitchwall.demo import SCRIPT
 from glitchwall.redact import MASK, Redactor
 
 
-def line(content, **kw):
-    return json.dumps({"timestamp": "2026-01-01T00:00:00Z", "message": {"content": content}, **kw})
+def line(content, ts=None, **kw):
+    ts = ts or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return json.dumps({"timestamp": ts, "message": {"content": content}, **kw})
 
 
 class TestTailer(unittest.TestCase):
@@ -56,6 +60,17 @@ class TestTailer(unittest.TestCase):
                    line([{"type": "tool_result", "tool_use_id": "t4", "is_error": True, "content": [{"type": "text", "text": "boom"}]}]))
         self.t.scan()
         self.assertEqual([e["kind"] for e in self.events], ["$", "err"])
+
+    def test_resumed_session_shows_no_old_calls(self):
+        # a session idle for hours, then picked up again: only the new call appears, not a burst of old ones
+        self.write(*(line([{"type": "tool_use", "id": f"o{i}", "name": "Bash", "input": {"command": f"old {i}"}}],
+                          ts="2026-01-01T00:00:00Z") for i in range(5)))
+        old = time.time() - 3 * 3600
+        os.utime(self.log, (old, old))
+        self.t.scan()
+        self.write(line([{"type": "tool_use", "id": "n1", "name": "Bash", "input": {"command": "new"}}]))
+        self.t.scan()
+        self.assertEqual([e["text"] for e in self.events], ["new"])
 
     def test_describe(self):
         self.assertEqual(describe("PowerShell", {"command": "dir"}), ("PS>", "dir"))

@@ -9,6 +9,7 @@ import json
 import os
 import re
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
@@ -20,6 +21,14 @@ MAX_OUT_LINES = 14
 def logs_root() -> Path:
     base = os.environ.get("CLAUDE_CONFIG_DIR")
     return (Path(base) if base else Path.home() / ".claude") / "projects"
+
+
+def _when(ts) -> float:
+    """A log line's ISO timestamp as epoch seconds; 0 (= very old) if missing or unreadable."""
+    try:
+        return datetime.fromisoformat(str(ts).replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return 0.0
 
 
 def clip(s: str, n: int) -> str:
@@ -85,12 +94,14 @@ class ClaudeLogTailer:
         self.shown: set[str] = set()   # tool_use ids we displayed, so their results are shown too
         self.seen: set[str] = set()    # already emitted (logs can repeat a message)
 
-    def parse_line(self, line: bytes, f: Path) -> None:
+    def parse_line(self, line: bytes, f: Path, newer_than: float | None = None) -> None:
         try:
             d = json.loads(line)
         except ValueError:
             return
         if not isinstance(d, dict):
+            return
+        if newer_than is not None and _when(d.get("timestamp")) < newer_than:
             return
         m = d.get("message") or {}
         content = m.get("content") if isinstance(m, dict) else None
@@ -134,6 +145,9 @@ class ClaudeLogTailer:
             if now - st.st_mtime > ACTIVE and f not in self.offsets:
                 continue
             pos = self.offsets.get(f)
+            # first sight (at start, or a session picked up again after a long idle): show only its recent
+            # calls, never a burst of old ones (which may be from a time the feed was paused)
+            newer_than = now - ACTIVE if pos is None else None
             if pos is None:
                 pos = max(0, st.st_size - FIRST_TAIL)
             if st.st_size < pos:
@@ -149,7 +163,7 @@ class ClaudeLogTailer:
                 continue
             self.offsets[f] = pos + last_nl + 1
             for line in chunk[:last_nl].split(b"\n"):
-                self.parse_line(line, f)
+                self.parse_line(line, f, newer_than)
 
     def run(self, stop=None) -> None:
         while not (stop and stop.is_set()):

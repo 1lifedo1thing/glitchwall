@@ -5,6 +5,7 @@ don't flag this file. None of them are real.
 """
 import unittest
 
+from glitchwall import redact
 from glitchwall.redact import MASK, Redactor, entropy, looks_random
 
 R = Redactor(home=r"C:\Users\octocat", user="octocat")
@@ -67,6 +68,13 @@ SECRETS = {
     "high entropy bare": "the value is " + B64 + " ok",
     "hex blob": "digest " + HEX,
     "vault pass": "ansible_become_pass=" + "becomeme123",
+    "sshpass": "sshpass -p '" + "Tr0ub4dor&3" + "' ssh admin@box",
+    "sshpass attached": "sshpass -e -p" + "sshp4ssword" + " scp a b:",
+    "docker login": "docker login -u bob -p " + "D0ckerPw" + " registry.example.test",
+    "htpasswd -b": "htpasswd -cb .htpasswd bob " + "htpassw0rd",
+    "htpasswd -nb": "htpasswd -nb bob " + "htnopass1" + " | tee x",
+    "net user": "net user bob " + "N3tUserPw" + " /add",
+    "securestring": "ConvertTo-SecureString '" + "Plain!Pass1" + "' -AsPlainText -Force",
 }
 
 # the part of each sample that must not appear in the output
@@ -80,6 +88,8 @@ LEAK = {
     "cookie": "abcd1234", "netrc": "netrcpass9", "high entropy bare": B64, "hex blob": HEX,
     "pem key": "MIIEowIBAAKCAQEA", "openssh key": "b3BlbnNzaC1rZXkt", "unterminated key": "MIIEvQIBADAN",
     "vault pass": "becomeme123", "slack webhook": "xYz123AbC456", "discord webhook": "AbCdEf_GhIjKl",
+    "sshpass": "Tr0ub4dor", "sshpass attached": "sshp4ssword", "docker login": "D0ckerPw", "htpasswd -b": "htpassw0rd",
+    "htpasswd -nb": "htnopass1", "net user": "N3tUserPw", "securestring": "Plain!Pass1",
 }
 
 
@@ -117,6 +127,10 @@ class TestSecrets(unittest.TestCase):
             "tokenizer.py:12:def split(text):",
             "C:/Program Files/Lively Wallpaper/Lively.exe",
             "-     if not session_id:\n+     if session_id is None:",   # a diff: the "+" line is not a value
+            "docker login registry.example.test",
+            "htpasswd -c .htpasswd bob",
+            "net user bob /delete",
+            "sshpass -f pwfile ssh admin@box",
         ]
         for s in keep:
             with self.subTest(s):
@@ -137,6 +151,21 @@ class TestPersonal(unittest.TestCase):
 
     def test_user_name_masked(self):
         self.assertEqual(R("whoami\ndesk\\octocat"), "whoami\ndesk\\user")
+
+    def test_url_encoded_user_masked(self):
+        self.assertNotIn("octocat", R("file=C%3A%5CUsers%5Coctocat%5Cx").lower())
+
+    def test_windows_short_home(self):
+        # temp paths often use the 8.3 form, C:\Users\OCTOCA~1, which still gives away the start of the name
+        real = redact._short_home
+        redact._short_home = lambda h: r"C:\Users\OCTOCA~1" if h == r"C:\Users\octocat" else ""
+        try:
+            r = Redactor(home=r"C:\Users\octocat", user="octocat")
+        finally:
+            redact._short_home = real
+        self.assertEqual(r(r"C:\Users\OCTOCA~1\AppData\Local\Temp\x"), r"~\AppData\Local\Temp\x")
+        self.assertEqual(r("C:/Users/OCTOCA~1/x"), "~/x")
+        self.assertEqual(r(r"desk\OCTOCA~1"), r"desk\user")
 
     def test_email_masked(self):
         self.assertEqual(R("Author: Octo <octo.cat@example.com>"), f"Author: Octo <{MASK}@example.com>")

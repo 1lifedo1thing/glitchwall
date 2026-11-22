@@ -126,6 +126,12 @@ BY_NAME = [
     (re.compile(r"(?i)(\bpassword\s+)(\S+)"), r"\1" + MASK),
     # bare Bearer tokens anywhere
     (re.compile(r"(?i)(\bbearer\s+)[A-Za-z0-9._~+/=-]{8,}"), r"\1" + MASK),
+    # passwords handed to a program as a plain argument
+    (re.compile(rf"(\bsshpass\s+(?:-[^p\s]\S*\s+)*-p\s*)({_VALUE})"), r"\1" + MASK),
+    (re.compile(rf"(\b(?:docker|podman|nerdctl|oras|helm\s+registry)\s+login\b[^\n|;&]*?\s-p\s+)({_VALUE})"), r"\1" + MASK),
+    (re.compile(rf"(?m)(\bhtpasswd\b[^\n|;&]*?\s-\w*b\w*\s[^\n|;&]*\s)({_VALUE})(?=[ \t]*(?:$|[|;&]))"), r"\1" + MASK),
+    (re.compile(rf"(?i)(\bnet\s+user\s+(?:\"[^\"\n]*\"|\S+)\s+)(?!/)({_VALUE})"), r"\1" + MASK),
+    (re.compile(rf"(?i)(\bConvertTo-SecureString\s+(?:-String\s+)?)({_VALUE})"), r"\1" + MASK),
 ]
 
 # ---------------------------------------------------------------- 3. entropy
@@ -174,6 +180,19 @@ def _home_variants(home: str) -> list[str]:
     return sorted((v for v in out if v), key=len, reverse=True)
 
 
+def _short_home(home: str) -> str:
+    """Windows' 8.3 form of the home folder (C:\\Users\\JOHNSM~1), which temp paths often use. '' elsewhere."""
+    if os.name != "nt" or not home:
+        return ""
+    try:
+        import ctypes
+        buf = ctypes.create_unicode_buffer(520)
+        n = ctypes.windll.kernel32.GetShortPathNameW(home, buf, 520)
+        return buf.value if 0 < n < 520 and buf.value.lower() != home.lower() else ""
+    except Exception:
+        return ""
+
+
 class Redactor:
     def __init__(self, home: str | None = None, user: str | None = None,
                  mask_user: bool = True, mask_email: bool = True, entropy_check: bool = True):
@@ -183,8 +202,14 @@ class Redactor:
                 user = getpass.getuser()
             except Exception:
                 user = os.path.basename(home)
-        self.homes = [re.compile(re.escape(h) + r"(?![A-Za-z0-9_.-])", re.I) for h in _home_variants(home)] if home else []
-        self.user = re.compile(rf"(?i)(?<![A-Za-z0-9]){re.escape(user)}(?![A-Za-z0-9])") if mask_user and user and len(user) >= 4 else None
+        short = _short_home(home)
+        variants = sorted({*_home_variants(home), *(_home_variants(short) if short else [])}, key=len, reverse=True)
+        self.homes = [re.compile(re.escape(h) + r"(?![A-Za-z0-9_.-])", re.I) for h in variants] if home else []
+        # the user name, and its 8.3 short form (JOHNSM~1); also right after a URL-encoded \ or /
+        names = [re.escape(n) for n in (user, Path(short).name if "~" in Path(short).name else "")
+                 if n and len(n) >= 4]
+        self.user = re.compile(rf"(?i)(?:(?<![A-Za-z0-9])|(?<=%5C)|(?<=%2F))(?:{'|'.join(names)})(?![A-Za-z0-9])") \
+            if mask_user and names else None
         self.mask_email = mask_email
         self.entropy_check = entropy_check
 
