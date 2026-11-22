@@ -84,3 +84,24 @@ class TestContextMenu(unittest.TestCase):
                 self.assertIn("settings", winreg.QueryValueEx(k, "")[0])
             self.assertTrue(plat.remove_context_menu())
             self.assertFalse(plat.remove_context_menu())
+
+
+class TestEngineWatch(unittest.TestCase):
+    """The built-in host notices when WebView2 has gone, but not before it ever started, and not on one blip."""
+    def test_gone_twice_means_dead(self):
+        from glitchwall import winhost
+        h = winhost.Host(lambda n: "", on_dead=lambda: None)
+        seq = iter([[], ["msedgewebview2.exe"], [], ["msedgewebview2.exe"], [], []])
+        with mock.patch.object(winhost, "child_exes", lambda: next(seq)):
+            self.assertEqual([h.engine_alive() for _ in range(6)], [True, True, True, True, True, False])
+
+    def test_child_exes_sees_a_child(self):
+        from glitchwall import platforms as plat, winhost
+        if not plat.WIN:
+            self.skipTest("Windows only")
+        import subprocess
+        p = subprocess.Popen(["ping", "-n", "2", "127.0.0.1"], stdout=subprocess.DEVNULL)
+        try:
+            self.assertIn("ping.exe", winhost.child_exes())
+        finally:
+            p.wait()

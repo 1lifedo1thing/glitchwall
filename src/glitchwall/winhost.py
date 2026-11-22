@@ -7,7 +7,8 @@ open off-screen and only appear once they are behind the icons.
 
 Runs on the feed's main thread (window code must). Every 2 seconds it re-checks: screens added,
 removed or resized, Explorer restarted (a new desktop layer), and which screens have a fullscreen app
-in front (a game, a video), whose page then sleeps.
+in front (a game, a video), whose page then sleeps. If WebView2 itself goes away (ended in Task
+Manager, crashed), the feed restarts itself so the wallpaper comes back on its own.
 """
 from __future__ import annotations
 
@@ -33,6 +34,35 @@ if u32:
 ENUM = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
 MONENUM = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HMONITOR, wintypes.HDC, ctypes.POINTER(wintypes.RECT), wintypes.LPARAM)
 OFFSCREEN = -32000
+
+
+class PROCESSENTRY32W(ctypes.Structure):
+    _fields_ = [("dwSize", wintypes.DWORD), ("cntUsage", wintypes.DWORD), ("th32ProcessID", wintypes.DWORD),
+                ("th32DefaultHeapID", ctypes.c_size_t), ("th32ModuleID", wintypes.DWORD), ("cntThreads", wintypes.DWORD),
+                ("th32ParentProcessID", wintypes.DWORD), ("pcPriClassBase", ctypes.c_long), ("dwFlags", wintypes.DWORD),
+                ("szExeFile", ctypes.c_wchar * 260)]
+
+
+def child_exes(pid: int | None = None) -> list[str]:
+    """The program names of a process's direct children (WebView2's browser process is one of ours)."""
+    k32 = ctypes.windll.kernel32
+    k32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    k32.CloseHandle.argtypes = [wintypes.HANDLE]
+    pid = pid or os.getpid()
+    snap = k32.CreateToolhelp32Snapshot(0x2, 0)   # TH32CS_SNAPPROCESS
+    if not snap or snap == ctypes.c_void_p(-1).value:
+        return []
+    out, e = [], PROCESSENTRY32W()
+    e.dwSize = ctypes.sizeof(e)
+    try:
+        ok = k32.Process32FirstW(wintypes.HANDLE(snap), ctypes.byref(e))
+        while ok:
+            if e.th32ParentProcessID == pid:
+                out.append(e.szExeFile.lower())
+            ok = k32.Process32NextW(wintypes.HANDLE(snap), ctypes.byref(e))
+    finally:
+        k32.CloseHandle(snap)
+    return out
 
 
 class MONITORINFOEXW(ctypes.Structure):
@@ -169,11 +199,21 @@ def dpi_aware() -> None:
 class Host:
     """One page window per screen. `url(n)` is the page address for screen n."""
 
-    def __init__(self, url: Callable[[int], str], which: str = "all", storage: Path | None = None):
-        self.url, self.which, self.storage = url, which, storage
+    def __init__(self, url: Callable[[int], str], which: str = "all", storage: Path | None = None,
+                 on_dead: Callable[[], None] | None = None):
+        self.url, self.which, self.storage, self.on_dead = url, which, storage, on_dead
         self.windows: dict[int, object] = {}   # screen -> pywebview window
         self.attached: dict[int, tuple] = {}   # screen -> (parent, rect) it was last attached with
         self.asleep: set[int] = set()
+        self.engine_seen, self.engine_missing = False, 0
+
+    def engine_alive(self) -> bool:
+        """False once WebView2 (the page's browser, a child of this process) has gone: ended in Task Manager,
+        crashed, or updated underneath. The windows stay but show nothing, and nothing in pywebview says so."""
+        up = "msedgewebview2.exe" in child_exes()
+        self.engine_seen |= up
+        self.engine_missing = 0 if up else self.engine_missing + 1
+        return not (self.engine_seen and self.engine_missing >= 2)   # gone for two checks in a row
 
     def screens(self) -> dict[int, tuple]:
         mons = monitors()
@@ -212,6 +252,8 @@ class Host:
         while not stop.is_set():
             try:
                 self.tick()
+                if self.on_dead and not self.engine_alive():
+                    self.on_dead()   # start over in a fresh process: the reliable way to get a new WebView2
             except Exception:
                 pass
             stop.wait(2)

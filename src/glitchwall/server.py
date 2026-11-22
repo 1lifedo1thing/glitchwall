@@ -14,6 +14,7 @@ from __future__ import annotations
 import hmac
 import json
 import mimetypes
+import os
 import re
 import threading
 import time
@@ -236,6 +237,26 @@ def serve(handler, port: int) -> ThreadingHTTPServer:
     return httpd
 
 
+RESTARTS = "GLITCHWALL_RESTARTS"
+
+
+def restart_self(httpd) -> None:
+    """WebView2 went away under the wallpaper: free the port and start this same command again, fresh.
+    Gives up after a few quick restarts in a row, so a broken WebView2 can't make it loop forever."""
+    import subprocess
+    import sys
+    import time
+    n, since = (os.environ.get(RESTARTS, "0:0").split(":") + ["0"])[:2]
+    n = int(n) + 1 if time.time() - float(since or 0) < 300 else 1
+    httpd.socket.close()
+    if n <= 3:
+        args = [sys.executable] + (sys.argv[1:] if getattr(sys, "frozen", False) else ["-m", "glitchwall"] + sys.argv[1:])
+        env = {**os.environ, RESTARTS: f"{n}:{time.time() if n == 1 else since}"}
+        subprocess.Popen(args, env=env, close_fds=True, creationflags=getattr(subprocess, "DETACHED_PROCESS", 0)
+                         | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+    os._exit(0)
+
+
 def run_feed(port: int | None = None) -> None:
     """Run the feed in the foreground (what `start` launches in the background).
     The source follows the `mode` setting and switches when it changes, no restart needed:
@@ -253,7 +274,8 @@ def run_feed(port: int | None = None) -> None:
         if winhost.available():
             # the page is served from here and finds its key in the address (#key=, never sent over the wire)
             host = winhost.Host(lambda n: f"http://127.0.0.1:{port}/?screen={n}#key={key}",
-                                s.get("screens", "all"), cfg.state_dir() / "webview")
+                                s.get("screens", "all"), cfg.state_dir() / "webview",
+                                on_dead=lambda: restart_self(httpd))
     from .platforms import wallpaper_source
 
     def on_change(new: dict) -> None:   # the settings window changed the masking: applies to what comes next
