@@ -12,5 +12,7 @@ uvx --python 3.14 --from $py pyinstaller @common --console  --name glitchwall   
 uvx --python 3.14 --from $py pyinstaller @common --noconsole --name glitchwall-feed packaging\glitchwall_feed.py
 Copy-Item LICENSE, README.md $out
 Copy-Item src\glitchwall\wallpaper\OFL.txt "$out\OFL-DepartureMono.txt"
+New-Item -ItemType Directory -Force "$out\font-licenses" | Out-Null
+Copy-Item src\glitchwall\wallpaper\fonts\licenses\*.txt "$out\font-licenses"
 Compress-Archive -Force "$out\*" "dist\glitchwall-$ver-windows.zip"
 Get-FileHash "dist\glitchwall-$ver-windows.zip", "$out\*.exe" -Algorithm SHA256 | Format-Table Hash, Path -AutoSize
