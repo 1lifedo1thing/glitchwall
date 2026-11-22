@@ -30,7 +30,7 @@ machine, and one click clears the screen before you go live. No coding agent? It
 the art.
 
 - 🟩 **Live:** your real Claude Code tool calls as they happen, with their output.
-- 🎨 **16 themes, 17 backgrounds, 19 fonts, 11 transitions:** mix any of them.
+- 🎨 **19 themes, 27 backgrounds, 19 fonts, 19 transitions:** mix any of them.
 - 🔒 **Private:** masked before it's stored, localhost only, no telemetry, read-only on your logs.
 - 🎥 **Stream-safe:** one switch and the screen is clean, enforced by the feed itself.
 - 🖥️ **No wallpaper app:** on Windows it sits behind your desktop icons on every screen by itself.
@@ -52,13 +52,13 @@ The corner label shows a lamp that lights while calls are coming in. (That's the
 It reads Claude Code's own session logs (read-only, only what's new), so there's nothing to set up in Claude
 Code itself.
 
-### Sixteen looks, each one complete
+### Nineteen looks, each one complete
 
 ![every theme in turn, each with its own colors, fonts, background and card transitions](docs/gifs/themes.gif)
 
-An oscilloscope, a blueprint, newsprint by day and night, neon, a field-ops poster, a risograph print, a record
-sleeve, a school notebook, the old blue stop screen, a sun print, an all-seeing machine's ring of data, and four
-classic terminals. Each theme is a finished bundle: colors, two fonts, a background, a texture, and its own way
+A green phosphor terminal, a blueprint, newsprint by day and night, neon signs in the rain, a field-ops map, a
+risograph print, a record sleeve, a school notebook, an all-seeing machine's ring of data and the black sphere it
+lives in, a lab oscilloscope, a chalkboard, the old blue stop screen, a sun print, and four classic terminals. Each theme is a finished bundle: colors, two fonts, a background, a texture, and its own way
 of bringing cards in and taking them away (beam open and collapse, ruled in and erased, stamped and torn off,
 written in and crumpled up...). The full list is under [Themes](#themes-).
 
@@ -69,14 +69,16 @@ written in and crumpled up...). The full list is under [Themes](#themes-).
 Five independent choices: start from a theme, then borrow another theme's colors, pick any background, any
 font, any transition. Every change shows up on the running wallpaper within a second; nothing restarts.
 
-### Seventeen backgrounds
+### Twenty-seven backgrounds
 
 ![art mode stepping through every background](docs/gifs/backgrounds.gif)
 
-Bit-glyph rain, katakana rain, a starfield, dead-channel static, snow, a synthwave sun, a drafting grid that
-draws and dimensions its own shapes, a breathing halftone, a turning record, a jukebox, atomic-age starbursts,
-a broadcast test card, mid-century wallpaper, the stop screen, a doodling notebook, the oracle's ring, or
-nothing. The MOTION slider sets how busy any of them is, down to perfectly still.
+Every theme has a background of its own, and you can put any of them behind any theme: bit-glyph rain, katakana
+falling at three depths, a starfield, dead-channel static, snow, a synthwave sun, a drafting grid that draws and
+dimensions its own shapes, a breathing halftone, a turning record, a jukebox, atomic-age starbursts, a broadcast
+test card, mid-century wallpaper, a newspaper page setting itself, neon signs in the rain, a field map, ferns on
+a sun print, a radar sweep, a DOS desktop, an oscilloscope, a chalkboard, the stop screen, a doodling notebook,
+the oracle's ring, the orb in its data hall, or nothing. The MOTION slider sets how busy any of them is, down to perfectly still.
 
 ### Three modes: no coding agent needed
 

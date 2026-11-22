@@ -381,12 +381,13 @@ async def scene_themes(feed, br):
     await warm(wall, feed, feed.url())
     clip = Clip("themes", wall)
     for t in ["phosphor", "drafting", "newsprint", "nightprint", "neon", "fieldops", "duplicator", "sleeve",
-              "notebook", "oracle", "bsod", "cyanotype", "synthwave", "amber", "msdos", "matrix"]:
+              "notebook", "oracle", "orb", "scope", "chalkboard", "bsod", "cyanotype", "synthwave", "amber",
+              "msdos", "matrix"]:
         feed.set(theme=t)
         await asyncio.sleep(2.2)   # the page picks it up within a second; fonts and textures settle (not recorded)
         clip.new_segment()
         clip.state["caption"] = [f"theme  {t}"]
-        await clip.run(3.2)
+        await clip.run(2.8)
     return clip
 
 
@@ -399,9 +400,9 @@ async def scene_mix(feed, br):
     clip = Clip("mix", wall)
     steps = [({}, "glitchwall config --theme phosphor", "the bundle as it comes"),
              ({"palette": "sleeve"}, "glitchwall config --palette sleeve", "...with another theme's colors"),
-             ({"rain": "starburst"}, "glitchwall config --rain starburst", "...any of 17 backgrounds"),
+             ({"rain": "starburst"}, "glitchwall config --rain starburst", "...any of 27 backgrounds"),
              ({"font": "vt323"}, "glitchwall config --font vt323", "...any of 19 fonts, all bundled"),
-             ({"transition": "stamp"}, "glitchwall config --transition stamp", "...any of 11 ways to arrive and leave")]
+             ({"transition": "stamp"}, "glitchwall config --transition stamp", "...any of 19 ways to arrive and leave")]
     for change, cmd, why in steps:
         feed.set(**change)
         await asyncio.sleep(1.1)
@@ -414,7 +415,9 @@ async def scene_mix(feed, br):
 RAIN_LOOK = {"pixel": "phosphor", "code": "neon", "stars": "matrix", "static": "amber", "snow": "nightprint",
              "grid": "synthwave", "draft": "drafting", "halftone": "duplicator", "record": "sleeve", "jukebox": "sleeve",
              "starburst": "sleeve", "testcard": "fieldops", "print": "cyanotype", "stop": "bsod",
-             "notebook": "notebook", "oracle": "oracle"}
+             "notebook": "notebook", "oracle": "oracle", "orb": "orb", "cascade": "matrix", "scope": "scope",
+             "radar": "amber", "textmode": "msdos", "broadsheet": "newsprint", "signs": "neon", "topo": "fieldops",
+             "sunprint": "cyanotype", "chalk": "chalkboard"}
 
 
 async def scene_backgrounds(feed, br):
@@ -429,7 +432,7 @@ async def scene_backgrounds(feed, br):
         await asyncio.sleep(1.2)
         clip.new_segment()
         clip.state["caption"] = [f"--rain {rain}"]
-        await clip.run(1.8)
+        await clip.run(1.5)
     return clip
 
 
