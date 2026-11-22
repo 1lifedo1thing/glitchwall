@@ -20,7 +20,7 @@ use windows::Win32::UI::HiDpi::*;
 use windows::Win32::UI::WindowsAndMessaging::*;
 use windows::core::*;
 
-const FPS: f64 = 30.0;
+
 const SCALE: i32 = 3;
 const GLASS: f32 = 0.58;
 const CPS: f64 = 30.0; // type speed 5 as the page reckons it
@@ -237,7 +237,8 @@ impl App {
 }
 
 fn main() -> Result<()> {
-    let peek = std::env::args().any(|a| a == "--peek");   // a normal window for a few seconds, to look at it
+    let peek = std::env::args().any(|a| a == "--peek");
+    let fps: f64 = std::env::args().skip_while(|a| a != "--fps").nth(1).and_then(|v| v.parse().ok()).unwrap_or(30.0);   // a normal window for a few seconds, to look at it
     unsafe {
         let _ = SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
         let inst = GetModuleHandleW(None)?;
@@ -263,7 +264,7 @@ fn main() -> Result<()> {
             let dt = (t0 - last).min(0.1) as f32;
             last = t0;
             let _ = app.frame(t0, dt);
-            let rest = 1.0 / FPS - (clock.elapsed().as_secs_f64() - t0);
+            let rest = 1.0 / fps - (clock.elapsed().as_secs_f64() - t0);
             if rest > 0.0 {
                 let due = -((rest * 1e7) as i64);
                 SetWaitableTimer(timer, &due, 0, None, None, false)?;

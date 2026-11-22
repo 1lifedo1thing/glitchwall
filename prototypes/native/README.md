@@ -39,6 +39,18 @@ drawn into a buffer in memory and copied to the GPU once per frame, instead of t
 Rust saves about another 0.8% CPU and 30 MB over C#. That's mostly the .NET runtime's memory and the cheaper rain,
 not the language. Most of what's left is Direct2D and DWM composing a full-screen window 30 times a second.
 
+### Frame rate (Rust, `--fps N`)
+
+Same setup, 45 s per run, two rounds. 200 is this screen's refresh rate.
+
+| fps | 10 | 15 | 20 | 30 | 60 | 200 |
+|---|---|---|---|---|---|---|
+| CPU | 0.9-1.2% | 1.7-2.1% | 2.1% | 3.3-3.5% | 6.9-7.1% | 14.8-18.9% |
+| GPU (3D engine) | 1.3-1.5% | 2.2-2.5% | 2.4-3.5% | 3.6-4.6% | 6.6-11.2% | 17.7% |
+
+The cost follows the frame rate almost exactly. At the monitor's rate, the native renderer costs as much as WebView2
+does at 30 fps.
+
 Rust build note: the `windows` crate from 0.59 on links with `raw-dylib`, which on the GNU toolchain needs `dlltool`
 plus an assembler that rustup doesn't ship. 0.58 brings its own import libraries, so it builds with nothing else
 installed.
