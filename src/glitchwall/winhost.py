@@ -31,10 +31,16 @@ if u32:
     u32.SendMessageTimeoutW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM, wintypes.UINT,
                                         wintypes.UINT, ctypes.POINTER(ctypes.c_size_t)]
     u32.MonitorFromWindow.restype = wintypes.HMONITOR
+    u32.GetWindowLongPtrW.argtypes = [wintypes.HWND, ctypes.c_int]
+    u32.OpenInputDesktop.restype = wintypes.HANDLE
+    u32.GetUserObjectInformationW.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD, ctypes.c_void_p]
+    u32.CloseDesktop.argtypes = [wintypes.HANDLE]
+    u32.GetLayeredWindowAttributes.argtypes = [wintypes.HWND, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
 
 ENUM = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
 MONENUM = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HMONITOR, wintypes.HDC, ctypes.POINTER(wintypes.RECT), wintypes.LPARAM)
 OFFSCREEN = -32000
+DESKTOP_CLASSES = ("Progman", "WorkerW", "Shell_TrayWnd", "Shell_SecondaryTrayWnd")
 
 
 class PROCESSENTRY32W(ctypes.Structure):
@@ -168,7 +174,7 @@ def attach(h: int, rect: tuple[int, int, int, int]) -> None:
 def fullscreen_screens(mons: dict[int, tuple]) -> set[int]:
     """Screens where the app in front covers the whole screen (a game, a video)."""
     h = u32.GetForegroundWindow()
-    if not h or _cls(h) in ("Progman", "WorkerW", "Shell_TrayWnd", "Shell_SecondaryTrayWnd"):
+    if not h or _cls(h) in DESKTOP_CLASSES:
         return set()
     pid = wintypes.DWORD()
     u32.GetWindowThreadProcessId(h, ctypes.byref(pid))
@@ -176,6 +182,94 @@ def fullscreen_screens(mons: dict[int, tuple]) -> set[int]:
         return set()
     r = _rect(h)
     return {n for n, m in mons.items() if r[0] <= m[0] and r[1] <= m[1] and r[2] >= m[2] and r[3] >= m[3]}
+
+
+def _frame(h) -> tuple[int, int, int, int]:
+    """A window as you see it: without the invisible resize borders (a maximized window's is exactly the work area)."""
+    r = wintypes.RECT()
+    if ctypes.windll.dwmapi.DwmGetWindowAttribute(wintypes.HWND(h), 9, ctypes.byref(r), ctypes.sizeof(r)) != 0:
+        return _rect(h)
+    return r.left, r.top, r.right, r.bottom
+
+
+def _see_through(h) -> bool:
+    """Cloaked (on another virtual desktop, a suspended app), click-through, or faded: doesn't hide what's behind."""
+    c = wintypes.DWORD()
+    if ctypes.windll.dwmapi.DwmGetWindowAttribute(wintypes.HWND(h), 14, ctypes.byref(c), ctypes.sizeof(c)) == 0 and c.value:
+        return True                                    # DWMWA_CLOAKED
+    ex = u32.GetWindowLongPtrW(h, -20)
+    if ex & 0x20:                                      # WS_EX_TRANSPARENT: an overlay
+        return True
+    if ex & 0x80000:                                   # WS_EX_LAYERED: opaque unless it set a see-through alpha
+        alpha, flags = ctypes.c_ubyte(), wintypes.DWORD()
+        if u32.GetLayeredWindowAttributes(h, None, ctypes.byref(alpha), ctypes.byref(flags)) and flags.value & 2 \
+                and alpha.value < 255:
+            return True
+    return False
+
+
+def covers(frame: tuple[int, int, int, int], area: tuple[int, int, int, int]) -> bool:
+    return frame[0] <= area[0] and frame[1] <= area[1] and frame[2] >= area[2] and frame[3] >= area[3]
+
+
+def covered_screens(work: dict[int, tuple]) -> set[int]:
+    """Screens whose desktop can't be seen: an opaque window (maximized, fullscreen) fills the whole work area.
+    `work` is screen -> work area. The page there can stop animating; nobody would see it."""
+    out, me = set(), os.getpid()
+
+    def one(h, _):
+        if len(out) == len(work):
+            return False                               # every screen covered: done
+        if not u32.IsWindowVisible(h) or u32.IsIconic(h) or _cls(h) in DESKTOP_CLASSES:
+            return True
+        pid = wintypes.DWORD()
+        u32.GetWindowThreadProcessId(h, ctypes.byref(pid))
+        if pid.value == me:
+            return True
+        f = None
+        for n, area in work.items():
+            if n not in out:
+                f = f or _frame(h)
+                if covers(f, area) and not _see_through(h):
+                    out.add(n)
+        return True
+
+    u32.EnumWindows(ENUM(one), 0)
+    return out
+
+
+def session_hidden() -> bool:
+    """The screen is locked (or on a UAC prompt) or the screen saver runs: no wallpaper is visible anywhere."""
+    running = wintypes.BOOL()
+    if u32.SystemParametersInfoW(0x72, 0, ctypes.byref(running), 0) and running.value:   # SPI_GETSCREENSAVERRUNNING
+        return True
+    d = u32.OpenInputDesktop(0, False, 0x0001)          # DESKTOP_READOBJECTS; fails while locked
+    if not d:
+        return True
+    try:
+        name = ctypes.create_unicode_buffer(64)
+        ok = u32.GetUserObjectInformationW(d, 2, name, ctypes.sizeof(name), None)   # UOI_NAME
+        return bool(ok) and name.value.lower() != "default"
+    finally:
+        u32.CloseDesktop(d)
+
+
+def work_areas() -> dict[int, tuple[int, int, int, int]]:
+    """Screen number -> its work area (the screen minus the taskbar)."""
+    found = {}
+
+    def one(hmon, hdc, rect, data):
+        mi = MONITORINFOEXW()
+        mi.cbSize = ctypes.sizeof(mi)
+        if u32.GetMonitorInfoW(hmon, ctypes.byref(mi)):
+            m = re.search(r"DISPLAY(\d+)$", mi.szDevice)
+            if m:
+                w = mi.rcWork
+                found[int(m.group(1))] = (w.left, w.top, w.right, w.bottom)
+        return True
+
+    u32.EnumDisplayMonitors(None, None, MONENUM(one), 0)
+    return found
 
 
 CORNER_DWELL, CORNER_REACH = 0.5, 3   # seconds the mouse must rest there; px from the exact corner that count
@@ -197,11 +291,12 @@ def watch_corner(which: Callable[[], str], open_settings: Callable[[], None], st
     """Rest the mouse in the hot corner for half a second: the settings open (or come forward if open).
     Never while a fullscreen app is in front, and once per visit to the corner."""
     pt, since, fired = wintypes.POINT(), None, False
+    mons, mons_at, c = {}, 0.0, "off"
     while not stop.wait(0.1):
         try:
-            c = which()
+            if time.monotonic() - mons_at > 2:   # the screens and the setting rarely change: look every 2 s, not 10x a second
+                mons, mons_at, c = monitors(), time.monotonic(), which()
             u32.GetCursorPos(ctypes.byref(pt))
-            mons = monitors()
             n = corner_hit(c, pt.x, pt.y, mons)
             if n is None:
                 since, fired = None, False
@@ -245,6 +340,14 @@ def dpi_aware() -> None:
         u32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))   # per-monitor v2
     except Exception:
         pass
+
+
+def quiet_webview() -> None:
+    """No background calls home from WebView2 (component updates, field trials, pings): our pages need none.
+    Call before webview.start. The variable replaces pywebview's own arguments, so its one comes along.
+    (--in-process-gpu would save ~55 MB but tripled the CPU use when measured, so it's left out.)"""
+    os.environ.setdefault("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "--disable-features=ElasticOverscroll "
+                          "--disable-background-networking --disable-component-update --disable-sync --no-pings")
 
 
 class Host:
@@ -297,17 +400,26 @@ class Host:
             if self.attached.get(n) != (parent, rect) or u32.GetParent(h) != parent or _rect(h) != rect:
                 attach(h, rect)
                 self.attached[n] = (parent, rect)
-        self.asleep = fullscreen_screens(mons)
+
+    def check_asleep(self) -> None:
+        """Which screens' pages may stop animating: covered by a window, or the whole session hidden (locked,
+        screen saver). Cheap, so it runs often: uncovering a screen wakes its page within about a second."""
+        work = {n: a for n, a in work_areas().items() if n in self.windows}
+        self.asleep = set(work) if session_hidden() else covered_screens(work)
 
     def manage(self, stop: threading.Event) -> None:
+        n = 0
         while not stop.is_set():
             try:
-                self.tick()
-                if self.on_dead and not self.engine_alive():
-                    self.on_dead()   # start over in a fresh process: the reliable way to get a new WebView2
+                if n % 4 == 0:   # every 2 s: screens, desktop layer, WebView2 still there
+                    self.tick()
+                    if self.on_dead and not self.engine_alive():
+                        self.on_dead()   # start over in a fresh process: the reliable way to get a new WebView2
+                self.check_asleep()
             except Exception:
                 pass
-            stop.wait(2)
+            n += 1
+            stop.wait(0.5)
         for w in list(self.windows.values()):
             w.destroy()
 
@@ -315,6 +427,7 @@ class Host:
         """Blocks: runs the window loop on this (the main) thread until `stop` is set."""
         import webview
         dpi_aware()
+        quiet_webview()
         first = next(iter(self.screens()), 1)
         self.new_window(first)
         webview.start(self.manage, (stop,), gui="edgechromium", private_mode=True,

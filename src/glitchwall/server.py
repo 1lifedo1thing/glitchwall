@@ -159,7 +159,7 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
                                "look": look or themes.look(s), "mode": m,
                                "label": cfg.display_label(s) if label is None else label, "tune": cfg.tune(s),
                                "corner": cfg.corner(s),   # where the hot-corner icon sits
-                               # the built-in host: a fullscreen app covers this screen, so stop animating
+                               # the built-in host: nobody can see this screen (covered, locked), so stop animating
                                "sleep": bool(sleeping and sleeping(q.get("screen", [""])[0]))}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -310,12 +310,12 @@ def run_feed(port: int | None = None) -> None:
     httpd = serve(handler, port)
     if os.name == "nt":   # the hot corner: rest the mouse there and the settings open
         from . import winhost as wh
-        from .platforms import settings_command
+        from .platforms import live_command
 
         def open_settings() -> None:
             if not wh.bring_settings_forward():
                 import subprocess
-                subprocess.Popen(settings_command(), close_fds=True)
+                subprocess.Popen(live_command("settings"), close_fds=True)
         threading.Thread(target=wh.watch_corner, args=(lambda: cfg.corner(live.get()), open_settings, threading.Event()),
                          daemon=True).start()
     if not host:

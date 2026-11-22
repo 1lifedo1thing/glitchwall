@@ -206,6 +206,8 @@ class Settings:
         import webview
         if WIN:   # its own taskbar button with its own icon, not grouped under Python
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("glitchwall.settings")
+            from .winhost import quiet_webview
+            quiet_webview()
         self.open()
         from . import settings as cfg
         webview.start(private_mode=True, storage_path=str(cfg.state_dir() / "webview-settings"), icon=self.icon)

@@ -69,7 +69,14 @@ def bin_dir() -> Path:
 def feed_command() -> list[str]:
     if FROZEN:   # windowed feed exe: no console window at logon
         return [str(bin_dir() / FEED_EXE)]
-    return [pythonw(), "-m", "glitchwall", "run"]
+    return [pythonw(), "-m", "glitchwall", "run"]   # on Windows `run` moves itself to glitchwall-feed.exe
+
+
+def live_command(*args: str) -> list[str]:
+    """For starting something right now (not stored anywhere): glitchwall-feed.exe when this already is it."""
+    if WIN and not FROZEN and Path(sys.executable).name.lower() == FEED_EXE:
+        return [sys.executable, "-m", "glitchwall", *args]
+    return feed_command()[:-1] + list(args) if not FROZEN else [str(bin_dir() / FEED_EXE), *args]
 
 
 def install_binaries() -> list[str]:

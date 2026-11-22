@@ -21,8 +21,38 @@ def say(msg: str = "") -> None:
 
 
 # ---------------------------------------------------------------- commands
+def _at_terminal() -> bool:
+    """Run by hand in a terminal (keep it here, with its output), not by start, autostart or a shortcut: those
+    all use pythonw.exe. (Not isatty(): on Windows the NUL device `start` gives the feed counts as a terminal.)"""
+    return Path(sys.executable).name.lower() != "pythonw.exe"
+
+
+def _as_glitchwall() -> bool:
+    """On Windows, start this same command again under glitchwall-feed.exe (Python under glitchwall's name and
+    icon, so Task Manager says "glitchwall", not "Python"). True if it did, and this process should just end.
+    Autostart and the shortcuts keep plain pythonw, so a reinstall that wipes the copy can't break them."""
+    if not plat.WIN or plat.FROZEN or os.environ.get("GLITCHWALL_PLAIN_PYTHON"):
+        return False
+    from . import winexe
+    if winexe.running_as_it():
+        return False
+    exe = winexe.ensure(plat.wallpaper_source() / "glitchwall.ico", __version__)
+    if exe is None:
+        return False
+    import subprocess
+    try:
+        subprocess.Popen([str(exe), "-m", "glitchwall"] + sys.argv[1:], close_fds=True,
+                         creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError:
+        return False
+    return True
+
+
 def cmd_run(a) -> int:
     """Foreground feed. `start` and autostart launch this with pythonw."""
+    if not _at_terminal() and _as_glitchwall():   # started in the background (start, autostart)
+        return 0
     from .server import run_feed
     s = cfg.load_settings()
     port = a.port or int(s["port"])
@@ -261,6 +291,8 @@ def _settings_api_up(port: int, key: str) -> bool:
 def cmd_settings(a) -> int:
     """The settings window: every setting, applied to the real wallpaper as you change it (the window fades
     while you do, so you see it). Starts the feed if it isn't running."""
+    if not _at_terminal() and not a.browser and _as_glitchwall():   # from the Start menu / desktop menu / hot corner
+        return 0
     s, key = cfg.load_settings(), cfg.load_key()
     port = int(s["port"])
     if not _settings_api_up(port, key):
