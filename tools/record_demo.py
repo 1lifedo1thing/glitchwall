@@ -29,7 +29,7 @@ DEMO_PORT, CDP_PORT = 47840, 9333
 W, H = 1280, 720          # browser viewport
 OUT_W = 880               # GIF width
 WARMUP, SECONDS, FPS = 6.0, 6.0, 12   # per theme: let cards build up unrecorded, then record
-THEMES = ["phosphor", "sleeve", "drafting", "neon"]   # a spread, not all sixteen
+THEMES = ["phosphor", "sleeve", "drafting", "neon"]   # a spread, not all nineteen
 
 
 def browser() -> str:

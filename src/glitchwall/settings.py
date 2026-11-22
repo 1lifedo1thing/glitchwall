@@ -17,6 +17,7 @@ import json
 import os
 import secrets
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -140,7 +141,8 @@ def _private_write(path: Path, text: str) -> None:
     Written to a temp file and swapped in, so the running feed never reads a half-written settings file
     (which would read as the defaults: not paused)."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    # per process and thread: the feed answers requests on several threads, and two saves at once must not share it
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(text)
