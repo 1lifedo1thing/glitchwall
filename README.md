@@ -3,7 +3,7 @@
 # `g l i t c h w a l l`
 
 **Your AI coding agent, live on your desktop.**
-Every command it runs glitches onto your wallpaper, types itself out, and dies like an old CRT.
+Every command it runs lands on your wallpaper, types itself out with its output, and fades away in the style of the theme you picked.
 
 ![MIT license](https://img.shields.io/badge/license-MIT-00ff41?style=flat-square&labelColor=0c0e0c)
 ![no wallpaper app needed](https://img.shields.io/badge/windows-no%20wallpaper%20app%20needed-00ff41?style=flat-square&labelColor=0c0e0c)
@@ -17,24 +17,153 @@ Every command it runs glitches onto your wallpaper, types itself out, and dies l
 
 <sub>Recorded in demo mode with made-up commands. Notice the Stripe key and the bearer token: masked before they ever reached the screen.</sub>
 
+**[Tour](#the-tour-) · [Quick start](#quick-start) · [Themes](#themes-) · [Commands](#commands) · [Privacy](#what-it-does-and-what-it-never-does) · [FAQ](#faq)**
+
 </div>
 
 ---
 
-## Why
+Your agent does a hundred things a minute in a terminal you're not watching. **glitchwall** puts all of it on
+your desktop, behind your icons: every command, file edit, search and web fetch appears the moment it runs and
+types itself out with its result. Secrets are masked before anything is stored, nothing ever leaves your
+machine, and one click clears the screen before you go live. No coding agent? It plays made-up sessions or just
+the art.
 
-Your agent is doing a hundred things a minute in a terminal you're not watching.
-**glitchwall** turns that into the coolest wallpaper you've ever had:
+- 🟩 **Live:** your real Claude Code tool calls as they happen, with their output.
+- 🎨 **16 themes, 17 backgrounds, 19 fonts, 11 transitions:** mix any of them.
+- 🔒 **Private:** masked before it's stored, localhost only, no telemetry, read-only on your logs.
+- 🎥 **Stream-safe:** one switch and the screen is clean, enforced by the feed itself.
+- 🖥️ **No wallpaper app:** on Windows it sits behind your desktop icons on every screen by itself.
+- 🌙 **No code needed:** ambient mode plays made-up sessions forever; art mode is just the background.
+- 🪶 **Small:** the Python standard library and one web page (plus [pywebview](https://github.com/r0x0r/pywebview) on Windows). Free and MIT licensed.
 
-- 🟩 **Live.** Commands, file edits, reads, searches and web fetches pop up the moment they run, with their output typed out underneath.
-- 📺 **Retro to the bone.** [Departure Mono](https://departuremono.com) in phosphor green (by default), frosted glass cards, RGB-split glitch-in, CRT collapse-out, 1px scanlines over everything.
-- 🔒 **Paranoid by design.** 50 secret formats, credential assignments, high-entropy strings, your home path, user name and email are all masked *before* anything is stored. Localhost only. No telemetry. Read-only on your logs.
-- 🎥 **Stream-safe.** One command (`glitchwall pause`) and the screen is clean, enforced by the feed itself, not the wallpaper.
-- 🪶 **Tiny.** Pure Python standard library and a single HTML page; on Windows, one small library ([pywebview](https://github.com/r0x0r/pywebview)) to put it behind your desktop icons. Or a standalone `.exe` if you don't have Python.
-- 🖥️ **Every screen, no extra app.** On Windows it shows itself behind the desktop icons on every monitor and naps while a game or video is fullscreen.
-- 🎨 **Sixteen themes, seventeen backgrounds, eleven transitions.** An oscilloscope, a blueprint, newsprint by day and night, neon, a field-ops poster, a risograph print, a record sleeve, a school notebook, an old blue stop screen, an all-seeing machine's ring of data and more. Each is a finished bundle of colors, fonts, background, texture and its own way of bringing cards in and out, and you can swap any single part.
-- 🌙 **No code of your own needed.** Ambient mode plays made-up but realistic coding sessions forever, and art mode shows just the background. Neither one reads anything. See [Not a coder?](#not-a-coder-).
-- 🎛️ **Tweakable.** Typing speed, linger time, cards on screen, background intensity and glass opacity, in a settings window that applies each change to the real wallpaper as you make it (`glitchwall settings`, or *glitchwall settings* in the Start menu), or with `glitchwall config`.
+## The tour 🎬
+
+Every clip below is the real page (and the real settings window), recorded with made-up data.
+
+### Every call, the moment it runs
+
+Shell and PowerShell commands, file reads, edits and writes, searches, web fetches and sub-agents each get a
+card. The card types the call out, then its output underneath; a failing command's output shows in the
+theme's error color. Cards
+land somewhere free on the screen, linger a few seconds after they finish, and leave the way your theme likes.
+The corner label shows a lamp that lights while calls are coming in. (That's the clip at the top of this page.)
+
+It reads Claude Code's own session logs (read-only, only what's new), so there's nothing to set up in Claude
+Code itself.
+
+### Sixteen looks, each one complete
+
+![every theme in turn, each with its own colors, fonts, background and card transitions](docs/gifs/themes.gif)
+
+An oscilloscope, a blueprint, newsprint by day and night, neon, a field-ops poster, a risograph print, a record
+sleeve, a school notebook, the old blue stop screen, a sun print, an all-seeing machine's ring of data, and four
+classic terminals. Each theme is a finished bundle: colors, two fonts, a background, a texture, and its own way
+of bringing cards in and taking them away (beam open and collapse, ruled in and erased, stamped and torn off,
+written in and crumpled up...). The full list is under [Themes](#themes-).
+
+### Make it yours
+
+![one theme changed a piece at a time: colors, background, font, transition](docs/gifs/mix.gif)
+
+Five independent choices: start from a theme, then borrow another theme's colors, pick any background, any
+font, any transition. Every change shows up on the running wallpaper within a second; nothing restarts.
+
+### Seventeen backgrounds
+
+![art mode stepping through every background](docs/gifs/backgrounds.gif)
+
+Bit-glyph rain, katakana rain, a starfield, dead-channel static, snow, a synthwave sun, a drafting grid that
+draws and dimensions its own shapes, a breathing halftone, a turning record, a jukebox, atomic-age starbursts,
+a broadcast test card, mid-century wallpaper, the stop screen, a doodling notebook, the oracle's ring, or
+nothing. The MOTION slider sets how busy any of them is, down to perfectly still.
+
+### Three modes: no coding agent needed
+
+![live mode, then ambient mode, then art mode](docs/gifs/modes.gif)
+
+| Mode | What you see | What it reads |
+| --- | --- | --- |
+| `live` (default) | your real Claude Code tool calls as they happen | your Claude Code logs, read-only |
+| `ambient` | endless made-up coding sessions: a bug found and fixed, tests failing then passing, a build, a deploy, a release, with believable code, projects and numbers | nothing at all |
+| `art` | just the themed background | nothing at all |
+
+So glitchwall works as a wallpaper even if you don't write code. The corner label says which mode is on, so a
+made-up session is never mistaken for a real one. `glitchwall install --mode ambient` to start that way,
+`glitchwall config --mode art` (or the MODE selector) to switch any time.
+
+### Secrets never reach the screen
+
+![commands with fake keys, a password and a home folder, every one shown masked](docs/gifs/redaction.gif)
+
+Everything is masked in the feed *before* it's stored, so the page never even receives the real text: 50+ key
+formats (cloud, Git hosts, payment, AI providers, package registries...), anything assigned to a secret-sounding
+name, passwords in URLs, headers and command lines, long random-looking tokens, and your home folder, user
+name and email. Details under [Redaction](#redaction).
+
+### One switch before you go live
+
+![pause wipes every card at once; resume picks up from now](docs/gifs/pause.gif)
+
+`glitchwall pause` (or the big PAUSE key in the settings, or **P**) and the feed stops serving: the wallpaper
+wipes every card on screen within a second and the label says *paused*. Nothing that happens during a pause is
+ever replayed. Put it in your stream-start script. Something in between? **CALLS ONLY** shows the calls but never
+their output.
+
+### A settings window that previews on the real thing
+
+![turning the theme drum, pausing and setting the corner label, all applied to the wallpaper live](docs/gifs/settings.gif)
+
+Open **glitchwall settings** from the Start menu, the desktop's right-click menu, the hot corner, or
+`glitchwall settings`. Every control saves and applies the moment you touch it. **Hold** any slider, selector or
+the theme drum and the window fades almost away, so the wallpaper itself is your preview; let go and it's back.
+It speaks keyboard too (arrows turn and slide, Backspace puts a control back to default), clicks and clacks
+like a piece of lab gear (**SOUND** or **M** turns that off; the wallpaper is always silent), and each section
+has a DEFAULT key. **RESET ALL** (press twice) puts everything back and restarts the wallpaper fresh.
+
+[![the settings window: mode and look selectors, the theme drum, five sliders, privacy switches and the corner label](docs/shots/settings.png)](docs/shots/settings.png)
+
+### Five sliders
+
+![dragging CARDS, MOTION and GLASS while the wallpaper follows](docs/gifs/sliders.gif)
+
+**TYPING** speed (1 to 20), **LINGER** after a card finishes (2 to 30 s), **CARDS** on screen at once (1 to 6),
+**MOTION** of the background (0 is still, 10 is full), and **GLASS** (see-through to solid cards). Also on the
+command line: `glitchwall config --type-speed 8 --linger 12 --cards 3 --intensity 2 --glass 80`.
+
+### A hot corner
+
+![the mouse rests in the top-left corner and the settings open](docs/gifs/hotcorner.gif)
+
+Rest the mouse in the top-left corner of any screen for half a second and the settings open (or come to the
+front). A small glitching glitchwall icon marks the corner. Pick any corner, or OFF, with the CORNER selector;
+it never fires while a game or video is fullscreen.
+
+### Dock it to an edge
+
+![the settings dragged to the right edge, tucking into a strip, sliding back out](docs/gifs/dock.gif)
+
+Drag the settings window to the left, right or top edge of a screen and it docks there, on top. After a few idle
+seconds it tucks itself into a thin strip; touch the strip and it slides back out. Drag it away to undock.
+<sub>(Put together from the real settings window and wallpaper: docking happens on your desktop, not in a page.)</sub>
+
+### Every screen, behind your icons
+
+![two screens showing the same calls, each with its own layout](docs/gifs/screens.gif)
+
+On Windows there's no wallpaper app to install: glitchwall puts one borderless window per screen behind your
+desktop icons, using WebView2, the Edge engine built into Windows. Screens added, removed or rearranged are
+picked up on their own, and so is a restarted Explorer. If the page's browser ever dies, glitchwall restarts
+itself. Your own wallpaper is never changed: `stop` or `uninstall` uncovers it again. Only want the main screen?
+`glitchwall install --screens primary`.
+
+### Light on your PC
+
+One small Python process that checks for new log lines once a second, and one web page per screen that draws
+at most 30 frames a second, whatever your monitor's refresh rate. A screen covered by a maximized or
+fullscreen window (a game, a video, your editor) goes to sleep until it's uncovered, and so does every screen
+while the PC is locked: about 17% of one core awake, 2.4% asleep. MOTION at 0 stills the background entirely.
+In Task Manager it shows up as **glitchwall**, not as an anonymous Python.
 
 ## Quick start
 
@@ -70,30 +199,9 @@ runs only if Windows confirms Microsoft signed it. Nothing is downloaded without
 for scripts). `glitchwall doctor` runs the same checks any time.
 
 Then it starts the feed in the background, adds a start-at-logon entry, and puts the wallpaper behind
-your desktop icons on every screen. No wallpaper app needed: glitchwall opens one borderless window per
-screen with the page in WebView2, the Edge engine built into Windows 11 (Windows 10 gets it with Edge).
-A screen with a fullscreen game or video in front sleeps until it's uncovered.
-
-To change anything, open **glitchwall settings** from the Start menu, from the desktop's right-click menu
-(on Windows 11 under *Show more options*), or run `glitchwall settings`: mode,
-theme, colors, background, font, transitions, the five sliders, masking and the corner label, each one
-saved and shown on the real wallpaper the moment you change it. Hold a slider, selector or the theme drum
-and the settings fade nearly away so you can watch the wallpaper; let go and they're back. The big button
-at the top is the stream-safe pause; RESET ALL (press twice, or `glitchwall reset`) puts every setting back
-and restarts the wallpaper fresh if it ever freezes. SOUND (or the M key) turns the window's clicks and clacks
-on or off; they never play on the wallpaper.
-
-Drag the settings window to the left, right or top edge of a screen and it docks there, then tucks itself
-into a thin strip after a few idle seconds; touch the strip to bring it back.
-
-**Hot corner:** rest the mouse in the top-left corner of any screen for half a second and the
-settings open. A small glitching glitchwall icon marks the corner on the wallpaper. Pick another corner,
-or OFF, with the CORNER selector. It never fires while a fullscreen game or video is in front.
-
-Every screen shows the same live calls, with the cards laid out differently. Only on the main screen?
-`glitchwall install --screens primary`.
-
-Your own wallpaper is never changed: glitchwall sits on top of it, and `uninstall` (or `stop`) uncovers it again.
+your desktop icons on every screen (Windows 10 gets WebView2 with Edge; Windows 11 has it built in). To change
+anything, open **glitchwall settings** from the Start menu, the desktop's right-click menu (on Windows 11 under
+*Show more options*), the hot corner, or `glitchwall settings`. See [the tour](#the-tour-) for what's in there.
 
 The exe version copies `glitchwall.exe` and `glitchwall-feed.exe` (the windowed feed that starts
 at logon, no console window) into `%USERPROFILE%\.glitchwall\bin`, so you can delete the download.
@@ -231,35 +339,6 @@ Full-size shots (click one to open it). They come from ambient mode, so every se
 </td></tr>
 </table>
 
-## Not a coder? 🌙
-
-You don't need Claude Code, or any code, to use glitchwall. Pick a mode:
-
-| Mode | What you see | What it reads |
-| --- | --- | --- |
-| `live` (default) | your real Claude Code tool calls as they happen | your Claude Code logs (see below) |
-| `ambient` | endless made-up coding sessions: a bug found and fixed, tests failing then passing, a build, a deploy, a release. Believable code with fake projects, files and numbers | nothing at all |
-| `art` | just the themed background, no cards, no label | nothing at all |
-
-```
-glitchwall install --mode ambient
-glitchwall config --mode art        # switch any time; the running wallpaper follows within a second
-```
-
-Every theme, background and transition works the same in every mode. Preview without installing:
-`glitchwall demo --open --mode ambient`.
-
-## Going live? 🎥
-
-```
-glitchwall pause     # before you stream or share your screen
-glitchwall resume    # after
-```
-
-Or press **PAUSE** at the top of the settings window. Pausing happens **in the feed**: it serves nothing at all, and the wallpaper wipes every card on screen
-the moment it notices. Put `pause` in your stream-start script and forget about it.
-Want a lighter option? `glitchwall config --commands-only on` shows the calls but never their output.
-
 ## Commands
 
 | Command | What it does |
@@ -363,9 +442,8 @@ secrets through it, plus ordinary text that must survive untouched.
 
 ## FAQ
 
-**Will it slow my PC down?** It's one small Python process that checks for new log lines once a second,
-and one web page per screen. A screen with a fullscreen app (game, video) in front sleeps until it's
-uncovered. `glitchwall config --intensity 0` stills the background.
+**Will it slow my PC down?** Hardly: see [Light on your PC](#light-on-your-pc). For the lightest setup,
+`glitchwall config --intensity 0` stills the background.
 
 **Does it work with other agents?** It reads Claude Code's logs today. The parser is one small file
 ([`claude_logs.py`](src/glitchwall/claude_logs.py)), and pull requests for other agents are welcome.
@@ -391,6 +469,7 @@ powershell -File packaging\build-exe.ps1                             # standalon
 uv run --no-project --with pillow --with websockets python tools/record_demo.py   # re-record docs/demo.gif
 uv run --no-project --with pillow --with websockets python tools/theme_gallery.py  # rebuild docs/themes.png
 uv run --no-project --with pillow --with websockets python tools/screenshots.py   # rebuild docs/shots/ (the "Up close" gallery)
+uv run --no-project --with pillow --with websockets python tools/showcase.py      # re-record the tour's GIFs (docs/gifs/) and the settings still
 uv run --no-project --with pillow python tools/make_icon.py                       # redraw the app icon (pixel art, 16-256 px)
 ```
 
