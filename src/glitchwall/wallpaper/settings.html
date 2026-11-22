@@ -517,10 +517,16 @@ function fit() {
 function sendRegion() {   // full: tell the window which parts are the bars; the rest is cut out
   const a = winApi();
   if (LAYOUT !== 'full' || !a || !a.region || !document.querySelector('.bar')) return;
-  // where each bar rests (layout offsets, so the slide-in animation doesn't count), times the zoom: viewport px
-  const k = parseFloat(document.body.style.zoom) || 1;
-  a.region([...document.querySelectorAll('.bar')].map(b => [Math.floor(b.offsetLeft * k) - 1, Math.floor(b.offsetTop * k) - 1,
-    Math.ceil(b.offsetWidth * k) + 2, Math.ceil(b.offsetHeight * k) + 2]), innerWidth);
+  fit();                     // the zoom first: on a resize this can run before fit's own listener
+  // Where each bar rests: measured on an invisible copy with no slide-in running. Engines differ on whether
+  // the page zoom is already in these numbers, so scale them so the top bar plus its two margins = the window.
+  const bars = [...document.querySelectorAll('.bar')];
+  const rs = bars.map(b => { const g = b.cloneNode(false);
+    g.style.cssText = 'animation:none;transform:none;visibility:hidden;pointer-events:none';
+    document.body.appendChild(g); const r = g.getBoundingClientRect(); g.remove(); return r; });
+  const t = rs[bars.findIndex(b => b.classList.contains('top'))], f = innerWidth / (2 * t.left + t.width);
+  a.region(rs.map(r => [Math.floor(r.left * f) - 1, Math.floor(r.top * f) - 1, Math.ceil(r.width * f) + 2, Math.ceil(r.height * f) + 2]),
+    innerWidth);
 }
 let leaving = false;
 async function leave(then) {   // play the way out, then switch or close

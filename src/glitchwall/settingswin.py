@@ -87,6 +87,40 @@ def _another_screen_beyond(x: int, y: int) -> bool:
     return bool(u32.MonitorFromPoint(wintypes.POINT(x, y), 0))   # MONITOR_DEFAULTTONULL: 0 = no screen there
 
 
+SHELL_CLASSES = ("Shell_TrayWnd", "Shell_SecondaryTrayWnd", "Progman", "WorkerW")
+
+
+def windows_in_the_way(mon) -> list:
+    """Your app windows on screen `mon`, front to back: what would hide the wallpaper behind the full settings."""
+    out, me = [], os.getpid()
+
+    @ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
+    def each(h, _):
+        try:
+            if not u32.IsWindowVisible(h) or u32.IsIconic(h) or u32.GetWindow(h, 4):   # hidden, minimized, owned
+                return True
+            if u32.GetWindowLongW(h, -20) & 0x80 or u32.GetWindowTextLengthW(h) == 0:   # tool windows, untitled
+                return True
+            pid = wintypes.DWORD()
+            u32.GetWindowThreadProcessId(h, ctypes.byref(pid))
+            if pid.value == me:
+                return True
+            cls = ctypes.create_unicode_buffer(64)
+            u32.GetClassNameW(h, cls, 64)
+            if cls.value in SHELL_CLASSES:
+                return True
+            cloaked = ctypes.c_int(0)          # other virtual desktops, suspended store apps
+            ctypes.windll.dwmapi.DwmGetWindowAttribute(h, 14, ctypes.byref(cloaked), 4)
+            if cloaked.value or u32.MonitorFromWindow(h, 2) != mon:
+                return True
+            out.append(h)
+        except Exception:
+            pass
+        return True
+    u32.EnumWindows(each, 0)
+    return out
+
+
 class Settings:
     """One settings window at a time, full or mini; switching opens the other and closes this one."""
 
@@ -96,6 +130,7 @@ class Settings:
         self._fade_gen, self._alpha = 0, 1.0
         self._keep = False                      # the page says: don't hide now (typing in the label)
         self._dock_stop = threading.Event()
+        self._cleared: list = []                # windows we minimized to show the wallpaper, front to back
 
     # ---------- windows
     def open(self, layout: str):
@@ -174,10 +209,29 @@ class Settings:
             self.window.show()
             ax0, ay0, ax1, ay1 = self._full_area                 # exactly over the work area, in real pixels
             u32.SetWindowPos(h, HWND_TOPMOST, ax0, ay0, ax1 - ax0, ay1 - ay0, SWP_NOACTIVATE)
+            self.clear_the_way(h)
         return True
 
     def keep(self, on: bool) -> None:
         self._keep = bool(on)
+
+    def clear_the_way(self, h) -> None:
+        """Minimize the app windows on this screen so the middle shows the wallpaper; put back when we close."""
+        if not WIN:
+            return
+        ways = [w for w in windows_in_the_way(u32.MonitorFromWindow(h, 2)) if w not in self._cleared]
+        for w in ways:
+            u32.ShowWindowAsync(w, 7)                            # SW_SHOWMINNOACTIVE: no focus shuffling
+        self._cleared += ways
+
+    def put_back(self) -> None:
+        """Restore what we minimized (unless you already did), back to front so the stacking is as it was."""
+        if not WIN:
+            return
+        cleared, self._cleared = self._cleared, []
+        for w in reversed(cleared):
+            if u32.IsWindow(w) and u32.IsIconic(w):
+                u32.ShowWindowAsync(w, 4)                        # SW_SHOWNOACTIVATE: maximized ones come back maximized
 
     # ---------- mini: dock to an edge, slide away when idle
     def _slide(self, h, x: int, y: int, ms: int = 140) -> None:
@@ -262,7 +316,10 @@ class Settings:
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("glitchwall.settings")
         self.open(layout)
         from . import settings as cfg
-        webview.start(private_mode=True, storage_path=str(cfg.state_dir() / "webview-settings"), icon=self.icon)
+        try:
+            webview.start(private_mode=True, storage_path=str(cfg.state_dir() / "webview-settings"), icon=self.icon)
+        finally:
+            self.put_back()
 
 
 class Api:
