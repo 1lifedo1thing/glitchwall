@@ -410,6 +410,40 @@ def add_shortcut() -> str | None:
     return str(f) if f.exists() else None
 
 
+MENU_KEY = r"Software\Classes\DesktopBackground\Shell\glitchwall"
+
+
+def add_context_menu() -> bool:
+    """'glitchwall settings' in the desktop's right-click menu, beside Display settings and Personalize
+    (on Windows 11 under 'Show more options'). Per user, no admin."""
+    if not WIN:
+        return False
+    import winreg
+    try:
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, MENU_KEY) as k:
+            winreg.SetValueEx(k, "", 0, winreg.REG_SZ, "glitchwall settings")
+            winreg.SetValueEx(k, "MUIVerb", 0, winreg.REG_SZ, "glitchwall settings")
+            winreg.SetValueEx(k, "Icon", 0, winreg.REG_SZ, icon_location())
+            winreg.SetValueEx(k, "Position", 0, winreg.REG_SZ, "Bottom")
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, MENU_KEY + r"\command") as k:
+            winreg.SetValueEx(k, "", 0, winreg.REG_SZ, subprocess.list2cmdline(settings_command()))
+    except OSError:
+        return False
+    return True
+
+
+def remove_context_menu() -> bool:
+    if not WIN:
+        return False
+    import winreg
+    try:
+        winreg.DeleteKey(winreg.HKEY_CURRENT_USER, MENU_KEY + r"\command")
+        winreg.DeleteKey(winreg.HKEY_CURRENT_USER, MENU_KEY)
+        return True
+    except OSError:
+        return False
+
+
 def remove_shortcut() -> bool:
     f = shortcut_file()
     if f and f.exists():

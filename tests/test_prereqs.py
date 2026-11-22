@@ -70,3 +70,17 @@ class TestRealChecks(unittest.TestCase):
             found = prereqs.checks("glitchwall", "ambient")
         self.assertIn("Python", [c.name for c in found])
         self.assertNotIn("Claude Code logs", [c.name for c in found])   # ambient reads no logs
+
+
+class TestContextMenu(unittest.TestCase):
+    def test_add_and_remove(self):
+        from glitchwall import platforms as plat
+        if not plat.WIN:
+            self.skipTest("Windows only")
+        with mock.patch.object(plat, "MENU_KEY", r"Software\glitchwall-test-menu"):
+            self.assertTrue(plat.add_context_menu())
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, plat.MENU_KEY + r"\command") as k:
+                self.assertIn("settings", winreg.QueryValueEx(k, "")[0])
+            self.assertTrue(plat.remove_context_menu())
+            self.assertFalse(plat.remove_context_menu())

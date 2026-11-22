@@ -72,7 +72,8 @@ your desktop icons on every screen. No wallpaper app needed: glitchwall opens on
 screen with the page in WebView2, the Edge engine built into Windows 11 (Windows 10 gets it with Edge).
 A screen with a fullscreen game or video in front sleeps until it's uncovered.
 
-To change anything, open **glitchwall settings** from the Start menu (or run `glitchwall settings`): mode,
+To change anything, open **glitchwall settings** from the Start menu, from the desktop's right-click menu
+(on Windows 11 under *Show more options*), or run `glitchwall settings`: mode,
 theme, colors, background, font, transitions, the five sliders, masking and the corner label, each one
 saved the moment you change it, with a live preview of the wallpaper beside them. The big button at the
 top is the stream-safe pause.
@@ -313,6 +314,7 @@ In `ambient` and `art` mode it reads no logs at all, only its own settings. In `
 | `<Lively library>\wallpapers\glitchwall\` | only with `--host lively`: the wallpaper page and its `config.js` |
 | `HKCU\...\CurrentVersion\Run\glitchwall` / `~/.config/autostart/glitchwall.desktop` / `~/Library/LaunchAgents/io.github.glitchwall.plist` | start at logon |
 | `%APPDATA%\Microsoft\Windows\Start Menu\Programs\glitchwall settings.lnk` | Windows: the settings window in the Start menu |
+| `HKCU\Software\Classes\DesktopBackground\Shell\glitchwall` | Windows: *glitchwall settings* in the desktop's right-click menu |
 
 **Why the home folder on Windows, not `%LOCALAPPDATA%`?** Packaged (MSIX) apps such as Claude Desktop
 or Store terminals get new AppData folders redirected into a private copy. `install` run from one of

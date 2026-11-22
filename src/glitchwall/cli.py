@@ -199,6 +199,8 @@ def cmd_install(a) -> int:
     if plat.WIN and not (plat.ephemeral_env() and not plat.FROZEN):
         lnk = plat.add_shortcut()
         say(f"Start menu: {'glitchwall settings' if lnk else 'could not add the settings shortcut'}")
+        menu = plat.add_context_menu()
+        say(f"desktop right-click menu: {'glitchwall settings' if menu else 'could not add it'}")
 
     # 3. (re)start the feed so it uses the current port and code
     plat.stop_background()
@@ -253,6 +255,8 @@ def cmd_uninstall(a) -> int:
         removed.append("removed autostart entry")
     if plat.remove_shortcut():
         removed.append("removed the Start menu shortcut")
+    if plat.remove_context_menu():
+        removed.append("removed glitchwall settings from the desktop right-click menu")
     if plat.WIN:
         lib = plat.lively_library()
         dest = lib / plat.FOLDER if lib else None
