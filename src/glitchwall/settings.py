@@ -42,6 +42,7 @@ DEFAULTS = {
     "cards": 4,              # blocks on screen at once, 1-6
     "intensity": 5,          # background intensity, 0 (still) - 10
     "glass": 58,             # card opacity, 20-95
+    "corner": "top-left",    # rest the mouse in this screen corner to open the settings; see CORNERS
     "host": "lively",        # Windows: what puts the page behind the icons, see HOSTS (install picks)
     "screens": "all",        # all | primary
 }
@@ -79,6 +80,8 @@ def apply_changes(s: dict, changes: dict) -> tuple[dict, list[str]]:
         elif k in TUNE:
             _, lo, hi = TUNE[k]
             ok = isinstance(v, int) and not isinstance(v, bool) and lo <= v <= hi
+        elif k == "corner":
+            ok = v in CORNERS
         elif k == "label":
             ok = isinstance(v, str) and len(v) <= 80 and "\n" not in v
         if ok:
@@ -86,6 +89,20 @@ def apply_changes(s: dict, changes: dict) -> tuple[dict, list[str]]:
         else:
             refused.append(k)
     return out, refused
+
+
+CORNERS = {
+    "off": "no hot corner; open the settings from the right-click menu or the Start menu",
+    "top-left": "rest the mouse in the top-left corner of a screen to open the settings",
+    "top-right": "rest the mouse in the top-right corner of a screen to open the settings",
+    "bottom-left": "rest the mouse in the bottom-left corner of a screen to open the settings",
+    "bottom-right": "rest the mouse in the bottom-right corner of a screen to open the settings",
+}
+
+
+def corner(s: dict) -> str:
+    c = str(s.get("corner", "")).lower()
+    return c if c in CORNERS else DEFAULTS["corner"]
 
 
 HOSTS = {

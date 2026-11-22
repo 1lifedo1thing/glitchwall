@@ -150,6 +150,7 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
             body = json.dumps({"events": out, "paused": bool(s.get("paused")), "last": store.seq,
                                "look": look or themes.look(s), "mode": m,
                                "label": cfg.display_label(s) if label is None else label, "tune": cfg.tune(s),
+                               "corner": cfg.corner(s),   # where the hot-corner icon sits
                                # the built-in host: a fullscreen app covers this screen, so stop animating
                                "sleep": bool(sleeping and sleeping(q.get("screen", [""])[0]))}).encode()
             self.send_response(200)
@@ -196,7 +197,7 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
             body_out = json.dumps({
                 "settings": {k: s.get(k, v) for k, v in cfg.DEFAULTS.items()}, "refused": refused,
                 "defaults": {k: v for k, v in cfg.DEFAULTS.items() if k not in ("port", "host", "screens")},
-                "choices": {**themes.KINDS, "mode": cfg.MODES},
+                "choices": {**themes.KINDS, "mode": cfg.MODES, "corner": cfg.CORNERS},
                 "ranges": {k: [lo, hi] for k, (_, lo, hi) in cfg.TUNE.items()},
                 "running": True, "restarting": bool(reset and on_reset),
             }).encode()
@@ -295,6 +296,16 @@ def run_feed(port: int | None = None) -> None:
                            editable=True, on_change=on_change,
                            on_reset=(lambda: restart_self(httpd, manual=True)) if host else None)
     httpd = serve(handler, port)
+    if os.name == "nt":   # the hot corner: rest the mouse there and the settings open
+        from . import winhost as wh
+        from .platforms import settings_command
+
+        def open_settings() -> None:
+            if not wh.bring_settings_forward():
+                import subprocess
+                subprocess.Popen(settings_command(), close_fds=True)
+        threading.Thread(target=wh.watch_corner, args=(lambda: cfg.corner(live.get()), open_settings, threading.Event()),
+                         daemon=True).start()
     if not host:
         httpd.serve_forever()
         return

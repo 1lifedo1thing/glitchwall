@@ -105,3 +105,19 @@ class TestEngineWatch(unittest.TestCase):
             self.assertIn("ping.exe", winhost.child_exes())
         finally:
             p.wait()
+
+
+class TestHotCorner(unittest.TestCase):
+    """The mouse resting in the chosen corner of any screen opens the settings."""
+    def test_corner_hit(self):
+        from glitchwall import platforms as plat
+        if not plat.WIN:
+            self.skipTest("Windows only")
+        from glitchwall.winhost import corner_hit
+        mons = {1: (0, 0, 1920, 1080), 2: (1920, 0, 4480, 1440)}
+        self.assertEqual(corner_hit("top-left", 0, 0, mons), 1)
+        self.assertEqual(corner_hit("top-right", 1919, 2, mons), 1)
+        self.assertEqual(corner_hit("bottom-right", 4479, 1439, mons), 2)
+        self.assertEqual(corner_hit("bottom-left", 1921, 1438, mons), 2)
+        self.assertIsNone(corner_hit("top-left", 10, 10, mons))
+        self.assertIsNone(corner_hit("off", 0, 0, mons))

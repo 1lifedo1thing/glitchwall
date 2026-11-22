@@ -1070,6 +1070,27 @@ const SCREEN = Q.get('screen'), tuned = {};
 if (SCREEN) document.title = 'glitchwall screen ' + SCREEN;
 const LABEL = F.label || 'live tool feed';
 label.textContent = F.key ? LABEL : 'no config.js here: run  glitchwall install';
+// the hot corner: a small glitching glitchwall icon marks the corner that opens the settings
+let cornerEl = null;
+function markCorner(where) {
+  if (!cornerEl) {
+    const st = document.createElement('style');
+    st.textContent = `#hotcorner { position:fixed; width:34px; height:34px; z-index:50; pointer-events:none; opacity:.55; display:none;
+        background:url(glitchwall.png) center/contain no-repeat; animation:hcGlitch 3.2s steps(1) infinite; }
+      #hotcorner.top-left { left:6px; top:6px; } #hotcorner.top-right { right:6px; top:6px; }
+      #hotcorner.bottom-left { left:6px; bottom:6px; } #hotcorner.bottom-right { right:6px; bottom:6px; }
+      @keyframes hcGlitch { 0%,86%,100% { transform:none; filter:none; }
+        88% { transform:translate(2px,-1px) skewX(8deg); filter:drop-shadow(-2px 0 #f0f) drop-shadow(2px 0 #0ff); }
+        91% { transform:translate(-2px,1px); filter:drop-shadow(2px 0 #f0f) drop-shadow(-2px 0 #0ff); clip-path:inset(30% 0 20% 0); }
+        94% { transform:translate(1px,0) skewX(-6deg); filter:drop-shadow(-1px 0 #0ff); } }
+      @media (prefers-reduced-motion: reduce) { #hotcorner { animation:none; } }`;
+    document.head.appendChild(st);
+    cornerEl = document.createElement('div'); cornerEl.id = 'hotcorner'; document.body.appendChild(cornerEl);
+  }
+  const on = typeof where === 'string' && where !== 'off';
+  cornerEl.className = on ? where : '';
+  cornerEl.style.display = on ? 'block' : 'none';
+}
 async function poll() {
   try {
     if (!F.key) throw new Error('no config.js');
@@ -1094,6 +1115,7 @@ async function poll() {
       if (queue.length > 24) queue.splice(0, queue.length - 24);   // never fall minutes behind: skip the oldest
       if (!typing) next();
     }
+    markCorner(data.paused ? 'off' : data.corner);
     live.classList.toggle('on', Date.now() - lastEvent < 60000);
   } catch { live.classList.remove('on'); }
   setTimeout(poll, 1000);

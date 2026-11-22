@@ -16,6 +16,7 @@ import ctypes
 import os
 import re
 import threading
+import time
 from ctypes import wintypes
 from pathlib import Path
 from typing import Callable
@@ -171,6 +172,52 @@ def fullscreen_screens(mons: dict[int, tuple]) -> set[int]:
         return set()
     r = _rect(h)
     return {n for n, m in mons.items() if r[0] <= m[0] and r[1] <= m[1] and r[2] >= m[2] and r[3] >= m[3]}
+
+
+CORNER_DWELL, CORNER_REACH = 0.5, 3   # seconds the mouse must rest there; px from the exact corner that count
+
+
+def corner_hit(corner: str, x: int, y: int, mons: dict[int, tuple]) -> int | None:
+    """The screen whose `corner` (top-left, top-right, bottom-left, bottom-right) the point (x, y) is in, if any."""
+    if corner == "off":
+        return None
+    for n, (l, t, r, b) in mons.items():
+        cx = l if corner.endswith("left") else r - 1
+        cy = t if corner.startswith("top") else b - 1
+        if abs(x - cx) <= CORNER_REACH and abs(y - cy) <= CORNER_REACH:
+            return n
+    return None
+
+
+def watch_corner(which: Callable[[], str], open_settings: Callable[[], None], stop: threading.Event) -> None:
+    """Rest the mouse in the hot corner for half a second: the settings open (or come forward if open).
+    Never while a fullscreen app is in front, and once per visit to the corner."""
+    pt, since, fired = wintypes.POINT(), None, False
+    while not stop.wait(0.1):
+        try:
+            c = which()
+            u32.GetCursorPos(ctypes.byref(pt))
+            mons = monitors()
+            n = corner_hit(c, pt.x, pt.y, mons)
+            if n is None:
+                since, fired = None, False
+                continue
+            since = since or time.time()
+            if not fired and time.time() - since >= CORNER_DWELL and n not in fullscreen_screens(mons):
+                fired = True
+                open_settings()
+        except Exception:
+            pass
+
+
+def bring_settings_forward() -> bool:
+    """If the settings window is open, put it in front (and un-hide a docked mini). True if it was there."""
+    h = u32.FindWindowW(None, "glitchwall settings")
+    if not h:
+        return False
+    u32.ShowWindow(h, 9)                    # SW_RESTORE
+    u32.SetForegroundWindow(h)
+    return True
 
 
 def shown_screens() -> list[tuple[int, int, int, int]]:

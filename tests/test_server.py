@@ -247,11 +247,14 @@ class TestSettingsWindow(unittest.TestCase):
                                                   "mask_user", "linger", "label2"]))
         self.assertIn("label", cfg.apply_changes({}, {"label": "a\nb"})[1])
         self.assertIn("theme", cfg.apply_changes({}, {"theme": "no-such-theme"})[1])
+        self.assertEqual(cfg.apply_changes({}, {"corner": "bottom-left"})[0]["corner"], "bottom-left")
+        self.assertIn("corner", cfg.apply_changes({}, {"corner": "middle"})[1])
 
     def test_read(self):
         st, d = self.req(origin=None)
         self.assertEqual(st, 200)
         self.assertIn("phosphor", d["choices"]["theme"])
+        self.assertIn("top-right", d["choices"]["corner"])
         self.assertEqual(d["ranges"]["cards"], [1, 6])
         self.assertEqual((d["defaults"]["glass"], d["defaults"]["palette"]), (58, "theme"))   # for the reset buttons
         self.assertNotIn("port", d["defaults"])
