@@ -253,19 +253,11 @@ async function api(changes) {
   if (!r.ok) throw new Error(r.status === 403 ? 'Refused: open this with glitchwall settings.' : 'Feed error ' + r.status + '.');
   return r.json();
 }
-// peek: while you change something the window fades nearly away, so the real wallpaper behind it is the preview;
-// it comes back a moment after you stop. Only in the settings window (pywebview); a browser tab stays as it is.
-let peekTimer = null;
-const winFade = to => { try { const a = window.pywebview && window.pywebview.api; if (a && a.fade) a.fade(to); } catch {} };
-function peek() {
-  if (!peekTimer) winFade(0.12);
-  clearTimeout(peekTimer);
-  const back = () => { if (busy) { peekTimer = setTimeout(back, 300); return; } peekTimer = null; winFade(1); };
-  peekTimer = setTimeout(back, 1300);
-}
+// peek: while you hold a slider the window fades nearly away, so the real wallpaper behind it is the preview;
+// let go and it's back at once. Only in the settings window (pywebview); a browser tab stays as it is.
+const winFade = (to, ms) => { try { const a = window.pywebview && window.pywebview.api; if (a && a.fade) a.fade(to, ms); } catch {} };
 function set(k, v, now) {
   if (S[k] !== v && SOUND_OF(k)) snd(SOUND_OF(k));
-  if (S[k] !== v && k !== 'paused' && k !== 'label') peek();
   if (k === 'theme' && v !== S.theme) {   // a new theme: drop the tweaks made under the old one
     cleared = cleared || THEME_OWNS.some(differs);
     for (const x of THEME_OWNS) if (differs(x)) { S[x] = D[x]; pending[x] = D[x]; }
@@ -327,10 +319,10 @@ function fader(kind) {
   const tr = b.querySelector('.track');
   const at = x => { const r = tr.getBoundingClientRect(); return clamp(lo + (x - r.left - 4) / (r.width - 8) * (hi - lo)); };
   tr.addEventListener('pointerdown', e => {
-    e.preventDefault(); b.focus(); busy = true; tr.setPointerCapture(e.pointerId); set(kind, at(e.clientX));
+    e.preventDefault(); b.focus(); busy = true; tr.setPointerCapture(e.pointerId); winFade(0.12, 140); set(kind, at(e.clientX));
     const mv = ev => { const v = at(ev.clientX); if (v !== S[kind]) set(kind, v); };
-    const up = () => { busy = false; tr.removeEventListener('pointermove', mv); tr.removeEventListener('pointerup', up); };
-    tr.addEventListener('pointermove', mv); tr.addEventListener('pointerup', up);
+    const up = () => { busy = false; winFade(1, 0); tr.removeEventListener('pointermove', mv); tr.removeEventListener('pointerup', up); tr.removeEventListener('pointercancel', up); };
+    tr.addEventListener('pointermove', mv); tr.addEventListener('pointerup', up); tr.addEventListener('pointercancel', up);
   });
   b.addEventListener('wheel', e => { e.preventDefault(); set(kind, clamp(S[kind] + (e.deltaY < 0 ? 1 : -1))); }, { passive: false });
   return b;
@@ -429,7 +421,7 @@ async function resetAll() {
 function resetGroup(g) {
   const keys = GROUPS[g].filter(differs);
   if (!keys.length) return help('reset:' + g);
-  snd('thunk'); peek();
+  snd('thunk');
   for (const k of keys) { S[k] = D[k]; pending[k] = D[k]; }
   render(); help('reset:' + g);
   clearTimeout(timer); timer = setTimeout(flush, 0);
