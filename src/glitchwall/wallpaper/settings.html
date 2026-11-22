@@ -441,7 +441,10 @@ document.fonts.ready.then(() => { fit(); if (S.theme) render(); });   // sizes m
 
 (async () => {
   if (!KEY) { say('NO KEY', 'Open this with: glitchwall settings', true); return; }
-  $('pv').src = `/?preview=1#key=${encodeURIComponent(KEY)}`;
+  // the preview comes from the other loopback name (localhost vs 127.0.0.1): a different site, so the browser
+  // runs it in its own process and a heavy theme can never freeze these controls
+  const other = location.hostname === 'localhost' ? '127.0.0.1' : 'localhost';
+  $('pv').src = `${location.protocol}//${other}:${location.port}/?preview=1#key=${encodeURIComponent(KEY)}`;
   try {
     const d = await api(); S = d.settings; C = { ...d.choices, ranges: d.ranges };
     build(); render(); led('feed', 'g'); help('theme');
