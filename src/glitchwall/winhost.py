@@ -170,6 +170,10 @@ def fullscreen_screens(mons: dict[int, tuple]) -> set[int]:
     h = u32.GetForegroundWindow()
     if not h or _cls(h) in ("Progman", "WorkerW", "Shell_TrayWnd", "Shell_SecondaryTrayWnd"):
         return set()
+    pid = wintypes.DWORD()
+    u32.GetWindowThreadProcessId(h, ctypes.byref(pid))
+    if pid.value == os.getpid():   # our own wallpaper window can get the focus when another window closes
+        return set()
     r = _rect(h)
     return {n for n, m in mons.items() if r[0] <= m[0] and r[1] <= m[1] and r[2] >= m[2] and r[3] >= m[3]}
 
