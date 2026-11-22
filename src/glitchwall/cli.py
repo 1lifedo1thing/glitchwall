@@ -294,7 +294,11 @@ def cmd_settings(a) -> int:
             import webview
             webview.create_window("glitchwall settings", url, width=1180, height=760, min_size=(820, 560),
                                   background_color="#0b0d0b")
-            webview.start(private_mode=True, storage_path=str(cfg.state_dir() / "webview-settings"))
+            if plat.WIN:   # its own taskbar button with its own icon, not grouped under Python
+                import ctypes
+                ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("glitchwall.settings")
+            webview.start(private_mode=True, storage_path=str(cfg.state_dir() / "webview-settings"),
+                          icon=str(plat.wallpaper_source() / "glitchwall.ico"))
             return 0
         except Exception as e:   # no pywebview / WebView2 here: a browser tab does the same job
             say(f"no settings window available ({type(e).__name__}); opening it in your browser")

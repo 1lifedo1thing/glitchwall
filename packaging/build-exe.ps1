@@ -7,8 +7,9 @@ $ver  = (Select-String -Path pyproject.toml -Pattern '^version = "(.+)"').Matche
 $out  = "dist\glitchwall-$ver-windows"
 $py   = 'pyinstaller==6.22.3'
 $wv   = 'pywebview==6.2.1'   # glitchwall's own desktop windows; keep in step with pyproject.toml
+$icon = "$PWD\src\glitchwall\wallpaper\glitchwall.ico"   # made by tools\make_icon.py
 $common = @('--onefile', '--clean', '--noconfirm', '--paths', 'src', '--workpath', 'build\pyi', '--specpath', 'build\pyi',
-            '--distpath', $out, '--add-data', "$PWD\src\glitchwall\wallpaper;glitchwall\wallpaper")
+            '--distpath', $out, '--icon', $icon, '--add-data', "$PWD\src\glitchwall\wallpaper;glitchwall\wallpaper")
 uvx --python 3.14 --with $wv --from $py pyinstaller @common --console  --name glitchwall      packaging\glitchwall_cli.py
 uvx --python 3.14 --with $wv --from $py pyinstaller @common --noconsole --name glitchwall-feed packaging\glitchwall_feed.py
 # the bundled libraries' license texts

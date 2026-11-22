@@ -381,6 +381,7 @@ powershell -File packaging\build-exe.ps1                             # standalon
 uv run --no-project --with pillow --with websockets python tools/record_demo.py   # re-record docs/demo.gif
 uv run --no-project --with pillow --with websockets python tools/theme_gallery.py  # rebuild docs/themes.png
 uv run --no-project --with pillow --with websockets python tools/screenshots.py   # rebuild docs/shots/ (the "Up close" gallery)
+uv run --no-project --with pillow python tools/make_icon.py                       # redraw the app icon (pixel art, 16-256 px)
 ```
 
 Standard library only at runtime, Python 3.9+; on Windows, plus [pywebview](https://github.com/r0x0r/pywebview) for the desktop windows.

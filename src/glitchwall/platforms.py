@@ -382,6 +382,13 @@ def settings_command() -> list[str]:
     return [pythonw(), "-m", "glitchwall", "settings"]
 
 
+def icon_location() -> str:
+    """The icon for the Start menu entry: built into the exe, or the file in the installed package."""
+    if FROZEN:
+        return f"{bin_dir() / FEED_EXE},0"
+    return f"{wallpaper_source() / 'glitchwall.ico'},0"
+
+
 def add_shortcut() -> str | None:
     """A Start menu entry that opens the settings window. Made with the Windows Script Host (built in)."""
     f = shortcut_file()
@@ -393,7 +400,7 @@ def add_shortcut() -> str | None:
         return "'" + str(v).replace("'", "''") + "'"
     ps =(f"$s=(New-Object -ComObject WScript.Shell).CreateShortcut({q(f)});$s.TargetPath={q(cmd[0])};"
           f"$s.Arguments={q(subprocess.list2cmdline(cmd[1:]))};$s.Description='glitchwall settings';"
-          f"$s.WorkingDirectory={q(Path.home())};$s.Save()")
+          f"$s.WorkingDirectory={q(Path.home())};$s.IconLocation={q(icon_location())};$s.Save()")
     try:
         f.parent.mkdir(parents=True, exist_ok=True)
         subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps], capture_output=True,
