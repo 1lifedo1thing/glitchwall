@@ -2014,9 +2014,24 @@ const STYLES = {
   // leaving smudges behind, and the writing starts again
   chalk: {
     scale: 1,
+    // what gets written up: each at most once on the board at a time
     LINES: ['f(x) = x² - 3x + 2', 'a² + b² = c²', 'O(n log n)', 'lim sin(x)/x = 1', 'P(A|B) = P(B|A) P(A) / P(B)',
             'if (tests pass) ship()', 'TODO: write the tests!', 'y = mx + b', 'E = mc²', '2 + 2 = 4', 'n! = n (n-1)!',
-            'x = (-b ± √(b² - 4ac)) / 2a', 'cache hit / (hit + miss)', 'merge, then rebase?', 'p(fail) < 0.01'],
+            'x = (-b ± √(b² - 4ac)) / 2a', 'cache hit / (hit + miss)', 'merge, then rebase?', 'p(fail) < 0.01',
+            'O(1) amortized', 'T(n) = 2T(n/2) + n', 'Σ i = n(n+1)/2', 'e^(iπ) + 1 = 0', 'd/dx sin x = cos x',
+            '∫ x dx = x²/2 + C', 'log₂ 1024 = 10', '2¹⁰ = 1024', '0.1 + 0.2 ≠ 0.3', 'NaN ≠ NaN',
+            'retry with backoff: 1, 2, 4, 8 s', 'latency p99 < 200 ms', 'rows / page = 50', 'ttl = 3600',
+            'off by one?', 'it works on my machine', 'never trust user input', 'measure, then optimize',
+            'git bisect: good ... bad', 'DRY, but not too dry', 'a → b → c ⇒ a → c', '¬(A ∧ B) = ¬A ∨ ¬B',
+            'binary search: lo, mid, hi', 'hash(k) mod m', 'load factor < 0.75', 'BFS: queue / DFS: stack',
+            'read the error message', '1 KB = 1024 B', 'UTC, always', 'v2.3.1 → v2.4.0', 'exit code 0 = ok',
+            '200 OK  ·  404 not found', 'idempotent: f(f(x)) = f(x)', 'n² vs n log n', 'cos² + sin² = 1',
+            'mean = Σx / n', 'σ² = E[(x - μ)²]', 'commit early, commit often', 'null check first',
+            'race condition? add a lock', 'deadlock: A waits B, B waits A', 'tabs or spaces?', 'p ⇒ q, ¬q ∴ ¬p'],
+    // faint ghosts of old lessons in the board itself: their own scraps, so no line ever shows up twice
+    GHOSTS: ['x + y = ', '∴', 'Q.E.D.', 'f′(x)', 'lim →', '≈ 3.14159', 'Δt', '(a + b)²', 'λx. x', 'mod 7', 'k = 1 .. n', '∂/∂x'],
+    FLOWS: [['plan', 'code', 'test'], ['read', 'edit', 'ship'], ['fetch', 'parse', 'store'], ['build', 'lint', 'deploy'],
+            ['request', 'cache', 'db'], ['input', 'validate', 'save'], ['red', 'green', 'refactor'], ['clone', 'branch', 'merge']],
     init() {
       const u = this.u = Math.min(W, H), light = T.mode === 'light';
       const mk = () => { const o = document.createElement('canvas'); o.width = W; o.height = H; return [o, o.getContext('2d')]; };
@@ -2030,8 +2045,15 @@ const STYLES = {
         const x = rnd(0, W), y = rnd(0, this.HB); g.moveTo(x, y); g.lineTo(x + rnd(-.3, .3) * W, y + rnd(-.06, .06) * H); g.stroke();
       }
       g.fillStyle = T.ink; g.font = `${Math.round(u * .05)}px ${FONTS.hand[0]}`;
-      for (let i = 0; i < 9; i++) { g.globalAlpha = rnd(.025, .05); g.fillText(this.LINES[Math.random() * this.LINES.length | 0], rnd(-.05, .8) * W, rnd(.1, .9) * this.HB); }
+      g.font = `${Math.round(u * .035)}px ${FONTS.hand[0]}`;
+      for (const t of this.GHOSTS) { g.globalAlpha = rnd(.02, .04); g.fillText(t, rnd(0, .9) * W, rnd(.08, .92) * this.HB); }
+      const dust = g.createLinearGradient(0, this.HB - u * .08, 0, this.HB);
+      dust.addColorStop(0, rgba(T.ink, 0)); dust.addColorStop(1, rgba(T.ink, .045));
+      g.globalAlpha = 1; g.fillStyle = dust; g.fillRect(0, this.HB - u * .08, W, u * .08);
       g.globalAlpha = 1; g.fillStyle = mixHex(T.bg, '#000000', .45); g.fillRect(0, this.HB, W, this.tray);
+      g.fillStyle = T.ink;
+      for (let i = 0; i < W / 2; i++) { g.globalAlpha = rnd(.04, .16); g.fillRect(rnd(0, W), this.HB + rnd(1, this.tray * .55), rnd(1, 2), 1); }   // dust on the ledge
+      g.globalAlpha = 1;
       g.fillStyle = T.ink; g.globalAlpha = .12; g.fillRect(0, this.HB, W, 2); g.globalAlpha = 1;
       const ty = this.HB + this.tray * .45, cl = u * .05, ch = Math.max(4, this.tray * .22);
       for (const [x, col, l] of [[.62, T.ink, 1], [.66, T.acc, .7], [.69, T.ink, .45], [.73, T.acc2, .8]]) {
@@ -2041,7 +2063,7 @@ const STYLES = {
       g.fillStyle = mixHex(T.bg, T.ink, .35); g.fillRect(W * .2, ty + this.tray * .02, u * .12, this.tray * .12);
       g.globalAlpha = 1;
       [this.bc, this.bd] = mk();      // what is written now
-      this.used = []; this.job = null; this.wipe = null; this.wait = 0;
+      this.used = []; this.on = new Set(); this.job = null; this.wipe = null; this.wait = 0;
       for (let i = 0; i < 5; i++) { const j = this.next(); if (!j) break; while (!j.done) this.step(j, 1e9); }   // start with a board in use
       this.paint();
     },
@@ -2049,6 +2071,7 @@ const STYLES = {
     seg(x0, y0, x1, y1, col, w) {
       const d = this.bd, n = Math.max(1, Math.hypot(x1 - x0, y1 - y0) / 4);
       d.strokeStyle = d.fillStyle = col; d.lineCap = 'round';
+      d.globalAlpha = .05; d.lineWidth = w * 3.5; d.beginPath(); d.moveTo(x0, y0); d.lineTo(x1, y1); d.stroke();   // powder
       for (let i = 0; i < n; i++) {
         const a = i / n, b = (i + 1) / n;
         d.globalAlpha = rnd(.5, .85); d.lineWidth = w * rnd(.75, 1.15); d.beginPath();
@@ -2074,24 +2097,29 @@ const STYLES = {
       const text = (s, x, y, fs, c) => {
         const t = document.createElement('canvas'), g = t.getContext('2d'), f = `${fs}px ${FONTS.hand[0]}`;
         g.font = f; t.width = Math.ceil(g.measureText(s).width + fs); t.height = Math.ceil(fs * 1.5);
-        g.font = f; g.textBaseline = 'middle'; g.fillStyle = c; g.fillText(s, fs * .2, t.height / 2);
+        g.font = f; g.textBaseline = 'middle'; g.fillStyle = c;
+        g.filter = `blur(${Math.max(1, fs * .05)}px)`; g.globalAlpha = .3; g.fillText(s, fs * .2, t.height / 2);   // powder round the strokes
+        g.filter = 'none'; g.globalAlpha = 1; g.fillText(s, fs * .2, t.height / 2);
+        for (let i = 0; i < t.width / 5; i++) { g.globalAlpha = rnd(.1, .3); g.fillRect(rnd(0, t.width), rnd(0, t.height), 1, 1); }   // dust
+        g.globalAlpha = 1;
         g.globalCompositeOperation = 'destination-out';        // chalk grain: little gaps in the strokes
         for (let i = 0; i < t.width * t.height / 14; i++) { g.globalAlpha = rnd(.3, .9); g.fillRect(rnd(0, t.width), rnd(0, t.height), 1, 1); }
         strokes.push({ img: t, x, y: y - t.height / 2 });
         return t.width;
       };
-      if (k < .55) {                                          // a line of working, sometimes underlined or boxed
-        const s = this.LINES[Math.random() * this.LINES.length | 0], fs = Math.round(u * rnd(.045, .065));
+      const fresh = list => { const f = list.filter(x => !this.on.has(String(x))); return f.length ? f[Math.random() * f.length | 0] : null; };
+      if (k < .62) {                                          // a line of working, sometimes underlined or boxed
+        const s = fresh(this.LINES), fs = Math.round(u * rnd(.026, .036)); if (!s) return null;
         const g = document.createElement('canvas').getContext('2d'); g.font = `${fs}px ${FONTS.hand[0]}`;
         const tw = g.measureText(s).width + fs, at = this.room(tw, fs * 1.8); if (!at) return null;
-        const [x, y] = at, c = col();
+        const [x, y] = at, c = col(); this.on.add(s);
         text(s, x, y + fs * .8, fs, c);
         const r = Math.random();
         if (r < .3) wob(x, y + fs * 1.55, x + tw * rnd(.6, .95), y + fs * 1.6, T.acc);
         else if (r < .45) { const e = [x - 6, y, x + tw, y + fs * 1.7]; wob(e[0], e[1], e[2], e[1], T.acc2); wob(e[2], e[1], e[2], e[3], T.acc2); wob(e[2], e[3], e[0], e[3], T.acc2); wob(e[0], e[3], e[0], e[1], T.acc2); }
       } else if (k < .8) {                                    // axes, ticks, and a curve through them
-        const pw = u * rnd(.3, .42), ph = pw * .62, at = this.room(pw, ph); if (!at) return null;
-        const [x, y] = at, oy = y + ph * rnd(.45, .85);
+        const pw = u * rnd(.2, .28), ph = pw * .62, at = this.room(pw, ph); if (!at) return null;
+        const [x, y] = at, oy = y + ph * rnd(.48, .55);
         wob(x, oy, x + pw, oy, T.ink); wob(x + pw * .1, y + ph, x + pw * .1, y, T.ink);
         for (let i = 1; i < 8; i++) wob(x + pw * .1 + i * pw * .11, oy - 4, x + pw * .1 + i * pw * .11, oy + 4, T.ink);
         const kind = Math.random() * 3 | 0, pts = [], c = Math.random() < .5 ? T.acc : T.acc2;
@@ -2101,10 +2129,11 @@ const STYLES = {
           pts.push([px, oy - v * ph]);
         }
         strokes.push({ pts, c });
-        text(kind === 0 ? 'sin' : kind === 1 ? 'x²' : 'ringing', x + pw * .78, y + ph * .12, Math.round(u * .035), c);
+        text(kind === 0 ? 'sin' : kind === 1 ? 'x²' : 'ringing', x + pw * .78, y + ph * .12, Math.round(u * .024), c);
       } else {                                                // a little flowchart: three boxes and arrows
-        const bw = u * .14, bh = u * .065, gap = u * .07, fw = bw * 3 + gap * 2, at = this.room(fw, bh * 1.6); if (!at) return null;
-        const [x, y] = at, words = [['plan', 'code', 'test'], ['read', 'edit', 'ship'], ['fetch', 'parse', 'store']][Math.random() * 3 | 0];
+        const words = fresh(this.FLOWS); if (!words) return null;
+        const bw = u * .1, bh = u * .046, gap = u * .05, fw = bw * 3 + gap * 2, at = this.room(fw, bh * 1.6); if (!at) return null;
+        const [x, y] = at; this.on.add(String(words));
         for (let i = 0; i < 3; i++) {
           const bx = x + i * (bw + gap), by = y + bh * .3;
           wob(bx, by, bx + bw, by, T.ink); wob(bx + bw, by, bx + bw, by + bh, T.ink); wob(bx + bw, by + bh, bx, by + bh, T.ink); wob(bx, by + bh, bx, by, T.ink);
@@ -2159,13 +2188,13 @@ const STYLES = {
         const e = this.wipe, v = this.u * 1.6 * dt * sp, x0 = e.x, ew = this.u * .12;
         e.x += e.dir * v;
         dirty = [Math.min(x0, e.x) - ew, e.y - 2, Math.abs(e.x - x0) + ew * 2, e.h + 4];    // where it was and where it is
-        d.globalCompositeOperation = 'destination-out'; d.globalAlpha = .85; d.fillStyle = '#000';   // an opaque fill: the smudge's faint gradient left from last frame erased nothing
+        d.globalCompositeOperation = 'destination-out'; d.globalAlpha = 1; d.fillStyle = '#000';   // an opaque fill: the smudge's faint gradient left from last frame erased nothing
         d.fillRect(Math.min(x0, e.x) - this.u * .06, e.y, Math.abs(e.x - x0) + this.u * .12, e.h);
         d.globalCompositeOperation = 'source-over';
         const sm = d.createLinearGradient(0, e.y, 0, e.y + e.h);      // the smudge it leaves: soft-edged, faint
         sm.addColorStop(0, rgba(T.ink, 0)); sm.addColorStop(.5, rgba(T.ink, .03)); sm.addColorStop(1, rgba(T.ink, 0));
         d.globalAlpha = 1; d.fillStyle = sm; d.fillRect(Math.min(x0, e.x), e.y, Math.abs(e.x - x0), e.h);
-        if (e.x > W + this.u * .1 || e.x < -this.u * .1) { dirty = [0, e.y - 2, W, e.h * 2 + 4]; e.y += e.h; e.dir *= -1; if (e.y >= this.HB) { this.wipe = null; this.used = []; this.wait = 1.5; } }
+        if (e.x > W + this.u * .1 || e.x < -this.u * .1) { dirty = [0, e.y - 2, W, e.h * 2 + 4]; e.y += e.h; e.dir *= -1; if (e.y >= this.HB) { this.wipe = null; this.used = []; this.on.clear(); this.wait = 1.5; } }
       } else if (this.job && !this.job.done) this.step(this.job, this.u * 1.1 * dt * sp);
       else if ((this.wait -= dt * sp) <= 0) {
         this.job = this.next(); this.wait = rnd(1.5, 4);
