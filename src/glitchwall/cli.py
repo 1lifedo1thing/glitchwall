@@ -344,6 +344,9 @@ def cmd_config(a) -> int:
     if a.port is not None:
         s["port"] = a.port
         changed = True
+    if a.renderer is not None:
+        s["renderer"] = a.renderer
+        changed = True
     if a.mode is not None:
         s["mode"] = a.mode   # the running feed switches source by itself within a second
         changed = True
@@ -355,7 +358,7 @@ def cmd_config(a) -> int:
         cfg.save_settings(s)
         if a.port is not None or a.label is not None or a.mode is not None:
             _refresh_config(s)
-        if a.port is not None or a.mask_user is not None or a.mask_email is not None:
+        if a.port is not None or a.renderer is not None or a.mask_user is not None or a.mask_email is not None:
             if plat.running_pid():
                 plat.stop_background()
                 time.sleep(0.3)
@@ -479,6 +482,8 @@ def parser() -> argparse.ArgumentParser:
     c.add_argument("--mask-email", dest="mask_email", choices=sorted(ON_OFF), metavar="on|off")
     c.add_argument("--label", help="text in the corner of the wallpaper")
     c.add_argument("--port", type=int)
+    c.add_argument("--renderer", choices=sorted(cfg.RENDERERS),
+                   help="Windows: " + "; ".join(f"{k} = {v}" for k, v in cfg.RENDERERS.items()))
     _look_args(c)
     helps = {"type_speed": "typing speed", "linger": "seconds a block stays after it finishes",
              "cards": "blocks on screen at once", "intensity": "background intensity (0 = still)",

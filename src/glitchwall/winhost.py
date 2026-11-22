@@ -350,6 +350,73 @@ def quiet_webview() -> None:
                           "--disable-background-networking --disable-component-update --disable-sync --no-pings")
 
 
+def render_exe() -> Path | None:
+    """glitchwall-render.exe, the native renderer: GLITCHWALL_RENDER_EXE, else the one shipped in the package."""
+    for p in (os.environ.get("GLITCHWALL_RENDER_EXE"), Path(__file__).parent / "bin" / "glitchwall-render.exe"):
+        if p and Path(p).is_file():
+            return Path(p)
+    return None
+
+
+class NativeHost:
+    """renderer = native: glitchwall-render.exe draws every screen (Direct2D, far lighter than WebView2) and polls
+    the feed for events and looks, like the page. This keeps it running: started again when it exits (it does
+    by itself when the screens change, to start over with the new layout), at most 5 times a minute, and ended
+    with the feed (it also checks, every 2 s, that the feed process is still there). Sleep works as for the
+    pages: this tells the feed which screens are covered, and the renderer asks."""
+
+    def __init__(self, exe: Path, port: int, key: str, which: str = "all", wallpaper: Path | None = None):
+        self.exe, self.port, self.key, self.which, self.wallpaper = exe, port, key, which, wallpaper
+        self.windows: dict[int, object] = {}   # the screens drawn on (what check_asleep looks at)
+        self.asleep: set[int] = set()
+        self.proc = None
+        self.starts: list[float] = []
+
+    def screens(self) -> dict[int, tuple]:
+        return Host.screens(self)
+
+    def check_asleep(self) -> None:
+        Host.check_asleep(self)
+
+    def launch(self) -> None:
+        import subprocess
+        now = time.monotonic()
+        self.starts = [t for t in self.starts if now - t < 60]
+        if len(self.starts) >= 5:
+            return   # keeps failing (see render.log): try again once the minute is up
+        self.starts.append(now)
+        args = [str(self.exe), "--port", str(self.port), "--which", self.which, "--parent", str(os.getpid())]
+        if self.wallpaper:
+            args += ["--wallpaper", str(self.wallpaper)]
+        self.proc = subprocess.Popen(args, env={**os.environ, "GLITCHWALL_KEY": self.key}, close_fds=True,
+                                     creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+
+    def run(self, stop: threading.Event) -> None:
+        """Blocks until `stop` is set (or the process ends), keeping the renderer up."""
+        import atexit
+        dpi_aware()
+        atexit.register(self.end)
+        n = 0
+        try:
+            while not stop.is_set():
+                try:
+                    if n % 4 == 0:
+                        self.windows = dict.fromkeys(self.screens())
+                        if self.proc is None or self.proc.poll() is not None:
+                            self.launch()
+                    self.check_asleep()
+                except Exception:
+                    pass
+                n += 1
+                stop.wait(0.5)
+        finally:
+            self.end()
+
+    def end(self) -> None:
+        if self.proc and self.proc.poll() is None:
+            self.proc.terminate()
+
+
 class Host:
     """One page window per screen. `url(n)` is the page address for screen n."""
 

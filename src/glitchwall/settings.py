@@ -45,6 +45,11 @@ DEFAULTS = {
     "glass": 58,             # card opacity, 20-95
     "corner": "top-left",    # rest the mouse in this screen corner to open the settings; see CORNERS
     "screens": "all",        # all | primary
+    "renderer": "web",       # Windows: who draws glitchwall's own windows, see RENDERERS
+}
+RENDERERS = {
+    "web": "the wallpaper page in WebView2 (every theme and background)",
+    "native": "glitchwall-render, drawn with Direct2D: far lighter; backgrounds not ported yet show plain",
 }
 
 TUNE = {   # setting -> (page slider name, lowest, highest)
@@ -185,7 +190,7 @@ def load_settings() -> dict:
     return s
 
 
-KEEP_ON_RESET = ("port", "screens", "mode", "paused")   # how it's installed, what it shows, stream-safety
+KEEP_ON_RESET = ("port", "screens", "mode", "paused", "renderer")   # how it's installed, what it shows, stream-safety
 
 
 def reset_settings(s: dict) -> dict:

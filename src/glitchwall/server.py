@@ -208,7 +208,7 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
             s = cfg.load_settings()
             body_out = json.dumps({
                 "settings": {k: s.get(k, v) for k, v in cfg.DEFAULTS.items()}, "refused": refused,
-                "defaults": {k: v for k, v in cfg.DEFAULTS.items() if k not in ("port", "host", "screens")},
+                "defaults": {k: v for k, v in cfg.DEFAULTS.items() if k not in ("port", "host", "screens", "renderer")},
                 "choices": {**themes.KINDS, "mode": cfg.MODES, "corner": cfg.CORNERS},
                 "ranges": {k: [lo, hi] for k, (_, lo, hi) in cfg.TUNE.items()},
                 "running": True, "restarting": bool(reset and on_reset),
@@ -290,7 +290,11 @@ def run_feed(port: int | None = None) -> None:
     host = None
     if os.name == "nt":
         from . import winhost
-        if winhost.available():
+        exe = winhost.render_exe() if s.get("renderer") == "native" else None
+        if exe:   # glitchwall-render draws the windows; it polls this feed like the page does
+            from .platforms import wallpaper_source
+            host = winhost.NativeHost(exe, port, key, s.get("screens", "all"), wallpaper_source())
+        elif winhost.available():
             # the page is served from here and finds its key in the address (#key=, never sent over the wire)
             host = winhost.Host(lambda n: f"http://127.0.0.1:{port}/?screen={n}#key={key}",
                                 s.get("screens", "all"), cfg.state_dir() / "webview",
