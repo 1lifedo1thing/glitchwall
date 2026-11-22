@@ -122,6 +122,22 @@
   /* chalk: written in left to right a few letters at a time; leaving, it is smudged sideways and wiped */
   @keyframes chalkIn  { 0% { opacity:0; clip-path:inset(0 100% 0 0); } 8% { opacity:1; } 100% { clip-path:inset(0 0 0 0); } }
   @keyframes chalkOut { 0% { opacity:1; } 100% { opacity:0; transform:translateX(22px); filter:blur(4px); } }
+  /* slide: in from the nearer side edge, out across the screen to the other one */
+  @keyframes slideIn  { 0% { opacity:0; transform:translateX(var(--sx, -110vw)); } 40% { opacity:1; } 100% { transform:none; } }
+  @keyframes slideOut { 100% { opacity:.4; transform:translateX(var(--ox, 110vw)); } }
+  /* fade: a soft fade in from a blur; out the same way */
+  @keyframes fadeIn  { 0% { opacity:0; filter:blur(6px); } 100% { opacity:1; filter:none; } }
+  @keyframes fadeOut { 100% { opacity:0; filter:blur(4px); } }
+  /* dock: slides out from under the card before it and settles beside it; leaving, it shrinks away */
+  @keyframes dockIn  { 0% { opacity:0; transform:translate(var(--dx, 0px), var(--dy, -24px)) scale(.97); } 100% { opacity:1; transform:none; } }
+  @keyframes dockOut { 100% { opacity:0; transform:scale(.95); } }
+  /* toast: in from the right edge onto a stack in the corner, the others gliding up; out to the right */
+  @keyframes toastIn  { 0% { opacity:0; transform:translateX(calc(100% + 48px)); } 100% { opacity:1; transform:none; } }
+  @keyframes toastOut { 100% { opacity:0; transform:translateX(calc(100% + 48px)); } }
+  html[data-place="stack"] .card { transition:bottom .45s cubic-bezier(.2,.8,.2,1); }
+  /* zoom: comes up out of the distance, sharpening; leaving, it rushes past */
+  @keyframes zoomIn  { 0% { opacity:0; transform:scale(.55); filter:blur(8px); } 70% { opacity:1; } 100% { transform:none; filter:none; } }
+  @keyframes zoomOut { 100% { opacity:0; transform:scale(1.25); filter:blur(6px); } }
   @keyframes eclipseOut { 0% { clip-path:circle(170% at 112% 50%); } 100% { clip-path:circle(0 at 112% 50%); opacity:.5; filter:brightness(.4); } }
   .still .card { animation:none; }
 
@@ -251,7 +267,9 @@ const FONTS = {
   hand:         ["'Caveat', 'Ink Free', cursive", 1.3, 500],
   mono:         ["ui-monospace, Menlo, monospace", 1, 400],
 };
-// how cards arrive and leave, per theme (keyframes in the CSS); exits stay under 0.65 s, when the card is removed
+// how cards arrive and leave, per theme (keyframes in the CSS); exits stay under 0.65 s, when the card is removed.
+// An optional third field says where cards go: 'dock' beside the last one, 'stack' in a pile in the corner;
+// otherwise anywhere, wherever covers the live cards least
 const ANIMS = {
   glitch: ['glitchIn .55s steps(1) both', 'glitchOut .6s linear both'],
   crt:    ['crtIn .5s cubic-bezier(.2,.7,.3,1) both', 'crtOut .45s ease-in both'],
@@ -267,9 +285,14 @@ const ANIMS = {
   eclipse: ['eclipseIn .8s cubic-bezier(.3,.6,.2,1) both', 'eclipseOut .55s cubic-bezier(.5,0,.8,.5) both'],
   trace:  ['traceIn .6s cubic-bezier(.3,.6,.3,1) both', 'traceOut .6s ease-out both'],
   chalk:  ['chalkIn .7s steps(14) both', 'chalkOut .55s ease-in both'],
+  slide:  ['slideIn .6s cubic-bezier(.2,.8,.2,1) both', 'slideOut .55s cubic-bezier(.6,0,.9,.4) both'],
+  fade:   ['fadeIn .9s ease-out both', 'fadeOut .6s ease-in both'],
+  dock:   ['dockIn .45s cubic-bezier(.2,.8,.2,1) both', 'dockOut .4s ease-in both', 'dock'],     // beside the last card
+  toast:  ['toastIn .5s cubic-bezier(.2,.8,.2,1) both', 'toastOut .45s ease-in both', 'stack'], // stacked in the corner
+  zoom:   ['zoomIn .6s cubic-bezier(.2,.7,.2,1) both', 'zoomOut .5s ease-in both'],
 };
-const THEME_ANIM = { phosphor: 'crt', amber: 'crt', matrix: 'glitch', synthwave: 'glitch', drafting: 'draft', cyanotype: 'draft',
-  newsprint: 'press', nightprint: 'press', neon: 'neon', fieldops: 'stamp', duplicator: 'riso', sleeve: 'sleeve', msdos: 'dos', bsod: 'dos',
+const THEME_ANIM = { phosphor: 'crt', amber: 'crt', matrix: 'glitch', synthwave: 'slide', drafting: 'draft', cyanotype: 'fade',
+  newsprint: 'press', nightprint: 'press', neon: 'neon', fieldops: 'stamp', duplicator: 'riso', sleeve: 'sleeve', msdos: 'dock', bsod: 'dos',
   notebook: 'write', oracle: 'iris', orb: 'eclipse', scope: 'trace', chalkboard: 'chalk' };
 // Lively dropdown order: index 0 = "use glitchwall config", then these
 const LIVELY = { theme: Object.keys(THEMES), palette: ['theme', ...Object.keys(THEMES)], rain: ['theme', ...RAINS],
@@ -323,6 +346,7 @@ function applyLook() {
   set('font', mono[0]); set('mscale', mono[1]);
   set('dfont', disp[0]); set('dscale', disp[1]); set('dweight', disp[2]);
   set('ain', ANIMS[anim][0]); set('aout', ANIMS[anim][1]);
+  PLACE = ANIMS[anim][2] || 'any'; document.documentElement.dataset.place = PLACE; setTimeout(restack);   // after the card list exists
   // ruled lines inside the cards, spaced to the text's line height (notebook)
   const lh = 16 * mono[1] * 1.15;
   set('rules', t.rules ? `repeating-linear-gradient(to bottom, transparent 0 ${lh - 1}px, ${rgba(t.dim, .7)} ${lh - 1}px ${lh}px)` : 'none');
@@ -1288,7 +1312,7 @@ const STYLES = {
             if (y < -fs || y > H) return;
             cx.globalAlpha = br * (k ? (1 - k / c.len) ** 1.4 : 1);
             cx.fillStyle = k === 0 ? T.acc : k < 3 ? T.hi : T.ink;
-            if (flip) { cx.save(); cx.translate(x, y); cx.scale(-1, 1); cx.fillText(ch, 0, 0); cx.restore(); }
+            if (flip) { cx.setTransform(-1, 0, 0, 1, x, y); cx.fillText(ch, 0, 0); cx.setTransform(1, 0, 0, 1, 0, 0); }   // mirrored; cheaper than save/restore
             else cx.fillText(ch, x, y);
           });
         });
@@ -1297,16 +1321,15 @@ const STYLES = {
     },
   },
   // a lab oscilloscope: a graticule on dark glass, one beam sweeping across it, the trace it leaves glowing on
-  // and fading slowly. Every few sweeps the signal changes: a clean sine, a ringing step, a square wave, a burst,
-  // and now and then the scope flips to X-Y and draws a figure. The readouts at the corners follow the signal.
+  // and fading out. Every few sweeps the signal changes: a clean sine, a ringing step, a square wave, a burst. On a
+  // wide screen an FFT of the signal and a second channel in roll mode fill the sides. The readouts follow the signal.
   scope: {
     scale: 1, still: true,
     MODES: [
-      { ch: '0.50 V', tb: '2.00 ms', f: '1.502 kHz', y: (u, t) => 2.3 * Math.sin(TAU * 3 * u + t * .12) + .55 * Math.sin(TAU * 9 * u + t * .5) },
-      { ch: '1.00 V', tb: '500 µs', f: '12.48 kHz', y: (u) => u < .14 ? 0 : 3.1 * Math.exp(-(u - .14) * 6) * Math.sin(TAU * 13 * (u - .14)) },
-      { ch: '0.20 V', tb: '1.00 ms', f: '2.000 kHz', y: (u) => { const q = (u * 4) % 1, e = Math.min(q, Math.abs(q - .5)); return (q < .5 ? 2 : -2) + (q < .5 ? 1 : -1) * .9 * Math.exp(-e * 60) * Math.cos(e * 260); } },
-      { ch: '2.00 V', tb: '5.00 µs', f: '6.250 MHz', y: (u, t) => 3 * Math.sin(TAU * 31 * u + t * .7) * Math.exp(-(((u - .5) / .17) ** 2)) },
-      { ch: '0.50 V', tb: 'X-Y', f: '3 : 2', xy: true },
+      { ch: '0.50 V', tb: '2.00 ms', f: '1.502 kHz', pk: [[3, 1], [9, .3]], y: (u, t) => 2.3 * Math.sin(TAU * 3 * u + t * .12) + .55 * Math.sin(TAU * 9 * u + t * .5) },
+      { ch: '1.00 V', tb: '500 µs', f: '12.48 kHz', pk: [[12, .45], [13, .8], [14, .45]], y: (u) => u < .14 ? 0 : 3.1 * Math.exp(-(u - .14) * 6) * Math.sin(TAU * 13 * (u - .14)) },
+      { ch: '0.20 V', tb: '1.00 ms', f: '2.000 kHz', pk: [[4, 1], [12, .33], [20, .2], [28, .14]], y: (u) => { const q = (u * 4) % 1, e = Math.min(q, Math.abs(q - .5)); return (q < .5 ? 2 : -2) + (q < .5 ? 1 : -1) * .9 * Math.exp(-e * 60) * Math.cos(e * 260); } },
+      { ch: '2.00 V', tb: '5.00 µs', f: '6.250 MHz', pk: [[29, .5], [30, .8], [31, 1]], y: (u, t) => 3 * Math.sin(TAU * 31 * u + t * .7) * Math.exp(-(((u - .5) / .17) ** 2)) },
     ],
     init() {
       const div = this.div = Math.floor(Math.min(W / 10.8, H / 8.8)), gw = div * 10, gh = div * 8;
@@ -1329,8 +1352,12 @@ const STYLES = {
       for (let y = gy; y <= gy + gh + .1; y += div / 5) { g.moveTo(mx - tk, Math.round(y) + .5); g.lineTo(mx + tk, Math.round(y) + .5); }
       g.stroke();
       g.globalAlpha = 1;
-      // the persistence layer: what the beam has drawn, fading
-      [this.pc, this.p] = mk();
+      // the persistence: pieces of trace, each fading by its age (a canvas faded a bit each frame never quite empties)
+      this.trail = []; this.clk = 0;
+      // the instruments either side, where a wide screen leaves room: an FFT of the signal, and a second channel rolling
+      const side = gx - div * .6, pw = Math.min(side * .7, div * 2.6);
+      this.panels = side > div * 1.2 ? { w: pw, lx: Math.round(gx - div * .6 - pw), rx: Math.round(gx + gw + div * .6) } : null;
+      this.bars = new Float32Array(32); this.roll = []; this.ch2 = rnd(0, 100);
       this.t = rnd(0, 100); this.u = 0; this.m = 0; this.sweeps = 0; this.acc = 0;
       if (RAIN <= 0) {             // stilled: one whole trace, as if the beam had just passed
         this.draw(0, 1);
@@ -1341,30 +1368,66 @@ const STYLES = {
     // where the beam is at sweep position u (0-1) in the current mode
     at(u) {
       const M = this.MODES[this.m], d = this.div;
-      if (M.xy) { const s = u * TAU, ph = this.t * .25; return [this.gx + this.gw / 2 + 3.6 * d * Math.sin(3 * s + ph), this.cy0 - 3 * d * Math.sin(2 * s)]; }
       return [this.gx + u * this.gw, this.cy0 - M.y(u, this.t) * d + rnd(-.4, .4)];
     },
-    // draw the trace from u0 to u1 into the persistence layer: a wide soft pass, then the line
+    // the trace from u0 to u1, kept as one piece of the persistence
     draw(u0, u1) {
-      const p = this.p, n = Math.max(2, Math.ceil((u1 - u0) * (this.MODES[this.m].xy ? 900 : this.gw / 1.5)));
+      const n = Math.max(2, Math.ceil((u1 - u0) * this.gw / 1.5));
       const pts = u0 > 0 && this.last ? [this.last] : []; for (let i = pts.length; i <= n; i++) pts.push(this.at(u0 + (u1 - u0) * i / n));
       this.last = pts[pts.length - 1];
-      p.globalCompositeOperation = T.mode === 'light' ? 'source-over' : 'lighter';
-      p.strokeStyle = T.dim; p.lineJoin = p.lineCap = 'round';
+      this.trail.push({ pts, b: this.clk });
+    },
+    FADE: 1.1,                // how fast the phosphor lets go, per unit of beam time: gone in a few seconds
+    // the pieces of trace, a wide soft pass and then the line, each as bright as its age allows
+    trace() {
+      cx.globalCompositeOperation = T.mode === 'light' ? 'source-over' : 'lighter';
+      cx.strokeStyle = T.dim; cx.lineJoin = cx.lineCap = 'round';
       for (const [w, a] of [[Math.max(5, this.div * .09), .08], [1.6, .75]]) {
-        p.lineWidth = w; p.globalAlpha = a; p.beginPath(); p.moveTo(pts[0][0], pts[0][1]);
-        for (const q of pts) p.lineTo(q[0], q[1]);
-        p.stroke();
+        cx.lineWidth = w;
+        for (const s of this.trail) {
+          const k = Math.exp(-(this.clk - s.b) * this.FADE); if (k < .02) continue;
+          cx.globalAlpha = a * k; cx.beginPath(); cx.moveTo(s.pts[0][0], s.pts[0][1]);
+          for (const q of s.pts) cx.lineTo(q[0], q[1]);
+          cx.stroke();
+        }
       }
-      p.globalAlpha = 1; p.globalCompositeOperation = 'source-over';
+      cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over';
+    },
+    // left: the signal's spectrum, bars that settle on its harmonics and flicker with the noise
+    fft(x, w) {
+      const gy = this.gy, gh = this.gh, n = this.bars.length, bh = gh / n;
+      cx.strokeStyle = cx.fillStyle = T.ink; cx.lineWidth = 1;
+      cx.globalAlpha = .18; cx.strokeRect(x + .5, gy + .5, w, gh);
+      cx.globalAlpha = .1; for (let k = 1; k < 4; k++) cx.fillRect(x + w * k / 4, gy, 1, gh);
+      cx.globalCompositeOperation = T.mode === 'light' ? 'source-over' : 'lighter'; cx.fillStyle = T.dim; cx.globalAlpha = .5;
+      for (let i = 0; i < n; i++) cx.fillRect(x + 1, gy + i * bh + bh * .2, Math.max(1, this.bars[i] * (w - 2)), bh * .6);
+      cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over';
+    },
+    // right: channel 2 in roll mode, a slow signal crawling down, newest at the top
+    rollmode(x, w) {
+      const gy = this.gy, gh = this.gh, R2 = this.roll;
+      cx.strokeStyle = cx.fillStyle = T.ink; cx.lineWidth = 1;
+      cx.globalAlpha = .18; cx.strokeRect(x + .5, gy + .5, w, gh);
+      cx.globalAlpha = .1; cx.fillRect(x + w / 2, gy, 1, gh);
+      if (R2.length > 1) {
+        cx.globalCompositeOperation = T.mode === 'light' ? 'source-over' : 'lighter'; cx.strokeStyle = T.dim; cx.lineJoin = 'round';
+        const step = gh / 180;
+        for (const [lw, a] of [[Math.max(4, this.div * .07), .07], [1.4, .7]]) {
+          cx.lineWidth = lw; cx.globalAlpha = a; cx.beginPath();
+          R2.forEach((v, i) => { const px = x + w / 2 + v * w * .42, py = gy + i * step; i ? cx.lineTo(px, py) : cx.moveTo(px, py); });
+          cx.stroke();
+        }
+      }
+      cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over';
     },
     paint() {
       if (!W || !H) return;
       const light = T.mode === 'light', M = this.MODES[this.m], d = this.div;
       cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over'; cx.drawImage(this.back, 0, 0);
-      cx.drawImage(this.pc, 0, 0);
+      this.trace();
+      if (this.panels) { this.fft(this.panels.lx, this.panels.w); this.rollmode(this.panels.rx, this.panels.w); }
       if (RAIN > 0 && this.u < 1) {                     // the beam itself: a short white-hot head on the trace
-        const n = 14, back = M.xy ? .012 : .025;
+        const n = 14, back = .025;
         cx.globalCompositeOperation = light ? 'source-over' : 'lighter'; cx.strokeStyle = T.hi; cx.lineCap = 'round';
         let prev = this.at(Math.max(0, this.u - back));
         for (let i = 1; i <= n; i++) {
@@ -1382,24 +1445,36 @@ const STYLES = {
       cx.font = `${fs}px ${MONO}`; cx.textBaseline = 'alphabetic'; cx.globalAlpha = .55; cx.fillStyle = T.ink;
       cx.textAlign = 'left';
       cx.fillText(`CH1  ${M.ch}/div   DC`, this.gx, this.gy - pad);
-      cx.fillText(M.xy ? 'X-Y   CH1 : CH2' : `M  ${M.tb}/div`, this.gx, this.gy + this.gh + pad + fs);
+      cx.fillText(`M  ${M.tb}/div`, this.gx, this.gy + this.gh + pad + fs);
       cx.textAlign = 'right';
       cx.fillText(`f  ${M.f}`, this.gx + this.gw, this.gy + this.gh + pad + fs);
-      cx.globalAlpha = .85; cx.fillStyle = T.acc; cx.fillText(M.xy ? 'X-Y' : "TRIG'D", this.gx + this.gw, this.gy - pad);
+      cx.globalAlpha = .85; cx.fillStyle = T.acc; cx.fillText("TRIG'D", this.gx + this.gw, this.gy - pad);
+      if (this.panels) {
+        const P = this.panels; cx.globalAlpha = .55; cx.fillStyle = T.ink; cx.textAlign = 'left';
+        cx.fillText('FFT  CH1', P.lx, this.gy - pad); cx.fillText('0 dB', P.lx, this.gy + this.gh + pad + fs);
+        cx.fillText('CH2  ROLL', P.rx, this.gy - pad); cx.fillText('5.00 s/div', P.rx, this.gy + this.gh + pad + fs);
+      }
       cx.globalAlpha = 1; cx.textAlign = 'start';
     },
     frame(dt) {
       if (RAIN <= 0 || !(dt = every(this, 30, dt))) return;      // 0 stills it: the frame from init() stays up
-      const sp = .4 + RAIN * 1.6, M = this.MODES[this.m];
-      this.t += dt * sp;
-      const p = this.p;                                         // the phosphor lets go slowly
-      p.globalCompositeOperation = 'destination-out'; p.fillStyle = `rgba(0,0,0,${1 - Math.exp(-dt * sp * (M.xy ? .5 : 1.3))})`;
-      p.fillRect(0, 0, W, H); p.globalCompositeOperation = 'source-over';
-      const u1 = Math.min(1, this.u + dt * sp / (M.xy ? 3.2 : 1.1));
+      const sp = .3 + RAIN * 1.2, M = this.MODES[this.m];
+      this.t += dt * sp; this.clk += dt * sp;
+      this.trail = this.trail.filter(s => (this.clk - s.b) * this.FADE < 4);     // faded out: gone for good
+      // the side instruments: spectrum bars ease toward the signal's harmonics, channel 2 rolls on
+      for (let i = 0; i < this.bars.length; i++) {
+        let v = .03 + Math.random() * .05;
+        for (const [h, a] of M.pk) v += a * .85 * Math.exp(-(((i + 1) - h) ** 2) / 1.2);
+        this.bars[i] += (Math.min(1, v * (.9 + Math.random() * .2)) - this.bars[i]) * Math.min(1, dt * 8);
+      }
+      this.ch2 += dt * sp;
+      const c2 = .55 * Math.sin(this.ch2 * 1.3) * Math.sin(this.ch2 * .21) + .2 * Math.sin(this.ch2 * 4.7) + rnd(-.04, .04);
+      this.roll.unshift(Math.max(-1, Math.min(1, c2))); if (this.roll.length > 181) this.roll.pop();
+      const u1 = Math.min(1, this.u + dt * sp / 1.5);
       this.draw(this.u, u1); this.u = u1;
       if (this.u >= 1) {                                        // retrace, and every few sweeps a new signal
         this.u = 0; this.last = null;
-        if (++this.sweeps >= (M.xy ? 2 : 4 + (Math.random() * 3 | 0))) { this.sweeps = 0; this.m = (this.m + 1 + (Math.random() * (this.MODES.length - 1) | 0)) % this.MODES.length; }
+        if (++this.sweeps >= 4 + (Math.random() * 3 | 0)) { this.sweeps = 0; this.m = (this.m + 1 + (Math.random() * (this.MODES.length - 1) | 0)) % this.MODES.length; }
       }
       this.paint();
     },
@@ -2037,14 +2112,20 @@ const STYLES = {
           if (i < 2) { const ax = bx + bw + 6, ay = by + bh / 2; wob(ax, ay, ax + gap - 12, ay, T.acc); wob(ax + gap - 12, ay, ax + gap - 22, ay - 7, T.acc); wob(ax + gap - 12, ay, ax + gap - 22, ay + 7, T.acc); }
         }
       }
-      return { strokes, i: 0, j: 0, w, done: false };
+      let x0 = W, y0 = H, x1 = 0, y1 = 0;
+      for (const s of strokes) for (const [x, y, w2, h2] of s.img ? [[s.x, s.y, s.img.width, s.img.height]] : s.pts.map(q => [q[0], q[1], 0, 0])) {
+        x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x + w2); y1 = Math.max(y1, y + h2);
+      }
+      const pad = w * 4 + 4;
+      return { strokes, i: 0, j: 0, w, done: false, box: [x0 - pad, y0 - pad, x1 - x0 + pad * 2, y1 - y0 + pad * 2] };
     },
     // draw up to `px` pixels' worth of the job
     step(job, px) {
-      while (px > 0 && job.i < job.strokes.length) {
+      while (px > .01 && job.i < job.strokes.length) {     // not px > 0: a tiny remainder makes no progress and would spin forever
         const s = job.strokes[job.i];
         if (s.img) {                                          // writing: the word appears left to right
           const total = s.img.width, from = job.j, to = Math.min(total, from + px);
+          if (to - from < .01 && to < total) break;
           this.bd.drawImage(s.img, from, 0, to - from, s.img.height, s.x + from, s.y, to - from, s.img.height);
           px -= to - from; job.j = to; if (to >= total) { job.i++; job.j = 0; }
         } else {
@@ -2054,9 +2135,14 @@ const STYLES = {
       }
       if (job.i >= job.strokes.length) job.done = true;
     },
-    paint() {
+    // redraw the board in the given area only (all of it by default): the static board, then the chalk on it
+    paint(box) {
       if (!W || !H) return;
-      cx.globalAlpha = 1; cx.drawImage(this.back, 0, 0); cx.drawImage(this.bc, 0, 0);
+      let [x, y, w, h] = box || [0, 0, W, H];
+      x = Math.max(0, Math.floor(x)); y = Math.max(0, Math.floor(y)); w = Math.min(W - x, Math.ceil(w) + 1); h = Math.min(H - y, Math.ceil(h) + 1);
+      if (w <= 0 || h <= 0) return;
+      cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over';
+      cx.drawImage(this.back, x, y, w, h, x, y, w, h); cx.drawImage(this.bc, x, y, w, h, x, y, w, h);
       if (this.wipe) {                                        // the eraser, a dark block with a felt edge, moving along its band
         const e = this.wipe, ew = this.u * .12, eh = e.h * .9;
         cx.fillStyle = mixHex(T.bg, '#8a7356', .7); cx.globalAlpha = .9; cx.fillRect(e.x - ew / 2, e.y + (e.h - eh) / 2, ew, eh);
@@ -2065,23 +2151,27 @@ const STYLES = {
       }
     },
     frame(dt) {
-      if (RAIN <= 0 || !(dt = every(this, 30, dt))) return;
+      if (RAIN <= 0 || !(dt = every(this, 20, dt))) return;
+      // only repaint while chalk or the eraser is moving, and only where: idle frames cost nothing
+      let dirty = this.job && !this.job.done ? this.job.box : null;
       const sp = .4 + RAIN * 1.6, d = this.bd;
       if (this.wipe) {                                        // erasing: a band at a time, back and forth, leaving smudge
-        const e = this.wipe, v = this.u * 1.6 * dt * sp, x0 = e.x;
+        const e = this.wipe, v = this.u * 1.6 * dt * sp, x0 = e.x, ew = this.u * .12;
         e.x += e.dir * v;
-        d.globalCompositeOperation = 'destination-out'; d.globalAlpha = .85; d.fillRect(Math.min(x0, e.x) - this.u * .06, e.y, Math.abs(e.x - x0) + this.u * .12, e.h);
+        dirty = [Math.min(x0, e.x) - ew, e.y - 2, Math.abs(e.x - x0) + ew * 2, e.h + 4];    // where it was and where it is
+        d.globalCompositeOperation = 'destination-out'; d.globalAlpha = .85; d.fillStyle = '#000';   // an opaque fill: the smudge's faint gradient left from last frame erased nothing
+        d.fillRect(Math.min(x0, e.x) - this.u * .06, e.y, Math.abs(e.x - x0) + this.u * .12, e.h);
         d.globalCompositeOperation = 'source-over';
         const sm = d.createLinearGradient(0, e.y, 0, e.y + e.h);      // the smudge it leaves: soft-edged, faint
         sm.addColorStop(0, rgba(T.ink, 0)); sm.addColorStop(.5, rgba(T.ink, .03)); sm.addColorStop(1, rgba(T.ink, 0));
         d.globalAlpha = 1; d.fillStyle = sm; d.fillRect(Math.min(x0, e.x), e.y, Math.abs(e.x - x0), e.h);
-        if (e.x > W + this.u * .1 || e.x < -this.u * .1) { e.y += e.h; e.dir *= -1; if (e.y >= this.HB) { this.wipe = null; this.used = []; this.wait = 1.5; } }
+        if (e.x > W + this.u * .1 || e.x < -this.u * .1) { dirty = [0, e.y - 2, W, e.h * 2 + 4]; e.y += e.h; e.dir *= -1; if (e.y >= this.HB) { this.wipe = null; this.used = []; this.wait = 1.5; } }
       } else if (this.job && !this.job.done) this.step(this.job, this.u * 1.1 * dt * sp);
       else if ((this.wait -= dt * sp) <= 0) {
         this.job = this.next(); this.wait = rnd(1.5, 4);
         if (!this.job) this.wipe = { x: -this.u * .06, y: 0, h: this.u * .11, dir: 1 };     // full: wipe the board
       }
-      this.paint();
+      if (dirty) this.paint(dirty);
     },
   },
   none: { scale: 1, init() { cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H); }, frame() {} },
@@ -2121,36 +2211,67 @@ requestAnimationFrame(loop);
 // ---------- cards ----------
 const PROMPT = { '$': '$', 'PS>': 'PS>', read: 'cat', write: 'write', edit: 'edit', find: 'grep', web: 'curl', agent: 'spawn', mouse: 'click', tool: '>' };
 const open = [];                // cards on screen, oldest first
+var PLACE;                      // where new cards go, set by applyLook() above from the transition: 'any', 'dock' or 'stack'
 let z = 10;
 
 // Pop-up-ad placement: anywhere on screen (below the top taskbar), random size,
 // best of 16 random tries so a new block covers the live ones as little as possible.
 function place(card) {
+  if (PLACE === 'stack') {                // a pile in the bottom-right corner, held by its bottom edge so it grows upward
+    const w = Math.round(Math.min(innerWidth * .34, 600));
+    card.style.width = w + 'px'; card.style.left = (innerWidth - w - 24) + 'px'; card.style.top = 'auto'; card.style.bottom = '52px';
+    card.style.zIndex = ++z; card.style.maxHeight = Math.min(innerHeight * .42, 260) + 'px';
+    card._rect = { x: innerWidth - w - 24, y: innerHeight - 52, w, h: 160 };
+    return;
+  }
   const w = Math.round(innerWidth * (0.24 + Math.random() * 0.14));
   card.style.width = w + 'px';
   const h = Math.min(innerHeight * 0.42, 220);
-  let best = null, bestHit = Infinity;
+  let best = null, bestHit = Infinity, pick0 = null;
   // live cards by their real size (plus a gap), so blocks sit side by side instead of on top of each other
   // offset* is layout size: unlike getBoundingClientRect it is not shrunk by a card's entry animation (scale/clip)
   // and at least 160px tall: a card that only has its command so far grows when the tool output arrives
   const rects = open.map(o => ({ x: o.offsetLeft - 14, y: o.offsetTop - 14, w: o.offsetWidth + 28, h: Math.max(o.offsetHeight, 160) + 28 }));
-  for (let k = 0; k < 80; k++) {
+  const hits = (x, y) => rects.reduce((a, r) =>
+    a + Math.max(0, Math.min(x + w, r.x + r.w) - Math.max(x, r.x)) * Math.max(0, Math.min(y + h, r.y + r.h) - Math.max(y, r.y)), 0);
+  // dock: beside the newest card there is room next to (below it, right of it, above, left), coming out from under it
+  for (let i = open.length - 1; PLACE === 'dock' && i >= 0 && !best; i--) {
+    const o = open[i], lx = o.offsetLeft, ly = o.offsetTop, lw = o.offsetWidth, lh = Math.max(o.offsetHeight, 160), g = 14;
+    for (const [x, y, dx, dy] of [[lx, ly + lh + g, 0, -40], [lx + lw + g, ly, -40, 0], [lx, ly - h - g, 0, 40], [lx - w - g, ly, 40, 0]]) {
+      if (x < 16 || y < 64 || x + w > innerWidth - 16 || y + h > innerHeight - 56 || hits(x, y)) continue;
+      best = { x, y }; card.style.setProperty('--dx', dx + 'px'); card.style.setProperty('--dy', dy + 'px'); break;
+    }
+  }
+  for (let k = 0; k < 80 && !best; k++) {
     const x = 16 + Math.random() * (innerWidth - w - 32), y = 64 + Math.random() * (innerHeight - h - 120);
-    let hit = 0;
-    rects.forEach(r => {
-      hit += Math.max(0, Math.min(x + w, r.x + r.w) - Math.max(x, r.x)) * Math.max(0, Math.min(y + h, r.y + r.h) - Math.max(y, r.y)); });
-    if (hit < bestHit) { bestHit = hit; best = { x, y }; }
+    const hit = hits(x, y);
+    if (hit < bestHit) { bestHit = hit; pick0 = { x, y }; }
     if (!hit) break;
   }
+  best = best || pick0;
   card._rect = { x: best.x, y: best.y, w, h };
-  card.style.left = best.x + 'px'; card.style.top = best.y + 'px'; card.style.zIndex = ++z;
+  const mid = best.x + w / 2, offL = -(best.x + w + 40), offR = innerWidth - best.x + 40;   // slide: from the nearer side
+  card.style.setProperty('--sx', (mid < innerWidth / 2 ? offL : offR) + 'px'); card.style.setProperty('--ox', (mid < innerWidth / 2 ? offR : offL) + 'px');
+  card.style.left = best.x + 'px'; card.style.top = best.y + 'px'; card.style.bottom = ''; card.style.zIndex = ++z;
   card.style.maxHeight = Math.min(innerHeight * 0.42, innerHeight - best.y - 52) + 'px';   // never grows over the corner label
 }
+// the toast pile: newest at the bottom, the rest above it; the oldest goes once there is no room
+function restack() {
+  if (PLACE !== 'stack') return;
+  let b = 52;                                 // distance from the bottom of the screen
+  for (let i = open.length - 1; i >= 0; i--) {
+    const c = open[i], h = Math.max(c.offsetHeight, 48);
+    if (b + h > innerHeight - 64 && i < open.length - 1) { kill(c); continue; }
+    c.style.top = 'auto'; c.style.bottom = b + 'px'; b += h + 14;
+  }
+}
+setInterval(restack, 300);
 function kill(card) {
   if (!card || card._dead) return; card._dead = true;
   const i = open.indexOf(card); if (i >= 0) open.splice(i, 1);
   card.classList.add('bye');
   setTimeout(() => card.remove(), 650);
+  restack();
 }
 function newCard(ev) {
   while (open.length >= MAXCARDS) kill(open[0]);
@@ -2159,7 +2280,7 @@ function newCard(ev) {
   card.innerHTML = `<div class="bar"><b></b><span>${t}</span></div><div class="body"></div>`;
   card.querySelector('b').textContent = `${ev.proj}${ev.side ? ' / agent' : ''} #${ev.session}`;
   document.body.insertBefore(card, document.getElementById('grain'));
-  place(card); open.push(card);
+  place(card); open.push(card); restack();
   card._timer = setTimeout(() => kill(card), STILL ? 1e9 : 30000);     // never got output: go anyway
   return card;
 }

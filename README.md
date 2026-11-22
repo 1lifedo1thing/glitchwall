@@ -32,7 +32,7 @@ Your agent is doing a hundred things a minute in a terminal you're not watching.
 - 🎥 **Stream-safe.** One command (`glitchwall pause`) and the screen is clean, enforced by the feed itself, not the wallpaper.
 - 🪶 **Tiny.** Pure Python standard library and a single HTML page; on Windows, one small library ([pywebview](https://github.com/r0x0r/pywebview)) to put it behind your desktop icons. Or a standalone `.exe` if you don't have Python.
 - 🖥️ **Every screen, no extra app.** On Windows it shows itself behind the desktop icons on every monitor and naps while a game or video is fullscreen. [Lively Wallpaper](https://github.com/rocksdanister/lively) works too, if you prefer it.
-- 🎨 **Nineteen themes, twenty-seven backgrounds, fourteen transitions.** A green phosphor terminal, a lab oscilloscope, a chalkboard, a blueprint, newsprint by day and night, neon, a field-ops poster, a risograph print, a record sleeve, a school notebook, an old blue stop screen, an all-seeing machine's ring of data, the black sphere it lives in and more. Each is a finished bundle of colors, fonts, background, texture and its own way of bringing cards in and out, and you can swap any single part.
+- 🎨 **Nineteen themes, twenty-seven backgrounds, nineteen transitions.** A green phosphor terminal, a lab oscilloscope, a chalkboard, a blueprint, newsprint by day and night, neon, a field-ops poster, a risograph print, a record sleeve, a school notebook, an old blue stop screen, an all-seeing machine's ring of data, the black sphere it lives in and more. Each is a finished bundle of colors, fonts, background, texture and its own way of bringing cards in and out, and you can swap any single part.
 - 🌙 **No code of your own needed.** Ambient mode plays made-up but realistic coding sessions forever, and art mode shows just the background. Neither one reads anything. See [Not a coder?](#not-a-coder-).
 - 🎛️ **Tweakable.** Typing speed, linger time, cards on screen, background intensity and glass opacity, in a settings window with a live preview (`glitchwall settings`, or *glitchwall settings* in the Start menu), with `glitchwall config`, or with Lively's sliders.
 
@@ -124,12 +124,12 @@ in and taking them away. Use one as it is, or swap any single part.
 | `sleeve` | record sleeve: sepia paper, brown ink, mustard, a record turning in the corner | slides out of the sleeve |
 | `notebook` | ruled paper, red margin, ballpoint handwriting, pencil doodles | written in / crumpled and tossed |
 | `bsod` | the old blue stop screen: white VGA text, grey title chips | drawn line by line / gone |
-| `cyanotype` | a sun print in Prussian blue: fern and leaf silhouettes developing pale, brushed edges to the coating | ruled in / erased |
+| `cyanotype` | a sun print in Prussian blue: fern and leaf silhouettes developing pale, brushed edges to the coating | fades in / fades out |
 | `oracle` | an all-seeing machine: one great ring of jagged data strokes on black, slowly turning and always redrawing itself, white ink and one signal red | opens like an iris / closes to a point |
 | `orb` | the same machine seen whole: a ribbed black sphere sunk in the floor of a vast, empty, dark data hall, rows of racks blinking away into the haze behind it, tiny red lights flickering and streaming along its slats, readouts pointing at its parts as they turn into view | a curved shadow sweeps off / over it |
 | `scope` | a lab oscilloscope: a blue-white beam sweeping a graticule, its trace glowing yellow-green and fading slowly, the signal changing every few sweeps, readouts at the corners | swept in by the beam / fades like an afterglow |
 | `chalkboard` | a blackboard smudged with old lessons: equations, plots and little flowcharts written up in chalk, then wiped with the eraser | written in a few letters at a time / smudged and wiped |
-| `matrix` · `amber` · `synthwave` · `msdos` | bright-green katakana falling at three depths, an amber radar sweep, a synthwave sunset, blue DOS boxes on a text-mode desktop | glitch · beam · glitch · line by line |
+| `matrix` · `amber` · `synthwave` · `msdos` | bright-green katakana falling at three depths, an amber radar sweep, a synthwave sunset, blue DOS boxes on a text-mode desktop | glitch · beam · slides across · docks beside the last one |
 
 **Mix and match.** Five independent choices; `theme` means "whatever the theme uses":
 
@@ -147,7 +147,7 @@ glitchwall demo --open --theme notebook             # try one without touching y
 | --- | --- |
 | **Background** (`--rain`) | `pixel` bit-glyph rain · `code` katakana rain · `stars` · `static` · `snow` · `grid` synthwave sun · `draft` drawing grid · `halftone` two-ink dots · `record` · `jukebox` · `starburst` atomic age · `testcard` · `print` mid-century wallpaper · `stop` stop screen · `notebook` ruled paper · `oracle` ring of data · `orb` the machine in its data hall · `cascade` katakana at three depths · `scope` oscilloscope · `radar` · `textmode` DOS desktop · `broadsheet` newspaper page · `signs` neon in the rain · `topo` field map · `sunprint` ferns and leaves · `chalk` blackboard · `none` |
 | **Font** | `departure` · `plex` · `vt323` · `chakra` · `doto` · `stencil` · `serif` · `courierprime` · `dmmono` · `fira` · `overpass` · `georgia` · `cascadia` · `consolas` · `lucida` · `courier` · `segoe` · `hand` · `mono` |
-| **Transition** | `glitch` · `crt` · `draft` · `press` · `neon` · `stamp` · `riso` · `sleeve` · `dos` · `write` · `iris` · `eclipse` · `trace` · `chalk` |
+| **Transition** | `glitch` · `crt` · `draft` · `press` · `neon` · `stamp` · `riso` · `sleeve` · `dos` · `write` · `iris` · `eclipse` · `trace` · `chalk` · `slide` · `fade` · `dock` beside the last card · `toast` stacked in the corner · `zoom` |
 | **Palette** | any theme name |
 
 Fonts are bundled or already on your system; nothing is downloaded at run time. The sliders are

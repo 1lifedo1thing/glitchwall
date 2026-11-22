@@ -95,6 +95,11 @@ TRANSITIONS = {
     "eclipse": "a curved shadow sweeps off it; another sweeps over it",
     "trace": "swept in left to right by the beam; fades out like an afterglow",
     "chalk": "written in a few letters at a time; smudged sideways and wiped",
+    "slide": "slides in from the nearer side of the screen; out across to the other",
+    "fade": "a soft fade in from a blur; out the same way",
+    "dock": "docks beside the last card instead of anywhere; shrinks away",
+    "toast": "slides in from the right onto a pile in the corner, the others moving up",
+    "zoom": "comes up out of the distance; rushes past on the way out",
 }
 # a theme is a bundle; every part of it can be swapped on its own
 KINDS = {"theme": THEMES, "palette": PALETTES, "rain": RAINS, "font": FONTS, "transition": TRANSITIONS}
