@@ -63,7 +63,7 @@ class TestNamesMatch(unittest.TestCase):
         for url in re.findall(r"url\('([^']+\.(?:ttf|otf))'\)", PAGE):
             self.assertTrue((WP / url).is_file(), url)
         ttfs = list((WP / "fonts").glob("*.ttf"))
-        self.assertEqual(len(ttfs), 14)
+        self.assertEqual(len(ttfs), 15)
         self.assertEqual(len(list((WP / "fonts" / "licenses").glob("OFL-*.txt"))), len(ttfs))
 
     def test_themes_use_only_bundled_fonts(self):

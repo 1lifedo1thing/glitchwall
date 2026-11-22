@@ -225,25 +225,28 @@ A `file://` page sends `Origin: null`, which the feed accepts with the key.
 
 ## Themes 🎨
 
-![sixteen themes](docs/themes.png)
+![nineteen themes](docs/themes.png)
 
 Each theme is a finished bundle: colors, two fonts, a background, a texture and its own way of bringing cards
 in and taking them away. Use one as it is, or swap any single part.
 
 | Theme | Personality | Cards arrive / leave |
 | --- | --- | --- |
-| `phosphor` (default) | lab oscilloscope at night: green phosphor on black glass, amber for anything live, CRT tube | beam opens / collapses to a dot |
-| `drafting` | blueprint: chalk-white linework on cobalt, shapes drafting and dimensioning themselves | ruled in / erased |
-| `newsprint` · `nightprint` | cream newsprint, black ink, hot vermilion; the same at night on charcoal | pressed on / lifted off |
-| `neon` | near-black neon: cyan ink, hot pink, dot-matrix titles, katakana rain | tube flickers on / off |
-| `fieldops` | field-ops poster: khaki stock, hot-orange tactical grid, stencil type | stamped / torn off |
+| `phosphor` (default) | green phosphor terminal at night: green on black glass, amber for anything live, bit-glyph rain, CRT tube | beam opens / collapses to a dot |
+| `drafting` | blueprint: chalk-white linework on cobalt, shapes drafting, dimensioning and hatching themselves, a title block in the corner | ruled in / erased |
+| `newsprint` · `nightprint` | cream newsprint, black ink, hot vermilion, a broadsheet page setting itself line by line under the cards; the same at night on charcoal | pressed on / lifted off |
+| `neon` | near-black neon: cyan ink, hot pink, dot-matrix titles, neon signs buzzing on a wet brick wall in the rain | tube flickers on / off |
+| `fieldops` | field-ops: khaki stock, hot orange, stencil type, a contour map with a route drawing itself from waypoint to objective | stamped / torn off |
 | `duplicator` | risograph: blue and fluorescent-pink inks, halftone, the pink drum a little off true | second ink lands off true |
 | `sleeve` | record sleeve: sepia paper, brown ink, mustard, a record turning in the corner | slides out of the sleeve |
 | `notebook` | ruled paper, red margin, ballpoint handwriting, pencil doodles | written in / crumpled and tossed |
 | `bsod` | the old blue stop screen: white VGA text, grey title chips | drawn line by line / gone |
-| `cyanotype` | a sun print in Prussian blue, paper grain, a mid-century print | ruled in / erased |
+| `cyanotype` | a sun print in Prussian blue: fern and leaf silhouettes developing pale, brushed edges to the coating | fades in / fades out |
 | `oracle` | an all-seeing machine: one great ring of jagged data strokes on black, slowly turning and always redrawing itself, white ink and one signal red | opens like an iris / closes to a point |
-| `matrix` · `amber` · `synthwave` · `msdos` | the original bright-green look, amber mono, a synthwave sunset, blue DOS boxes | glitch · beam · glitch · line by line |
+| `orb` | the same machine seen whole: a ribbed black sphere sunk in the floor of a vast, empty, dark data hall, rows of racks blinking away into the haze behind it, tiny red lights flickering and streaming along its slats, readouts pointing at its parts as they turn into view | a curved shadow sweeps off / over it |
+| `scope` | a lab oscilloscope: a blue-white beam sweeping a graticule, its trace glowing yellow-green and fading slowly, the signal changing every few sweeps, readouts at the corners | swept in by the beam / fades like an afterglow |
+| `chalkboard` | a blackboard smudged with old lessons: equations, plots and little flowcharts written up in chalk, then wiped with the eraser | written in a few letters at a time / smudged and wiped |
+| `matrix` · `amber` · `synthwave` · `msdos` | bright-green katakana falling at three depths, an amber radar sweep, a synthwave sunset, blue DOS boxes on a text-mode desktop | glitch · beam · slides across · docks beside the last one |
 
 **Mix and match.** Five independent choices; `theme` means "whatever the theme uses":
 
@@ -259,9 +262,9 @@ glitchwall demo --open --theme notebook             # try one without touching y
 
 | Choice | Options |
 | --- | --- |
-| **Background** (`--rain`) | `pixel` bit-glyph rain · `code` katakana rain · `stars` · `static` · `snow` · `grid` synthwave sun · `draft` drawing grid · `halftone` two-ink dots · `record` · `jukebox` · `starburst` atomic age · `testcard` · `print` mid-century wallpaper · `stop` stop screen · `notebook` ruled paper · `oracle` ring of data · `none` |
+| **Background** (`--rain`) | `pixel` bit-glyph rain · `code` katakana rain · `stars` · `static` · `snow` · `grid` synthwave sun · `draft` drawing grid · `halftone` two-ink dots · `record` · `jukebox` · `starburst` atomic age · `testcard` · `print` mid-century wallpaper · `stop` stop screen · `notebook` ruled paper · `oracle` ring of data · `orb` the machine in its data hall · `cascade` katakana at three depths · `scope` oscilloscope · `radar` · `textmode` DOS desktop · `broadsheet` newspaper page · `signs` neon in the rain · `topo` field map · `sunprint` ferns and leaves · `chalk` blackboard · `none` |
 | **Font** | `departure` · `plex` · `vt323` · `chakra` · `doto` · `stencil` · `serif` · `courierprime` · `dmmono` · `fira` · `overpass` · `georgia` · `cascadia` · `consolas` · `lucida` · `courier` · `segoe` · `hand` · `mono` |
-| **Transition** | `glitch` · `crt` · `draft` · `press` · `neon` · `stamp` · `riso` · `sleeve` · `dos` · `write` · `iris` |
+| **Transition** | `glitch` · `crt` · `draft` · `press` · `neon` · `stamp` · `riso` · `sleeve` · `dos` · `write` · `iris` · `eclipse` · `trace` · `chalk` · `slide` · `fade` · `dock` beside the last card · `toast` stacked in the corner · `zoom` |
 | **Palette** | any theme name |
 
 Fonts are bundled or already on your system; nothing is downloaded at run time. The sliders are
@@ -308,6 +311,33 @@ Full-size shots (click one to open it). They come from ambient mode, so every se
 </td><td>
 
 [![the oracle, art mode look](docs/shots/art-oracle.jpg)](docs/shots/art-oracle.jpg)<br><sub>oracle, art mode</sub>
+
+</td></tr>
+<tr><td>
+
+[![the orb look](docs/shots/orb.jpg)](docs/shots/orb.jpg)<br><sub>orb</sub>
+
+</td><td>
+
+[![the orb, art mode look](docs/shots/art-orb.jpg)](docs/shots/art-orb.jpg)<br><sub>orb, art mode</sub>
+
+</td></tr>
+<tr><td>
+
+[![the scope look](docs/shots/scope.jpg)](docs/shots/scope.jpg)<br><sub>scope</sub>
+
+</td><td>
+
+[![the scope, art mode look](docs/shots/art-scope.jpg)](docs/shots/art-scope.jpg)<br><sub>scope, art mode</sub>
+
+</td></tr>
+<tr><td>
+
+[![the chalkboard look](docs/shots/chalkboard.jpg)](docs/shots/chalkboard.jpg)<br><sub>chalkboard</sub>
+
+</td><td>
+
+[![the chalkboard, art mode look](docs/shots/art-chalkboard.jpg)](docs/shots/art-chalkboard.jpg)<br><sub>chalkboard, art mode</sub>
 
 </td></tr>
 <tr><td>
@@ -502,7 +532,7 @@ Starring the repo, reporting a bug or showing it to a friend helps just as much.
 **MIT**, see [LICENSE](LICENSE). Free to use, change and share.
 [Departure Mono](https://departuremono.com) is © Helena Zhang, SIL Open Font License 1.1, see [OFL.txt](src/glitchwall/wallpaper/OFL.txt).
 VT323, IBM Plex Mono, Chakra Petch, Doto, Saira Stencil One, Instrument Serif, Courier Prime, DM Mono, Fira Code,
-Overpass Mono, Gelasio, Caveat, Cascadia Mono and Inconsolata are bundled under the SIL Open Font License 1.1 (from [Google Fonts](https://github.com/google/fonts));
+Overpass Mono, Gelasio, Caveat, Cascadia Mono, Inconsolata and DotGothic16 (cut down to the katakana the rains use) are bundled under the SIL Open Font License 1.1 (from [Google Fonts](https://github.com/google/fonts));
 each license is in [fonts/licenses](src/glitchwall/wallpaper/fonts/licenses).
 The first eight themes' palettes, and the grain, scanline and halftone textures, are adapted from the themes of
 [SUB/WAVE](https://github.com/perminder-klair/subwave) by Parminder Klair (MIT). Go check it out, it's a lovely
