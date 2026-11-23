@@ -1,5 +1,5 @@
 //! Backgrounds: each one draws into the full-screen scene bitmap that the cards' glass blurs.
-//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop" and "grid"; every other background falls back to a plain fill until it is.
+//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid" and "record"; every other background falls back to a plain fill until it is.
 use crate::fonts::Fonts;
 use crate::gfx::{Gfx, rect, rgba};
 use crate::looks::{Color, Look};
@@ -24,6 +24,7 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Box<dyn B
         "halftone" => Box::new(Halftone::new(g)?),
         "stop" => Box::new(Stop::new(g, fonts, look)?),
         "grid" => Box::new(Grid { ph: 0.0, still: false }),
+        "record" => Box::new(Record::new(g, fonts, look)?),
         _ => Box::new(Plain),
     })
 }
@@ -633,6 +634,113 @@ impl Background for Grid {
                 let j = j as f32;
                 dc.DrawLine(D2D_POINT_2F { x: cxm + j * sp * 0.08, y: y0 }, D2D_POINT_2F { x: cxm + j * sp * 2.2, y: h }, &line, 1.2, None);
             }
+        }
+        Ok(())
+    }
+}
+
+/// a record turning slowly in the corner of the sleeve; the light on the grooves stays put. The disc (grooves, two
+/// dark bands, two lamp highlights) is drawn once; each frame draws it, then the label turned. 30 fps; still at 0.
+pub struct Record { disc: ID2D1Bitmap1, d: f32, r: f32, a: f32, still: bool, at: (f32, f32),
+                    texts: [(IDWriteTextLayout, f32); 3], lh: f32 }
+
+impl Record {
+    fn new(g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Record> {
+        let (w, h) = (g.w as f32, g.h as f32);
+        let r = w.min(h) * 0.62;
+        let d = (r * 2.0 + 4.0).ceil();
+        let c = r + 2.0;
+        let disc = g.surface(d, d)?;
+        let ctr = D2D_POINT_2F { x: c, y: c };
+        let circle = |rr: f32| D2D1_ELLIPSE { point: ctr, radiusX: rr, radiusY: rr };
+        unsafe {
+            let dc = &g.dc;
+            let old = dc.GetTarget()?;
+            dc.SetTarget(&disc);
+            dc.BeginDraw();
+            dc.Clear(Some(&D2D1_COLOR_F::default()));
+            dc.FillEllipse(&circle(r), &g.brush([0x16 as f32 / 255.0, 0x10 as f32 / 255.0, 0x0b as f32 / 255.0, 1.0])?);
+            let groove = g.brush([1.0, 240.0 / 255.0, 220.0 / 255.0, 1.0])?;
+            let mut rng = Rng(0x5eed_0f_d15c_0001);
+            let mut rr = r * 0.36;
+            while rr < r * 0.985 {
+                groove.SetOpacity(0.025 + rng.f() * 0.03);
+                dc.DrawEllipse(&circle(rr), &groove, 1.0, None);
+                rr += 2.2;
+            }
+            let band = g.brush([0.0, 0.0, 0.0, 0.5])?;
+            for (rr, bw) in [(r * 0.62, 5.0), (r * 0.8, 4.0)] { dc.DrawEllipse(&circle(rr), &band, bw, None); }
+            // two soft highlights, like a lamp across the grooves: the page's conic gradient, as thin ring slices
+            let factory = dc.GetFactory()?;
+            let lamp = g.brush([1.0, 245.0 / 255.0, 230.0 / 255.0, 1.0])?;
+            let (ri, ro, n) = (r * 0.34, r * 0.985, 36);
+            let pt = |rad: f32, ang: f32| D2D_POINT_2F { x: c + rad * ang.cos(), y: c + rad * ang.sin() };
+            for st in [-0.35f32, 2.8] {
+                for k in 0..n {
+                    let (f0, f1) = (k as f32 / n as f32 * 0.09, (k + 1) as f32 / n as f32 * 0.09);
+                    let fm = (f0 + f1) / 2.0;
+                    let alpha = if fm < 0.04 { fm / 0.04 } else { (0.09 - fm) / 0.05 } * 0.13;
+                    let (a0, a1) = (st + f0 * std::f32::consts::TAU, st + f1 * std::f32::consts::TAU);
+                    let path = factory.CreatePathGeometry()?;
+                    let sink = path.Open()?;
+                    sink.BeginFigure(pt(ro, a0), D2D1_FIGURE_BEGIN_FILLED);
+                    sink.AddArc(&D2D1_ARC_SEGMENT { point: pt(ro, a1), size: D2D_SIZE_F { width: ro, height: ro }, rotationAngle: 0.0,
+                                                    sweepDirection: D2D1_SWEEP_DIRECTION_CLOCKWISE, arcSize: D2D1_ARC_SIZE_SMALL });
+                    sink.AddLine(pt(ri, a1));
+                    sink.AddArc(&D2D1_ARC_SEGMENT { point: pt(ri, a0), size: D2D_SIZE_F { width: ri, height: ri }, rotationAngle: 0.0,
+                                                    sweepDirection: D2D1_SWEEP_DIRECTION_COUNTER_CLOCKWISE, arcSize: D2D1_ARC_SIZE_SMALL });
+                    sink.EndFigure(D2D1_FIGURE_END_CLOSED);
+                    sink.Close()?;
+                    lamp.SetOpacity(alpha);
+                    dc.FillGeometry(&path, &lamp, None);
+                }
+            }
+            dc.EndDraw(None, None)?;
+            dc.SetTarget(&old);
+        }
+        // the label's lines, centred in a box as wide as the label
+        let lr = r * 0.32;
+        let lh = lr;
+        let lay = |s: &str, fam: &str, size: f32| -> Result<IDWriteTextLayout> {
+            let f = fonts.format(fam, size.round().max(1.0), 400)?;
+            unsafe {
+                f.SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER)?;
+                f.SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER)?;
+                let t: Vec<u16> = s.encode_utf16().collect();
+                fonts.dw.CreateTextLayout(&t, &f, lr * 2.0, lh)
+            }
+        };
+        let texts = [(lay("glitchwall", "Instrument Serif", lr * 0.2)?, -lr * 0.45),
+                     (lay("SIDE A  ·  33⅓ RPM", &look.mono.family, lr * 0.085)?, lr * 0.42),
+                     (lay("LIVE TOOL FEED", &look.mono.family, lr * 0.085)?, lr * 0.58)];
+        Ok(Record { disc, d, r, a: 0.0, still: false, at: (w * 0.12, h * 0.84), texts, lh })
+    }
+}
+
+impl Background for Record {
+    fn fps(&self) -> f32 { if self.still { 0.0 } else { 30.0 } }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        self.a += dt * level * 0.9;
+        self.still = level <= 0.0;   // a still record: drawn once where it stopped
+        let (cx, cy) = self.at;
+        let lr = self.r * 0.32;
+        unsafe {
+            let dc = &g.dc;
+            dc.Clear(Some(&rgba(look.bg)));
+            dc.DrawBitmap(&self.disc, Some(&rect(cx - self.d / 2.0, cy - self.d / 2.0, self.d, self.d)), 0.92,
+                          D2D1_INTERPOLATION_MODE_LINEAR, None, None);
+            let (s, c) = self.a.sin_cos();
+            dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2 { M11: c, M12: s, M21: -s, M22: c, M31: cx, M32: cy });
+            let at0 = D2D_POINT_2F::default();
+            let e = |rr: f32| D2D1_ELLIPSE { point: at0, radiusX: rr, radiusY: rr };
+            dc.FillEllipse(&e(lr), &g.brush(look.acc)?);
+            dc.DrawEllipse(&e(lr * 0.82), &g.brush([look.ink[0], look.ink[1], look.ink[2], 0.35])?, 1.0, None);
+            let ink = g.brush(look.ink)?;
+            for (t, y) in &self.texts {
+                dc.DrawTextLayout(D2D_POINT_2F { x: -lr, y: y - self.lh / 2.0 }, t, &ink, D2D1_DRAW_TEXT_OPTIONS_NONE);
+            }
+            dc.FillEllipse(&e(lr * 0.07), &g.brush(look.bg)?);
+            dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2::identity());
         }
         Ok(())
     }
