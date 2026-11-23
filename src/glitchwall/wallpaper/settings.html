@@ -17,7 +17,7 @@
   body { display:grid; grid-template-rows:auto minmax(0,1fr) auto; height:calc(100vh / var(--z, 1)); overflow:hidden;
          background:radial-gradient(120% 100% at 50% 35%, var(--glass), var(--bg) 75%); }
   body::after { content:''; position:fixed; inset:0; pointer-events:none; z-index:50;   /* scanlines over the whole tube */
-                background:repeating-linear-gradient(transparent 0 2px, rgba(0,0,0,.18) 2px 3px); }
+                background:repeating-linear-gradient(transparent 0 2px, var(--scan, rgba(0,0,0,.18)) 2px 3px); }
   button { font:inherit; color:inherit; }
   .tag { font-size:10px; letter-spacing:.22em; color:var(--ph); text-shadow:var(--glow); }
   .tag::before { content:'> '; color:var(--ph-dim); text-shadow:none; }
@@ -58,7 +58,7 @@
   .drum.still .item { transition:none; }   /* the first placement: straight into position, no pile-up */
   footer { gap:4px 14px !important; padding:6px 14px !important; }
   main > *, .side > * { flex-shrink:0; }   /* never squash a module: scroll instead */
-  .mod { position:relative; min-width:0; border:1px solid var(--ph-line); border-radius:4px; padding:24px 12px 12px; background:rgba(3,16,8,.55); }
+  .mod { position:relative; min-width:0; border:1px solid var(--ph-line); border-radius:4px; padding:24px 12px 12px; background:var(--mod, rgba(3,16,8,.55)); }
   .mod > h2 { position:absolute; top:7px; left:11px; margin:0; font-weight:400; }
   /* a module's DEFAULT key, top right; lit only when something in it differs from the default */
   .reset { position:absolute; top:4px; right:8px; padding:1px 7px; font-size:9px; letter-spacing:.14em; cursor:pointer;
@@ -497,16 +497,19 @@ function renderOpts() {
   $('opts-t').textContent = `${(bg || '').toUpperCase()} OPTIONS`;
   GROUP_HELP.options = [names.join(' · '), 'back to how the background comes.'];
 }
-// the window wears the chosen dark colors: the theme's own, or the palette picked for it (phosphor is the window's own look)
+// the window wears the chosen colors: the theme's own, or the palette picked for it (phosphor is the window's own look)
 function wear() {
   const L = window.LOOKS && window.LOOKS.themes, name = S.palette && S.palette !== 'theme' ? S.palette : S.theme;
   const t = L && L[name], st = document.documentElement.style;
-  // light themes keep the terminal look: its panels are dark glass
-  if (!t || name === 'phosphor' || t.mode === 'light') { ['--bg', '--glass', '--ph', '--ph-hi', '--ph-dim', '--ph-rgb', '--amber'].forEach(k => st.removeProperty(k)); return; }
+  const keys = ['--bg', '--glass', '--ph', '--ph-hi', '--ph-dim', '--ph-rgb', '--amber', '--mod', '--glow', '--scan'];
+  if (!t || name === 'phosphor') { keys.forEach(k => st.removeProperty(k)); return; }
   const hex = c => { const m = /^#?([0-9a-f]{6})/i.exec(c || ''); return m ? [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16)).join(',') : null; };
   st.setProperty('--bg', t.bg); st.setProperty('--glass', t.surface || t.bg);
   st.setProperty('--ph', t.ink); st.setProperty('--ph-hi', t.hi || t.ink); st.setProperty('--ph-dim', t.muted || t.ink);
   st.setProperty('--ph-rgb', hex(t.ink) || '93,255,122'); st.setProperty('--amber', t.acc || '#ffb000');
+  // on paper: solid paper panels, no glow, barely-there scan lines
+  if (t.mode === 'light') { st.setProperty('--mod', t.surface || t.bg); st.setProperty('--glow', 'none'); st.setProperty('--scan', 'rgba(0,0,0,.04)'); }
+  else ['--mod', '--glow', '--scan'].forEach(k => st.removeProperty(k));
 }
 // never a scroll bar: when the window is too short for everything, shrink the whole page until it fits
 function fit() {
