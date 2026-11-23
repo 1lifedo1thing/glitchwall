@@ -1,6 +1,6 @@
 //! One screen's wallpaper: background, cards, overlay and status label, following the page's rules
 //! (wallpaper/index.html: newCard, place, kill, typeInto, next). Draws only when something changed.
-use crate::anim::{self, Anim, Pose};
+use crate::anim::{self, Anim, Ctx, Ease, Pose};
 use crate::bg::{self, Background, Rng};
 use crate::fonts::Fonts;
 use crate::gfx::{self, Gfx, rect, rgba};
@@ -15,7 +15,15 @@ use windows::Win32::System::SystemInformation::GetLocalTime;
 use windows::core::*;
 
 const FPS: f64 = 30.0;
-const ANIM_FPS: f64 = 60.0;   // only while a card arrives or leaves
+const ANIM_FPS: f64 = 60.0;   // only while a card arrives, leaves or glides in the stack
+const STACK_GLIDE: f64 = 0.45;   // the page's "transition: bottom .45s cubic-bezier(.2,.8,.2,1)"
+
+/// where a stacked card is now, gliding from its old place to its new one
+fn stack_bottom(b: Option<(f32, f32, f64)>, now: f64) -> f32 {
+    let Some((from, to, t0)) = b else { return 0.0 };
+    let u = ((now - t0) / STACK_GLIDE).clamp(0.0, 1.0) as f32;
+    from + (to - from) * Ease::Bezier(0.2, 0.8, 0.2, 1.0).at(u)
+}
 
 #[derive(Clone, Copy, PartialEq)]
 enum Kind { Cmd, Out, Err }
@@ -27,6 +35,8 @@ struct Card {
     proj: String, time: String,
     parts: Vec<Part>,
     born: f64, dying: Option<f64>, kill_at: f64,
+    vars: Ctx,                          // its CSS variables: where dock and slide bring it in from
+    bottom: Option<(f32, f32, f64)>,    // in the stack: distance from the screen's bottom (from, to, since when)
     dirty: bool, cursor: Option<usize>,   // the part being typed into
     content: Option<ID2D1Bitmap1>, comp: Option<ID2D1Bitmap1>, size: (u32, u32),
 }
@@ -40,7 +50,7 @@ pub struct Scene {
     g: Gfx, fonts: std::rc::Rc<Fonts>, css: std::rc::Rc<String>,
     look: Look, look_key: String, bg: Box<dyn Background>,
     scene: ID2D1Bitmap1, overlay: Option<ID2D1Bitmap1>,
-    anim_in: Option<Anim>, anim_out: Option<Anim>,
+    anim_in: Option<Anim>, anim_out: Option<Anim>, place_mode: String,
     mono: IDWriteTextFormat, bar: IDWriteTextFormat, status_fmt: IDWriteTextFormat, line_h: f32, bar_h: f32,
     fx: Effects,
     cards: Vec<Card>, queue: VecDeque<Json>, typing: Option<Typing>, wait_until: Option<f64>, busy_queue: bool,
@@ -93,7 +103,7 @@ impl Scene {
         gfx::set_bool(&fx.pmatrix, 2, true)?;
         let mono = fonts.format("Consolas", 16.0, 400)?;
         let mut s = Scene {
-            bg: bg::make(&look.rain, &g, &fonts, &look)?, scene, overlay: None, anim_in: None, anim_out: None,
+            bg: bg::make(&look.rain, &g, &fonts, &look)?, scene, overlay: None, anim_in: None, anim_out: None, place_mode: "any".into(),
             bar: mono.clone(), status_fmt: mono.clone(), mono, line_h: 18.4, bar_h: 24.0,
             g, fonts, css, look, look_key: String::new(), fx,
             cards: Vec::new(), queue: VecDeque::new(), typing: None, wait_until: None, busy_queue: false,
@@ -133,6 +143,7 @@ impl Scene {
         let t = looks.all.get("transitions").get(&l.transition);
         self.anim_in = t.get("in").str().and_then(|s| anim::parse(&self.css, s));
         self.anim_out = t.get("out").str().and_then(|s| anim::parse(&self.css, s));
+        self.place_mode = t.get("place").str().unwrap_or("any").to_string();   // dock | stack | any, as the page's PLACE
         if l.rain != old_rain || l.mono.family != old_mono || !self.bg_drawn { self.bg = bg::make(&l.rain, &self.g, &self.fonts, &l)?; }
         self.overlay = Some(self.make_overlay()?);
         self.bg_drawn = false;
@@ -225,23 +236,84 @@ impl Scene {
         if let Some(c) = self.cards.iter_mut().find(|c| c.id == id && c.dying.is_none()) { c.dying = Some(now); self.changed = true; }
     }
 
-    /// pop-up-ad placement: random size, best of 80 random tries so a new card covers the live ones least
-    fn place(&mut self) -> (f32, f32, f32, f32) {
+    /// where a new card goes, as the page's place(): x, y, width, max height, its variables, its stack position.
+    /// stack: a pile in the bottom-right corner, held by its bottom edge. dock: beside the newest card there is room
+    /// next to (below, right, above, left), coming out from under it. Otherwise pop-up-ad placement: random size,
+    /// best of 80 random tries so the new card covers the live ones least.
+    fn place(&mut self) -> (f32, f32, f32, f32, Ctx, Option<(f32, f32, f64)>) {
         let (sw, sh) = (self.g.w as f32, self.g.h as f32);
+        if self.place_mode == "stack" {
+            let w = (sw * 0.34).min(600.0).round();
+            return (sw - w - 24.0, sh - 52.0 - 160.0, w, (sh * 0.42).min(260.0), Ctx::default(), Some((52.0, 52.0, 0.0)));
+        }
         let w = (sw * (0.24 + self.rng.f() * 0.14)).round();
         let h = (sh * 0.42).min(220.0);
-        let rects: Vec<(f32, f32, f32, f32)> = self.cards.iter().filter(|c| c.dying.is_none())
-            .map(|c| (c.x - 14.0, c.y - 14.0, c.w + 28.0, c.h.max(160.0) + 28.0)).collect();
-        let (mut best, mut best_hit) = ((16.0, 64.0), f32::INFINITY);
-        for _ in 0..80 {
-            let x = 16.0 + self.rng.f() * (sw - w - 32.0).max(0.0);
-            let y = 64.0 + self.rng.f() * (sh - h - 120.0).max(0.0);
-            let hit: f32 = rects.iter().map(|r| ((x + w).min(r.0 + r.2) - x.max(r.0)).max(0.0) * ((y + h).min(r.1 + r.3) - y.max(r.1)).max(0.0)).sum();
-            if hit < best_hit { best_hit = hit; best = (x, y); }
-            if hit == 0.0 { break; }
+        let live: Vec<(f32, f32, f32, f32)> = self.cards.iter().filter(|c| c.dying.is_none()).map(|c| (c.x, c.y, c.w, c.h.max(160.0))).collect();
+        let hits = |x: f32, y: f32| -> f32 {
+            live.iter().map(|&(rx, ry, rw, rh)| {
+                let (rx, ry, rw, rh) = (rx - 14.0, ry - 14.0, rw + 28.0, rh + 28.0);   // with a gap around each
+                ((x + w).min(rx + rw) - x.max(rx)).max(0.0) * ((y + h).min(ry + rh) - y.max(ry)).max(0.0)
+            }).sum()
+        };
+        let mut vars = Ctx::default();
+        let mut best: Option<(f32, f32)> = None;
+        if self.place_mode == "dock" {
+            'cards: for &(lx, ly, lw, lh) in live.iter().rev() {
+                let g = 14.0;
+                for (x, y, dx, dy) in [(lx, ly + lh + g, 0.0, -40.0), (lx + lw + g, ly, -40.0, 0.0), (lx, ly - h - g, 0.0, 40.0), (lx - w - g, ly, 40.0, 0.0)] {
+                    if x < 16.0 || y < 64.0 || x + w > sw - 16.0 || y + h > sh - 56.0 || hits(x, y) > 0.0 { continue; }
+                    best = Some((x, y)); vars.dx = Some(dx); vars.dy = Some(dy);
+                    break 'cards;
+                }
+            }
         }
+        let best = best.unwrap_or_else(|| {
+            let (mut pick, mut best_hit) = ((16.0, 64.0), f32::INFINITY);
+            for _ in 0..80 {
+                let x = 16.0 + self.rng.f() * (sw - w - 32.0).max(0.0);
+                let y = 64.0 + self.rng.f() * (sh - h - 120.0).max(0.0);
+                let hit = hits(x, y);
+                if hit < best_hit { best_hit = hit; pick = (x, y); }
+                if hit == 0.0 { break; }
+            }
+            pick
+        });
+        // slide: in from the nearer side edge, out across the screen to the other one
+        let (off_l, off_r) = (-(best.0 + w + 40.0), sw - best.0 + 40.0);
+        let left = best.0 + w / 2.0 < sw / 2.0;
+        vars.sx = Some(if left { off_l } else { off_r });
+        vars.ox = Some(if left { off_r } else { off_l });
         let maxh = (sh * 0.42).min(sh - best.1 - 52.0);   // never grows over the corner label
-        (best.0, best.1, w, maxh)
+        (best.0, best.1, w, maxh, vars, None)
+    }
+
+    /// the toast pile (stack): newest at the bottom, the rest above it, gliding into place; the oldest goes once
+    /// there is no room. As the page's restack(). True if a card moved.
+    fn restack(&mut self, now: f64) -> bool {
+        let sh = self.g.h as f32;
+        let mut b = 52.0;
+        let mut drop = Vec::new();
+        for c in &mut self.cards {   // cards placed before the look switched to the stack join it from where they are
+            if c.dying.is_none() && c.bottom.is_none() { let b0 = sh - c.y - c.h; c.bottom = Some((b0, b0, now)); }
+        }
+        let live: Vec<usize> = (0..self.cards.len()).filter(|&i| self.cards[i].dying.is_none() && self.cards[i].bottom.is_some()).collect();
+        for (k, &i) in live.iter().enumerate().rev() {
+            let h = self.cards[i].h.max(48.0);
+            if b + h > sh - 64.0 && k < live.len() - 1 { drop.push(self.cards[i].id); continue; }
+            let c = &mut self.cards[i];
+            if let Some((_, to, _)) = c.bottom {
+                if (to - b).abs() > 0.5 { c.bottom = Some((stack_bottom(c.bottom, now), b, now)); }
+            }
+            b += h + 14.0;
+        }
+        for id in drop { self.kill(id, now); }
+        let mut moved = false;
+        for c in &mut self.cards {
+            if c.bottom.is_none() { continue; }
+            let y = sh - stack_bottom(c.bottom, now) - c.h;
+            if (y - c.y).abs() > 0.01 { c.y = y; moved = true; }
+        }
+        moved
     }
 
     fn new_card(&mut self, ev: &Json, now: f64) -> u64 {
@@ -249,13 +321,13 @@ impl Scene {
             let oldest = self.cards.iter().find(|c| c.dying.is_none()).map(|c| c.id).unwrap();
             self.kill(oldest, now);
         }
-        let (x, y, w, maxh) = self.place();
+        let (x, y, w, maxh, vars, bottom) = self.place();
         let id = self.next_id;
         self.next_id += 1;
         let session = ev.get("session").str().unwrap_or("").to_string();
         let proj = format!("{}{} #{}", ev.get("proj").str().unwrap_or(""), if ev.get("side").truthy() { " / agent" } else { "" }, session);
         self.cards.push(Card { id, x, y, w, maxh, h: 60.0, proj, time: now_hms(), parts: Vec::new(), born: now, dying: None,
-                               kill_at: now + 30.0, dirty: true, cursor: None, content: None, comp: None, size: (0, 0) });
+                               vars, bottom: bottom.map(|(a, b, _)| (a, b, now)), kill_at: now + 30.0, dirty: true, cursor: None, content: None, comp: None, size: (0, 0) });
         id
     }
 
@@ -320,6 +392,7 @@ impl Scene {
         if let Some(w) = self.wait_until { if now >= w { self.wait_until = None; self.next(now)?; } }
         let expired: Vec<u64> = self.cards.iter().filter(|c| c.dying.is_none() && now >= c.kill_at).map(|c| c.id).collect();
         for id in expired { self.kill(id, now); changed = true; }
+        if self.place_mode == "stack" { changed |= self.restack(now); }
         let before = self.cards.len();
         self.cards.retain(|c| c.dying.map(|d| now - d < 0.65).unwrap_or(true));
         changed |= self.cards.len() != before;
@@ -331,7 +404,7 @@ impl Scene {
 
     fn animating(&self, now: f64) -> bool {
         let din = self.anim_in.as_ref().map(|a| a.dur as f64).unwrap_or(0.0);
-        self.cards.iter().any(|c| now - c.born < din || c.dying.is_some())
+        self.cards.iter().any(|c| now - c.born < din || c.dying.is_some() || c.bottom.is_some_and(|(_, _, t0)| now - t0 < STACK_GLIDE))
     }
 
     /// when this screen next wants a frame
@@ -539,9 +612,10 @@ impl Scene {
     fn draw_card(&self, i: usize, now: f64) -> Result<()> {
         let c = &self.cards[i];
         let Some(comp) = &c.comp else { return Ok(()) };
+        let ctx = Ctx { w: c.size.0 as f32, h: c.size.1 as f32, vw: self.g.w as f32, ..c.vars };
         let pose: Pose = match c.dying {
-            Some(d) => self.anim_out.as_ref().map(|a| a.pose((now - d) as f32)).unwrap_or(anim::REST),
-            None => self.anim_in.as_ref().map(|a| a.pose((now - c.born) as f32)).unwrap_or(anim::REST),
+            Some(d) => self.anim_out.as_ref().map(|a| a.pose((now - d) as f32, &ctx)).unwrap_or(anim::REST),
+            None => self.anim_in.as_ref().map(|a| a.pose((now - c.born) as f32, &ctx)).unwrap_or(anim::REST),
         };
         if pose.opacity <= 0.001 || pose.sx.abs() < 1e-4 || pose.sy.abs() < 1e-4 { return Ok(()); }
         let (w, h) = (c.size.0 as f32, c.size.1 as f32);
