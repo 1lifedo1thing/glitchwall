@@ -41,6 +41,10 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result
         "oracle" => Box::new(Oracle::new(g, fonts, look, o)?),
         "signs" => Box::new(Signs::new(g, fonts, look, o)?),
         "chalk" => Box::new(Chalk::new(g, fonts, look, o)?),
+        "stars" => Box::new(Stars::new()),
+        "snow" => Box::new(Snow::new(g)),
+        "static" => Box::new(Static::new(g)?),
+        "code" => Box::new(Code(Cascade::new(g, fonts, &look.mono.family, &Json::parse(r#"{"layers":"one"}"#).unwrap_or(Json::Null))?)),   // the page's katakana rain: cascade, one depth
         _ => Box::new(Plain),
     })
 }
@@ -3672,3 +3676,128 @@ impl Background for Chalk {
 const CHALK_LINES: [&str; 58] = ["f(x) = x² - 3x + 2", "a² + b² = c²", "O(n log n)", "lim sin(x)/x = 1", "P(A|B) = P(B|A) P(A) / P(B)", "if (tests pass) ship()", "TODO: write the tests!", "y = mx + b", "E = mc²", "2 + 2 = 4", "n! = n (n-1)!", "x = (-b ± √(b² - 4ac)) / 2a", "cache hit / (hit + miss)", "merge, then rebase?", "p(fail) < 0.01", "O(1) amortized", "T(n) = 2T(n/2) + n", "Σ i = n(n+1)/2", "e^(iπ) + 1 = 0", "d/dx sin x = cos x", "∫ x dx = x²/2 + C", "log₂ 1024 = 10", "2¹⁰ = 1024", "0.1 + 0.2 ≠ 0.3", "NaN ≠ NaN", "retry with backoff: 1, 2, 4, 8 s", "latency p99 < 200 ms", "rows / page = 50", "ttl = 3600", "off by one?", "it works on my machine", "never trust user input", "measure, then optimize", "git bisect: good ... bad", "DRY, but not too dry", "a → b → c ⇒ a → c", "¬(A ∧ B) = ¬A ∨ ¬B", "binary search: lo, mid, hi", "hash(k) mod m", "load factor < 0.75", "BFS: queue / DFS: stack", "read the error message", "1 KB = 1024 B", "UTC, always", "v2.3.1 → v2.4.0", "exit code 0 = ok", "200 OK  ·  404 not found", "idempotent: f(f(x)) = f(x)", "n² vs n log n", "cos² + sin² = 1", "mean = Σx / n", "σ² = E[(x - μ)²]", "commit early, commit often", "null check first", "race condition? add a lock", "deadlock: A waits B, B waits A", "tabs or spaces?", "p ⇒ q, ¬q ∴ ¬p"];
 const CHALK_GHOSTS: [&str; 12] = ["x + y = ", "∴", "Q.E.D.", "f′(x)", "lim →", "≈ 3.14159", "Δt", "(a + b)²", "λx. x", "mod 7", "k = 1 .. n", "∂/∂x"];
 const CHALK_FLOWS: [[&str; 3]; 8] = [["plan", "code", "test"], ["read", "edit", "ship"], ["fetch", "parse", "store"], ["build", "lint", "deploy"], ["request", "cache", "db"], ["input", "validate", "save"], ["red", "green", "refactor"], ["clone", "branch", "merge"]];
+
+/// flying through a starfield: 700 stars coming at you; the last frames fade under a translucent fill, so each
+/// star leaves a short streak. 30 fps; still at 0.
+pub struct Stars { s: Vec<(f32, f32, f32)>, rng: Rng, fresh: bool, still: bool }
+
+impl Stars {
+    fn new() -> Stars {
+        let mut rng = Rng(0x51a7_f1e1_d000_0001);
+        let s = (0..700).map(|_| { let z = rng.range(0.05, 1.0); (rng.range(-1.0, 1.0), rng.range(-1.0, 1.0), z) }).collect();
+        Stars { s, rng, fresh: true, still: false }
+    }
+}
+
+impl Background for Stars {
+    fn fps(&self) -> f32 { if self.still { 0.0 } else { 30.0 } }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        self.still = level <= 0.0;
+        let (w, h) = (g.w as f32, g.h as f32);
+        let bg = g.brush(look.bg)?;
+        unsafe {
+            if self.fresh || self.still { g.dc.Clear(Some(&rgba(look.bg))); self.fresh = false; }
+            else { bg.SetOpacity(0.45); g.dc.FillRectangle(&rect(0.0, 0.0, w, h), &bg); }
+        }
+        if self.still { self.fresh = true; return Ok(()); }
+        let (hi, dim) = (g.brush(look.hi)?, g.brush(look.dim)?);
+        let n = (self.s.len() as f32 * level).round() as usize;
+        let f = w.max(h) / 2.0;
+        for i in 0..n {
+            let (px, py, mut z) = self.s[i];
+            z -= dt * (0.06 + level * 0.14);
+            let x = w / 2.0 + px / z * f * 0.5;
+            let y = h / 2.0 + py / z * f * 0.5;
+            if z <= 0.02 || x < 0.0 || x > w || y < 0.0 || y > h {
+                self.s[i] = (self.rng.range(-1.0, 1.0), self.rng.range(-1.0, 1.0), 1.0);
+                continue;
+            }
+            self.s[i].2 = z;
+            let sz = (1.0 - z) * 2.6 + 0.4;
+            unsafe { g.dc.FillRectangle(&rect(x, y, sz, sz), if z < 0.3 { &hi } else { &dim }); }
+        }
+        Ok(())
+    }
+}
+
+/// drifting snow: 500 flakes falling at their own pace, swaying a little; the big ones bright. 30 fps; still at 0.
+pub struct Snow { f: Vec<(f32, f32, f32, f32, f32)>, rng: Rng, t: f32, still: bool, h: f32 }
+
+impl Snow {
+    fn new(g: &Gfx) -> Snow {
+        let mut sn = Snow { f: Vec::new(), rng: Rng(0x5a0f_1a4e_0bad_cafe), t: 0.0, still: false, h: g.h as f32 };
+        for _ in 0..500 { let y = sn.rng.range(0.0, sn.h); let fl = sn.flake(g.w as f32, y); sn.f.push(fl); }
+        sn
+    }
+    /// x, y, size, fall speed, sway phase
+    fn flake(&mut self, w: f32, y: f32) -> (f32, f32, f32, f32, f32) {
+        let r = self.rng.range(1.0, 3.4);
+        (self.rng.range(0.0, w), y, r, 12.0 + r * 14.0, self.rng.range(0.0, 7.0))
+    }
+}
+
+impl Background for Snow {
+    fn fps(&self) -> f32 { if self.still { 0.0 } else { 30.0 } }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        self.still = level <= 0.0;
+        self.t += dt;
+        unsafe { g.dc.Clear(Some(&rgba(look.bg))); }
+        if self.still { return Ok(()); }
+        let (w, h) = (g.w as f32, g.h as f32);
+        let (hi, dim) = (g.brush(look.hi)?, g.brush(look.dim)?);
+        let n = (self.f.len() as f32 * level).round() as usize;
+        for i in 0..n {
+            let (mut x, mut y, r, v, ph) = self.f[i];
+            y += v * dt;
+            x += (self.t * 0.7 + ph).sin() * 12.0 * dt;
+            self.f[i] = if y > h + 4.0 { self.flake(w, -4.0) } else { (x, y, r, v, ph) };
+            unsafe { g.dc.FillRectangle(&rect(x, y, r, r), if r > 2.6 { &hi } else { &dim }); }
+        }
+        Ok(())
+    }
+}
+
+/// dead-channel noise at a quarter of the resolution, upscaled with hard edges, with a brighter band rolling slowly
+/// down. Drawn into memory and handed to the GPU. 15 fps; still at 0.
+pub struct Static { lw: usize, lh: usize, buf: Vec<u32>, small: ID2D1Bitmap1, rng: Rng, band: f32, still: bool }
+
+impl Static {
+    fn new(g: &Gfx) -> Result<Static> {
+        let (lw, lh) = ((g.w as usize).div_ceil(4), (g.h as usize).div_ceil(4));
+        Ok(Static { lw, lh, buf: vec![0xff00_0000; lw * lh], small: g.bitmap(lw as u32, lh as u32, None, false)?,
+                    rng: Rng(0x0d15_ea5e_57a7_1c00), band: 0.0, still: false })
+    }
+}
+
+impl Background for Static {
+    fn fps(&self) -> f32 { if self.still { 0.0 } else { 15.0 } }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        self.still = level <= 0.0;
+        if self.still { unsafe { g.dc.Clear(Some(&rgba(look.bg))); } return Ok(()); }
+        self.band = (self.band + dt * self.lh as f32 * 0.12) % (self.lh as f32 + 40.0);
+        let (b, d) = (px(look.bg), px(look.dim));
+        let ch = |c: u32, s: u32| ((c >> s) & 255) as f32;
+        let p = 0.02 + level * 0.16;
+        for y in 0..self.lh {
+            let boost = if (y as f32 - self.band).abs() < 14.0 { 1.8 } else { 1.0 };
+            for x in 0..self.lw {
+                let m = if self.rng.f() < p * boost { (self.rng.f() * boost).min(1.0) } else { 0.0 };
+                let mix = |s: u32| (ch(b, s) + (ch(d, s) - ch(b, s)) * m) as u32;
+                self.buf[y * self.lw + x] = 0xff00_0000 | mix(16) << 16 | mix(8) << 8 | mix(0);
+            }
+        }
+        unsafe {
+            self.small.CopyFromMemory(None, self.buf.as_ptr() as *const _, (self.lw * 4) as u32)?;
+            g.dc.DrawBitmap(&self.small, Some(&rect(0.0, 0.0, (self.lw * 4) as f32, (self.lh * 4) as f32)), 1.0,
+                            D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, None, None);
+        }
+        Ok(())
+    }
+}
+
+/// the page's "code" rain: cascade kept to one depth, whatever options the settings send
+pub struct Code(Cascade);
+impl Background for Code {
+    fn fps(&self) -> f32 { self.0.fps() }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> { self.0.draw(g, look, level, dt) }
+}
