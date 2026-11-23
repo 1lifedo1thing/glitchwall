@@ -4,10 +4,12 @@
 # folder glitchwall reads as its argument. As a command starts (PS0) it notes the command; when it is done (the
 # prompt) it notes whether it worked. Both go to <that folder>/wsl-<process id>.jsonl on this machine only, where
 # glitchwall's feed picks them up, masks secrets and personal details (the same redaction as Claude's calls) and shows
-# them. Nothing is sent anywhere. What a command prints is not read yet.
+# them. Nothing is sent anywhere. What a command printed is read by glitchwall itself, off the window's screen
+# (wslscreen.py), using the prompt line this sends to know where the output ends.
 # Commands bash leaves out of its history (a leading space with HISTCONTROL=ignorespace, a repeat with ignoredups)
 # are left out here too.
 [[ $- == *i* && -n $1 && -z $__gw_dir ]] || return 0
+(( EUID != 0 )) || return 0   # never in a root shell: what is typed there stays out of it
 __gw_dir=$1
 __gw_file="$__gw_dir/wsl-$$.jsonl"
 mkdir -p "$__gw_dir" 2>/dev/null || return 0

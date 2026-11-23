@@ -6,6 +6,9 @@
 # them up, masks secrets and personal details (the same redaction as Claude's calls) and shows them. Nothing is
 # sent anywhere. Each file is cut back when it grows past 256 KB, and glitchwall clears out files a day old.
 if ($Host.Name -ne 'ConsoleHost' -or -not (Get-Module PSReadLine)) { return }
+# never in a window running as administrator: what is typed there stays out of it
+if (([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+        [Security.Principal.WindowsBuiltInRole]::Administrator)) { return }
 
 $global:__gw = @{
     Dir  = Join-Path $HOME '.glitchwall\shell'

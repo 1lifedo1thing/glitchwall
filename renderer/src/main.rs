@@ -41,6 +41,7 @@ fn main() {
 
 fn run() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
+    if args.get(1).map(String::as_str) == Some("wslscreen") { shell::wslscreen_main(); return Ok(()); }   // the feed's helper
     if args.get(1).map(String::as_str) == Some("feed") {
         return server::run(&args).map_err(|e| Error::new(HRESULT(-1), e.as_str()));
     }

@@ -515,8 +515,8 @@ your account directly.
 **Before it shows.** The feed reads these files only in `live` mode, only while the `terminal` setting is on
 (the tray's *Show* menu, or the settings window), and never while paused. Every line goes through the same
 [redaction](#redaction) as your agent's calls before it is kept or shown, so tokens, keys, passwords, your user name
-and email addresses are masked. Commands typed into a terminal running as administrator are recorded too, like any
-other window's.
+and email addresses are masked. Nothing is recorded in a PowerShell window running as administrator, or in a root shell in WSL: the hooks
+switch themselves off there.
 
 **Keeping one command out.** In WSL, start it with a space: the hook never writes it down. Pausing glitchwall
 (`glitchwall pause`, or the tray menu) keeps everything off the wallpaper, but the hooks still write to their local
