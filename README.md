@@ -463,8 +463,8 @@ different things.
 
 | | What it draws | CPU | Memory | Open source | Where the number comes from |
 |---|---|---|---|---|---|
-| **glitchwall** (default, WebView2) | animated web page | 34% of one core (2.2% of a 16-core CPU) | 699 MB | yes | our test, below |
-| **glitchwall** (native, opt-in) | Direct2D, no browser | 5% of one core (0.3%) | 171 MB | yes | our test, below |
+| **glitchwall** (Windows default: native) | Direct2D, no browser | 6.5% of one core (0.4% of a 16-core CPU) | 153 MB | yes | our test, below |
+| **glitchwall** (web page in WebView2) | animated web page | 34% of one core (2.2%) | 699 MB | yes | our test, below |
 | [Lively Wallpaper](https://github.com/rocksdanister/lively) | simple web wallpaper (rain) | under 0.3% of the whole CPU | about 245 MB | yes | [one reviewer](https://www.windowscentral.com/software-apps/i-finally-tried-lively-wallpaper-to-animate-my-desktop-its-a-dream-for-customization) |
 | Lively Wallpaper | a YouTube page as wallpaper | about 4.5% of the whole CPU | about 800 MB | yes | same reviewer |
 | Wallpaper Engine | 60 fps video, hardware decoding | 1-2% of the whole CPU, ~40% GPU | not given | no | [forum post](https://steamcommunity.com/app/431960/discussions/2/1696045708644625403) |
@@ -472,23 +472,23 @@ different things.
 | [Hidamari](https://github.com/jeffshee/hidamari) (Linux) | video, Intel integrated GPU | about 1% CPU, 4% GPU | not given | yes | [article author](https://ubuntuhandbook.org/index.php/2024/10/video-animated-wallpaper-ubuntu/) |
 | macOS aerial wallpapers | built-in video | 20-100% CPU when it misbehaves | up to GBs | no | [bug reports](https://discussions.apple.com/thread/255180158) |
 
-Our test: a 16-core Windows 11 desktop, matrix theme, ambient mode, every glitchwall process counted, all
-screens awake, 30 seconds (2026-11-22). Matrix is one of the busier themes; an earlier test of the default phosphor
-theme, measured a little differently, came out at about half as much.
+Our test: a 16-core Windows 11 desktop, matrix theme, ambient mode, every glitchwall process counted (the
+feed and the renderer), the desktop showing, 30 seconds. Native: three runs of 6.2-6.7% (2026-11-23); the
+default phosphor theme came out the same, and orb, the busiest background, at 10.3% of one core and 172 MB.
+The web page figure is from 2026-11-22.
 
-**Why the default is heavier than a video wallpaper.** A video wallpaper hands its work to the graphics
+**What the native renderer does.** On Windows, glitchwall draws every background with Direct2D straight from
+a small Rust program, with no browser in between: about a fifth of the CPU and a fifth of the memory of the
+web page. If the renderer is missing, it falls back to the page (`glitchwall config --renderer web` picks the
+page on purpose). On macOS, Linux, OBS and Wallpaper Engine, the web page is the way to run glitchwall.
+
+**Why the web page is heavier than a video wallpaper.** A video wallpaper hands its work to the graphics
 card's video decoder, so the CPU barely notices. glitchwall draws every frame live (falling glyphs, cards,
-text) in WebView2, which is a full copy of the Edge browser: a browser process, a GPU process and a
-renderer for each page. That's where most of the memory goes. Lively's web wallpapers use the same engine and
-land in the same range of memory. In return, glitchwall caps frame rates per background (10-30 fps, 60 only
+text), and the page does it in WebView2, a full copy of the Edge browser: a browser process, a GPU process
+and a renderer for each page. That's where most of its memory goes; Lively's web wallpapers use the same
+engine and land in the same range. Either way, glitchwall caps frame rates per background (10-30 fps, 60 only
 while a card slides in), and sleeps entirely while a screen is covered, fullscreen or locked, like Lively and
 Wallpaper Engine do.
-
-**What the native renderer changes.** It draws the same backgrounds with Direct2D straight from a small Rust
-program, with no browser in between: about a seventh of the CPU and a quarter of the memory in the test
-above. It's opt-in (`glitchwall config --renderer native`) and still on a development branch, not in a
-release yet. Windows only; the web page stays the way to run glitchwall on macOS, Linux, OBS and Wallpaper
-Engine.
 
 ## ⚠️ Disclaimers (please read)
 
