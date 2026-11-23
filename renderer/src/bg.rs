@@ -24,7 +24,7 @@ pub trait Background {
 pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result<Box<dyn Background>> {
     Ok(match name {
         "pixel" => Box::new(Pixel::new(g)?),
-        "cascade" => Box::new(Cascade::new(g, fonts, &look.mono.family)?),
+        "cascade" => Box::new(Cascade::new(g, fonts, &look.mono.family, o)?),
         "broadsheet" => Box::new(Broadsheet::new(g, fonts, look)?),
         "halftone" => Box::new(Halftone::new(g)?),
         "stop" => Box::new(Stop::new(g, fonts, look)?),
@@ -64,26 +64,36 @@ fn px(c: Color) -> u32 {
 
 /// tiny random 5x7 bit-glyphs falling in columns, at a third of the resolution, upscaled with hard edges.
 /// Drawn into memory and handed to the GPU once a frame.
-pub struct Pixel { lw: usize, lh: usize, buf: Vec<u32>, small: ID2D1Bitmap1, cols: Vec<(f32, f32)>, rng: Rng, bg: u32 }
+pub struct Pixel { lw: usize, lh: usize, buf: Vec<u32>, small: ID2D1Bitmap1, cols: Vec<(f32, f32)>, rng: Rng, bg: u32,
+                   k: f32, glyphs: u8, up: bool, keep: u32 }   // options: density, bits/blocks/dots, rising, how much stays each frame (of 256)
 
 impl Pixel {
     fn new(g: &Gfx) -> Result<Pixel> {
         let (lw, lh) = ((g.w as usize).div_ceil(3), (g.h as usize).div_ceil(3));
         let mut rng = Rng(0x9e37_79b9_7f4a_7c15);
         let cols = (0..lw / 6).map(|_| (-rng.f() * lh as f32, rng.range(4.0, 11.0))).collect();
-        Ok(Pixel { lw, lh, buf: vec![0xff00_0000; lw * lh], small: g.bitmap(lw as u32, lh as u32, None, false)?, cols, rng, bg: 0 })
+        Ok(Pixel { lw, lh, buf: vec![0xff00_0000; lw * lh], small: g.bitmap(lw as u32, lh as u32, None, false)?, cols, rng, bg: 0,
+                   k: 1.4, glyphs: 0, up: false, keep: 210 })
     }
 }
 
 impl Background for Pixel {
     fn fps(&self) -> f32 { 30.0 }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.k = match o.get("density").str() { Some("sparse") => 0.6, Some("dense") => 2.6, _ => 1.4 };
+        self.glyphs = match o.get("glyphs").str() { Some("blocks") => 1, Some("dots") => 2, _ => 0 };
+        self.up = o.get("flow").str() == Some("up");
+        self.keep = match o.get("trails").str() { Some("short") => 166, Some("long") => 236, _ => 210 };
+        false
+    }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
         let bg = px(look.bg);
         if bg != self.bg { self.buf.fill(bg); self.bg = bg; }   // a new look: start from its background
         let (br, bgc, bb) = ((bg >> 16) & 255, (bg >> 8) & 255, bg & 255);
         for p in self.buf.iter_mut() {   // 18% toward the background each frame, like the page's translucent fill
             let (r, gg, b) = ((*p >> 16) & 255, (*p >> 8) & 255, *p & 255);
-            *p = 0xff00_0000 | ((r * 210 + br * 46) >> 8) << 16 | ((gg * 210 + bgc * 46) >> 8) << 8 | ((b * 210 + bb * 46) >> 8);
+            let (k, q) = (self.keep, 256 - self.keep);
+            *p = 0xff00_0000 | ((r * k + br * q) >> 8) << 16 | ((gg * k + bgc * q) >> 8) << 8 | ((b * k + bb * q) >> 8);
         }
         let (lw, lh) = (self.lw as i32, self.lh as i32);
         let (dim, hi) = (px(look.dim), px(look.hi));
@@ -91,11 +101,12 @@ impl Background for Pixel {
             let c = &mut self.cols[i];
             c.0 += c.1 * dt * 9.0;
             if c.0 > (lh + 40) as f32 { *c = (self.rng.range(-60.0, 0.0), self.rng.range(4.0, 11.0)); }
-            if self.rng.f() > level * 1.4 { continue; }
+            if self.rng.f() > level * self.k { continue; }
             let color = if self.rng.f() < 0.08 { hi } else { dim };
-            let (x, y) = (i as i32 * 6, (self.cols[i].0 / 9.0).floor() as i32 * 9);
+            let (x, y0) = (i as i32 * 6, (self.cols[i].0 / 9.0).floor() as i32 * 9);
+            let y = if self.up { lh - y0 - 7 } else { y0 };
             for r in 0..7 {
-                let row = self.rng.next() & 31;
+                let row = match self.glyphs { 1 => 31, 2 => if r % 2 == 0 { 4 } else { 0 }, _ => self.rng.next() & 31 };
                 let yy = y + r;
                 if yy < 0 || yy >= lh { continue; }
                 for b in 0..5 {
@@ -120,6 +131,7 @@ pub struct Cascade {
     atlas: ID2D1Bitmap1, batch: ID2D1SpriteBatch, dc3: ID2D1DeviceContext3, cols: Vec<Col>, rng: Rng, n: usize,
     w: f32, h: f32, rows: [u32; 3], cell: [u32; 3], scale: f32,
     dest: Vec<D2D_RECT_F>, src: Vec<D2D_RECT_U>, tint: Vec<D2D1_COLOR_F>,
+    dens: f32, one: bool, set: (usize, usize), green: bool,   // options: density, one layer, the glyphs used, heads
 }
 
 struct Col { d: usize, x: f32, y: f32, v: f32, len: usize, trail: Vec<(u16, bool)>, row: i64, on: bool }
@@ -129,7 +141,7 @@ const DEPTH: [(f32, f32, f32); 3] = [(11.0, 0.35, 0.6), (15.0, 0.6, 1.0), (21.0,
 const KANA: &str = "DotGothic16";   // the bundled cut holding just the rain's katakana; the rest comes from the theme's mono
 
 impl Cascade {
-    fn new(g: &Gfx, fonts: &Fonts, mono: &str) -> Result<Cascade> {
+    fn new(g: &Gfx, fonts: &Fonts, mono: &str, o: &Json) -> Result<Cascade> {
         let glyphs: Vec<char> = GL.chars().collect();
         // atlas rows (device pixels): for each depth, plain then mirrored, each as tall as that depth's cell
         let s = g.scale;
@@ -176,9 +188,12 @@ impl Cascade {
         let dc3: ID2D1DeviceContext3 = g.dc.cast()?;
         let batch = unsafe { dc3.CreateSpriteBatch()? };
         let mut c = Cascade { atlas, batch, dc3, cols: Vec::new(), rng: Rng(0x2545_f491_4f6c_dd1d), n: glyphs.len(),
-                              w: g.w as f32, h: g.h as f32, rows, cell, scale: s, dest: Vec::new(), src: Vec::new(), tint: Vec::new() };
+                              w: g.w as f32, h: g.h as f32, rows, cell, scale: s, dest: Vec::new(), src: Vec::new(), tint: Vec::new(),
+                              dens: 1.0, one: false, set: (0, glyphs.len()), green: false };
+        c.opts(o);
         for (d, &(fs, _, _)) in DEPTH.iter().enumerate() {
-            for _ in 0..(c.w / fs * [1.0, 0.6, 0.28][d]).ceil() as usize {
+            let share = if c.one { [0.0, 1.6, 0.0] } else { [1.0, 0.6, 0.28] };   // one: just the middle depth
+            for _ in 0..(c.w / fs * share[d] * c.dens).ceil() as usize {
                 let y = c.rng.range(-c.h * 0.3, c.h * 1.2);
                 let mut col = c.col(d, y, 0.5);
                 col.trail = (0..col.len).map(|_| c.glyph()).collect();
@@ -189,7 +204,8 @@ impl Cascade {
     }
 
     fn glyph(&mut self) -> (u16, bool) {
-        let i = ((self.rng.f() * self.n as f32) as usize).min(self.n - 1) as u16;
+        let (a, b) = self.set;
+        let i = (a + ((self.rng.f() * (b - a) as f32) as usize).min(b - a - 1)) as u16;
         (i, self.rng.f() < 0.45)
     }
 
@@ -197,12 +213,20 @@ impl Cascade {
         let (fs, _, speed) = DEPTH[d];
         let x = self.rng.range(0.0, self.w / fs).floor() * fs;
         Col { d, x, y, v: self.rng.range(5.0, 13.0) * speed, len: self.rng.range(10.0, 32.0) as usize, trail: Vec::new(),
-              row: i64::MIN, on: self.rng.f() < 0.25 + level * 1.2 }
+              row: i64::MIN, on: self.rng.f() < (0.25 + level * 1.2) * self.dens }
     }
 }
 
 impl Background for Cascade {
     fn fps(&self) -> f32 { 30.0 }
+    fn opts(&mut self, o: &Json) -> bool {
+        let was = (self.dens, self.one);
+        self.dens = match o.get("density").str() { Some("sparse") => 0.5, Some("dense") => 1.6, _ => 1.0 };
+        self.one = o.get("layers").str() == Some("one");
+        self.set = match o.get("glyphs").str() { Some("katakana") => (0, 45), Some("digits") => (45, 55), _ => (0, self.n) };
+        self.green = o.get("heads").str() == Some("green");
+        (self.dens, self.one) != was && !self.cols.is_empty()   // the columns are laid out when it's made
+    }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
         let sp = 0.3 + level * 1.4;
         let pm = |c: Color, a: f32| D2D1_COLOR_F { r: c[0] * a, g: c[1] * a, b: c[2] * a, a };   // premultiplied, as the atlas is
@@ -238,7 +262,7 @@ impl Background for Cascade {
                     let y = (row - k as i64) as f32 * fs;
                     if y < -fs || y > self.h { continue; }
                     let a = br * if k > 0 { (1.0 - k as f32 / c.len as f32).max(0.0).powf(1.4) } else { 1.0 };
-                    let color = if k == 0 { look.acc } else if k < 3 { look.hi } else { look.ink };
+                    let color = if k == 0 { if self.green { look.hi } else { look.acc } } else if k < 3 { look.hi } else { look.ink };
                     let cp = self.cell[d];
                     let (sx, sy) = (gi as u32 * cp, self.rows[d] + if flip { cp } else { 0 });
                     let cs = cp as f32 / self.scale;
