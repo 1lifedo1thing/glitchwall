@@ -1849,8 +1849,13 @@ impl Orb {
             }
             // the floor of the clearing: tiles running toward the racks
             pen.SetOpacity(if light { 0.06 } else { 0.045 });
-            let mut x = -40.0f32; while x <= 40.0 { dc.DrawLine(p2(sx(x, 2.5), sy(0.0, 2.5)), p2(sx(x, 15.0), sy(0.0, 15.0)), &pen, 1.0, None); x += 1.2; }
-            let mut z = 3.0f32; while z < 15.0 { dc.DrawLine(p2(0.0, sy(0.0, z)), p2(w, sy(0.0, z)), &pen, 1.0, None); z *= 1.12; }
+            let mut x = -40.0f32; while x <= 40.0 { dc.DrawLine(p2(sx(x, 2.5), sy(0.0, 2.5)), p2(sx(x, 20.0), sy(0.0, 20.0)), &pen, 1.0, None); x += 1.2; }
+            let mut z = 3.0f32; while z < 20.0 { dc.DrawLine(p2(0.0, sy(0.0, z)), p2(w, sy(0.0, z)), &pen, 1.0, None); z *= 1.12; }
+            // on the floor round the opening: rings, and red light spilling; drawn before the racks, which stand on the
+            // floor and hide what lies behind them
+            for (r, a) in [(1.14, 0.2), (1.36, 0.1), (1.75, 0.06), (2.4, 0.04)] { pen.SetOpacity(a); dc.DrawEllipse(&ell(cr * r), &pen, 1.0, None); }
+            let spill = g.brush([acc[0], acc[1], acc[2], 0.15 / 24.0])?;
+            for i in 0..24 { dc.FillEllipse(&ell(cr * (2.6 - 1.6 * i as f32 / 24.0)), &spill); }
             // rows of racks to the horizon, broken by cross aisles; far ones sink into the haze
             let fog = if light { bg } else { mixc(bg, ink, 0.06) };
             let near = if light { mixc(bg, ink, 0.12) } else { mixc(bg, ink, 0.025) };
@@ -1858,9 +1863,9 @@ impl Orb {
             let fill = g.brush(ink)?;
             for k in (0..=60).rev() {
                 let kf = k as f32;
-                let z = 15.0 + kf * 2.6 * (1.0 + kf * 0.012);
+                let z = 20.0 + kf * 2.6 * (1.0 + kf * 0.012);
                 let d = z + 1.1;
-                let haze = ((z - 15.0) / 160.0).min(1.0).powf(0.8);
+                let haze = ((z - 20.0) / 160.0).min(1.0).powf(0.8);
                 let (yt, yb, ytb) = (sy(rh, z), sy(0.0, z), sy(rh, d));
                 if yb - yt < 1.2 { continue; }
                 let face = mixc(near, fog, haze);
@@ -1889,7 +1894,7 @@ impl Orb {
                         // status lights on the rack fronts, only where the next row nearer us leaves them showing
                         if z < 70.0 && rw > 1.5 {
                             let nk = kf - 1.0;
-                            let yhide = if k > 0 { yb.min(sy(rh, 15.0 + nk * 2.6 * (1.0 + nk * 0.012) + 1.1)) } else { yb };
+                            let yhide = if k > 0 { yb.min(sy(rh, 20.0 + nk * 2.6 * (1.0 + nk * 0.012) + 1.1)) } else { yb };
                             let u = (yb - yt) / 22.0;
                             let mut rr = 0.0f32;
                             while rr < seg / 0.6 - 0.5 {
@@ -1910,8 +1915,7 @@ impl Orb {
                     x0 += seg + gapx;
                 }
             }
-            // rings in the floor round the opening; its raised lip and the dark well inside
-            for (r, a) in [(1.14, 0.2), (1.36, 0.1), (1.75, 0.06), (2.4, 0.04)] { pen.SetOpacity(a); dc.DrawEllipse(&ell(cr * r), &pen, 1.0, None); }
+            // its raised lip and the dark well inside
             fill.SetColor(&rgba(body));
             dc.FillEllipse(&ell(cr * 1.07), &fill);
             fill.SetColor(&ca(ink, if light { 0.12 } else { 0.07 }));
@@ -1940,10 +1944,6 @@ impl Orb {
                 dc.FillRectangle(&rect(0.0, 0.0, w, h), &radial(ox, vy, 0.0, 0.0, far, far,
                     &[(s * 1.2 / far, D2D1_COLOR_F::default()), (1.0, D2D1_COLOR_F { r: 0.0, g: 0.0, b: 0.0, a: 0.55 })])?);
             }
-            // red light spilling onto the floor
-            // (stacked solid ellipses, not a gradient: the gradient's faint edge came out as white specks)
-            let spill = g.brush([acc[0], acc[1], acc[2], 0.15 / 24.0])?;
-            for i in 0..24 { dc.FillEllipse(&ell(cr * (2.6 - 1.6 * i as f32 / 24.0)), &spill); }
             dc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_SOURCE_OVER);
             dc.EndDraw(None, None)?;
             // the floor in front of the opening, drawn again over the sphere's lower part, and the opening's lit near edge

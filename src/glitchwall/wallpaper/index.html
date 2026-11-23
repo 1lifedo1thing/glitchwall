@@ -948,14 +948,19 @@ const STYLES = {
       }
       // the floor of the clearing: tiles running toward the racks
       g.globalAlpha = light ? .06 : .045; g.beginPath();
-      for (let X = -40; X <= 40; X += 1.2) { g.moveTo(sx(X, 2.5), sy(0, 2.5)); g.lineTo(sx(X, 15), sy(0, 15)); }
-      for (let Z = 3; Z < 15; Z *= 1.12) { g.moveTo(0, sy(0, Z)); g.lineTo(W, sy(0, Z)); }
+      for (let X = -40; X <= 40; X += 1.2) { g.moveTo(sx(X, 2.5), sy(0, 2.5)); g.lineTo(sx(X, 20), sy(0, 20)); }
+      for (let Z = 3; Z < 20; Z *= 1.12) { g.moveTo(0, sy(0, Z)); g.lineTo(W, sy(0, Z)); }
       g.stroke();
+      // on the floor round the opening: rings, and red light spilling; drawn before the racks, which stand on the floor
+      for (const [r, a] of [[1.14, .2], [1.36, .1], [1.75, .06], [2.4, .04]]) {   // rings in the floor round the opening
+      g.save(); g.translate(ox, cy); g.scale(1, ce);                                 // red light spilling onto the floor
+      gr = g.createRadialGradient(0, 0, ca, 0, 0, ca * 2.6); gr.addColorStop(0, rgba(T.acc, .15)); gr.addColorStop(1, rgba(T.acc, 0));
+      g.globalCompositeOperation = light ? 'source-over' : 'lighter'; g.fillStyle = gr; g.beginPath(); g.arc(0, 0, ca * 2.6, 0, TAU); g.fill(); g.restore();
       // rows of racks from just behind the sphere to the horizon, broken by cross aisles; far ones sink into the haze
       const fog = light ? T.bg : mix(T.bg, ink, .06), near = light ? mix(T.bg, ink, .12) : mix(T.bg, ink, .025), leds = this.leds = [];
       const SEG = 6.6, GAPX = 2.2, half = (Z) => (ox + 40) * Z / F;           // racks .6 wide, eleven to a run
       for (let k = 60; k >= 0; k--) {
-        const Z = 15 + k * 2.6 * (1 + k * .012), D = Z + 1.1, haze = Math.min(1, (Z - 15) / 160) ** .8;
+        const Z = 20 + k * 2.6 * (1 + k * .012), D = Z + 1.1, haze = Math.min(1, (Z - 20) / 160) ** .8;
         const yT = sy(RH, Z), yB = sy(0, Z), yTB = sy(RH, D);
         if (yB - yT < 1.2) continue;
         const face = mix(near, fog, haze), top = mix(mix(near, ink, light ? .06 : .09), fog, haze);
@@ -979,7 +984,7 @@ const STYLES = {
           }
           // status lights on the rack fronts, only on the part the next row nearer us leaves showing
           if (Z < 70 && rw > 1.5) {
-            const next = 15 + (k - 1) * 2.6 * (1 + (k - 1) * .012), yHide = k ? Math.min(yB, sy(RH, next + 1.1)) : yB;
+            const next = 20 + (k - 1) * 2.6 * (1 + (k - 1) * .012), yHide = k ? Math.min(yB, sy(RH, next + 1.1)) : yB;
             const U = (yB - yT) / 22;                                         // each rack: 22 slots, a light at the left of some
             for (let r = 0; r < SEG / .6 - .5; r++) {
               const x = Math.round(sx(x0 + r * .6 + .1, Z)), x2 = Math.round(sx(x0 + r * .6 + .32, Z));
@@ -995,7 +1000,6 @@ const STYLES = {
         }
       }
       g.globalAlpha = 1;
-      for (const [r, a] of [[1.14, .2], [1.36, .1], [1.75, .06], [2.4, .04]]) {   // rings in the floor round the opening
         g.globalAlpha = a; g.beginPath(); g.ellipse(ox, cy, ca * r, ca * r * ce, 0, 0, TAU); g.stroke();
       }
       g.globalAlpha = 1; g.fillStyle = dark;      // the raised lip of the opening, and the dark well inside it
@@ -1009,9 +1013,6 @@ const STYLES = {
         gr = g.createRadialGradient(ox, vy, S * 1.2, ox, vy, Math.hypot(W, H) * .6);
         gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,.55)'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
       }
-      g.save(); g.translate(ox, cy); g.scale(1, ce);                                 // red light spilling onto the floor
-      gr = g.createRadialGradient(0, 0, ca, 0, 0, ca * 2.6); gr.addColorStop(0, rgba(T.acc, .15)); gr.addColorStop(1, rgba(T.acc, 0));
-      g.globalCompositeOperation = light ? 'source-over' : 'lighter'; g.fillStyle = gr; g.beginPath(); g.arc(0, 0, ca * 2.6, 0, TAU); g.fill(); g.restore();
       // the sphere's body: near black, a faint sheen up and to the left, a fresnel glow and a thin rim of light
       const c = S + 4, [o, s] = mk(c * 2, c * 2), gloss = light ? T.bg : T.ink; this.orbImg = o; this.c = c;
       s.fillStyle = this.body; s.beginPath(); s.arc(c, c, S, 0, TAU); s.fill();
