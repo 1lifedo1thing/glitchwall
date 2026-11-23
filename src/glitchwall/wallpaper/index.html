@@ -978,7 +978,7 @@ const STYLES = {
   // stacked with slats carrying rows of tiny red lights: some steady, some flickering, packets streaming along them
   // like data on a bus. Readouts point at parts of it as they turn into view, and where one points the lights burn.
   orb: {
-    scale: 1, still: true, L: 30, N: 110, NET: 14,
+    scale: 1, still: true, L: 30, N: 110, NET: 58,
     LABELS: [['DIVERGENCE', v => `Δ ${(v * .09).toFixed(4)}`], ['RECALCULATING', v => `SECTOR ${(v * 96 | 0) + 1}`],
              ['LOAD', v => `${(60 + v * 39).toFixed(1)} %`], ['VARIANCE', v => `σ ${(v * .3).toFixed(3)}`],
              ['THREAD', v => '0x' + (v * 0xffff | 0).toString(16).padStart(4, '0').toUpperCase()], ['CONVERGENCE', v => `${(90 + v * 9.9).toFixed(2)} %`]],
@@ -1108,7 +1108,7 @@ const STYLES = {
         const base = Float32Array.from({ length: n }, () => Math.random() < .17 ? rnd(.3, .65) : 0);
         return { phi, n, o: rnd(0, TAU), base, b: Float32Array.from(base, v => Math.max(v, Math.random() < .12 ? rnd(.3, 1) : 0)) };
       });
-      this.net = this.geodesic(this.NET);     // a cage over the shell: a fine geodesic net, a triangular hole in each cell
+      this.net = this.bands(this.L, this.NET);     // a cage over the shell: a net in bands along the slats, a triangular hole in each cell
       this.mc = Math.ceil(S * 1.08 + 4); [this.mesh, this.meshG] = mk(this.mc * 2, this.mc * 2);   // the cage stands a little off the sphere
       this.packets = Array.from({ length: 22 }, () => this.packet());
       const [gs, gg] = mk(32, 32); this.glowImg = gs;     // one light's glow, drawn scaled for every light
@@ -1135,24 +1135,30 @@ const STYLES = {
         }
       }
     },
-    // a geodesic net on the unit sphere (an icosahedron, each face cut into n x n triangles): joints x y z, and cells
+    // the cage's net on the unit sphere, laid in bands that line up with the shell's slats: a ring of joints on each
+    // line between two slats, so each slat runs down the middle of its own row of cells; each ring zipped to the next
+    // with triangles, near-equilateral (m joints round the equator), and a fan to each pole. Joints x y z, and cells
     // as three joint numbers each
-    geodesic(n) {
-      const t = (1 + Math.sqrt(5)) / 2;
-      const V = [[-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0], [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t], [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]];
-      const F = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
-                 [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]];
-      const pts = [], seen = new Map();
-      const at = (a, b, c, i, j) => {      // i/n of the way from corner a to b, j/n from a to c, pushed out onto the sphere
-        const v = [0, 1, 2].map(d => (V[a][d] * (n - i - j) + V[b][d] * i + V[c][d] * j) / n), l = Math.hypot(...v);
-        const id = v.map(x => Math.round(x / l * 1e4)).join();
-        if (!seen.has(id)) { seen.set(id, pts.length / 3); pts.push(v[0] / l, v[1] / l, v[2] / l); }
-        return seen.get(id);
-      };
-      const tris = [];
-      for (const [a, b, c] of F) for (let i = 0; i < n; i++) for (let j = 0; i + j < n; j++) {
-        tris.push(at(a, b, c, i, j), at(a, b, c, i + 1, j), at(a, b, c, i, j + 1));
-        if (i + j < n - 1) tris.push(at(a, b, c, i + 1, j), at(a, b, c, i + 1, j + 1), at(a, b, c, i, j + 1));
+    bands(l, m) {
+      const pts = [], rings = [], tris = [];
+      for (let r = 0; r <= l; r++) {
+        const phi = -1.4 + 2.8 * r / l, n = Math.max(3, Math.round(Math.cos(phi) * m)), off = r % 2 ? .5 : 0;
+        rings.push([pts.length / 3, n, off]);
+        for (let k = 0; k < n; k++) { const th = TAU * (k + off) / n; pts.push(Math.cos(phi) * Math.sin(th), Math.sin(phi), Math.cos(phi) * Math.cos(th)); }
+      }
+      const md = (x, n) => ((x % n) + n) % n;
+      for (let r = 0; r < l; r++) {
+        const [sa, na, oa] = rings[r], [sb, nb, ob] = rings[r + 1];
+        const ta = i => TAU * (i + oa) / na, tb = j => TAU * (j + ob) / nb, A = i => sa + md(i, na), B = j => sb + md(j, nb);
+        let i = 0, j = Math.floor(ta(0) / TAU * nb - ob); const jEnd = j + nb;
+        while (i < na || j < jEnd) {      // zip the two rings: always step the one whose next joint comes first
+          if (j >= jEnd || (i < na && ta(i + 1) < tb(j + 1))) { tris.push(A(i), A(i + 1), B(j)); i++; }
+          else { tris.push(A(i), B(j + 1), B(j)); j++; }
+        }
+      }
+      for (const [pole, [st, n]] of [[-1, rings[0]], [1, rings[l]]]) {     // the caps: a fan to each pole
+        const p = pts.length / 3; pts.push(0, pole, 0);
+        for (let k = 0; k < n; k++) tris.push(p, st + k, st + (k + 1) % n);
       }
       return { pts: Float32Array.from(pts), tris: Uint16Array.from(tris) };
     },
@@ -1231,7 +1237,7 @@ const STYLES = {
         // the cage: the sphere's skin again over all of it, with a triangular hole cut in every cell of a geodesic net, so
         // what is left is a frame of dark struts and the slats and lights peek through; cells seen side on toward the edge
         // close up
-        const m = this.meshG, c = this.mc, net = this.net, K = .74, RC = S * 1.04, P = new Float32Array(net.pts.length / 3 * 4);
+        const m = this.meshG, c = this.mc, net = this.net, K = .78, RC = S * 1.04, P = new Float32Array(net.pts.length / 3 * 4);
         for (let i = 0, k = 0; i < net.pts.length; i += 3, k += 4) {
           const p = this.proj(net.pts[i], net.pts[i + 1], net.pts[i + 2], RC);
           P[k] = p[0] - this.ox + c; P[k + 1] = p[1] - this.oy + c; P[k + 2] = p[2]; P[k + 3] = p[3];
@@ -1256,7 +1262,7 @@ const STYLES = {
         m.globalCompositeOperation = 'source-over'; m.globalAlpha = 1; m.clearRect(0, 0, c * 2, c * 2);
         const sz = this.c * 2 * 1.04; m.drawImage(this.orbImg, c - sz / 2, c - sz / 2, sz, sz);
         m.globalCompositeOperation = 'destination-out'; m.fill(cut);
-        m.globalCompositeOperation = 'source-over'; m.strokeStyle = this.gloss; m.lineWidth = Math.max(.8, u * .5);
+        m.globalCompositeOperation = 'source-over'; m.strokeStyle = this.gloss; m.lineWidth = Math.max(.5, u * .3);
         const RIM = 1;   // how strongly the rims catch the light: 1 full, 0 none
         const glow = this.GLOWS[(OPTS.orb || {}).glow] || 1;
         if (RIM) rims.forEach((r, j) => { m.globalAlpha = Math.min(1, .85 * (j + .5) / 16 * RIM * glow); m.stroke(r); });

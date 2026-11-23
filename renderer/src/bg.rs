@@ -1956,37 +1956,46 @@ fn orb_value(lab: usize, v: f32) -> String {
 
 const ORB_L: usize = 30;
 const ORB_N: usize = 110;
-const ORB_NET: usize = 14;
+const ORB_NET: f32 = 58.0;   // the cage's cells: joints round its equator
 const CAGE_R: f32 = 1.04;
 const CAGE_RIM: f32 = 1.0;   // how strongly the holes' rims catch the light: 1 full, 0 none   // the cage stands a little off the sphere, so it slides over what's under it as it turns
 const HOLE_IN: f32 = 0.06;   // the hole texture's triangle: (a, a), (c, a), (a, c), a = HOLE_IN, c = 1 - 2.5a
 
-/// a geodesic net on the unit sphere (an icosahedron, each face cut into n x n triangles): its joints and cells
-fn geodesic(n: usize) -> (Vec<[f32; 3]>, Vec<[u16; 3]>) {
-    let t = (1.0 + 5f32.sqrt()) / 2.0;
-    let v: [[f32; 3]; 12] = [[-1.0, t, 0.0], [1.0, t, 0.0], [-1.0, -t, 0.0], [1.0, -t, 0.0], [0.0, -1.0, t], [0.0, 1.0, t],
-                             [0.0, -1.0, -t], [0.0, 1.0, -t], [t, 0.0, -1.0], [t, 0.0, 1.0], [-t, 0.0, -1.0], [-t, 0.0, 1.0]];
-    let faces = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
-                 [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]];
+/// the cage's net on the unit sphere, laid in bands that line up with the shell's slats: a ring of joints on each
+/// line between two slats (l slats over phi -1.4 to 1.4), so each slat runs down the middle of its own row of
+/// cells; each ring zipped to the next with triangles, near-equilateral (m joints round the equator), and a fan
+/// to each pole. Joints and cells.
+fn bands(l: usize, m: f32) -> (Vec<[f32; 3]>, Vec<[u16; 3]>) {
     let mut pts: Vec<[f32; 3]> = Vec::new();
-    let mut seen = std::collections::HashMap::new();
-    let mut tris = Vec::new();
-    let nf = n as f32;
-    for [a, b, c] in faces {
-        // i/n of the way from corner a to b, j/n from a to c, pushed out onto the sphere
-        let mut at = |i: usize, j: usize| -> u16 {
-            let (i, j) = (i as f32, j as f32);
-            let p: [f32; 3] = std::array::from_fn(|d| (v[a][d] * (nf - i - j) + v[b][d] * i + v[c][d] * j) / nf);
-            let l = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
-            let key = p.map(|x| (x / l * 1e4).round() as i32);
-            *seen.entry(key).or_insert_with(|| { pts.push(p.map(|x| x / l)); (pts.len() - 1) as u16 })
-        };
-        for i in 0..n {
-            for j in 0..n - i {
-                tris.push([at(i, j), at(i + 1, j), at(i, j + 1)]);
-                if i + j < n - 1 { tris.push([at(i + 1, j), at(i + 1, j + 1), at(i, j + 1)]); }
-            }
+    let mut rings: Vec<(usize, usize, f32)> = Vec::new();   // first joint, count, offset (in steps)
+    for r in 0..=l {
+        let phi = -1.4 + 2.8 * r as f32 / l as f32;
+        let n = ((phi.cos() * m).round() as usize).max(3);
+        let off = if r % 2 == 1 { 0.5 } else { 0.0 };   // alternate rings stagger, so the cells alternate up and down
+        rings.push((pts.len(), n, off));
+        for k in 0..n {
+            let th = TAU * (k as f32 + off) / n as f32;
+            pts.push([phi.cos() * th.sin(), phi.sin(), phi.cos() * th.cos()]);
         }
+    }
+    let mut tris: Vec<[u16; 3]> = Vec::new();
+    for w in rings.windows(2) {
+        let ((sa, na, oa), (sb, nb, ob)) = (w[0], w[1]);
+        let ta = |i: i64| TAU * (i as f32 + oa) / na as f32;   // a joint's angle, unwrapped
+        let tb = |j: i64| TAU * (j as f32 + ob) / nb as f32;
+        let a = |i: i64| (sa + i.rem_euclid(na as i64) as usize) as u16;
+        let b = |j: i64| (sb + j.rem_euclid(nb as i64) as usize) as u16;
+        let (mut i, mut j) = (0i64, (ta(0) / TAU * nb as f32 - ob).floor() as i64);
+        let j_end = j + nb as i64;
+        while i < na as i64 || j < j_end {   // zip the two rings: always step the one whose next joint comes first
+            if j >= j_end || (i < na as i64 && ta(i + 1) < tb(j + 1)) { tris.push([a(i), a(i + 1), b(j)]); i += 1; }
+            else { tris.push([a(i), b(j + 1), b(j)]); j += 1; }
+        }
+    }
+    for (pole, &(st, n, _)) in [(-1.0f32, &rings[0]), (1.0, &rings[l])] {   // the caps: a fan to each pole
+        pts.push([0.0, pole, 0.0]);
+        let p = (pts.len() - 1) as u16;
+        for k in 0..n { tris.push([p, (st + k) as u16, (st + (k + 1) % n) as u16]); }
     }
     (pts, tris)
 }
@@ -2242,7 +2251,7 @@ impl Orb {
         let dc3: ID2D1DeviceContext3 = g.dc.cast()?;
         let batch = unsafe { dc3.CreateSpriteBatch()? };
         // the cage: a fine net of holes in a second skin over the sphere, drawn on its own context each frame
-        let (net, tris) = geodesic(ORB_NET);
+        let (net, tris) = bands(ORB_L, ORB_NET);
         let c = s * (CAGE_R + 0.04) + 4.0;
         let mesh = g.surface(c * 2.0, c * 2.0)?;
         let mdc = unsafe { g.dc.GetDevice()?.CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE)? };
@@ -2340,41 +2349,41 @@ impl Orb {
         // the cage: the sphere's skin again over all of it, with a fine hex net of holes punched through (a min blend), so
         // the slats and lights only peek through; the holes close up toward the edge, where we see them side on
         let c = s * (CAGE_R + 0.04) + 4.0;
-        // each cell's hole: the texture's triangle mapped (an affine sprite) onto the cell shrunk toward its middle
+        // each cell's hole: the cell shrunk toward its middle
         let rc = s * CAGE_R;
         let pr: Vec<(f32, f32, f32, f32)> = self.net.iter().map(|&v| { let p = self.proj(v, self.cage, rc); (p.0 - ox + c, p.1 - oy + c, p.2, p.3) }).collect();
         let gloss = if light { look.bg } else { look.ink };
         let mut shades: Vec<Vec<[(f32, f32); 3]>> = vec![Vec::new(); 16];   // each rim, by how much light it catches
-        let (ha, hd) = (HOLE_IN, 1.0 - 3.5 * HOLE_IN);
-        let mut mats = Vec::new();
+        let mut cells: Vec<[(f32, f32); 3]> = Vec::new();   // every hole, as an exact triangle (as the page cuts them)
         for t in &self.tris {
             let (a, b, d) = (pr[t[0] as usize], pr[t[1] as usize], pr[t[2] as usize]);
             if a.2 + b.2 + d.2 < 0.15 { continue; }
             let (mx, my) = ((a.0 + b.0 + d.0) / 3.0, (a.1 + b.1 + d.1) / 3.0);
-            let k = 0.74;
+            let k = 0.78;
             let q = |p: (f32, f32, f32, f32)| (mx + (p.0 - mx) * k, my + (p.1 - my) * k);
             // as the page has it: shaded like a lit ball, white facing the light and fading across the sphere in 16
             // shades; a rim past the edge of the light switches off
             let sh = ((a.2 + b.2 + d.2) / 3.0).max(0.0).sqrt().sqrt() * ((a.3 + b.3 + d.3) / 3.0).powf(1.4);
             if sh > 0.06 { shades[((sh * 16.0) as usize).min(15)].push([q(a), q(b), q(d)]); }
-            let (q0, q1, q2) = (q(a), q(b), q(d));
-            let (m11, m12, m21, m22) = ((q1.0 - q0.0) / hd, (q1.1 - q0.1) / hd, (q2.0 - q0.0) / hd, (q2.1 - q0.1) / hd);
-            mats.push(windows::Foundation::Numerics::Matrix3x2 { M11: m11, M12: m12, M21: m21, M22: m22,
-                                                                 M31: q0.0 - ha * (m11 + m21), M32: q0.1 - ha * (m12 + m22) });
+            cells.push([q(a), q(b), q(d)]);
         }
-        let holes = vec![rect(0.0, 0.0, 1.0, 1.0); mats.len()];
         unsafe {
             let m = &self.mdc;
             m.SetTarget(&self.holes);
             m.BeginDraw();
             m.Clear(Some(&D2D1_COLOR_F::default()));
-            if !holes.is_empty() {
-                self.mbatch.Clear();
-                self.mbatch.AddSprites(holes.len() as u32, holes.as_ptr(), None, None, Some(mats.as_ptr()), size_of::<D2D_RECT_F>() as u32, 0, 0,
-                                       size_of::<windows::Foundation::Numerics::Matrix3x2>() as u32)?;
-                m.SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);
-                self.mdc3.DrawSpriteBatch(&self.mbatch, 0, holes.len() as u32, &self.hole, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, D2D1_SPRITE_OPTIONS_NONE);
-                m.SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+            if !cells.is_empty() {   // the holes: one path of exact triangles, filled (a shrunken stamp left them half closed)
+                let path = self.factory.CreatePathGeometry()?;
+                let sink = path.Open()?;
+                for t in &cells {
+                    sink.BeginFigure(p2(t[0].0, t[0].1), D2D1_FIGURE_BEGIN_FILLED);
+                    sink.AddLine(p2(t[1].0, t[1].1));
+                    sink.AddLine(p2(t[2].0, t[2].1));
+                    sink.EndFigure(D2D1_FIGURE_END_CLOSED);
+                }
+                sink.Close()?;
+                let white = m.CreateSolidColorBrush(&D2D1_COLOR_F { r: 1.0, g: 1.0, b: 1.0, a: 1.0 }, None)?;
+                m.FillGeometry(&path, &white, None);
             }
             m.EndDraw(None, None)?;
             m.SetTarget(&self.mesh);
@@ -2390,7 +2399,7 @@ impl Orb {
             m.DrawImage(&self.holes, None, None, D2D1_INTERPOLATION_MODE_LINEAR, D2D1_COMPOSITE_MODE_DESTINATION_OUT);
             if CAGE_RIM > 0.0 {   // the rims, catching the light: one path of triangles per shade, stroked
                 let pen = m.CreateSolidColorBrush(&rgba(gloss), None)?;
-                let width = (u * 0.5).max(0.8);
+                let width = (u * 0.3).max(0.5);   // fine lines
                 for (j, tris) in shades.iter().enumerate() {
                     if tris.is_empty() { continue; }
                     let path = self.factory.CreatePathGeometry()?;
