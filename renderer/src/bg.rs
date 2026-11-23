@@ -1,5 +1,5 @@
 //! Backgrounds: each one draws into the full-screen scene bitmap that the cards' glass blurs.
-//! Ported so far: the page's "pixel", "cascade", "broadsheet" and "halftone"; every other background falls back to a plain fill until it is.
+//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone" and "stop"; every other background falls back to a plain fill until it is.
 use crate::fonts::Fonts;
 use crate::gfx::{Gfx, rect, rgba};
 use crate::looks::{Color, Look};
@@ -22,6 +22,7 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Box<dyn B
         "cascade" => Box::new(Cascade::new(g, fonts, &look.mono.family)?),
         "broadsheet" => Box::new(Broadsheet::new(g, fonts, look)?),
         "halftone" => Box::new(Halftone::new(g)?),
+        "stop" => Box::new(Stop::new(g, fonts, look)?),
         _ => Box::new(Plain),
     })
 }
@@ -526,6 +527,59 @@ impl Background for Halftone {
             g.dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);   // sprite batches need it
             self.dc3.DrawSpriteBatch(&self.batch, 0, n, &self.dot, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, D2D1_SPRITE_OPTIONS_NONE);
             g.dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+        }
+        Ok(())
+    }
+}
+
+/// the old stop screen, faint, behind the cards; only the cursor moves. The text is laid out once; each blink
+/// (every .55 s, its own clock) redraws it.
+pub struct Stop { title: IDWriteTextLayout, tw: f32, lines: Vec<IDWriteTextLayout>, cursor: [IDWriteTextLayout; 2],
+                  fs: f32, w: f32, h: f32, clock: std::time::Instant }
+
+const STOP_LINES: [&str; 12] = ["*** STOP: 0x00000ACE (0xC0FFEE00, 0x00000047, 0x00000833, 0x00000000)", "LIVE_TOOL_FEED_STILL_RUNNING", "",
+    "Nothing has crashed. The agent is working and its tool calls appear on this screen",
+    "as they happen. Secrets are masked before they get here.", "",
+    "Technical information:", "", "*** GLITCHWALL.SYS - Address 7F000001 base at 7F000000, port 47833", "",
+    "Beginning dump of physical memory . . . not really.", ""];
+
+impl Stop {
+    fn new(g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Stop> {
+        let (w, h) = (g.w as f32, g.h as f32);
+        let fs = (h / 46.0).round().max(14.0);
+        let fmt = fonts.format(&look.mono.family, fs, 400)?;
+        let lay = |s: &str| -> Result<IDWriteTextLayout> {
+            let t: Vec<u16> = s.encode_utf16().collect();
+            unsafe { fonts.dw.CreateTextLayout(&t, &fmt, w * 2.0, fs * 2.0) }
+        };
+        let title = lay(" glitchwall ")?;
+        let mut m = DWRITE_TEXT_METRICS::default();
+        unsafe { title.GetMetrics(&mut m)?; }
+        let lines = STOP_LINES.iter().map(|s| lay(s)).collect::<Result<Vec<_>>>()?;
+        let cursor = [lay("Press any key to continue _")?, lay("Press any key to continue  ")?];
+        Ok(Stop { title, tw: m.widthIncludingTrailingWhitespace, lines, cursor, fs, w, h, clock: std::time::Instant::now() })
+    }
+}
+
+impl Background for Stop {
+    fn fps(&self) -> f32 { 1.0 / 0.55 }
+    fn draw(&mut self, g: &Gfx, look: &Look, _: f32, _: f32) -> Result<()> {
+        let on = (self.clock.elapsed().as_secs_f32() / 0.55) as u64 % 2 == 0;
+        let (fs, x) = (self.fs, self.w * 0.06);
+        let mut y = self.h * 0.12;
+        let a = |c: Color, a: f32| [c[0], c[1], c[2], a];
+        unsafe {
+            let dc = &g.dc;
+            dc.Clear(Some(&rgba(look.bg)));
+            // the grey title chip, centred
+            let tx = self.w / 2.0 - self.tw / 2.0;
+            dc.FillRectangle(&rect(tx - 4.0, y - 4.0, self.tw + 8.0, fs + 8.0), &g.brush(a(look.muted, 0.55))?);
+            let o = D2D1_DRAW_TEXT_OPTIONS_NONE;
+            dc.DrawTextLayout(D2D_POINT_2F { x: tx, y }, &self.title, &g.brush(a(look.bg, 0.55))?, o);
+            y += fs * 2.4;
+            let ink = g.brush(a(look.ink, 0.17))?;   // faint, so cards on top stay readable
+            for l in &self.lines { dc.DrawTextLayout(D2D_POINT_2F { x, y }, l, &ink, o); y += fs * 1.35; }
+            dc.DrawTextLayout(D2D_POINT_2F { x, y }, &self.cursor[if on { 0 } else { 1 }], &ink, o);
         }
         Ok(())
     }
