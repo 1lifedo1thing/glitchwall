@@ -34,6 +34,18 @@ impl Fonts {
         unsafe { self.set.FindFamilyName(PCWSTR(w.as_ptr()), &mut i, &mut found).is_ok() && found.as_bool() }
     }
 
+    /// true if the bundled `family` has a glyph for `ch` (the page's CSS falls back to the next family when not)
+    pub fn has_char(&self, family: &str, ch: char) -> bool {
+        let w: Vec<u16> = family.encode_utf16().chain([0]).collect();
+        let (mut i, mut found) = (0u32, BOOL(0));
+        unsafe {
+            if self.set.FindFamilyName(PCWSTR(w.as_ptr()), &mut i, &mut found).is_err() || !found.as_bool() { return false; }
+            let Ok(fam) = self.set.GetFontFamily(i) else { return false };
+            let Ok(font) = fam.GetFont(0) else { return false };
+            font.HasCharacter(ch as u32).as_bool()
+        }
+    }
+
     /// a text format in a bundled family; a family that isn't bundled (a system-font menu choice) comes from Windows
     pub fn format(&self, family: &str, size: f32, weight: u32) -> Result<IDWriteTextFormat> {
         let w: Vec<u16> = family.encode_utf16().chain([0]).collect();

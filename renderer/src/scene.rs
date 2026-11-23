@@ -93,7 +93,7 @@ impl Scene {
         gfx::set_bool(&fx.pmatrix, 2, true)?;
         let mono = fonts.format("Consolas", 16.0, 400)?;
         let mut s = Scene {
-            bg: bg::make(&look.rain, &g)?, scene, overlay: None, anim_in: None, anim_out: None,
+            bg: bg::make(&look.rain, &g, &fonts, &look)?, scene, overlay: None, anim_in: None, anim_out: None,
             bar: mono.clone(), status_fmt: mono.clone(), mono, line_h: 18.4, bar_h: 24.0,
             g, fonts, css, look, look_key: String::new(), fx,
             cards: Vec::new(), queue: VecDeque::new(), typing: None, wait_until: None, busy_queue: false,
@@ -111,6 +111,7 @@ impl Scene {
         if key == self.look_key { return Ok(()); }
         self.look_key = key;
         let old_rain = self.look.rain.clone();
+        let old_mono = self.look.mono.family.clone();
         self.look = looks.resolve(want);
         let l = &self.look;
         let mono = &l.mono;
@@ -132,7 +133,7 @@ impl Scene {
         let t = looks.all.get("transitions").get(&l.transition);
         self.anim_in = t.get("in").str().and_then(|s| anim::parse(&self.css, s));
         self.anim_out = t.get("out").str().and_then(|s| anim::parse(&self.css, s));
-        if l.rain != old_rain || !self.bg_drawn { self.bg = bg::make(&l.rain, &self.g)?; }
+        if l.rain != old_rain || l.mono.family != old_mono || !self.bg_drawn { self.bg = bg::make(&l.rain, &self.g, &self.fonts, &l)?; }
         self.overlay = Some(self.make_overlay()?);
         self.bg_drawn = false;
         for c in &mut self.cards { c.dirty = true; }
