@@ -487,7 +487,8 @@ def parser() -> argparse.ArgumentParser:
     _look_args(c)
     helps = {"type_speed": "typing speed", "linger": "seconds a block stays after it finishes",
              "cards": "blocks on screen at once", "intensity": "background intensity (0 = still)",
-             "glass": "card opacity (lower = more see-through)"}
+             "glass": "card opacity (lower = more see-through)",
+             "grain": "film grain (0 = none, 5 = the theme's own, 10 = double)"}
     for k, (_, lo, hi) in cfg.TUNE.items():
         c.add_argument(f"--{k.replace('_', '-')}", dest=k, type=int, choices=range(lo, hi + 1), metavar=f"{lo}-{hi}",
                        help=helps[k])

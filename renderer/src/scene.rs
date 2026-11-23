@@ -44,11 +44,11 @@ struct Card {
 struct Typing { card: u64, part: usize, t0: f64, cps: f64, after: f64, out: bool, busy: bool }
 
 /// the sliders: the feed sends them from `glitchwall config` and the settings window
-struct Tune { cps: f64, rain: f32, linger: f64, cards: usize, glass: f32 }
+struct Tune { cps: f64, rain: f32, linger: f64, cards: usize, glass: f32, grain: f32 }
 
 pub struct Scene {
     g: Gfx, fonts: std::rc::Rc<Fonts>, css: std::rc::Rc<String>,
-    look: Look, look_key: String, bg: Box<dyn Background>,
+    look: Look, look_key: String, bg: Box<dyn Background>, opts: Json,
     scene: ID2D1Bitmap1, overlay: Option<ID2D1Bitmap1>,
     anim_in: Option<Anim>, anim_out: Option<Anim>, place_mode: String,
     mono: IDWriteTextFormat, bar: IDWriteTextFormat, status_fmt: IDWriteTextFormat, line_h: f32, bar_h: f32,
@@ -103,12 +103,12 @@ impl Scene {
         gfx::set_bool(&fx.pmatrix, 2, true)?;
         let mono = fonts.format("Consolas", 16.0, 400)?;
         let mut s = Scene {
-            bg: bg::make(&look.rain, &g, &fonts, &look)?, scene, overlay: None, anim_in: None, anim_out: None, place_mode: "any".into(),
+            bg: bg::make(&look.rain, &g, &fonts, &look)?, opts: Json::Null, scene, overlay: None, anim_in: None, anim_out: None, place_mode: "any".into(),
             bar: mono.clone(), status_fmt: mono.clone(), mono, line_h: 18.4, bar_h: 24.0,
             g, fonts, css, look, look_key: String::new(), fx,
             cards: Vec::new(), queue: VecDeque::new(), typing: None, wait_until: None, busy_queue: false,
             by_ref: HashMap::new(), current: None, next_id: 1,
-            tune: Tune { cps: 240.0, rain: 0.5, linger: 7.0, cards: 4, glass: 0.58 }, rng: Rng(0x2545_f491_4f6c_dd1d),
+            tune: Tune { cps: 240.0, rain: 0.5, linger: 7.0, cards: 4, glass: 0.58, grain: 1.0 }, rng: Rng(0x2545_f491_4f6c_dd1d),
             asleep: false, ignore_sleep: false, slept_at: None, hidden: false, art: false, label: "live tool feed".into(), live_until: 0.0, blink: false,
             last_frame: 0.0, last_bg: 0.0, bg_drawn: false, changed: true,
         };
@@ -144,7 +144,10 @@ impl Scene {
         self.anim_in = t.get("in").str().and_then(|s| anim::parse(&self.css, s));
         self.anim_out = t.get("out").str().and_then(|s| anim::parse(&self.css, s));
         self.place_mode = t.get("place").str().unwrap_or("any").to_string();   // dock | stack | any, as the page's PLACE
-        if l.rain != old_rain || l.mono.family != old_mono || !self.bg_drawn { self.bg = bg::make(&l.rain, &self.g, &self.fonts, &l)?; }
+        if l.rain != old_rain || l.mono.family != old_mono || !self.bg_drawn {
+            self.bg = bg::make(&l.rain, &self.g, &self.fonts, &l)?;
+            self.bg.opts(&self.opts.get(&l.rain));
+        }
         self.overlay = Some(self.make_overlay()?);
         self.bg_drawn = false;
         for c in &mut self.cards { c.dirty = true; }
@@ -157,6 +160,8 @@ impl Scene {
         let (w, h) = (self.g.w as usize, self.g.h as usize);
         let l = &self.look;
         let mut rng = Rng(0x1234_5678_9abc_def1);
+        let k = self.tune.grain;   // the theme's grain times the slider; past 5 even a grainless theme gets some
+        let grain = l.grain * k + (k - 1.0).max(0.0) * 0.08;
         let mut px = vec![0u32; w * h];
         let (gr, gg, gb) = if l.light { (0.4, 0.35, 0.3) } else { (0.55, 0.5, 0.45) };
         for y in 0..h {
@@ -180,8 +185,8 @@ impl Scene {
                     let k = 0.16 * 0.5;
                     r = l.ink[0] * k; g = l.ink[1] * k; b = l.ink[2] * k; al = k;
                 }
-                if l.grain > 0.0 {
-                    let k = rng.f() * 0.4 * l.grain * 0.5;
+                if grain > 0.0 {
+                    let k = rng.f() * 0.4 * grain * 0.5;
                     if l.light { al = al + k - al * k; }   // multiply-ish: darker specks
                     else { r = r * (1.0 - k) + gr * k; g = g * (1.0 - k) + gg * k; b = b * (1.0 - k) + gb * k; al = al + k - al * k; }
                 }
@@ -201,11 +206,17 @@ impl Scene {
         }
         if !was && self.asleep { self.slept_at = Some(now); }
         if !data.get("look").is_null() { self.set_look(looks, data.get("look"))?; }
+        let opts = data.get("opts");   // the background's own options, {"orb": {"spin": ...}}
+        if !opts.is_null() && *opts != self.opts { self.opts = opts.clone(); self.bg.opts(&self.opts.get(&self.look.rain)); }
         let tune = data.get("tune");
         if let Some(v) = tune.get("typeSpeed").num() { self.tune.cps = 60.0 + v * 40.0; }
         if let Some(v) = tune.get("rain").num() { self.tune.rain = v as f32 / 10.0; }
         if let Some(v) = tune.get("linger").num() { self.tune.linger = v; }
         if let Some(v) = tune.get("cards").num() { self.tune.cards = (v as usize).max(1); }
+        if let Some(v) = tune.get("grain").num() {   // the grain slider: 5 is the theme's own
+            let k = v as f32 / 5.0;
+            if k != self.tune.grain { self.tune.grain = k; self.overlay = Some(self.make_overlay()?); self.bg_drawn = false; }
+        }
         if let Some(v) = tune.get("glass").num() { let g = v as f32 / 100.0; if g != self.tune.glass { self.tune.glass = g; self.restyle(); } }
         let paused = data.get("paused").truthy();
         self.art = data.get("mode").str() == Some("art");

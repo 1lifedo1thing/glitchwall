@@ -94,6 +94,8 @@
 
   /* selectors: the setting in a window, ridges beside it that roll as it turns */
   .knobs { display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:5px; }
+  #optknobs { grid-template-columns:repeat(4, minmax(0,1fr)); }
+  #opts[hidden] { display:none; }
   .knob { display:flex; flex-direction:column; align-items:center; gap:6px; background:none; border:0; padding:3px 0; cursor:ns-resize; border-radius:3px; min-width:0; }
   .rotor { display:flex; gap:3px; width:100%; height:44px; }
   .win { flex:1; min-width:0; display:grid; place-items:center; overflow:hidden; padding:0 3px; border:1px solid var(--ph-line); border-radius:2px; background:var(--glass); }
@@ -155,6 +157,7 @@
       <div class="drumfoot"><span>&lt; TURN &gt;</span><span id="drumpos">--</span></div>
     </div>
     <div class="mod" id="motion"><h2 class="tag">MOTION</h2><button class="reset" data-group="motion" data-help="reset:motion">DEFAULT</button><div class="faders" id="faders"></div></div>
+    <div class="mod" id="opts" hidden><h2 class="tag" id="opts-t">OPTIONS</h2><button class="reset" data-group="options" data-help="reset:options">DEFAULT</button><div class="knobs" id="optknobs"></div></div>
   </div>
 
   <div class="mod" id="readout" aria-live="polite"><div class="l1">CONNECTING…</div><div class="l2"></div></div>
@@ -185,6 +188,7 @@ const FADERS = {
   cards: ['CARDS', 'How many cards share the screen at once.'],
   intensity: ['MOTION', 'How busy the background is: 0 holds it still, 10 is full motion.'],
   glass: ['GLASS', 'Card opacity: low lets the background show through, high is solid.'],
+  grain: ['GRAIN', 'Film grain over everything: 0 is none, 5 is what the theme comes with, 10 is double.'],
 };
 const SWITCHES = {
   commands_only: ['CALLS ONLY', 'Show each call, never its output.'],
@@ -196,11 +200,12 @@ const MODE_SHORT = { live: 'LIVE', ambient: 'AMBIENT', art: 'ART' };
 let S = {}, C = {}, D = {}, focusHelp = null, pending = {}, timer = null, busy = false, cleared = false;
 // what each DEFAULT key puts back. Mode stays as it is: switching to live would start showing real tool calls
 const GROUPS = { select: ['palette', 'rain', 'font', 'transition'], motion: Object.keys(FADERS),
-                 privacy: [...Object.keys(SWITCHES), 'label'] };
+                 privacy: [...Object.keys(SWITCHES), 'label'], options: [] };
 const THEME_OWNS = [...GROUPS.select, ...GROUPS.motion];   // a new theme starts clean: no tweaks carried over
 const GROUP_HELP = {
   select: ['COLORS · BACKDROP · FONT · ARRIVAL', 'back to what the theme comes with. Mode stays as it is.'],
-  motion: ['TYPING · LINGER · CARDS · MOTION · GLASS', 'back to the standard values.'],
+  motion: ['TYPING · LINGER · CARDS · MOTION · GLASS · GRAIN', 'back to the standard values.'],
+  options: ['OPTIONS', 'back to how the background comes.'],
   privacy: ['CALLS ONLY · MASKS · LABEL', 'back to the safe defaults: user name and emails masked, the stock label.'],
 };
 const differs = k => D[k] !== undefined && S[k] !== D[k];
@@ -473,7 +478,22 @@ function build() {
   });
 }
 
+// the background's own options (the orb's spin, say): a module of selectors for whichever background is showing
+const activeBg = () => S.rain && S.rain !== 'theme' ? S.rain : (C.themeRain || {})[S.theme];
+let optsFor = null;
+function renderOpts() {
+  const bg = activeBg(), keys = (C.options || {})[bg] || [];
+  if (bg === optsFor) return;
+  optsFor = bg; GROUPS.options = keys;
+  const box = $('optknobs'); box.innerHTML = '';
+  const names = keys.map(k => k.slice(bg.length + 1).toUpperCase());
+  keys.forEach((k, i) => { KNOB_HELP[k] = `${bg.toUpperCase()} · ${names[i]}`; box.appendChild(knob(k, names[i])); });
+  $('opts').hidden = !keys.length;
+  $('opts-t').textContent = `${(bg || '').toUpperCase()} OPTIONS`;
+  GROUP_HELP.options = [names.join(' · '), 'back to how the background comes.'];
+}
 function render() {
+  renderOpts();
   document.querySelectorAll('.knob').forEach(b => {
     const kind = b.dataset.help, o = Object.keys(C[kind]), i = Math.max(0, o.indexOf(S[kind]));
     const val = b.querySelector('.val'); val.textContent = optName(kind, S[kind]);
@@ -516,7 +536,7 @@ document.fonts.ready.then(() => { if (S.theme) render(); });
 (async () => {
   if (!KEY) { say('NO KEY', 'Open this with: glitchwall settings', true); return; }
   try {
-    const d = await api(); S = d.settings; C = { ...d.choices, ranges: d.ranges }; D = d.defaults || {};
+    const d = await api(); S = d.settings; C = { ...d.choices, ranges: d.ranges, options: d.options, themeRain: d.theme_rain }; D = d.defaults || {};
     $('drum').classList.add('still'); build(); render(); led('feed', 'g'); help('theme');
     requestAnimationFrame(() => requestAnimationFrame(() => $('drum').classList.remove('still')));
   } catch (e) { led('feed', 'r'); say('FEED NOT REACHABLE', String(e.message || e), true); return; }
