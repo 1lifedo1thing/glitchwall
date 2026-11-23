@@ -203,6 +203,9 @@ def load_settings() -> dict:
         s.update(json.loads(settings_file().read_text(encoding="utf-8")))
     except (OSError, ValueError):
         pass
+    for k, choices in _themes.OPTIONS.items():   # an option whose choices changed since it was saved: back to its default
+        if s.get(k) not in choices:
+            s[k] = DEFAULTS[k]
     return s
 
 

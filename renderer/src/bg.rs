@@ -1931,7 +1931,7 @@ pub struct Orb { back: ID2D1Bitmap1, front: ID2D1Bitmap1, glow: ID2D1Bitmap1, do
                  s: f32, ox: f32, oy: f32, w: f32, h: f32, t: f32, spin: f32, still: bool,
                  dest: Vec<D2D_RECT_F>, tint: Vec<D2D1_COLOR_F>, net: Vec<[f32; 3]>, tris: Vec<[u16; 3]>, mesh: ID2D1Bitmap1, mdc: ID2D1DeviceContext, mdc3: ID2D1DeviceContext3,
                  mbatch: ID2D1SpriteBatch, hole: ID2D1Bitmap1, holes: ID2D1Bitmap1, edge: ID2D1Bitmap1, cage: f32,
-                 turns: (f32, f32), caged: bool, calm: bool,
+                 turns: (f32, f32), caged: bool, lightv: [f32; 3], shine: f32,
                  fmt: IDWriteTextFormat, fs: f32, cy: f32, calls: Vec<OrbCall> }   // the readouts pointing at parts of the sphere   // how fast the sphere and the cage turn, from the options: 1 right, -1 left, 0 still
 
 struct Led { x: f32, y: f32, s: f32, a: f32, red: bool, kind: u8, f: f32, p: f32 }
@@ -2273,7 +2273,7 @@ impl Orb {
         }
         let fs = (s * 0.045).round().max(10.0);
         let mut o = Orb { fmt: fonts.format(&look.mono.family, fs, 400)?, fs, cy, calls: Vec::new(), back, front, glow, dot, batch, dc3, factory, sphere, rim, leds, ribs, packets: Vec::new(), rng,
-                          s, ox, oy, w, h, t: 0.0, spin: 0.0, still: false, dest: Vec::new(), tint: Vec::new(), net, tris, mesh, mdc, mdc3, mbatch, hole, holes, edge, cage: 0.0, turns: (1.0, 1.0), caged: true, calm: false };
+                          s, ox, oy, w, h, t: 0.0, spin: 0.0, still: false, dest: Vec::new(), tint: Vec::new(), net, tris, mesh, mdc, mdc3, mbatch, hole, holes, edge, cage: 0.0, turns: (1.0, 1.0), caged: true, lightv: [-0.62, 0.68, 0.39], shine: 1.0 };
         for i in 0..3 { let a = o.rng.range(0.15, 0.5); let c = o.callout(i, a); o.calls.push(c); }
         o.burn();
         o.t = o.rng.range(0.0, 300.0);
@@ -2330,7 +2330,8 @@ impl Orb {
         let (x, z) = (v[0] * c + v[2] * sn, v[2] * c - v[0] * sn);
         let t1 = 0.34f32;
         let (y2, z2) = (v[1] * t1.cos() - z * t1.sin(), v[1] * t1.sin() + z * t1.cos());
-        (self.ox + x * r, self.oy - y2 * r, z2, (-0.48 * x + 0.58 * y2 + 0.66 * z2).max(0.0))
+        let l = self.lightv;   // the cage's light: the light option
+        (self.ox + x * r, self.oy - y2 * r, z2, (l[0] * x + l[1] * y2 + l[2] * z2).max(0.0))
     }
 
     /// the cage: drawn over the sphere when the option has it on
@@ -2343,7 +2344,7 @@ impl Orb {
         let rc = s * CAGE_R;
         let pr: Vec<(f32, f32, f32, f32)> = self.net.iter().map(|&v| { let p = self.proj(v, self.cage, rc); (p.0 - ox + c, p.1 - oy + c, p.2, p.3) }).collect();
         let gloss = if light { look.bg } else { look.ink };
-        let mut lit = Vec::new();   // each rim's tint: brighter where the cell faces us and the light
+        let mut shades: Vec<Vec<[(f32, f32); 3]>> = vec![Vec::new(); 16];   // each rim, by how much light it catches
         let (ha, hd) = (HOLE_IN, 1.0 - 3.5 * HOLE_IN);
         let mut mats = Vec::new();
         for t in &self.tris {
@@ -2352,8 +2353,10 @@ impl Orb {
             let (mx, my) = ((a.0 + b.0 + d.0) / 3.0, (a.1 + b.1 + d.1) / 3.0);
             let k = 0.74;
             let q = |p: (f32, f32, f32, f32)| (mx + (p.0 - mx) * k, my + (p.1 - my) * k);
-            let al = CAGE_RIM * ((a.2 + b.2 + d.2) / 3.0).max(0.0).sqrt() * (0.03 + 0.25 * (a.3 + b.3 + d.3) / 3.0);
-            lit.push(D2D1_COLOR_F { r: gloss[0] * al, g: gloss[1] * al, b: gloss[2] * al, a: al });
+            // as the page has it: shaded like a lit ball, white facing the light and fading across the sphere in 16
+            // shades; a rim past the edge of the light switches off
+            let sh = ((a.2 + b.2 + d.2) / 3.0).max(0.0).sqrt().sqrt() * ((a.3 + b.3 + d.3) / 3.0).powf(1.4);
+            if sh > 0.06 { shades[((sh * 16.0) as usize).min(15)].push([q(a), q(b), q(d)]); }
             let (q0, q1, q2) = (q(a), q(b), q(d));
             let (m11, m12, m21, m22) = ((q1.0 - q0.0) / hd, (q1.1 - q0.1) / hd, (q2.0 - q0.0) / hd, (q2.1 - q0.1) / hd);
             mats.push(windows::Foundation::Numerics::Matrix3x2 { M11: m11, M12: m12, M21: m21, M22: m22,
@@ -2385,13 +2388,23 @@ impl Orb {
             m.DrawEllipse(&D2D1_ELLIPSE { point: p2(ox, oy), radiusX: s - 0.7, radiusY: s - 0.7 }, &self.rim, 1.4, None);
             m.SetTransform(&turn(0.0, 0.0, 0.0));
             m.DrawImage(&self.holes, None, None, D2D1_INTERPOLATION_MODE_LINEAR, D2D1_COMPOSITE_MODE_DESTINATION_OUT);
-            if !holes.is_empty() && CAGE_RIM > 0.0 {   // the rims, catching the light
-                self.mbatch.Clear();
-                self.mbatch.AddSprites(holes.len() as u32, holes.as_ptr(), None, Some(lit.as_ptr()), Some(mats.as_ptr()), size_of::<D2D_RECT_F>() as u32, 0,
-                                       size_of::<D2D1_COLOR_F>() as u32, size_of::<windows::Foundation::Numerics::Matrix3x2>() as u32)?;
-                m.SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);
-                self.mdc3.DrawSpriteBatch(&self.mbatch, 0, holes.len() as u32, &self.edge, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, D2D1_SPRITE_OPTIONS_NONE);
-                m.SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+            if CAGE_RIM > 0.0 {   // the rims, catching the light: one path of triangles per shade, stroked
+                let pen = m.CreateSolidColorBrush(&rgba(gloss), None)?;
+                let width = (u * 0.5).max(0.8);
+                for (j, tris) in shades.iter().enumerate() {
+                    if tris.is_empty() { continue; }
+                    let path = self.factory.CreatePathGeometry()?;
+                    let sink = path.Open()?;
+                    for t in tris {
+                        sink.BeginFigure(p2(t[0].0, t[0].1), D2D1_FIGURE_BEGIN_HOLLOW);
+                        sink.AddLine(p2(t[1].0, t[1].1));
+                        sink.AddLine(p2(t[2].0, t[2].1));
+                        sink.EndFigure(D2D1_FIGURE_END_CLOSED);
+                    }
+                    sink.Close()?;
+                    pen.SetOpacity((0.85 * (j as f32 + 0.5) / 16.0 * CAGE_RIM * self.shine).min(1.0));
+                    m.DrawGeometry(&path, &pen, width, None);
+                }
             }
             m.EndDraw(None, None)?;
             m.SetTarget(None);
@@ -2421,10 +2434,11 @@ impl Orb {
 impl Background for Orb {
     fn fps(&self) -> f32 { if self.still { 0.0 } else { 20.0 } }
     fn opts(&mut self, o: &Json) -> bool {
-        let d = if o.get("direction").str() == Some("left") { -1.0 } else { 1.0 };
         self.caged = o.get("cage").str() != Some("off");
-        self.calm = o.get("lights").str() == Some("calm");
-        self.turns = match o.get("spin").str() { Some("sphere") => (d, 0.0), Some("cage") => (0.0, d), Some("still") => (0.0, 0.0), _ => (d, d) };
+        self.turns = match o.get("spin").str() { Some("left") => (-1.0, -1.0), Some("cage") => (0.0, 1.0), Some("still") => (0.0, 0.0), _ => (1.0, 1.0) };
+        self.lightv = match o.get("light").str() { Some("left") => [-0.85, 0.25, 0.46], Some("top") => [-0.15, 0.9, 0.41],
+                                                   Some("front") => [-0.25, 0.3, 0.92], _ => [-0.62, 0.68, 0.39] };
+        self.shine = match o.get("glow").str() { Some("soft") => 0.55, Some("bright") => 1.4, Some("blazing") => 1.9, _ => 1.0 };
         false
     }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
@@ -2436,7 +2450,7 @@ impl Background for Orb {
             self.cage += dt * 0.05 * sp * self.turns.1;
             let fade = (-dt * sp * 1.1).exp();   // lights die down to their resting glow
             for rb in &mut self.ribs { for j in 0..rb.n { rb.b[j] = rb.base[j].max(rb.b[j] * fade); } }
-            let mut n = dt * sp * if self.calm { 8.0 } else { 70.0 };   // flickers; calm: now and then
+            let mut n = dt * sp * 70.0;   // flickers
             while n > 0.0 {
                 if n < 1.0 && self.rng.f() > n { break; }
                 let k = (self.rng.f() * ORB_L as f32) as usize % ORB_L;
@@ -2444,7 +2458,7 @@ impl Background for Orb {
                 self.ribs[k].b[j] = self.rng.range(0.5, 1.0);
                 n -= 1.0;
             }
-            for i in 0..if self.calm { 0 } else { self.packets.len() } {   // packets streaming along the slats; none when calm
+            for i in 0..self.packets.len() {   // packets streaming along the slats
                 let (k, mut pos, v, len) = self.packets[i];
                 pos += v * dt * sp;
                 let rn = self.ribs[k].n as i64;
