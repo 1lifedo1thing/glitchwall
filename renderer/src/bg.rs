@@ -1,5 +1,5 @@
 //! Backgrounds: each one draws into the full-screen scene bitmap that the cards' glass blurs.
-//! Ported so far: the page's "pixel" and "cascade"; every other background falls back to a plain fill until it is.
+//! Ported so far: the page's "pixel", "cascade" and "broadsheet"; every other background falls back to a plain fill until it is.
 use crate::fonts::Fonts;
 use crate::gfx::{Gfx, rect, rgba};
 use crate::looks::{Color, Look};
@@ -20,6 +20,7 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Box<dyn B
     Ok(match name {
         "pixel" => Box::new(Pixel::new(g)?),
         "cascade" => Box::new(Cascade::new(g, fonts, &look.mono.family)?),
+        "broadsheet" => Box::new(Broadsheet::new(g, fonts, look)?),
         _ => Box::new(Plain),
     })
 }
@@ -242,6 +243,211 @@ impl Background for Cascade {
                 self.dc3.DrawSpriteBatch(&self.batch, 0, n, &self.atlas, D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR, D2D1_SPRITE_OPTIONS_NONE);
                 g.dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
             }
+        }
+        Ok(())
+    }
+}
+
+/// a broadsheet page ghosted under the cards: a masthead between rules, columns of greeked type with headlines, a
+/// halftone photo or two. It sets itself line by line, holds, then fades for the next edition.
+/// The page is drawn once, white, into its own surface (with a second drawing context, since the scene's is busy
+/// when items are set); each frame fills it with the theme's ink through it as a mask, so a palette change shows
+/// at once. While it holds, nothing moves: 1 frame a second instead of 15.
+pub struct Broadsheet {
+    page: ID2D1Bitmap1, pdc: ID2D1DeviceContext, white: ID2D1SolidColorBrush,
+    mono: String, display: (String, u32), dw: IDWriteFactory5, fonts_coll: Option<IDWriteFontCollection>, display_coll: Option<IDWriteFontCollection>,
+    items: Vec<Sheet>, n: usize, phase: u8, t: f32, fade: f32, w: f32, h: f32, rng: Rng, still: bool,
+    clock: std::time::Instant, last: f32,
+}
+
+enum Sheet { Photo(f32, f32, f32, f32), Bar(f32, f32, f32, f32, f32) }   // x, y, w, h (and alpha)
+
+const SET: u8 = 0;
+const HOLD: u8 = 1;
+const OUT: u8 = 2;
+
+impl Broadsheet {
+    fn new(g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Broadsheet> {
+        let page = g.surface(g.w as f32, g.h as f32)?;
+        let pdc = unsafe { g.dc.GetDevice()?.CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE)? };
+        unsafe { pdc.SetDpi(96.0 * g.scale, 96.0 * g.scale); pdc.SetTarget(&page); }
+        let white = unsafe { pdc.CreateSolidColorBrush(&D2D1_COLOR_F { r: 1.0, g: 1.0, b: 1.0, a: 1.0 }, None)? };
+        let coll = |fam: &str| -> Option<IDWriteFontCollection> { if fonts.has(fam) { fonts.set.cast().ok() } else { None } };
+        let mut b = Broadsheet {
+            fonts_coll: coll(&look.mono.family), display_coll: coll(&look.display.family),
+            page, pdc, white, mono: look.mono.family.clone(), display: (look.display.family.clone(), look.display.weight),
+            dw: fonts.dw.clone(), items: Vec::new(), n: 0, phase: SET, t: 0.0, fade: 1.0, w: g.w as f32, h: g.h as f32,
+            rng: Rng(0x5eed_0f_b0a2_d5ee), still: false, clock: std::time::Instant::now(), last: 0.0,
+        };
+        b.layout()?;
+        b.put_upto(usize::MAX)?;   // up at once; later editions set line by line
+        b.phase = HOLD;
+        Ok(b)
+    }
+
+    fn format(&self, fam: &str, coll: &Option<IDWriteFontCollection>, size: f32, weight: u32) -> Result<IDWriteTextFormat> {
+        let w: Vec<u16> = fam.encode_utf16().chain([0]).collect();
+        unsafe {
+            self.dw.CreateTextFormat(PCWSTR(w.as_ptr()), coll.as_ref(), DWRITE_FONT_WEIGHT(weight as i32), DWRITE_FONT_STYLE_NORMAL,
+                                     DWRITE_FONT_STRETCH_NORMAL, size, w!("en-us"))
+        }
+    }
+
+    /// a new edition: where everything goes, and the masthead and column rules drawn straight away
+    fn layout(&mut self) -> Result<()> {
+        let (w, h) = (self.w, self.h);
+        let m = (w.min(h) * 0.05).round();
+        let cols = if w > h { 6 } else { 3 };
+        let gut = (w * 0.012).round();
+        let top = (h * 0.17).round();
+        let cw = (w - m * 2.0 - gut * (cols as f32 - 1.0)) / cols as f32;
+        let lh = (h / 95.0).round().max(7.0);
+        let r = &mut self.rng;
+        let mut items = Vec::new();
+        // the photos: one or two blocks spanning columns
+        let mut photos: Vec<(usize, usize, f32, f32, f32, f32)> = Vec::new();
+        for _ in 0..(if r.f() < 0.5 { 1 } else { 2 }) {
+            let c0 = (r.f() * (cols - 1) as f32) as usize;
+            let span = (cols - c0).min(2 + (r.f() * 2.0) as usize);
+            let y0 = top + r.range(0.05, 0.45) * (h - top);
+            if photos.iter().any(|p| c0 < p.1 && c0 + span > p.0) { continue; }
+            let ph = (h - m - y0).min(r.range(0.22, 0.34) * h);
+            photos.push((c0, c0 + span, m + c0 as f32 * (cw + gut), y0, span as f32 * cw + (span as f32 - 1.0) * gut, ph));
+        }
+        for p in &photos { items.push(Sheet::Photo(p.2, p.3, p.4, p.5)); }
+        for c in 0..cols {   // each column: a headline now and then, then lines of type
+            let x = m + c as f32 * (cw + gut);
+            let mut y = top + lh;
+            let mut first = true;
+            while y < h - m - lh {
+                if let Some(p) = photos.iter().find(|p| c >= p.0 && c < p.1 && y + lh > p.3 - lh && y < p.3 + p.5 + lh) { y = p.3 + p.5 + lh * 2.2; first = false; continue; }
+                if r.f() < 0.05 || first {   // a headline: one or two heavy lines
+                    let n = 1 + (r.f() * 2.0) as usize;
+                    for i in 0..n { let ww = cw * if i == n - 1 { r.range(0.5, 0.9) } else { 1.0 }; items.push(Sheet::Bar(x, y, ww, lh * 1.5, 1.0)); y += lh * 2.1; }
+                    y += lh * 0.4;
+                }
+                first = false;
+                let para = 4 + (r.f() * 9.0) as usize;
+                let mut i = 0;
+                while i < para && y < h - m - lh {
+                    let ww = if i == para - 1 { cw * r.range(0.2, 0.8) } else { cw };
+                    let ind = if i == 0 { cw * 0.06 } else { 0.0 };
+                    items.push(Sheet::Bar(x + ind, y, ww - ind, lh * 0.55, 0.55));
+                    y += lh;
+                    i += 1;
+                }
+                y += lh * 0.5;
+            }
+        }
+        let key = |s: &Sheet| match *s { Sheet::Photo(x, y, ..) | Sheet::Bar(x, y, ..) => (x, y) };
+        items.sort_by(|a, b| key(a).0.total_cmp(&key(b).0).then(key(a).1.total_cmp(&key(b).1)));
+        self.items = items;
+        self.n = 0;
+        // the masthead between double rules, the column rules
+        let fs = (lh * 1.3).round().max(10.0);
+        let mono = self.format(&self.mono.clone(), &self.fonts_coll, fs, 400)?;
+        let title = self.format(&self.display.0.clone(), &self.display_coll, fs * 2.6, self.display.1)?;
+        let t = unsafe { windows::Win32::System::SystemInformation::GetLocalTime() };
+        const DAYS: [&str; 7] = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+        const MONTHS: [&str; 12] = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+        let vol = format!("VOL. {}  ·  NO. {}", t.wYear as i32 - 2000, t.wMonth as u32 * 31 + t.wDay as u32);
+        let date = format!("{} {} {:02} {}", DAYS[t.wDayOfWeek as usize % 7], MONTHS[(t.wMonth as usize + 11) % 12], t.wDay, t.wYear);
+        let r1 = (top * 0.3).round();
+        let mid = (r1 + top) / 2.0;
+        let dc = &self.pdc;
+        unsafe {
+            dc.BeginDraw();
+            dc.Clear(Some(&D2D1_COLOR_F::default()));
+            let b = &self.white;
+            b.SetOpacity(1.0);
+            for (yy, hh) in [(r1, 2.0), (r1 + 5.0, 1.0), (top - 8.0, 1.0), (top - 5.0, 2.0)] { dc.FillRectangle(&rect(m, yy, w - m * 2.0, hh), b); }
+            b.SetOpacity(0.9);
+            for (text, fmt, align) in [(vol, &mono, DWRITE_TEXT_ALIGNMENT_LEADING), (date, &mono, DWRITE_TEXT_ALIGNMENT_TRAILING),
+                                       ("The Live Feed".to_string(), &title, DWRITE_TEXT_ALIGNMENT_CENTER)] {
+                fmt.SetTextAlignment(align)?;
+                fmt.SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER)?;
+                fmt.SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP)?;
+                let s: Vec<u16> = text.encode_utf16().collect();
+                dc.DrawText(&s, fmt, &rect(m, mid - 100.0, w - m * 2.0, 200.0), b, D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL);
+            }
+            b.SetOpacity(0.5);
+            for c in 1..cols {
+                let x = (m + c as f32 * (cw + gut) - gut / 2.0).round();
+                dc.FillRectangle(&rect(x, top + lh, 1.0, h - m - top - lh), b);
+            }
+            dc.EndDraw(None, None)?;
+        }
+        Ok(())
+    }
+
+    /// set the next items, up to `upto` of them
+    fn put_upto(&mut self, upto: usize) -> Result<()> {
+        if self.n >= self.items.len() || upto == 0 { return Ok(()); }
+        let end = self.items.len().min(self.n.saturating_add(upto));
+        let (dc, b) = (&self.pdc, &self.white);
+        unsafe {
+            dc.BeginDraw();
+            for it in &self.items[self.n..end] {
+                match *it {
+                    Sheet::Photo(px, py, pw, ph) => {   // a halftone: dots sized by a soft made-up image
+                        let s = (self.w.min(self.h) / 150.0).round().max(4.0);
+                        let (f1, f2, phs) = (self.rng.range(1.0, 3.0), self.rng.range(1.0, 3.0), self.rng.range(0.0, std::f32::consts::TAU));
+                        b.SetOpacity(0.9);
+                        let mut y = py + s / 2.0;
+                        while y < py + ph {
+                            let mut x = px + s / 2.0;
+                            while x < px + pw {
+                                let (u, v) = ((x - px) / pw, (y - py) / ph);
+                                let k = 0.5 + 0.3 * (u * f1 * std::f32::consts::TAU + phs).sin() * (v * f2 * std::f32::consts::PI).cos()
+                                        + 0.25 * (v - 0.5) - 0.2 * (-(((u - 0.5) / 0.18).powi(2) + ((v - 0.42) / 0.25).powi(2))).exp();
+                                let rad = s * 0.5 * k.clamp(0.0, 1.0);
+                                if rad > 0.3 { dc.FillEllipse(&D2D1_ELLIPSE { point: D2D_POINT_2F { x, y }, radiusX: rad, radiusY: rad }, b); }
+                                x += s;
+                            }
+                            y += s;
+                        }
+                        b.SetOpacity(0.6);
+                        dc.FillRectangle(&rect(px, py + ph + 4.0, pw * 0.7, 2.0), b);
+                    }
+                    Sheet::Bar(x, y, w, h, a) => { b.SetOpacity(a); dc.FillRectangle(&rect(x, y, w, h), b); }
+                }
+            }
+            dc.EndDraw(None, None)?;
+        }
+        self.n = end;
+        Ok(())
+    }
+}
+
+impl Background for Broadsheet {
+    fn fps(&self) -> f32 { if self.still { 0.0 } else if self.phase == HOLD { 1.0 } else { 15.0 } }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, _: f32) -> Result<()> {
+        // its own clock: while holding it is called once a second, and the scene caps the dt it passes
+        let now = self.clock.elapsed().as_secs_f32();
+        let dt = (now - self.last).min(1.5);
+        self.last = now;
+        self.still = level <= 0.0;   // 0 stills it: the page as it is stays up
+        if !self.still {
+            let sp = 0.4 + level * 1.6;   // the page's .4 + RAIN * 1.6 (RAIN 0-1, as `level`)
+            match self.phase {
+                SET => {
+                    self.put_upto((dt * sp * 40.0).ceil() as usize)?;
+                    if self.n >= self.items.len() { self.phase = HOLD; self.t = 0.0; }
+                }
+                HOLD => { self.t += dt * sp; if self.t > 40.0 { self.phase = OUT; } }
+                _ => {
+                    self.fade -= dt * 0.4;
+                    if self.fade <= 0.0 { self.fade = 1.0; self.phase = SET; self.layout()?; }
+                }
+            }
+        }
+        unsafe {
+            g.dc.Clear(Some(&rgba(look.bg)));
+            let a = if look.light { 0.13 } else { 0.11 } * self.fade;
+            let ink = g.brush([look.ink[0], look.ink[1], look.ink[2], a])?;
+            g.dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);   // FillOpacityMask needs it
+            g.dc.FillOpacityMask(&self.page, &ink, Some(&rect(0.0, 0.0, self.w, self.h)), None);
+            g.dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
         }
         Ok(())
     }
