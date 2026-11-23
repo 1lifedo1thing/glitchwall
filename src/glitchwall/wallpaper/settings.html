@@ -38,7 +38,7 @@
 
   /* ---------- header: name, status lamps, sound, the pause key */
   header { display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; padding:10px 14px; border-bottom:1px solid var(--ph-line); }
-  .brand { font:var(--fmw, 400) calc(21px * var(--fms, 1))/1 var(--fm, 'Departure Mono', Consolas, monospace); letter-spacing:.4em; color:var(--ph); text-shadow:var(--glow), 0 0 16px rgba(var(--ph-rgb),.3); }
+  .brand { font:var(--fmw, 400) 21px/1 var(--fm, 'Departure Mono', Consolas, monospace); letter-spacing:.4em; color:var(--ph); text-shadow:var(--glow), 0 0 16px rgba(var(--ph-rgb),.3); }
   .brand small { display:block; font-size:9px; letter-spacing:.3em; color:var(--ph-dim); margin-top:5px; text-shadow:none; }
   .brand .cur { display:inline-block; width:.55em; height:.9em; margin-left:.1em; vertical-align:-2px; background:var(--ph); box-shadow:var(--glow); }
   .brand .cur.off { opacity:0; }
@@ -103,7 +103,7 @@
   .sw.on .name { color:var(--ph); text-shadow:var(--glow); }
   .labelrow { display:flex; gap:10px; align-items:center; margin-top:10px; }
   .labelrow label { font-size:9px; letter-spacing:.15em; }
-  #label { flex:1; min-width:0; padding:3px 8px; font:var(--fdw, 400) calc(19px * var(--fds, 1)) var(--fd, 'VT323', monospace); color:var(--ph); background:transparent; border:1px solid var(--ph-line); border-radius:2px; outline:none; text-shadow:var(--glow); }
+  #label { flex:1; min-width:0; height:27px; padding:3px 8px; font:var(--fdw, 400) calc(19px * var(--fds, 1)) var(--fd, 'VT323', monospace); color:var(--ph); background:transparent; border:1px solid var(--ph-line); border-radius:2px; outline:none; text-shadow:var(--glow); }
   #label:focus { border-color:var(--ph); box-shadow:var(--glow); }
 
   /* selectors: the setting in a window, ridges beside it that roll as it turns */
@@ -112,7 +112,7 @@
   #opts[hidden] { display:none; }
   .knob { display:flex; flex-direction:column; align-items:center; gap:6px; background:none; border:0; padding:3px 0; cursor:ns-resize; border-radius:3px; min-width:0; }
   .rotor { display:flex; gap:3px; width:100%; height:44px; }
-  .win { flex:1; min-width:0; display:grid; place-items:center; overflow:hidden; padding:0 3px; border:1px solid var(--ph-line); border-radius:2px; background:var(--glass); }
+  .win { flex:none; height:44px; min-width:0; display:grid; place-items:center; overflow:hidden; padding:0 3px; border:1px solid var(--ph-line); border-radius:2px; background:var(--glass); }
   .win .val { display:block; max-width:100%; text-align:center; font:var(--fdw, 400) calc(18px * var(--fds, 1)) var(--fd, 'VT323', monospace); color:var(--ph); text-shadow:var(--glow); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .wheel { width:8px; border:1px solid var(--ph-dim); border-radius:2px; transition:background-position .18s;
            background:repeating-linear-gradient(180deg, var(--ph-dim) 0 1px, transparent 1px 5px); }
@@ -131,7 +131,7 @@
   .faders { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:6px 16px; }
   .fader { display:grid; grid-template-columns:50px minmax(0,1fr) 30px; align-items:center; gap:7px; padding:1px 3px; border-radius:3px; }
   .fader .name { font-size:9px; letter-spacing:.12em; }
-  .fader .val { text-align:center; font:var(--fdw, 400) calc(18px * var(--fds, 1))/1.15 var(--fd, 'VT323', monospace); color:var(--ph); text-shadow:var(--glow); border:1px solid var(--ph-line); border-radius:2px; }
+  .fader .val { height:23px; overflow:hidden; display:grid; place-items:center; text-align:center; font:var(--fdw, 400) calc(18px * var(--fds, 1))/1.15 var(--fd, 'VT323', monospace); color:var(--ph); text-shadow:var(--glow); border:1px solid var(--ph-line); border-radius:2px; }
   .track { position:relative; height:20px; touch-action:none; cursor:ew-resize; }
   .track .ticks { position:absolute; inset:0 4px; background:repeating-linear-gradient(90deg, var(--ph-faint) 0 1px, transparent 1px 10%);
                   -webkit-mask:linear-gradient(#000 0 5px, transparent 5px 15px, #000 15px); mask:linear-gradient(#000 0 5px, transparent 5px 15px, #000 15px); }
@@ -144,7 +144,7 @@
 
   /* the key legend */
   footer { display:flex; flex-wrap:wrap; gap:6px 18px; padding:7px 16px; border-top:1px solid var(--ph-line); font-size:10px; letter-spacing:.05em; }
-  kbd { display:inline-block; min-width:18px; padding:0 4px; margin-right:4px; text-align:center; font:var(--fmw, 400) calc(10px * var(--fms, 1))/16px var(--fm, 'Departure Mono', Consolas, monospace); color:var(--ph); border:1px solid var(--ph-dim); border-radius:2px; }
+  kbd { display:inline-block; min-width:18px; padding:0 4px; margin-right:4px; text-align:center; font:var(--fmw, 400) 10px/16px var(--fm, 'Departure Mono', Consolas, monospace); color:var(--ph); border:1px solid var(--ph-dim); border-radius:2px; }
 
 
   #resetall:hover, #snd:hover, #ask:hover { border-color:var(--ph); color:var(--ph); }
@@ -535,13 +535,20 @@ function wear() {
   else ['--mod', '--glow', '--scan'].forEach(k => st.removeProperty(k));
 }
 // never a scroll bar: when the window is too short for everything, shrink the whole page until it fits
+let fitW = 0, fitH = 0;
 function fit() {
   const root = document.documentElement, main = document.querySelector('main'), last = main.lastElementChild;
-  if (!last) return;
+  if (!last || innerHeight < 80) return;   // hidden or minimized: keep the last size
   // what everything needs, in page pixels (the same at any zoom): header, main's content, footer
   const need = document.querySelector('header').offsetHeight + (last.offsetTop + last.offsetHeight - main.offsetTop + 12)
              + document.querySelector('footer').offsetHeight;
-  const z = Math.min(1, Math.floor(innerHeight / need * 1000) / 1000);
+  const cur = parseFloat(root.style.getPropertyValue('--z')) || 1;
+  let z = Math.max(.35, Math.min(1, Math.floor(innerHeight / need * 1000) / 1000));
+  // only the window's own resize may grow it back: growing on content changes made it rock (wider page, fewer
+  // wrapped rows, more room, grow, rows wrap again...) and jump from theme to theme
+  const resized = innerWidth !== fitW || innerHeight !== fitH;
+  if (!resized && z > cur) return;
+  fitW = innerWidth; fitH = innerHeight;
   if (String(z) !== root.style.getPropertyValue('--z')) { root.style.zoom = z; root.style.setProperty('--z', z); }
 }
 addEventListener('resize', () => fit());

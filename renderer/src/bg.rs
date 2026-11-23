@@ -44,11 +44,11 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result
         "stars" => Box::new(Stars::new()),
         "snow" => Box::new(Snow::new(g)),
         "static" => Box::new(Static::new(g)?),
-        "code" => Box::new(Code(Cascade::new(g, fonts, &look.mono.family, &Json::parse(r#"{"layers":"one"}"#).unwrap_or(Json::Null))?)),   // the page's katakana rain: cascade, one depth
-        "jukebox" => Box::new(Jukebox::new(g)?),
+        "code" => { let mut c = Code(Cascade::new(g, fonts, &look.mono.family, &Json::parse(r#"{"layers":"one"}"#).unwrap_or(Json::Null))?, 1.0); c.opts(o); Box::new(c) }   // the page's katakana rain: cascade, one depth
+        "jukebox" => Box::new(Jukebox::new(g, o)?),
         "starburst" => Box::new(Starburst::new(g)?),
         "testcard" => Box::new(Testcard::new(g, fonts, look)?),
-        "print" => Box::new(Print::new(g)?),
+        "print" => Box::new(Print::new(g, o)?),
         _ => Box::new(Plain),
     })
 }
@@ -3681,39 +3681,48 @@ const CHALK_LINES: [&str; 58] = ["f(x) = x² - 3x + 2", "a² + b² = c²", "O(n 
 const CHALK_GHOSTS: [&str; 12] = ["x + y = ", "∴", "Q.E.D.", "f′(x)", "lim →", "≈ 3.14159", "Δt", "(a + b)²", "λx. x", "mod 7", "k = 1 .. n", "∂/∂x"];
 const CHALK_FLOWS: [[&str; 3]; 8] = [["plan", "code", "test"], ["read", "edit", "ship"], ["fetch", "parse", "store"], ["build", "lint", "deploy"], ["request", "cache", "db"], ["input", "validate", "save"], ["red", "green", "refactor"], ["clone", "branch", "merge"]];
 
-/// flying through a starfield: 700 stars coming at you; the last frames fade under a translucent fill, so each
-/// star leaves a short streak. 30 fps; still at 0.
-pub struct Stars { s: Vec<(f32, f32, f32)>, rng: Rng, fresh: bool, still: bool }
+/// flying through a starfield: stars coming at you (or falling away); the last frames fade under a translucent fill,
+/// so each star leaves a short streak. Options: density, speed, streaks, direction. 30 fps; still at 0.
+pub struct Stars { s: Vec<(f32, f32, f32)>, rng: Rng, fresh: bool, still: bool, k: f32, sp: f32, streaks: bool, out: bool }
 
 impl Stars {
     fn new() -> Stars {
         let mut rng = Rng(0x51a7_f1e1_d000_0001);
-        let s = (0..700).map(|_| { let z = rng.range(0.05, 1.0); (rng.range(-1.0, 1.0), rng.range(-1.0, 1.0), z) }).collect();
-        Stars { s, rng, fresh: true, still: false }
+        let s = (0..1100).map(|_| { let z = rng.range(0.05, 1.0); (rng.range(-1.0, 1.0), rng.range(-1.0, 1.0), z) }).collect();
+        Stars { s, rng, fresh: true, still: false, k: 0.64, sp: 1.0, streaks: true, out: false }
     }
 }
 
 impl Background for Stars {
     fn fps(&self) -> f32 { if self.still { 0.0 } else { 30.0 } }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.k = match o.get("density").str() { Some("sparse") => 0.3, Some("dense") => 1.0, _ => 0.64 };
+        self.sp = match o.get("speed").str() { Some("drift") => 0.4, Some("warp") => 2.5, _ => 1.0 };
+        self.streaks = o.get("streaks").str() != Some("off");
+        self.out = o.get("direction").str() == Some("out");
+        false
+    }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
         self.still = level <= 0.0;
         let (w, h) = (g.w as f32, g.h as f32);
         let bg = g.brush(look.bg)?;
         unsafe {
-            if self.fresh || self.still { g.dc.Clear(Some(&rgba(look.bg))); self.fresh = false; }
+            if self.fresh || self.still || !self.streaks { g.dc.Clear(Some(&rgba(look.bg))); self.fresh = false; }
             else { bg.SetOpacity(0.45); g.dc.FillRectangle(&rect(0.0, 0.0, w, h), &bg); }
         }
         if self.still { self.fresh = true; return Ok(()); }
         let (hi, dim) = (g.brush(look.hi)?, g.brush(look.dim)?);
-        let n = (self.s.len() as f32 * level).round() as usize;
+        let n = (self.s.len() as f32 * self.k * level).round() as usize;
         let f = w.max(h) / 2.0;
+        let dz = if self.out { 1.0 } else { -1.0 } * dt * (0.06 + level * 0.14) * self.sp;
         for i in 0..n {
             let (px, py, mut z) = self.s[i];
-            z -= dt * (0.06 + level * 0.14);
+            z += dz;
             let x = w / 2.0 + px / z * f * 0.5;
             let y = h / 2.0 + py / z * f * 0.5;
-            if z <= 0.02 || x < 0.0 || x > w || y < 0.0 || y > h {
-                self.s[i] = (self.rng.range(-1.0, 1.0), self.rng.range(-1.0, 1.0), 1.0);
+            if z <= 0.02 || z > 1.0 || x < 0.0 || x > w || y < 0.0 || y > h {
+                let nz = if self.out { self.rng.range(0.03, 0.2) } else { 1.0 };
+                self.s[i] = (self.rng.range(-1.0, 1.0), self.rng.range(-1.0, 1.0), nz);
                 continue;
             }
             self.s[i].2 = z;
@@ -3724,24 +3733,34 @@ impl Background for Stars {
     }
 }
 
-/// drifting snow: 500 flakes falling at their own pace, swaying a little; the big ones bright. 30 fps; still at 0.
-pub struct Snow { f: Vec<(f32, f32, f32, f32, f32)>, rng: Rng, t: f32, still: bool, h: f32 }
+/// drifting snow: flakes falling at their own pace, swaying or blown; the big ones bright; it can settle into a
+/// drift along the bottom that slowly melts. Options: amount, wind, flakes, settle. 30 fps; still at 0.
+pub struct Snow { f: Vec<(f32, f32, f32, f32, f32)>, rng: Rng, t: f32, still: bool, h: f32,
+                  k: f32, wind: f32, size: (f32, f32), big: f32, settle: bool, pile: Vec<f32> }
 
 impl Snow {
     fn new(g: &Gfx) -> Snow {
-        let mut sn = Snow { f: Vec::new(), rng: Rng(0x5a0f_1a4e_0bad_cafe), t: 0.0, still: false, h: g.h as f32 };
-        for _ in 0..500 { let y = sn.rng.range(0.0, sn.h); let fl = sn.flake(g.w as f32, y); sn.f.push(fl); }
+        let mut sn = Snow { f: Vec::new(), rng: Rng(0x5a0f_1a4e_0bad_cafe), t: 0.0, still: false, h: g.h as f32,
+                            k: 0.5, wind: 0.0, size: (1.0, 3.4), big: 2.6, settle: false, pile: vec![0.0; (g.w as usize).div_ceil(4)] };
+        for _ in 0..1000 { let y = sn.rng.range(0.0, sn.h); let fl = sn.flake(g.w as f32, y); sn.f.push(fl); }
         sn
     }
     /// x, y, size, fall speed, sway phase
     fn flake(&mut self, w: f32, y: f32) -> (f32, f32, f32, f32, f32) {
-        let r = self.rng.range(1.0, 3.4);
+        let r = self.rng.range(self.size.0, self.size.1);
         (self.rng.range(0.0, w), y, r, 12.0 + r * 14.0, self.rng.range(0.0, 7.0))
     }
 }
 
 impl Background for Snow {
     fn fps(&self) -> f32 { if self.still { 0.0 } else { 30.0 } }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.k = match o.get("amount").str() { Some("light") => 0.22, Some("blizzard") => 1.0, _ => 0.5 };
+        self.wind = match o.get("wind").str() { Some("left") => -38.0, Some("right") => 38.0, _ => 0.0 };
+        (self.size, self.big) = match o.get("flakes").str() { Some("fine") => ((0.8, 1.8), 1.6), Some("big") => ((2.2, 4.5), 3.6), _ => ((1.0, 3.4), 2.6) };
+        self.settle = o.get("settle").str() == Some("on");
+        false
+    }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
         self.still = level <= 0.0;
         self.t += dt;
@@ -3749,45 +3768,72 @@ impl Background for Snow {
         if self.still { return Ok(()); }
         let (w, h) = (g.w as f32, g.h as f32);
         let (hi, dim) = (g.brush(look.hi)?, g.brush(look.dim)?);
-        let n = (self.f.len() as f32 * level).round() as usize;
+        let n = (self.f.len() as f32 * self.k * level).round() as usize;
+        let sway = if self.wind != 0.0 { 5.0 } else { 12.0 };
+        let (cols, cap) = (self.pile.len(), h * 0.06);
         for i in 0..n {
             let (mut x, mut y, r, v, ph) = self.f[i];
             y += v * dt;
-            x += (self.t * 0.7 + ph).sin() * 12.0 * dt;
+            x += ((self.t * 0.7 + ph).sin() * sway + self.wind) * dt;
+            if x < -6.0 { x += w + 12.0 } else if x > w + 6.0 { x -= w + 12.0 }
+            let c = ((x / 4.0).max(0.0) as usize).min(cols - 1);
+            if self.settle && y > h - self.pile[c] {
+                self.pile[c] = cap.min(self.pile[c] + r * 0.35);
+                self.f[i] = self.flake(w, -4.0);
+                continue;
+            }
             self.f[i] = if y > h + 4.0 { self.flake(w, -4.0) } else { (x, y, r, v, ph) };
-            unsafe { g.dc.FillRectangle(&rect(x, y, r, r), if r > 2.6 { &hi } else { &dim }); }
+            unsafe { g.dc.FillRectangle(&rect(x, y, r, r), if r > self.big { &hi } else { &dim }); }
         }
+        if self.settle {   // the drift along the bottom, slowly melting
+            for p in self.pile.iter_mut() { *p = (*p - dt * 0.6).max(0.0); }
+            for c in 0..cols {
+                let hh = (self.pile[c.saturating_sub(1)] + self.pile[c] * 2.0 + self.pile[(c + 1).min(cols - 1)]) / 4.0;
+                if hh > 0.5 { unsafe { g.dc.FillRectangle(&rect(c as f32 * 4.0, h - hh, 4.0, hh), &dim); } }
+            }
+        } else { self.pile.fill(0.0); }
         Ok(())
     }
 }
 
 /// dead-channel noise at a quarter of the resolution, upscaled with hard edges, with a brighter band rolling slowly
 /// down. Drawn into memory and handed to the GPU. 15 fps; still at 0.
-pub struct Static { lw: usize, lh: usize, buf: Vec<u32>, small: ID2D1Bitmap1, rng: Rng, band: f32, still: bool }
+pub struct Static { lw: usize, lh: usize, buf: Vec<u32>, small: ID2D1Bitmap1, rng: Rng, band: f32, still: bool,
+                    blk: usize, roll: bool, tint: bool, slow: bool }   // options: grain, band, tint, flicker
 
 impl Static {
     fn new(g: &Gfx) -> Result<Static> {
         let (lw, lh) = ((g.w as usize).div_ceil(4), (g.h as usize).div_ceil(4));
         Ok(Static { lw, lh, buf: vec![0xff00_0000; lw * lh], small: g.bitmap(lw as u32, lh as u32, None, false)?,
-                    rng: Rng(0x0d15_ea5e_57a7_1c00), band: 0.0, still: false })
+                    rng: Rng(0x0d15_ea5e_57a7_1c00), band: 0.0, still: false, blk: 1, roll: true, tint: false, slow: false })
     }
 }
 
 impl Background for Static {
-    fn fps(&self) -> f32 { if self.still { 0.0 } else { 15.0 } }
+    fn fps(&self) -> f32 { if self.still { 0.0 } else if self.slow { 6.0 } else { 15.0 } }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.blk = if o.get("grain").str() == Some("coarse") { 2 } else { 1 };
+        self.roll = o.get("band").str() != Some("off");
+        self.tint = o.get("tint").str() == Some("tinted");
+        self.slow = o.get("flicker").str() == Some("slow");
+        false
+    }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
         self.still = level <= 0.0;
         if self.still { unsafe { g.dc.Clear(Some(&rgba(look.bg))); } return Ok(()); }
         self.band = (self.band + dt * self.lh as f32 * 0.12) % (self.lh as f32 + 40.0);
-        let (b, d) = (px(look.bg), px(look.dim));
+        let (b, d, a) = (px(look.bg), px(look.dim), px(look.acc));
         let ch = |c: u32, s: u32| ((c >> s) & 255) as f32;
         let p = 0.02 + level * 0.16;
-        for y in 0..self.lh {
-            let boost = if (y as f32 - self.band).abs() < 14.0 { 1.8 } else { 1.0 };
-            for x in 0..self.lw {
+        let blk = self.blk;
+        for y in (0..self.lh).step_by(blk) {
+            let boost = if self.roll && (y as f32 - self.band).abs() < 14.0 { 1.8 } else { 1.0 };
+            for x in (0..self.lw).step_by(blk) {
                 let m = if self.rng.f() < p * boost { (self.rng.f() * boost).min(1.0) } else { 0.0 };
-                let mix = |s: u32| (ch(b, s) + (ch(d, s) - ch(b, s)) * m) as u32;
-                self.buf[y * self.lw + x] = 0xff00_0000 | mix(16) << 16 | mix(8) << 8 | mix(0);
+                let c = if self.tint && m > 0.0 && self.rng.f() < 0.25 { a } else { d };
+                let mix = |s: u32| (ch(b, s) + (ch(c, s) - ch(b, s)) * m) as u32;
+                let v = 0xff00_0000 | mix(16) << 16 | mix(8) << 8 | mix(0);
+                for yy in y..(y + blk).min(self.lh) { for xx in x..(x + blk).min(self.lw) { self.buf[yy * self.lw + xx] = v; } }
             }
         }
         unsafe {
@@ -3799,11 +3845,20 @@ impl Background for Static {
     }
 }
 
-/// the page's "code" rain: cascade kept to one depth, whatever options the settings send
-pub struct Code(Cascade);
+/// the page's "code" rain: cascade kept to one depth. Its options go to cascade's own (density, glyphs, the heads:
+/// bright is cascade's theme-colored heads, accent its accent ones), plus a speed of its own.
+pub struct Code(Cascade, f32);
 impl Background for Code {
     fn fps(&self) -> f32 { self.0.fps() }
-    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> { self.0.draw(g, look, level, dt) }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.1 = match o.get("speed").str() { Some("slow") => 0.5, Some("fast") => 1.7, _ => 1.0 };
+        let s = |k: &str| Json::Str(o.get(k).str().unwrap_or("").to_string());
+        let heads = if o.get("heads").str() == Some("accent") { "accent" } else { "green" };
+        let c = Json::Obj(vec![("layers".into(), Json::Str("one".into())), ("density".into(), s("density")),
+                               ("glyphs".into(), s("glyphs")), ("heads".into(), Json::Str(heads.into()))]);
+        self.0.opts(&c)
+    }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> { self.0.draw(g, look, level, dt * self.1) }
 }
 
 type M3 = windows::Foundation::Numerics::Matrix3x2;
@@ -3813,14 +3868,15 @@ fn ell(x: f32, y: f32, rx: f32, ry: f32) -> D2D1_ELLIPSE { D2D1_ELLIPSE { point:
 /// in the side tubes. The arch shapes are made once; each band is drawn wide and faint (its glow) and then narrow.
 /// 20 fps; still at 0.
 pub struct Jukebox { arches: Vec<ID2D1PathGeometry>, x: f32, y: f32, w: f32, h: f32, t: f32, bub: Vec<(bool, f32, f32, f32)>,
-                     rng: Rng, still: bool }
+                     rng: Rng, still: bool, centre: bool, shift: bool, bubbles: bool, grille: bool }   // options: place, bands, bubbles, grille
 
 impl Jukebox {
-    fn new(g: &Gfx) -> Result<Jukebox> {
+    fn new(g: &Gfx, o: &Json) -> Result<Jukebox> {
         let (sw, sh) = (g.w as f32, g.h as f32);
         let w = sw.min(sh) * 0.46;
         let h = w * 1.55;
-        let (x, y) = (sw * 0.05, sh - h * 0.9);
+        let centre = o.get("place").str() == Some("centre");
+        let (x, y) = (if centre { (sw - w) / 2.0 } else { sw * 0.05 }, sh - h * 0.9);
         let band = w * 0.07;
         let factory = unsafe { g.dc.GetFactory()? };
         let mut arches = Vec::new();
@@ -3842,15 +3898,23 @@ impl Jukebox {
         }
         let mut rng = Rng(0x00ce_11a5_b0b5_1e55);
         let bub = (0..28).map(|i| (i % 2 == 1, rng.f(), rng.range(1.5, 4.5), rng.range(0.05, 0.14))).collect();
-        Ok(Jukebox { arches, x, y, w, h, t: 0.0, bub, rng, still: false })
+        let mut j = Jukebox { arches, x, y, w, h, t: 0.0, bub, rng, still: false, centre, shift: true, bubbles: true, grille: true };
+        j.opts(o);
+        Ok(j)
     }
 }
 
 impl Background for Jukebox {
     fn fps(&self) -> f32 { if self.still { 0.0 } else { 20.0 } }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.shift = o.get("bands").str() != Some("still");
+        self.bubbles = o.get("bubbles").str() != Some("off");
+        self.grille = o.get("grille").str() != Some("off");
+        (o.get("place").str() == Some("centre")) != self.centre   // the arches are made in place: remake when it moves
+    }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
         self.still = level <= 0.0;
-        self.t += dt * (0.15 + level * 0.9);
+        if self.shift { self.t += dt * (0.15 + level * 0.9); }
         let sh = g.h as f32;
         let band = self.w * 0.07;
         let (a, b) = (look.acc, look.acc2);
@@ -3858,7 +3922,7 @@ impl Background for Jukebox {
             let dc = &g.dc;
             dc.Clear(Some(&rgba(look.bg)));
             for (i, p) in self.arches.iter().enumerate() {
-                let k = ((self.t + i as f32 * 1.3).sin() + 1.0) / 2.0;
+                let k = if self.shift { ((self.t + i as f32 * 1.3).sin() + 1.0) / 2.0 } else { i as f32 / 2.0 };
                 let c = [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k, 1.0];
                 let br = g.brush(c)?;
                 br.SetOpacity(0.12);
@@ -3870,10 +3934,10 @@ impl Background for Jukebox {
             ink.SetOpacity(0.18);   // the grille
             let (gx, gw) = (self.x + band * 3.4, self.w - band * 6.8);
             let mut yy = self.y + self.w * 0.55;
-            while yy < sh { dc.DrawLine(p2(gx, yy), p2(gx + gw, yy), &ink, 1.0, None); yy += 9.0; }
+            while self.grille && yy < sh { dc.DrawLine(p2(gx, yy), p2(gx + gw, yy), &ink, 1.0, None); yy += 9.0; }
             ink.SetOpacity(0.45);   // the bubble tubes
             let (top, bot) = (self.y + self.w * 0.45, sh.min(self.y + self.h));
-            for i in 0..self.bub.len() {
+            for i in 0..if self.bubbles { self.bub.len() } else { 0 } {
                 let (side, mut f, r, v) = self.bub[i];
                 if !self.still { f += v * dt; }
                 if f > 1.0 { self.bub[i] = (side, 0.0, self.rng.range(1.5, 4.5), self.rng.range(0.05, 0.14)); f = 0.0; } else { self.bub[i].1 = f; }
@@ -3887,14 +3951,15 @@ impl Background for Jukebox {
 
 /// atomic-age starbursts, boomerangs and atoms scattered over the screen, each slowly turning. The boomerang
 /// shape is made once; everything is drawn turned in place. 20 fps; still at 0.
-pub struct Starburst { items: Vec<Item>, boom: ID2D1PathGeometry, still: bool }
+pub struct Starburst { items: Vec<Item>, boom: ID2D1PathGeometry, still: bool,
+                       kind: Option<u8>, cnt: usize, spin: f32, one: bool }   // options: shapes, count, spin, colors
 struct Item { x: f32, y: f32, s: f32, a: f32, spin: f32, kind: u8, n: usize, c: usize }
 
 impl Starburst {
     fn new(g: &Gfx) -> Result<Starburst> {
         let mut rng = Rng(0xa70e_1c_a9e5_0050);
         let (w, h) = (g.w as f32, g.h as f32);
-        let items = (0..34).map(|_| Item { x: rng.range(0.0, w), y: rng.range(0.0, h), s: rng.range(14.0, 46.0), a: rng.range(0.0, TAU),
+        let items = (0..64).map(|_| Item { x: rng.range(0.0, w), y: rng.range(0.0, h), s: rng.range(14.0, 46.0), a: rng.range(0.0, TAU),
             spin: rng.range(-0.25, 0.25), kind: [0u8, 0, 1, 2][(rng.f() * 4.0) as usize % 4], n: 8 + ((rng.f() * 6.0) as usize % 6) * 2,
             c: (rng.f() * 4.0) as usize % 4 }).collect();
         // a unit boomerang (L = 1), scaled to each item when drawn
@@ -3909,24 +3974,31 @@ impl Starburst {
             sink.Close()?;
             path
         };
-        Ok(Starburst { items, boom, still: false })
+        Ok(Starburst { items, boom, still: false, kind: None, cnt: 34, spin: 1.0, one: false })
     }
 }
 
 impl Background for Starburst {
-    fn fps(&self) -> f32 { if self.still { 0.0 } else { 20.0 } }
+    fn fps(&self) -> f32 { if self.still || self.spin == 0.0 { 0.0 } else { 20.0 } }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.kind = match o.get("shapes").str() { Some("bursts") => Some(0), Some("boomerangs") => Some(1), Some("atoms") => Some(2), _ => None };
+        self.cnt = match o.get("count").str() { Some("few") => 16, Some("many") => 64, _ => 34 };
+        self.spin = match o.get("spin").str() { Some("still") => 0.0, Some("lively") => 3.0, _ => 1.0 };
+        self.one = o.get("colors").str() == Some("one");
+        false
+    }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
         self.still = level <= 0.0;
-        let n = (self.items.len() as f32 * (level * 1.6).min(1.0)).round() as usize;
+        let n = (self.cnt as f32 * (level * 1.6).min(1.0)).round() as usize;
         let br = [g.brush(look.acc)?, g.brush(look.acc2)?, g.brush(look.ink)?, g.brush(look.muted)?];
         for b in &br { unsafe { b.SetOpacity(0.45); } }
         unsafe {
             let dc = &g.dc;
             dc.Clear(Some(&rgba(look.bg)));
             for it in self.items.iter_mut().take(n) {
-                it.a += it.spin * dt;
-                let b = &br[it.c];
-                match it.kind {
+                it.a += it.spin * self.spin * dt;
+                let b = &br[if self.one { 0 } else { it.c }];
+                match self.kind.unwrap_or(it.kind) {
                     0 => {
                         dc.SetTransform(&turn(it.a, it.x, it.y));
                         for k in 0..it.n {
@@ -3959,7 +4031,8 @@ impl Background for Starburst {
 
 /// an old broadcast test card, faded: checker border, bars in a circle, cross, resolution wedges and a name plate,
 /// with a slow roll bar and a little snow over it. Drawn whole each frame (a few hundred shapes). 15 fps; still at 0.
-pub struct Testcard { roll: f32, rng: Rng, still: bool, title: IDWriteTextFormat, sub: IDWriteTextFormat }
+pub struct Testcard { roll: f32, rng: Rng, still: bool, title: IDWriteTextFormat, sub: IDWriteTextFormat,
+                      rolls: bool, snow: f32, plate: bool, checker: bool }   // options: roll, snow, plate, border
 
 impl Testcard {
     fn new(g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Testcard> {
@@ -3967,12 +4040,19 @@ impl Testcard {
         let title = fonts.format("Instrument Serif", (r * 0.12).round(), 400)?;
         let sub = fonts.format(&look.mono.family, (r * 0.04).round().max(8.0), 400)?;
         for f in [&title, &sub] { unsafe { let _ = f.SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER); let _ = f.SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER); } }
-        Ok(Testcard { roll: 0.0, rng: Rng(0x7e57_ca4d_0047_8330), still: false, title, sub })
+        Ok(Testcard { roll: 0.0, rng: Rng(0x7e57_ca4d_0047_8330), still: false, title, sub, rolls: true, snow: 1.0, plate: true, checker: true })
     }
 }
 
 impl Background for Testcard {
-    fn fps(&self) -> f32 { if self.still { 0.0 } else { 15.0 } }
+    fn fps(&self) -> f32 { if self.still || (!self.rolls && self.snow == 0.0) { 0.0 } else { 15.0 } }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.rolls = o.get("roll").str() != Some("off");
+        self.snow = match o.get("snow").str() { Some("off") => 0.0, Some("heavy") => 2.5, _ => 1.0 };
+        self.plate = o.get("plate").str() != Some("off");
+        self.checker = o.get("border").str() != Some("plain");
+        false
+    }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
         self.still = level <= 0.0;
         let (w, h) = (g.w as f32, g.h as f32);
@@ -3984,10 +4064,11 @@ impl Background for Testcard {
             let ink = g.brush(look.ink)?;
             ink.SetOpacity(0.32);   // the checker border
             let sq = (w.min(h) / 18.0).round();
+            if !self.checker { dc.DrawRectangle(&rect(sq / 2.0, sq / 2.0, w - sq, h - sq), &ink, 2.0, None); }
             let (mut x, mut k) = (0.0, 0);
-            while x < w { if k % 2 == 1 { dc.FillRectangle(&rect(x, 0.0, sq, sq), &ink); dc.FillRectangle(&rect(x, h - sq, sq, sq), &ink); } x += sq; k += 1; }
+            while self.checker && x < w { if k % 2 == 1 { dc.FillRectangle(&rect(x, 0.0, sq, sq), &ink); dc.FillRectangle(&rect(x, h - sq, sq, sq), &ink); } x += sq; k += 1; }
             let (mut y, mut k) = (0.0, 0);
-            while y < h { if k % 2 == 1 { dc.FillRectangle(&rect(0.0, y, sq, sq), &ink); dc.FillRectangle(&rect(w - sq, y, sq, sq), &ink); } y += sq; k += 1; }
+            while self.checker && y < h { if k % 2 == 1 { dc.FillRectangle(&rect(0.0, y, sq, sq), &ink); dc.FillRectangle(&rect(w - sq, y, sq, sq), &ink); } y += sq; k += 1; }
             // the bars, clipped to the circle (the circle's chord at the bars' height is wide enough: clip each bar by hand)
             let shades = [look.ink, look.muted, look.faint, look.acc, look.acc2, look.faint];
             let (by, bh) = (cym - r * 0.32, r * 0.64);
@@ -4013,6 +4094,7 @@ impl Background for Testcard {
             }
             let bg = g.brush(look.bg)?;   // the name plate
             let plate = rect(cxm - r * 0.42, cym - r * 0.13, r * 0.84, r * 0.26);
+            if self.plate {
             bg.SetOpacity(0.75);
             dc.FillRectangle(&plate, &bg);
             ink.SetOpacity(0.55);
@@ -4021,10 +4103,10 @@ impl Background for Testcard {
             let t2: Vec<u16> = "CHANNEL 47833  ·  TEST TRANSMISSION".encode_utf16().collect();
             dc.DrawText(&t1, &self.title, &rect(cxm - r, cym - r * 0.02 - r * 0.1, r * 2.0, r * 0.2), &ink, D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL);
             dc.DrawText(&t2, &self.sub, &rect(cxm - r, cym + r * 0.085 - r * 0.04, r * 2.0, r * 0.08), &ink, D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL);
-            bg.SetOpacity(0.18);   // the slow roll bar
-            dc.FillRectangle(&rect(0.0, self.roll - 40.0, w, 40.0), &bg);
+            }
+            if self.rolls { bg.SetOpacity(0.18); dc.FillRectangle(&rect(0.0, self.roll - 40.0, w, 40.0), &bg); }   // the slow roll bar
             ink.SetOpacity(0.35);   // snow
-            for _ in 0..(level * 900.0) as usize {
+            for _ in 0..(level * 900.0 * self.snow) as usize {
                 dc.FillRectangle(&rect(self.rng.f() * w, self.rng.f() * h, 1.5, 1.5), &ink);
             }
         }
@@ -4032,24 +4114,29 @@ impl Background for Testcard {
     }
 }
 
-/// mid-century wallpaper: diamonds, dots and four-point stars on a 96-unit tile, drifting slowly. The tile is drawn
-/// once per look into a small bitmap and laid over the screen with a wrapping bitmap brush. 15 fps; still at 0.
-pub struct Print { tile: ID2D1Bitmap1, pdc: ID2D1DeviceContext, factory: ID2D1Factory, off: f32, key: [f32; 4], still: bool, scale: f32 }
+/// mid-century wallpaper: diamonds, dots and four-point stars on a square tile, drifting slowly. The tile is drawn
+/// once per look into a small bitmap and laid over the screen with a wrapping bitmap brush. Options: pattern, drift,
+/// scale (the tile's size: a change makes it again), ink. 15 fps; still at 0 or with the drift stopped.
+pub struct Print { tile: ID2D1Bitmap1, pdc: ID2D1DeviceContext, factory: ID2D1Factory, off: f32, key: [f32; 5], still: bool, scale: f32,
+                   ts: f32, pat: u8, drift: bool, acc: bool }
 
-const TILE: f32 = 96.0;
+fn print_tile(o: &Json) -> f32 { match o.get("scale").str() { Some("small") => 64.0, Some("large") => 140.0, _ => 96.0 } }
 
 impl Print {
-    fn new(g: &Gfx) -> Result<Print> {
-        let px = (TILE * g.scale).round() as u32;
+    fn new(g: &Gfx, o: &Json) -> Result<Print> {
+        let ts = print_tile(o);
+        let px = (ts * g.scale).round() as u32;
         let tile = g.bitmap(px, px, None, true)?;
         let pdc = unsafe { g.dc.GetDevice()?.CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE)? };
         let factory = unsafe { g.dc.GetFactory()? };
         unsafe { pdc.SetDpi(96.0 * g.scale, 96.0 * g.scale); pdc.SetTarget(&tile); }
-        Ok(Print { tile, pdc, factory, off: 0.0, key: [-1.0; 4], still: false, scale: g.scale })
+        let mut p = Print { tile, pdc, factory, off: 0.0, key: [-1.0; 5], still: false, scale: g.scale, ts, pat: 0, drift: true, acc: false };
+        p.opts(o);
+        Ok(p)
     }
 
     fn paint(&mut self, look: &Look) -> Result<()> {
-        let c = TILE / 2.0;
+        let (t, c) = (self.ts, self.ts / 2.0);
         let shape = |pts: &[(f32, f32)]| -> Result<ID2D1PathGeometry> { unsafe {
             let path = self.factory.CreatePathGeometry()?;
             let sink = path.Open()?;
@@ -4059,36 +4146,57 @@ impl Print {
             sink.Close()?;
             Ok(path)
         } };
-        let diamond = shape(&[(c, c - 18.0), (c + 12.0, c), (c, c + 18.0), (c - 12.0, c)])?;
+        let ink = if self.acc { look.acc } else { look.dim };
+        let k = t / 96.0;   // the motifs grow with the tile
         unsafe {
             let dc = &self.pdc;
             dc.BeginDraw();
             dc.Clear(Some(&D2D1_COLOR_F { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }));
-            let b = dc.CreateSolidColorBrush(&rgba(look.dim), None)?;
+            let b = dc.CreateSolidColorBrush(&rgba(ink), None)?;
             b.SetOpacity(0.5);
-            dc.DrawGeometry(&diamond, &b, 1.2, None);
-            dc.FillEllipse(&ell(c, c, 2.2, 2.2), &b);
-            for (x, y) in [(0.0, 0.0), (TILE, 0.0), (0.0, TILE), (TILE, TILE)] {   // four-point stars on the corners
-                let star = shape(&[(x, y - 9.0), (x + 2.0, y - 2.0), (x + 9.0, y), (x + 2.0, y + 2.0), (x, y + 9.0), (x - 2.0, y + 2.0), (x - 9.0, y), (x - 2.0, y - 2.0)])?;
-                dc.FillGeometry(&star, &b, None);
+            if self.pat == 0 {   // diamonds
+                let diamond = shape(&[(c, c - 18.0 * k), (c + 12.0 * k, c), (c, c + 18.0 * k), (c - 12.0 * k, c)])?;
+                dc.DrawGeometry(&diamond, &b, 1.2, None);
+                dc.FillEllipse(&ell(c, c, 2.2 * k, 2.2 * k), &b);
+            }
+            if self.pat != 1 {   // four-point stars on the corners
+                let r = if self.pat == 2 { 13.0 } else { 9.0 } * k;
+                for (x, y) in [(0.0, 0.0), (t, 0.0), (0.0, t), (t, t)] {
+                    let star = shape(&[(x, y - r), (x + 2.0 * k, y - 2.0 * k), (x + r, y), (x + 2.0 * k, y + 2.0 * k), (x, y + r),
+                                       (x - 2.0 * k, y + 2.0 * k), (x - r, y), (x - 2.0 * k, y - 2.0 * k)])?;
+                    dc.FillGeometry(&star, &b, None);
+                }
+                if self.pat == 2 { dc.FillEllipse(&ell(c, c, 2.0 * k, 2.0 * k), &b); }
+            }
+            if self.pat == 1 {   // dots: a big one in the middle, smaller ones around
+                dc.FillEllipse(&ell(c, c, 5.0 * k, 5.0 * k), &b);
+                for (x, y) in [(0.0, 0.0), (t, 0.0), (0.0, t), (t, t)] { dc.FillEllipse(&ell(x, y, 3.0 * k, 3.0 * k), &b); }
             }
             b.SetOpacity(0.35);
-            for (x, y) in [(c, 8.0), (c, TILE - 8.0), (8.0, c), (TILE - 8.0, c)] { dc.FillEllipse(&ell(x, y, 1.6, 1.6), &b); }
+            for (x, y) in [(c, 8.0 * k), (c, t - 8.0 * k), (8.0 * k, c), (t - 8.0 * k, c)] { dc.FillEllipse(&ell(x, y, 1.6 * k, 1.6 * k), &b); }
             dc.EndDraw(None, None)?;
         }
-        self.key = look.dim;
+        self.key = [ink[0], ink[1], ink[2], ink[3], self.pat as f32];
         Ok(())
     }
 }
 
 impl Background for Print {
-    fn fps(&self) -> f32 { if self.still { 0.0 } else { 15.0 } }
+    fn fps(&self) -> f32 { if self.still || !self.drift { 0.0 } else { 15.0 } }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.pat = match o.get("pattern").str() { Some("dots") => 1, Some("stars") => 2, _ => 0 };
+        self.drift = o.get("drift").str() != Some("still");
+        self.acc = o.get("ink").str() == Some("accent");
+        self.key = [-1.0; 5];   // paint the tile again
+        print_tile(o) != self.ts
+    }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
         self.still = level <= 0.0;
         unsafe { g.dc.Clear(Some(&rgba(look.bg))); }
         if self.still { return Ok(()); }
-        if self.key != look.dim { self.paint(look)?; }
-        self.off = (self.off + dt * 6.0 * level) % TILE;
+        let ink = if self.acc { look.acc } else { look.dim };
+        if self.key != [ink[0], ink[1], ink[2], ink[3], self.pat as f32] { self.paint(look)?; }
+        if self.drift { self.off = (self.off + dt * 6.0 * level) % self.ts; }
         unsafe {
             let props = D2D1_BITMAP_BRUSH_PROPERTIES1 { extendModeX: D2D1_EXTEND_MODE_WRAP, extendModeY: D2D1_EXTEND_MODE_WRAP,
                                                         interpolationMode: D2D1_INTERPOLATION_MODE_LINEAR };
