@@ -1,0 +1,48 @@
+name: Theme request
+description: Suggest a new look for glitchwall
+title: "Theme request: "
+labels: ["theme request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Describe the look you'd like; rough is fine.
+        Please don't ask for a copy of a game, film or show's art: themes are original.
+  - type: input
+    id: name
+    attributes:
+      label: Theme name
+      placeholder: e.g. Night Ferry
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What's on screen, how it moves, what mood it should have.
+    validations:
+      required: true
+  - type: input
+    id: colours
+    attributes:
+      label: Colours
+      placeholder: e.g. deep navy, sodium orange, a little white
+  - type: dropdown
+    id: background
+    attributes:
+      label: Background
+      description: Reuse one of glitchwall's backgrounds, or ask for a new one.
+      options:
+        - A new background
+        - An existing one (say which below)
+        - No preference
+  - type: input
+    id: fonts
+    attributes:
+      label: Type and lettering
+      placeholder: e.g. a wide monospace, hand lettering
+  - type: textarea
+    id: refs
+    attributes:
+      label: Anything else
+      description: Links or pictures that show the feel (your own or freely licensed).

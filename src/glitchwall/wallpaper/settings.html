@@ -35,7 +35,7 @@
   .led.a { background:var(--amber); border-color:var(--amber); box-shadow:0 0 6px var(--amber); }
   .led.r { background:var(--red); border-color:var(--red); box-shadow:0 0 6px var(--red); }
   .grow { flex:1; }
-  #snd { display:flex; align-items:center; gap:7px; background:none; border:1px solid var(--ph-line); cursor:pointer; font-size:10px; letter-spacing:.15em; padding:6px 10px; border-radius:3px; }
+  #snd, #ask { display:flex; align-items:center; gap:7px; background:none; border:1px solid var(--ph-line); cursor:pointer; font-size:10px; letter-spacing:.15em; padding:6px 10px; border-radius:3px; }
   #resetall { display:flex; align-items:center; gap:7px; background:none; border:1px solid var(--ph-line); cursor:pointer; font-size:10px; letter-spacing:.15em; padding:6px 10px; border-radius:3px; }
   #resetall.armed { color:var(--amber); border-color:var(--amber); box-shadow:0 0 8px rgba(255,176,0,.5); text-shadow:0 0 5px rgba(255,176,0,.6); }
   #resetall:focus-visible { outline:1px dashed var(--ph-hi); outline-offset:3px; }
@@ -124,7 +124,7 @@
   .track .slotv { position:absolute; left:4px; right:4px; top:9px; height:2px; background:var(--ph-dim); }
   .track .capf { position:absolute; top:2px; width:10px; height:16px; margin-left:-5px; background:var(--ph); border-radius:1px; box-shadow:0 0 6px var(--ph); }
 
-  .sw:focus-visible, .knob:focus-visible, .fader:focus-visible, #pause:focus-visible, #snd:focus-visible, .drum:focus-visible { outline:1px dashed var(--ph-hi); outline-offset:3px; }
+  .sw:focus-visible, .knob:focus-visible, .fader:focus-visible, #pause:focus-visible, #snd:focus-visible, #ask:focus-visible, .drum:focus-visible { outline:1px dashed var(--ph-hi); outline-offset:3px; }
   .knob:hover .win, .fader:hover .val, .sw:hover .slot { border-color:var(--ph); }
   :focus { outline:none; }
 
@@ -133,7 +133,7 @@
   kbd { display:inline-block; min-width:18px; padding:0 4px; margin-right:4px; text-align:center; font:10px/16px 'Departure Mono', monospace; color:var(--ph); border:1px solid var(--ph-dim); border-radius:2px; }
 
 
-  #resetall:hover, #snd:hover { border-color:var(--ph); color:var(--ph); }
+  #resetall:hover, #snd:hover, #ask:hover { border-color:var(--ph); color:var(--ph); }
 </style>
 </head>
 <body>
@@ -145,6 +145,7 @@
   </div>
   <span class="grow"></span>
   <button id="resetall" data-help="resetall"><span class="led" id="led-reset"></span><span id="resetall-t">RESET ALL</span></button>
+  <button id="ask" data-help="ask">+ THEME</button>
   <button id="snd" data-help="sound"><span class="led" id="led-snd"></span>SOUND</button>
   <button id="pause" data-help="pause"><span class="cap">P</span><span class="t"><b id="pause-t">PAUSE</b><small id="pause-s">STREAM-SAFE</small></span></button>
 </header>
@@ -243,6 +244,7 @@ function help(h) {
   const [kind, extra] = h.split(':');
   if (kind === 'pause') return say(S.paused ? 'PAUSE · ON' : 'PAUSE · OFF', S.paused ? 'The wallpaper shows nothing at all until you resume. Safe to stream.' : 'Press before you stream or share your screen: the wallpaper goes blank at once.');
   if (kind === 'sound') return say(`SOUND · ${muted ? 'OFF' : 'ON'}`, 'Clicks and clacks in this window as you turn and flip things. Never on the wallpaper. M toggles it.');
+  if (kind === 'ask') return say('REQUEST A THEME', 'Opens a short form on GitHub in your browser: describe the look you want. Nothing is sent from here.');
   if (kind === 'label') return say('CORNER LABEL', 'The text in the bottom-right corner of the wallpaper. Enter saves it.');
   if (kind === 'theme') { const v = extra || S.theme; return say(`THEME · ${v.toUpperCase()}${v === S.theme ? '' : '  (CLICK TO PICK)'}`,
                           optText('theme', v) + (cleared && v === S.theme ? ' Earlier tweaks cleared: the theme starts as it comes.' : '')); }
@@ -455,6 +457,8 @@ function build() {
   drum();
   $('pause').addEventListener('click', () => set('paused', !S.paused, true));
   $('snd').addEventListener('click', toggleSound);
+  $('ask').addEventListener('click', () => { const a = winApi(); if (a && a.request_theme) a.request_theme();
+    else window.open('https://github.com/marklesterb28/glitchwall/issues/new?template=theme-request.yml', '_blank', 'noopener'); });
   $('label').addEventListener('focus', () => { const a = winApi(); if (a && a.keep) a.keep(true); });
   $('label').addEventListener('blur', () => { const a = winApi(); if (a && a.keep) a.keep(false); });
   $('resetall').addEventListener('click', resetAll);
