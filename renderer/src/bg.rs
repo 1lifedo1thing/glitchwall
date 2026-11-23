@@ -1,5 +1,5 @@
 //! Backgrounds: each one draws into the full-screen scene bitmap that the cards' glass blurs.
-//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record", "notebook", "textmode", "sunprint", "draft", "topo", "radar", "orb", "scope" and "oracle"; every other background falls back to a plain fill until it is.
+//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record", "notebook", "textmode", "sunprint", "draft", "topo", "radar", "orb", "scope", "oracle" and "signs"; every other background falls back to a plain fill until it is.
 use crate::fonts::Fonts;
 use crate::gfx::{Gfx, rect, rgba};
 use crate::json::Json;
@@ -39,6 +39,7 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result
         "orb" => Box::new(Orb::new(g, look)?),
         "scope" => Box::new(Scope::new(g, fonts, look, o)?),
         "oracle" => Box::new(Oracle::new(g, fonts, look, o)?),
+        "signs" => Box::new(Signs::new(g, fonts, look, o)?),
         _ => Box::new(Plain),
     })
 }
@@ -2964,6 +2965,267 @@ impl Background for Oracle {
             self.say(g, "P R O J E C T I O N", ox, oy - fs * 2.2, 0, &inkb);
             inkb.SetOpacity(0.7);
             self.say(g, &format!("{:.5}", self.read), ox, oy + fs * 2.2, 0, &inkb);
+        }
+        Ok(())
+    }
+}
+
+/// neon signs on a wet brick wall in the rain: two or three words and a shape in tube, each in its own colour, a
+/// glow thrown on the wall, broken reflections on the ground; now and then a sign stutters, and one letter won't
+/// stay lit. Each letter is drawn once (its glyph outline stroked as tube, blurred twice for the glow, a hot core)
+/// into its own little bitmap; the wall too. Each frame lays them out with their brightness. 24 fps; still at 0.
+pub struct Signs { back: ID2D1Bitmap1, signs: Vec<Sign>, drops: Vec<(f32, f32, f32, f32)>, rng: Rng, u: f32, w: f32, h: f32, fy: f32,
+                   still: bool, flick: f32, rain: u8, built: (usize, bool, u8) }   // options: flicker rate, rain; built: signs, plain wall, flicker
+
+struct Sign { letters: Vec<(ID2D1Bitmap1, f32, f32, f32, f32, f32)>, col: Color, x: f32, y: f32, buzz: f32, bad: Option<usize> }   // bitmap, x, y, w, h, on
+
+const SIGN_WORDS: [&str; 8] = ["OPEN", "LIVE", "ALL NIGHT", "NO VACANCY", "ON AIR", "COFFEE", "TATTOO", "ARCADE"];
+
+fn font_face(fonts: &Fonts, fam: &str) -> Result<IDWriteFontFace> {
+    let w: Vec<u16> = fam.encode_utf16().chain([0]).collect();
+    let (mut i, mut found) = (0u32, windows::Win32::Foundation::BOOL(0));
+    unsafe {
+        fonts.set.FindFamilyName(PCWSTR(w.as_ptr()), &mut i, &mut found)?;
+        let i = if found.as_bool() { i } else { 0 };
+        fonts.set.GetFontFamily(i)?.GetFont(0)?.CreateFontFace()?.cast()
+    }
+}
+
+impl Signs {
+    fn built(o: &Json) -> (usize, bool, u8) {
+        (match o.get("signs").str() { Some("two") => 2, Some("five") => 5, _ => 4 }, o.get("wall").str() == Some("plain"),
+         match o.get("flicker").str() { Some("rare") => 1, Some("often") => 2, _ => 0 })
+    }
+
+    fn new(g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result<Signs> {
+        let (w, h) = (g.w as f32, g.h as f32);
+        let u = w.min(h);
+        let fy = (h * 0.8).round();
+        let light = look.light;
+        let built = Self::built(o);
+        let mut rng = Rng(0x5195_0000_0000_0001 ^ (std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(1) | 1));
+        let factory = unsafe { g.dc.GetFactory()? };
+        let back = g.surface(w, h)?;
+        let dc = &g.dc;
+        let old = unsafe { dc.GetTarget()? };
+        unsafe {   // the wall: courses of brick, barely there; the wet ground below
+            dc.SetTarget(&back);
+            dc.BeginDraw();
+            dc.Clear(Some(&rgba(look.bg)));
+            let ink = g.brush(look.ink)?;
+            if !built.1 {
+                ink.SetOpacity(if light { 0.06 } else { 0.035 });
+                let bh = (u / 40.0).round().max(10.0);
+                let bw = bh * 3.2;
+                let (mut y, mut r) = (0.0, 0);
+                while y < fy {
+                    dc.DrawLine(p2(0.0, y + 0.5), p2(w, y + 0.5), &ink, 1.0, None);
+                    let mut x = (r % 2) as f32 * bw / 2.0;
+                    while x < w { let xx = x.round() + 0.5; dc.DrawLine(p2(xx, y), p2(xx, fy.min(y + bh)), &ink, 1.0, None); x += bw; }
+                    y += bh; r += 1;
+                }
+            }
+            let rt: &ID2D1RenderTarget = dc;
+            let ic = |a: f32| D2D1_COLOR_F { r: look.ink[0], g: look.ink[1], b: look.ink[2], a };
+            let coll = rt.CreateGradientStopCollection(&[D2D1_GRADIENT_STOP { position: 0.0, color: ic(if light { 0.08 } else { 0.05 }) },
+                                                          D2D1_GRADIENT_STOP { position: 1.0, color: ic(0.0) }], D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP)?;
+            let gb = dc.CreateLinearGradientBrush(&D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES { startPoint: p2(0.0, fy), endPoint: p2(0.0, h) }, None, &coll)?;
+            dc.FillRectangle(&rect(0.0, fy, w, h - fy), &gb);
+            ink.SetOpacity(0.25);
+            dc.FillRectangle(&rect(0.0, fy, w, 1.0), &ink);
+            dc.EndDraw(None, None)?;
+        }
+        // the signs: words and a shape, each in its own colour, laid out so they don't overlap
+        let cols = [look.acc, look.ink, look.acc2];
+        let mut words: Vec<&str> = SIGN_WORDS.to_vec();
+        let mut spots = vec![(0.2f32, 0.22f32), (0.74, 0.3), (0.46, 0.56), (0.18, 0.62), (0.8, 0.66)];
+        for i in (1..words.len()).rev() { let j = (rng.f() * (i + 1) as f32) as usize % (i + 1); words.swap(i, j); }
+        for i in (1..spots.len()).rev() { let j = (rng.f() * (i + 1) as f32) as usize % (i + 1); spots.swap(i, j); }
+        let disp = [("Instrument Serif", true), ("Chakra Petch", false), ("Saira Stencil One", false)];
+        let tube = (u / 260.0).max(2.0);
+        let bad_p = [0.6, 0.2, 1.0][built.2 as usize];
+        let blur = g.effect(&CLSID_D2D1GaussianBlur)?;
+        // one letter or shape: `geo` stroked as tube in `col`, glowing, with a hot core; into a bitmap of w x h
+        let tubed = |geo: &ID2D1Geometry, bw: f32, bh: f32, m: windows::Foundation::Numerics::Matrix3x2, col: Color, core: Color, core_a: f32| -> Result<ID2D1Bitmap1> {
+            let img = g.surface(bw, bh)?;
+            let tmp = g.surface(bw, bh)?;
+            unsafe {
+                dc.SetTarget(&tmp);
+                dc.BeginDraw();
+                dc.Clear(Some(&D2D1_COLOR_F::default()));
+                dc.SetTransform(&m);
+                let cb = g.brush(col)?;
+                dc.DrawGeometry(geo, &cb, tube / (m.M11.abs().max(1e-3)), None);
+                dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2::identity());
+                dc.EndDraw(None, None)?;
+                dc.SetTarget(&img);
+                dc.BeginDraw();
+                dc.Clear(Some(&D2D1_COLOR_F::default()));
+                blur.SetInput(0, &tmp, true);
+                for sd in [tube * 3.0, tube] {   // the canvas's shadowBlur is about twice the deviation
+                    crate::gfx::set_f32(&blur, D2D1_GAUSSIANBLUR_PROP_STANDARD_DEVIATION.0 as u32, sd)?;
+                    dc.DrawImage(&blur.GetOutput()?, None, None, D2D1_INTERPOLATION_MODE_LINEAR, D2D1_COMPOSITE_MODE_SOURCE_OVER);
+                    dc.DrawBitmap(&tmp, None, 1.0, D2D1_INTERPOLATION_MODE_LINEAR, None, None);
+                }
+                blur.SetInput(0, None, true);
+                dc.SetTransform(&m);
+                let kb = g.brush(core)?;
+                kb.SetOpacity(core_a);
+                dc.DrawGeometry(geo, &kb, tube * 0.4 / (m.M11.abs().max(1e-3)), None);
+                dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2::identity());
+                dc.EndDraw(None, None)?;
+            }
+            Ok(img)
+        };
+        let mut signs = Vec::new();
+        for i in 0..built.0 {
+            let (sx, sy) = spots[i];
+            let col = cols[i % 3];
+            if i == 3 {   // an outline shape in tube: an arrow, a star, a ring with a bolt, a cocktail glass
+                let s = u * 0.09;
+                let k = (rng.f() * 4.0) as usize % 4;
+                let path = unsafe { factory.CreatePathGeometry()? };
+                unsafe {
+                    let sk = path.Open()?;
+                    let fig = |pts: &[(f32, f32)], closed: bool| {
+                        sk.BeginFigure(p2(pts[0].0 * s, pts[0].1 * s), D2D1_FIGURE_BEGIN_HOLLOW);
+                        for p in &pts[1..] { sk.AddLine(p2(p.0 * s, p.1 * s)); }
+                        sk.EndFigure(if closed { D2D1_FIGURE_END_CLOSED } else { D2D1_FIGURE_END_OPEN });
+                    };
+                    match k {
+                        0 => fig(&[(-1.0, -0.25), (0.3, -0.25), (0.3, -0.6), (1.0, 0.0), (0.3, 0.6), (0.3, 0.25), (-1.0, 0.25)], true),
+                        1 => { let p: Vec<(f32, f32)> = (0..=10).map(|i| { let a = -std::f32::consts::FRAC_PI_2 + i as f32 * std::f32::consts::PI / 5.0;
+                                                                           let r = if i % 2 == 1 { 0.42 } else { 1.0 }; (a.cos() * r, a.sin() * r) }).collect();
+                               fig(&p, false) }
+                        2 => { let p: Vec<(f32, f32)> = (0..=48).map(|i| { let a = i as f32 / 48.0 * TAU; (a.cos() * 0.9, a.sin() * 0.9) }).collect();
+                               fig(&p, true); fig(&[(0.15, -0.6), (-0.25, 0.05), (0.15, 0.05), (-0.15, 0.6)], false) }
+                        _ => { fig(&[(-0.7, -0.6), (0.7, -0.6), (0.0, 0.15)], true); fig(&[(0.0, 0.15), (0.0, 0.8)], false); fig(&[(-0.4, 0.8), (0.4, 0.8)], false) }
+                    }
+                    sk.Close()?;
+                }
+                let m = windows::Foundation::Numerics::Matrix3x2 { M11: 1.0, M12: 0.0, M21: 0.0, M22: 1.0, M31: s * 1.5, M32: s * 1.5 };
+                let img = tubed(&path.cast()?, s * 3.0, s * 3.0, m, col, [1.0, 1.0, 1.0, 1.0], 0.5)?;
+                signs.push(Sign { letters: vec![(img, sx * w - s * 1.5, sy * fy - s * 1.5, s * 3.0, s * 3.0, 1.0)], col, x: sx * w, y: sy * fy, buzz: 0.0, bad: None });
+                continue;
+            }
+            let word = words[i];
+            let (fam, italic) = disp[i % 3];
+            let size = u * if word.len() > 6 { 0.07 } else { 0.1 };
+            let face = font_face(fonts, fam)?;
+            let mut fm = DWRITE_FONT_METRICS::default();
+            unsafe { face.GetMetrics(&mut fm); }
+            let em = size / fm.designUnitsPerEm as f32;
+            let mid = (fm.ascent as f32 - fm.descent as f32) / 2.0 * em;   // the canvas's 'middle': halfway up the em box
+            let cps: Vec<u32> = word.chars().map(|c| c as u32).collect();
+            let mut idx = vec![0u16; cps.len()];
+            let mut gm = vec![DWRITE_GLYPH_METRICS::default(); cps.len()];
+            unsafe {
+                face.GetGlyphIndices(cps.as_ptr(), cps.len() as u32, idx.as_mut_ptr())?;
+                face.GetDesignGlyphMetrics(idx.as_ptr(), idx.len() as u32, gm.as_mut_ptr(), false)?;
+            }
+            let adv: Vec<f32> = gm.iter().map(|m| m.advanceWidth as f32 * em).collect();
+            let total: f32 = adv.iter().sum();
+            let pad = size * 0.5;
+            let mut x = sx * w - total / 2.0;
+            let mut letters = Vec::new();
+            for (k, ch) in word.chars().enumerate() {
+                let (bw, bh) = ((adv[k] + pad * 2.0).ceil().max(1.0), (size * 1.5 + pad * 2.0).ceil());
+                if ch != ' ' {
+                    let path = unsafe { factory.CreatePathGeometry()? };
+                    unsafe {
+                        let sk = path.Open()?;
+                        face.GetGlyphRunOutline(size, idx[k..].as_ptr(), None, None, 1, false, false, &sk)?;
+                        sk.Close()?;
+                    }
+                    // the baseline sits `mid` below the middle; italic: the serif slanted, as the browser makes it
+                    let m = windows::Foundation::Numerics::Matrix3x2 { M11: 1.0, M12: 0.0, M21: if italic { -0.2 } else { 0.0 }, M22: 1.0,
+                                                                       M31: pad, M32: bh / 2.0 + mid };
+                    let img = tubed(&path.cast()?, bw, bh, m, col, if light { col } else { [1.0, 1.0, 1.0, 1.0] }, 0.55)?;
+                    letters.push((img, x - pad, sy * fy - bh / 2.0, bw, bh, 1.0));
+                }
+                x += adv[k];
+            }
+            let n = letters.len();
+            let bad = if rng.f() < bad_p && n > 1 { Some(1 + (rng.f() * (n - 1) as f32) as usize % (n - 1)) } else { None };
+            signs.push(Sign { letters, col, x: sx * w, y: sy * fy, buzz: 0.0, bad });
+        }
+        unsafe { dc.SetTarget(&old); }
+        let mut s = Signs { back, signs, drops: Vec::new(), rng, u, w, h, fy, still: false, flick: 1.0, rain: 9, built };
+        s.opts(o);
+        Ok(s)
+    }
+}
+
+impl Background for Signs {
+    fn fps(&self) -> f32 { if self.still { 0.0 } else { 24.0 } }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.flick = match o.get("flicker").str() { Some("rare") => 0.25, Some("often") => 4.0, _ => 1.0 };
+        let rain = match o.get("rain").str() { Some("off") => 0, Some("heavy") => 2, _ => 1 };
+        if rain != self.rain {   // the drops: thin streaks catching the light
+            self.rain = rain;
+            let n = if rain == 0 { 0 } else { (self.w / if rain == 2 { 3.5 } else { 9.0 }).round() as usize };
+            let (w, h) = (self.w, self.h);
+            self.drops = (0..n).map(|_| (self.rng.range(0.0, w), self.rng.range(-h, h), self.rng.range(0.8, 1.2), self.rng.range(0.5, 1.2))).collect();
+        }
+        Self::built(o) != self.built
+    }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        self.still = level <= 0.0;
+        if !self.still {
+            let sp = 0.4 + level * 1.6;
+            for sg in &mut self.signs {
+                if sg.buzz > 0.0 {   // a stutter: the whole sign flickers, then comes back
+                    sg.buzz -= dt;
+                    let on = if sg.buzz <= 0.0 || self.rng.f() < 0.45 { 1.0 } else { 0.0 };
+                    for l in &mut sg.letters { l.5 = on; }
+                } else if self.rng.f() < dt * 0.025 * sp * self.flick { sg.buzz = self.rng.range(0.2, 1.1); }
+                if let (Some(b), true) = (sg.bad, sg.buzz <= 0.0) {   // the letter that won't stay lit
+                    let l = &mut sg.letters[b];
+                    let lit = l.5 > 0.5;
+                    let keep = self.rng.f() < if lit { 0.93 } else { 0.3 };
+                    l.5 = if keep { if lit { 1.0 } else { 0.0 } } else if lit { 0.0 } else { 1.0 };
+                    if l.5 == 0.0 && self.rng.f() < 0.02 { l.5 = 0.35; }
+                }
+            }
+            let (u, h, w) = (self.u, self.h, self.w);
+            for d in &mut self.drops {
+                d.1 += d.2 * u * 1.6 * dt * sp;
+                if d.1 > h { d.1 = self.rng.range(-80.0, 0.0); d.0 = self.rng.range(0.0, w + 40.0); }
+            }
+        }
+        let (fy, u) = (self.fy, self.u);
+        unsafe {
+            let dc = &g.dc;
+            let rt: &ID2D1RenderTarget = dc;
+            dc.DrawBitmap(&self.back, Some(&rect(0.0, 0.0, self.w, self.h)), 1.0, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, None, None);
+            dc.SetPrimitiveBlend(if look.light { D2D1_PRIMITIVE_BLEND_SOURCE_OVER } else { D2D1_PRIMITIVE_BLEND_ADD });
+            for sg in &self.signs {
+                let lit = sg.letters.iter().map(|l| l.5).sum::<f32>() / sg.letters.len().max(1) as f32;
+                if lit > 0.05 {   // the glow the sign throws on the wall around it
+                    let r = u * 0.28;
+                    let c = sg.col;
+                    let coll = rt.CreateGradientStopCollection(&[D2D1_GRADIENT_STOP { position: 0.0, color: D2D1_COLOR_F { r: c[0], g: c[1], b: c[2], a: 0.07 * lit } },
+                                                                  D2D1_GRADIENT_STOP { position: 1.0, color: D2D1_COLOR_F { r: c[0], g: c[1], b: c[2], a: 0.0 } }],
+                                                                D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP)?;
+                    let gb = dc.CreateRadialGradientBrush(&D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES { center: p2(sg.x, sg.y), gradientOriginOffset: p2(0.0, 0.0),
+                                                                                               radiusX: r, radiusY: r }, None, &coll)?;
+                    dc.FillRectangle(&rect(sg.x - r, sg.y - r, r * 2.0, r * 2.0), &gb);
+                }
+                for (img, x, y, bw, bh, on) in &sg.letters {
+                    dc.DrawBitmap(img, Some(&rect(*x, *y, *bw, *bh)), 0.12 + 0.88 * on, D2D1_INTERPOLATION_MODE_LINEAR, None, None);
+                    // and its reflection on the wet ground, stretched and broken up
+                    let ry = fy + (fy - y - bh) * 0.35;
+                    dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2 { M11: 1.0, M12: 0.0, M21: 0.0, M22: -0.6, M31: 0.0, M32: ry + bh * 0.6 });
+                    dc.DrawBitmap(img, Some(&rect(*x, 0.0, *bw, *bh)), 0.16 * on, D2D1_INTERPOLATION_MODE_LINEAR, None, None);
+                    dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2::identity());
+                }
+            }
+            dc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_SOURCE_OVER);
+            if !self.drops.is_empty() {
+                let ink = g.brush(look.ink)?;
+                ink.SetOpacity(if look.light { 0.12 } else { 0.1 });
+                for d in &self.drops { dc.DrawLine(p2(d.0, d.1), p2(d.0 - d.3 * 2.0, d.1 + d.3 * u * 0.035), &ink, 1.0, None); }
+            }
         }
         Ok(())
     }
