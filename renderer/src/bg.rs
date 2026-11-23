@@ -1,5 +1,5 @@
 //! Backgrounds: each one draws into the full-screen scene bitmap that the cards' glass blurs.
-//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record" and "notebook"; every other background falls back to a plain fill until it is.
+//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record", "notebook" and "textmode"; every other background falls back to a plain fill until it is.
 use crate::fonts::Fonts;
 use crate::gfx::{Gfx, rect, rgba};
 use crate::looks::{Color, Look};
@@ -26,6 +26,7 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Box<dyn B
         "grid" => Box::new(Grid { ph: 0.0, still: false }),
         "record" => Box::new(Record::new(g, fonts, look)?),
         "notebook" => Box::new(Notebook::new(g)?),
+        "textmode" => Box::new(Textmode::new(g, fonts, look)?),
         _ => Box::new(Plain),
     })
 }
@@ -861,6 +862,106 @@ impl Background for Notebook {
             keep.push(d);
         }
         self.doodles = keep;
+        Ok(())
+    }
+}
+
+/// a text-mode desktop: a shaded backdrop in character cells, a grey menu bar with a clock, a status bar of function
+/// keys, and the block of a text-mode mouse cursor drifting from place to place. The dither is drawn once as a
+/// full-screen mask; each frame tints it. 12 fps while the mouse moves, otherwise 1 (the clock).
+pub struct Textmode { mask: ID2D1Bitmap1, fmt: IDWriteTextFormat, fs: f32, cw: f32, cols: i32, rows: i32,
+                      mx: i32, my: i32, goal: Option<(i32, i32)>, wait: f32, rng: Rng, w: f32, h: f32 }
+
+const TM_MENU: [&str; 7] = ["File", "Edit", "Search", "Run", "Options", "Window", "Help"];
+const TM_KEYS: [(&str, &str); 6] = [("F1", "Help"), ("F2", "Save"), ("F3", "Open"), ("F5", "Zoom"), ("F6", "Next"), ("F10", "Menu")];
+
+impl Textmode {
+    fn new(g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Textmode> {
+        let (w, h) = (g.w as f32, g.h as f32);
+        let fs = (h / 34.0).round().max(16.0);
+        let (cw, ch) = ((fs * 0.5).round(), fs);
+        // the shade: a light dither in every cell, like the lightest shade block
+        let tile = g.surface(cw, ch)?;
+        let mask = g.surface(w, h)?;
+        unsafe {
+            let dc = &g.dc;
+            let old = dc.GetTarget()?;
+            let white = g.brush([1.0, 1.0, 1.0, 1.0])?;
+            dc.SetTarget(&tile);
+            dc.BeginDraw();
+            dc.Clear(Some(&D2D1_COLOR_F::default()));
+            let px = (cw / 8.0).round().max(1.0);
+            let mut y = 0.0;
+            while y < ch {
+                let mut x = (((y / px / 2.0) as i32) % 2) as f32 * px * 2.0;
+                while x < cw { dc.FillRectangle(&rect(x, y, px, px), &white); x += px * 4.0; }
+                y += px * 2.0;
+            }
+            dc.EndDraw(None, None)?;
+            let props = D2D1_BITMAP_BRUSH_PROPERTIES1 { extendModeX: D2D1_EXTEND_MODE_WRAP, extendModeY: D2D1_EXTEND_MODE_WRAP,
+                                                        interpolationMode: D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR };
+            let pat = dc.CreateBitmapBrush(&tile, Some(&props), None)?;
+            dc.SetTarget(&mask);
+            dc.BeginDraw();
+            dc.Clear(Some(&D2D1_COLOR_F::default()));
+            dc.FillRectangle(&rect(0.0, ch, w, h - ch * 2.0), &pat);
+            dc.EndDraw(None, None)?;
+            dc.SetTarget(&old);
+        }
+        let fmt = fonts.format(&look.mono.family, fs, 400)?;
+        let (cols, rows) = ((w / cw) as i32, (h / ch) as i32);
+        Ok(Textmode { mask, fmt, fs, cw, cols, rows, mx: (cols as f32 * 0.6) as i32, my: rows / 2, goal: None, wait: 2.0,
+                      rng: Rng(0x7e47_30de_0000_0001), w, h })
+    }
+}
+
+impl Background for Textmode {
+    fn fps(&self) -> f32 { if self.goal.is_some() { 12.0 } else { 1.0 } }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        if level > 0.0 {
+            self.wait -= dt;
+            if self.goal.is_none() && self.wait <= 0.0 {
+                self.goal = Some((2 + (self.rng.f() * (self.cols - 4) as f32) as i32, 2 + (self.rng.f() * (self.rows - 4) as f32) as i32));
+            }
+            // the mouse moves a cell at a time toward where it is going, then rests
+            let mut n = ((dt * 30.0 * (0.4 + level * 1.6)).round() as i32).max(1);
+            while let (Some((gx, gy)), true) = (self.goal, n > 0) {
+                self.mx += (gx - self.mx).signum();
+                if self.rng.f() < 0.6 { self.my += (gy - self.my).signum(); }
+                if self.mx == gx && self.my == gy { self.goal = None; self.wait = self.rng.range(1.5, 6.0); }
+                n -= 1;
+            }
+        }
+        let (fs, cw, w, h) = (self.fs, self.cw, self.w, self.h);
+        let bar = if look.bar[3] >= 1.0 { look.bar } else { look.ink };
+        let on = if look.barb[3] >= 1.0 { look.barb } else { look.bg };
+        unsafe {
+            let dc = &g.dc;
+            dc.Clear(Some(&rgba(look.bg)));
+            let shade = g.brush([look.dim[0], look.dim[1], look.dim[2], 0.5])?;
+            dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);   // FillOpacityMask needs it
+            dc.FillOpacityMask(&self.mask, &shade, Some(&rect(0.0, 0.0, w, h)), None);
+            dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+            let (bar_b, on_b, key_b) = (g.brush(bar)?, g.brush(on)?, g.brush(look.err)?);
+            let text = |s: &str, col: f32, y: f32, b: &ID2D1SolidColorBrush| {
+                let t: Vec<u16> = s.encode_utf16().collect();
+                dc.DrawText(&t, &self.fmt, &rect(col * cw, y, cw * (t.len() as f32 + 1.0), fs * 1.5), b, D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL);
+            };
+            // the menu bar: first letters picked out, a clock at the right
+            dc.FillRectangle(&rect(0.0, 0.0, w, fs), &bar_b);
+            let mut x = 2.0;
+            for m in TM_MENU { text(&m[..1], x, 0.0, &key_b); text(&m[1..], x + 1.0, 0.0, &on_b); x += m.len() as f32 + 3.0; }
+            let t = windows::Win32::System::SystemInformation::GetLocalTime();
+            let clock = format!("{:02}:{:02}:{:02}", t.wHour, t.wMinute, t.wSecond);
+            text(&clock, (self.cols - clock.len() as i32 - 2) as f32, 0.0, &on_b);
+            // the status bar
+            let y = (self.rows - 1) as f32 * fs;
+            dc.FillRectangle(&rect(0.0, y, w, h - y), &bar_b);
+            let mut x = 1.0;
+            for (k, l) in TM_KEYS { text(k, x, y, &key_b); text(l, x + k.len() as f32 + 1.0, y, &on_b); x += (k.len() + l.len() + 3) as f32; }
+            // the mouse: an inverted cell
+            dc.FillRectangle(&rect(self.mx as f32 * cw, self.my as f32 * fs, cw, fs), &g.brush([look.hi[0], look.hi[1], look.hi[2], 0.85])?);
+        }
         Ok(())
     }
 }
