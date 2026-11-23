@@ -1,5 +1,5 @@
 //! Backgrounds: each one draws into the full-screen scene bitmap that the cards' glass blurs.
-//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record", "notebook" and "textmode"; every other background falls back to a plain fill until it is.
+//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record", "notebook", "textmode" and "sunprint"; every other background falls back to a plain fill until it is.
 use crate::fonts::Fonts;
 use crate::gfx::{Gfx, rect, rgba};
 use crate::looks::{Color, Look};
@@ -27,6 +27,7 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Box<dyn B
         "record" => Box::new(Record::new(g, fonts, look)?),
         "notebook" => Box::new(Notebook::new(g)?),
         "textmode" => Box::new(Textmode::new(g, fonts, look)?),
+        "sunprint" => Box::new(Sunprint::new(g)?),
         _ => Box::new(Plain),
     })
 }
@@ -961,6 +962,189 @@ impl Background for Textmode {
             for (k, l) in TM_KEYS { text(k, x, y, &key_b); text(l, x + k.len() as f32 + 1.0, y, &on_b); x += (k.len() + l.len() + 3) as f32; }
             // the mouse: an inverted cell
             dc.FillRectangle(&rect(self.mx as f32 * cw, self.my as f32 * fs, cw, fs), &g.brush([look.hi[0], look.hi[1], look.hi[2], 0.85])?);
+        }
+        Ok(())
+    }
+}
+
+/// a botanical sun print: fern fronds and leaves leave pale silhouettes in the blue, soft at the edges; the print
+/// develops, holds, and clears for the next arrangement. The silhouettes are drawn by a second device context into a
+/// mask (a blurred copy under the sharp one, the page's shadowBlur); each frame tints it. 15 fps; still at 0.
+pub struct Sunprint { mask: ID2D1Bitmap1, pdc: ID2D1DeviceContext, blur: ID2D1Effect,
+                      white: ID2D1SolidColorBrush, clear: ID2D1SolidColorBrush, round: ID2D1StrokeStyle, factory: ID2D1Factory,
+                      streaks: Vec<(D2D_POINT_2F, D2D_POINT_2F, f32, f32)>, rng: Rng, u: f32, w: f32, h: f32,
+                      k: f32, phase: u8, t: f32, still: bool }
+
+fn turn(a: f32, x: f32, y: f32) -> windows::Foundation::Numerics::Matrix3x2 {
+    let (s, c) = a.sin_cos();
+    windows::Foundation::Numerics::Matrix3x2 { M11: c, M12: s, M21: -s, M22: c, M31: x, M32: y }
+}
+fn p2(x: f32, y: f32) -> D2D_POINT_2F { D2D_POINT_2F { x, y } }
+
+impl Sunprint {
+    fn new(g: &Gfx) -> Result<Sunprint> {
+        let (w, h) = (g.w as f32, g.h as f32);
+        let u = w.min(h);
+        let mask = g.surface(w, h)?;
+        let pdc = unsafe { g.dc.GetDevice()?.CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE)? };
+        unsafe { pdc.SetDpi(96.0 * g.scale, 96.0 * g.scale); }
+        let blur = unsafe { pdc.CreateEffect(&CLSID_D2D1GaussianBlur)? };
+        crate::gfx::set_f32(&blur, D2D1_GAUSSIANBLUR_PROP_STANDARD_DEVIATION.0 as u32, u * 0.006 / 2.0)?;
+        let white = unsafe { pdc.CreateSolidColorBrush(&D2D1_COLOR_F { r: 1.0, g: 1.0, b: 1.0, a: 1.0 }, None)? };
+        let clear = unsafe { pdc.CreateSolidColorBrush(&D2D1_COLOR_F::default(), None)? };
+        let factory = unsafe { pdc.GetFactory()? };
+        let props = D2D1_STROKE_STYLE_PROPERTIES { startCap: D2D1_CAP_STYLE_ROUND, endCap: D2D1_CAP_STYLE_ROUND,
+                                                   lineJoin: D2D1_LINE_JOIN_ROUND, ..Default::default() };
+        let round = unsafe { factory.CreateStrokeStyle(&props, None)? };
+        // the coating brushed on: uneven, streaky edges (drawn each frame in the theme's ink)
+        let mut rng = Rng(0x5a9f_e7ce_0000_0001);
+        let mut streaks = Vec::new();
+        for i in 0..36 {
+            let side = i % 4;
+            let (sw, a) = (rng.range(u * 0.01, u * 0.04), rng.range(0.008, 0.03));
+            let (p, q) = if side < 2 {
+                let y = if side == 1 { h - rng.range(0.0, u * 0.04) } else { rng.range(0.0, u * 0.04) };
+                let x0 = rng.range(-50.0, w);
+                (p2(x0, y), p2(x0 + rng.range(0.1, 0.5) * w, y + rng.range(-6.0, 6.0)))
+            } else {
+                let x = if side == 3 { w - rng.range(0.0, u * 0.04) } else { rng.range(0.0, u * 0.04) };
+                let y0 = rng.range(-50.0, h);
+                (p2(x, y0), p2(x + rng.range(-6.0, 6.0), y0 + rng.range(0.1, 0.5) * h))
+            };
+            streaks.push((p, q, sw, a));
+        }
+        let mut s = Sunprint { mask, pdc, blur, white, clear, round, factory, streaks, rng, u, w, h,
+                               k: 1.0, phase: HOLD, t: 0.0, still: false };   // the first print is already developed
+        s.arrange()?;
+        Ok(s)
+    }
+
+    /// a new arrangement: two or three fronds and a scatter of leaves, as white silhouettes, then the soft mask
+    fn arrange(&mut self) -> Result<()> {
+        let (w, h, u) = (self.w, self.h, self.u);
+        let pi = std::f32::consts::PI;
+        unsafe {
+            // the sharp silhouettes only live while the mask is made (a whole screen of memory saved)
+            let (mut dx, mut dy) = (0.0f32, 0.0f32);
+            self.mask.GetDpi(&mut dx, &mut dy);
+            let props = D2D1_BITMAP_PROPERTIES1 { pixelFormat: self.mask.GetPixelFormat(), dpiX: dx, dpiY: dy,
+                                                  bitmapOptions: D2D1_BITMAP_OPTIONS_TARGET, colorContext: std::mem::ManuallyDrop::new(None) };
+            let sharp = self.pdc.CreateBitmap(self.mask.GetPixelSize(), None, 0, &props)?;
+            self.pdc.SetTarget(&sharp);
+            self.pdc.BeginDraw();
+            self.pdc.Clear(Some(&D2D1_COLOR_F::default()));
+            for _ in 0..2 + (self.rng.f() * 2.0) as usize {
+                let (x, y) = (self.rng.range(0.1, 0.9) * w, self.rng.range(0.15, 0.95) * h);
+                let (a, l) = (self.rng.range(-pi, 0.0) - 0.3, self.rng.range(0.35, 0.6) * u);
+                self.frond(x, y, a, l)?;
+            }
+            for _ in 0..4 + (self.rng.f() * 4.0) as usize {
+                let (x, y) = (self.rng.range(0.0, w), self.rng.range(0.0, h));
+                let (a, s) = (self.rng.range(0.0, pi * 2.0), self.rng.range(0.05, 0.11) * u);
+                self.leaf(x, y, a, s)?;
+            }
+            self.pdc.SetTransform(&windows::Foundation::Numerics::Matrix3x2::identity());
+            self.pdc.EndDraw(None, None)?;
+            self.pdc.SetTarget(&self.mask);
+            self.pdc.BeginDraw();
+            self.pdc.Clear(Some(&D2D1_COLOR_F::default()));
+            self.blur.SetInput(0, &sharp, true);
+            self.pdc.DrawImage(&self.blur.GetOutput()?, None, None, D2D1_INTERPOLATION_MODE_LINEAR, D2D1_COMPOSITE_MODE_SOURCE_OVER);
+            self.pdc.DrawBitmap(&sharp, Some(&rect(0.0, 0.0, w, h)), 1.0, D2D1_INTERPOLATION_MODE_LINEAR, None, None);
+            self.pdc.EndDraw(None, None)?;
+            self.blur.SetInput(0, None, true);   // let the sharp layer go
+        }
+        Ok(())
+    }
+
+    fn frond(&mut self, x: f32, y: f32, ang: f32, len: f32) -> Result<()> { unsafe {
+        let n = 18 + (self.rng.f() * 8.0) as usize;
+        let bend = self.rng.range(-0.5, 0.5);
+        let (mut px, mut py, mut a) = (x, y, ang);
+        let dc = &self.pdc;
+        dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2::identity());
+        let path = self.factory.CreatePathGeometry()?;
+        let sink = path.Open()?;
+        sink.BeginFigure(p2(px, py), D2D1_FIGURE_BEGIN_HOLLOW);
+        let mut stem = Vec::new();
+        for i in 0..=n {
+            a += bend / n as f32;
+            px += a.cos() * len / n as f32;
+            py += a.sin() * len / n as f32;
+            sink.AddLine(p2(px, py));
+            stem.push((px, py, a, i as f32 / n as f32));
+        }
+        sink.EndFigure(D2D1_FIGURE_END_OPEN);
+        sink.Close()?;
+        dc.DrawGeometry(&path, &self.white, (len * 0.008).max(1.5), &self.round);
+        // pinnae both sides, longest in the middle, each a row of small lobes
+        for (sx, sy, sa, f) in stem {
+            if f < 0.06 { continue; }
+            let l = len * 0.28 * (std::f32::consts::PI * (f * 1.1).min(1.0)).sin() * (1.0 - f * 0.35);
+            for side in [-1.0f32, 1.0] {
+                let pa = sa + side * (1.1 - f * 0.3);
+                let m = ((l / (len * 0.018)).round() as usize).max(3);
+                for j in 0..m {
+                    let t = (j as f32 + 0.5) / m as f32;
+                    let r = len * 0.017 * (1.0 - t * 0.55);
+                    dc.SetTransform(&turn(pa + side * 0.6, sx + pa.cos() * l * t, sy + pa.sin() * l * t));
+                    dc.FillEllipse(&D2D1_ELLIPSE { point: p2(0.0, 0.0), radiusX: r * 1.5, radiusY: r }, &self.white);
+                }
+            }
+        }
+        Ok(())
+    } }
+
+    fn leaf(&mut self, x: f32, y: f32, ang: f32, s: f32) -> Result<()> { unsafe {
+        let dc = &self.pdc;
+        dc.SetTransform(&turn(ang, x, y));
+        let path = self.factory.CreatePathGeometry()?;
+        let sink = path.Open()?;
+        sink.BeginFigure(p2(-s, 0.0), D2D1_FIGURE_BEGIN_FILLED);
+        sink.AddBezier(&D2D1_BEZIER_SEGMENT { point1: p2(-s * 0.4, -s * 0.55), point2: p2(s * 0.5, -s * 0.45), point3: p2(s, 0.0) });
+        sink.AddBezier(&D2D1_BEZIER_SEGMENT { point1: p2(s * 0.5, s * 0.45), point2: p2(-s * 0.4, s * 0.55), point3: p2(-s, 0.0) });
+        sink.EndFigure(D2D1_FIGURE_END_CLOSED);
+        sink.Close()?;
+        dc.FillGeometry(&path, &self.white, None);
+        dc.DrawLine(p2(-s * 1.35, s * 0.05), p2(-s, 0.0), &self.white, (s * 0.03).max(1.0), &self.round);
+        // the veins, cut out of the leaf (the page uses destination-out)
+        dc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_COPY);
+        let vw = (s * 0.025).max(1.0);
+        dc.DrawLine(p2(-s * 0.9, 0.0), p2(s * 0.85, 0.0), &self.clear, vw, &self.round);
+        for i in 1..6 {
+            let vx = -s + i as f32 * s * 0.3;
+            dc.DrawLine(p2(vx, 0.0), p2(vx + s * 0.22, -s * 0.28), &self.clear, vw, &self.round);
+            dc.DrawLine(p2(vx, 0.0), p2(vx + s * 0.22, s * 0.28), &self.clear, vw, &self.round);
+        }
+        dc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_SOURCE_OVER);
+        Ok(())
+    } }
+}
+
+impl Background for Sunprint {
+    fn fps(&self) -> f32 { if self.still { 0.0 } else { 15.0 } }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        self.still = level <= 0.0;   // 0 stills it: the print as it is stays up
+        if !self.still {
+            let sp = 0.4 + level * 1.6;
+            match self.phase {
+                SET => { self.k += dt * sp * 0.12; if self.k >= 1.0 { self.k = 1.0; self.phase = HOLD; self.t = 0.0; } }
+                HOLD => { self.t += dt * sp; if self.t > 30.0 { self.phase = OUT; } }
+                _ => { self.k -= dt * sp * 0.2; if self.k <= 0.0 { self.k = 0.0; self.arrange()?; self.phase = SET; } }
+            }
+        }
+        unsafe {
+            let dc = &g.dc;
+            dc.Clear(Some(&rgba(look.bg)));
+            let ink = g.brush(look.ink)?;
+            for (p, q, sw, a) in &self.streaks {
+                ink.SetOpacity(*a);
+                dc.DrawLine(*p, *q, &ink, *sw, &self.round);
+            }
+            ink.SetOpacity(0.2 * self.k);
+            dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);   // FillOpacityMask needs it
+            dc.FillOpacityMask(&self.mask, &ink, Some(&rect(0.0, 0.0, self.w, self.h)), None);
+            dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
         }
         Ok(())
     }
