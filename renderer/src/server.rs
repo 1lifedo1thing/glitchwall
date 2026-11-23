@@ -8,12 +8,15 @@
 //!
 //! Events are redacted on the way in, so unredacted text is never kept or served. While paused (or in art mode) new
 //! events are dropped and everything so far is put out of reach: resuming never replays a pause.
-//! Not here yet (pieces 2b-2d): the settings API, the look/tune/opts in the answer, the live sources, the page.
-//! --seed (tests only): follow a file of JSON events, one per line, adding each as it appears.
+//! Its sources, as server.py's follow_mode: in live mode Claude Code's logs (logs.rs), and your PowerShell commands
+//! while the terminal setting is on (shell.rs). Ambient mode's made-up sessions are not ported yet (2c).
+//! Not here yet (pieces 2b-2d): the settings API, the look/tune/opts in the answer, the page.
+//! --seed (tests only): follow a file of JSON events, one per line, adding each as it appears, instead of the sources.
 
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};
 
@@ -38,12 +41,12 @@ pub fn state_dir() -> PathBuf {
 // ---------------------------------------------------------------- the events
 type Ev = Vec<(String, Json)>;
 
-pub struct Store { pub redact: Redactor, events: Vec<Ev>, pub seq: u64, floor: u64 }
+pub struct Store { pub redact: Redactor, masks: Option<(bool, bool)>, events: Vec<Ev>, pub seq: u64, floor: u64 }
 
 fn chars(s: &str, n: usize) -> String { s.chars().take(n).collect() }
 
 impl Store {
-    pub fn new(redact: Redactor) -> Store { Store { redact, events: Vec::new(), seq: 0, floor: 0 } }
+    pub fn new(redact: Redactor) -> Store { Store { redact, masks: None, events: Vec::new(), seq: 0, floor: 0 } }
 
     /// An event, redacted (text and project), numbered, the oldest past KEEP dropped. The caller checks the pause.
     pub fn add(&mut self, ev: &[(String, Json)]) {
@@ -262,9 +265,19 @@ impl Feed {
     }
 
     /// Adds an event unless paused (the pause drops what comes in while it lasts).
+    /// The masking follows the settings (mask_user, mask_email) as they change, for what comes next.
     pub fn add(&self, ev: &[(String, Json)]) {
-        if self.live.lock().unwrap().flag("paused", false) { return; }
-        self.store.lock().unwrap().add(ev);
+        let (paused, masks) = {
+            let mut l = self.live.lock().unwrap();
+            (l.flag("paused", false), (l.flag("mask_user", true), l.flag("mask_email", true)))
+        };
+        if paused { return; }
+        let mut st = self.store.lock().unwrap();
+        if st.masks != Some(masks) {
+            st.redact = Redactor::for_machine_with(masks.0, masks.1);
+            st.masks = Some(masks);
+        }
+        st.add(ev);
     }
 }
 
@@ -286,6 +299,43 @@ fn follow_seed(feed: Arc<Feed>, f: PathBuf) {
     }
 }
 
+fn event_json(e: crate::logs::Event) -> Ev {
+    vec![("ts".into(), Json::Str(e.ts)), ("proj".into(), Json::Str(e.proj)), ("session".into(), Json::Str(e.session)),
+         ("side".into(), Json::Bool(e.side)), ("kind".into(), Json::Str(e.kind)), ("ref".into(), Json::Str(e.r#ref)),
+         ("text".into(), Json::Str(e.text))]
+}
+
+/// The sources (server.py's follow_mode): your PowerShell commands every half second while the mode is live and the
+/// terminal setting on; Claude Code's logs while the mode is live, started and stopped as the mode changes.
+fn start_sources(feed: Arc<Feed>) {
+    let fd = feed.clone();
+    std::thread::spawn(move || {
+        let mut t = crate::shell::ShellTailer::new(state_dir().join("shell"));
+        loop {
+            let on = { let mut l = fd.live.lock().unwrap(); l.mode() == "live" && l.flag("terminal", true) };
+            t.scan(on, &mut |e| fd.add(&e));
+            std::thread::sleep(Duration::from_millis(500));
+        }
+    });
+    std::thread::spawn(move || {
+        let (mut mode, mut stop) = (String::new(), None::<Arc<AtomicBool>>);
+        loop {
+            let m = feed.live.lock().unwrap().mode();
+            if m != mode {
+                if let Some(s) = stop.take() { s.store(true, Ordering::Relaxed); }
+                if m == "live" {
+                    let (s, fd) = (Arc::new(AtomicBool::new(false)), feed.clone());
+                    let s2 = s.clone();
+                    std::thread::spawn(move || crate::logs::Tailer::new(crate::logs::logs_root()).run(&s2, &mut |e| fd.add(&event_json(e))));
+                    stop = Some(s);
+                }
+                mode = m;
+            }
+            std::thread::sleep(Duration::from_secs(1));
+        }
+    });
+}
+
 fn arg(args: &[String], name: &str) -> Option<String> { args.iter().position(|a| a == name).and_then(|i| args.get(i + 1).cloned()) }
 
 fn load_key(dir: &Path) -> Option<String> {
@@ -299,13 +349,11 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let port = arg(args, "--port").and_then(|p| p.parse().ok())
         .or_else(|| live.get().get("port").num().map(|p| p as u16)).unwrap_or(47833);
     let key = load_key(&dir).ok_or("no feed key yet: run glitchwall once to make one")?;
-    let (mu, me) = (live.flag("mask_user", true), live.flag("mask_email", true));
-    let redact = Redactor::for_machine_with(mu, me);
-    let feed = Arc::new(Feed::new(key, port, live, Store::new(redact), Some(dir.join("last-refused.txt"))));
+    let feed = Arc::new(Feed::new(key, port, live, Store::new(Redactor::for_machine()), Some(dir.join("last-refused.txt"))));
     let listener = TcpListener::bind(("127.0.0.1", port)).map_err(|e| format!("port {port}: {e}"))?;
-    if let Some(f) = arg(args, "--seed") {
-        let fd = feed.clone();
-        std::thread::spawn(move || follow_seed(fd, PathBuf::from(f)));
+    match arg(args, "--seed") {
+        Some(f) => { let fd = feed.clone(); std::thread::spawn(move || follow_seed(fd, PathBuf::from(f))); }
+        None => start_sources(feed.clone()),
     }
     for conn in listener.incoming().flatten() {
         let fd = feed.clone();

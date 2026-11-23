@@ -35,10 +35,10 @@ pub fn logs_root() -> PathBuf {
 /// str.isspace (and so re's \s): Unicode white space, plus the four separators Python counts too.
 fn py_space(c: char) -> bool { c.is_whitespace() || ('\x1c'..='\x1f').contains(&c) }
 
-fn py_strip(s: &str) -> &str { s.trim_matches(py_space) }
+pub(crate) fn py_strip(s: &str) -> &str { s.trim_matches(py_space) }
 
 /// str.splitlines: every kind of line break, \r\n as one.
-fn py_splitlines(s: &str) -> Vec<&str> {
+pub(crate) fn py_splitlines(s: &str) -> Vec<&str> {
     let mut out = Vec::new();
     let (b, mut start, mut i) = (s.as_bytes(), 0, 0);
     while i < s.len() {
@@ -252,7 +252,7 @@ pub fn project_label(f: &Path) -> String {
     if last.is_empty() { "project".into() } else { last }
 }
 
-fn output_text(content: &Json) -> String {
+pub(crate) fn output_text(content: &Json) -> String {
     let joined;
     let text: &str = match content {
         Json::Arr(a) => {

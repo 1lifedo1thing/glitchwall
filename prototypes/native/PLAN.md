@@ -146,8 +146,9 @@ fixtures. The feed comes in parts, each built, tested and committed on its own:
   Parity: tests/test_feed_parity.py runs one set of HTTP checks against both feeds, each with a temp GLITCHWALL_HOME
   and events appended to a seed file it follows (the exe's test-only `--seed FILE`); the Rust one only with
   GW_FEED_EXE set. TestCheckAccess's cases are also a Rust unit test (server.rs).
-  Done (first half): server.rs, the HTTP feed and the event store; all parity checks pass on both. Still to do: the
-  live sources (logs.rs Tailer, the shell hook's files) feeding the store, and mask_user/mask_email changes.
+  Done: server.rs (HTTP feed, event store) with its sources: logs.rs's Tailer in live mode and shell.rs (a port of
+  ShellTailer) while the terminal setting is on; mask_user/mask_email follow settings.json. On real logs the Rust and
+  Python feeds served identical text for every call both held. Ambient mode's generator moves to 2c.
 - **2b. Settings.** settings.json load/save with the same defaults and validation (apply_changes, opts, tune, masked,
   corner, mode), LiveSettings re-read on change, `/settings` GET/POST and reset, the static files (index.html,
   settings.html, looks.js) served with `#key=`. Parity: TestSettingsWindow and test_settings.py against either feed.

@@ -17,6 +17,7 @@ mod looks;
 mod redact;
 mod scene;
 mod server;
+mod shell;
 
 use std::path::PathBuf;
 use std::rc::Rc;
