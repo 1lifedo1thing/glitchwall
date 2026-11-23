@@ -1,5 +1,5 @@
 //! Backgrounds: each one draws into the full-screen scene bitmap that the cards' glass blurs.
-//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record", "notebook", "textmode", "sunprint", "draft", "topo", "radar", "orb", "scope", "oracle" and "signs"; every other background falls back to a plain fill until it is.
+//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record", "notebook", "textmode", "sunprint", "draft", "topo", "radar", "orb", "scope", "oracle", "signs" and "chalk": all of them; every other background falls back to a plain fill until it is.
 use crate::fonts::Fonts;
 use crate::gfx::{Gfx, rect, rgba};
 use crate::json::Json;
@@ -40,6 +40,7 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result
         "scope" => Box::new(Scope::new(g, fonts, look, o)?),
         "oracle" => Box::new(Oracle::new(g, fonts, look, o)?),
         "signs" => Box::new(Signs::new(g, fonts, look, o)?),
+        "chalk" => Box::new(Chalk::new(g, fonts, look, o)?),
         _ => Box::new(Plain),
     })
 }
@@ -3230,3 +3231,365 @@ impl Background for Signs {
         Ok(())
     }
 }
+
+/// a blackboard: smudged with old lessons, a chalk tray along the bottom. Lines of working, a plotted graph and a
+/// little flowchart get written up a stroke at a time; when the board is full, an eraser wipes it in bands (or it
+/// clears at once), and the writing starts again. The board is drawn once; the chalk lives in its own layer, kept
+/// by a second device context, drawn into as the writing goes. 20 fps while writing or wiping; still at 0.
+pub struct Chalk { back: ID2D1Bitmap1, layer: ID2D1Bitmap1, pdc: ID2D1DeviceContext, factory: ID2D1Factory, round: ID2D1StrokeStyle,
+                   dw: IDWriteFactory5, coll: Option<IDWriteFontCollection>, rng: Rng, u: f32, w: f32, h: f32, hb: f32,
+                   used: Vec<(f32, f32, f32, f32)>, on: Vec<String>, job: Option<ChalkJob>, wipe: Option<(f32, f32, f32, f32)>, wait: f32,
+                   still: bool, look: Look, scale: f32,
+                   content: u8, clean: bool, white: bool, ghosts: bool }   // options: what gets written, wipe at once, white only; ghosts in the board
+
+enum Chalked { Img(ID2D1Bitmap1, f32, f32, f32, f32), Pts(Vec<(f32, f32)>, Color) }
+struct ChalkJob { strokes: Vec<Chalked>, i: usize, j: f32, w: f32, done: bool }
+
+fn mix(a: Color, b: Color, t: f32) -> Color { [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, 1.0] }
+
+impl Chalk {
+    fn new(g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result<Chalk> {
+        let (w, h) = (g.w as f32, g.h as f32);
+        let u = w.min(h);
+        let light = look.light;
+        let tray = (h * 0.045).round();
+        let hb = h - tray;
+        let mut rng = Rng(0xc4a1_0000_0000_0001 ^ (std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(1) | 1));
+        let ghosts = o.get("ghosts").str() != Some("off");
+        let factory = unsafe { g.dc.GetFactory()? };
+        let props = D2D1_STROKE_STYLE_PROPERTIES { startCap: D2D1_CAP_STYLE_ROUND, endCap: D2D1_CAP_STYLE_ROUND,
+                                                   dashCap: D2D1_CAP_STYLE_ROUND, lineJoin: D2D1_LINE_JOIN_ROUND, ..Default::default() };
+        let round = unsafe { factory.CreateStrokeStyle(&props, None)? };
+        let back = g.surface(w, h)?;
+        let layer = g.surface(w, h)?;
+        let pdc = unsafe { g.dc.GetDevice()?.CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE)? };
+        unsafe { pdc.SetDpi(96.0 * g.scale, 96.0 * g.scale); }
+        let coll: Option<IDWriteFontCollection> = if fonts.has("Caveat") { fonts.set.cast().ok() } else { None };
+        let _ = light;
+        let mut c = Chalk { back, layer, pdc, factory, round, dw: fonts.dw.clone(), coll, rng: Rng(0), u, w, h, hb, used: Vec::new(), on: Vec::new(),
+                            job: None, wipe: None, wait: 0.0, still: false, look: look.clone(), scale: g.scale,
+                            content: 0, clean: false, white: false, ghosts };
+        c.opts(o);
+        unsafe {   // the board: smudges and ghosts of old writing, then the ledge with chalk and an eraser
+            let dc = &c.pdc;
+            dc.SetTarget(&c.back);
+            dc.BeginDraw();
+            dc.Clear(Some(&rgba(look.bg)));
+            let ink = dc.CreateSolidColorBrush(&rgba(look.ink), None)?;
+            for _ in 0..28 {
+                ink.SetOpacity(rng.range(0.008, 0.022));
+                let (x, y) = (rng.range(0.0, w), rng.range(0.0, hb));
+                let lw = rng.range(0.04, 0.12) * u;
+                dc.DrawLine(p2(x, y), p2(x + rng.range(-0.3, 0.3) * w, y + rng.range(-0.06, 0.06) * h), &ink, lw, &c.round);
+            }
+            if ghosts {
+                let f = c.format((u * 0.035).round())?;
+                for t in CHALK_GHOSTS {
+                    ink.SetOpacity(rng.range(0.02, 0.04));
+                    let s: Vec<u16> = t.encode_utf16().collect();
+                    let (x, y) = (rng.range(0.0, 0.9) * w, rng.range(0.08, 0.92) * hb);
+                    dc.DrawText(&s, &f, &rect(x, y - u * 0.035, w, u * 0.05), &ink, D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL);
+                }
+            }
+            let rt: &ID2D1RenderTarget = dc;
+            let ic = |a: f32| D2D1_COLOR_F { r: look.ink[0], g: look.ink[1], b: look.ink[2], a };
+            let dust = rt.CreateGradientStopCollection(&[D2D1_GRADIENT_STOP { position: 0.0, color: ic(0.0) }, D2D1_GRADIENT_STOP { position: 1.0, color: ic(0.045) }],
+                                                       D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP)?;
+            let db = dc.CreateLinearGradientBrush(&D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES { startPoint: p2(0.0, hb - u * 0.08), endPoint: p2(0.0, hb) }, None, &dust)?;
+            dc.FillRectangle(&rect(0.0, hb - u * 0.08, w, u * 0.08), &db);
+            dc.FillRectangle(&rect(0.0, hb, w, tray), &dc.CreateSolidColorBrush(&rgba(mix(look.bg, [0.0, 0.0, 0.0, 1.0], 0.45)), None)?);
+            for _ in 0..(w / 2.0) as usize {   // dust on the ledge
+                ink.SetOpacity(rng.range(0.04, 0.16));
+                dc.FillRectangle(&rect(rng.range(0.0, w), hb + rng.range(1.0, tray * 0.55), rng.range(1.0, 2.0), 1.0), &ink);
+            }
+            ink.SetOpacity(0.12);
+            dc.FillRectangle(&rect(0.0, hb, w, 2.0), &ink);
+            let (ty, cl, ch) = (hb + tray * 0.45, u * 0.05, (tray * 0.22).max(4.0));
+            for (x, col, l) in [(0.62, look.ink, 1.0), (0.66, look.acc, 0.7), (0.69, look.ink, 0.45), (0.73, look.acc2, 0.8)] {
+                let b = dc.CreateSolidColorBrush(&rgba(col), None)?;
+                b.SetOpacity(0.75);
+                dc.FillRoundedRectangle(&D2D1_ROUNDED_RECT { rect: rect(w * x, ty - ch / 2.0, cl * l, ch), radiusX: ch / 2.0, radiusY: ch / 2.0 }, &b);
+            }
+            let felt = dc.CreateSolidColorBrush(&rgba(mix(look.bg, [0x8a as f32 / 255.0, 0x73 as f32 / 255.0, 0x56 as f32 / 255.0, 1.0], 0.7)), None)?;
+            felt.SetOpacity(0.7);
+            dc.FillRectangle(&rect(w * 0.2, ty - tray * 0.32, u * 0.12, tray * 0.42), &felt);
+            let edge = dc.CreateSolidColorBrush(&rgba(mix(look.bg, look.ink, 0.35)), None)?;
+            edge.SetOpacity(0.7);
+            dc.FillRectangle(&rect(w * 0.2, ty + tray * 0.02, u * 0.12, tray * 0.12), &edge);
+            dc.EndDraw(None, None)?;
+            dc.SetTarget(&c.layer);
+            dc.BeginDraw();
+            dc.Clear(Some(&D2D1_COLOR_F::default()));
+            dc.EndDraw(None, None)?;
+        }
+        c.rng = rng;
+        for _ in 0..5 {   // start with a board in use
+            let Some(mut j) = c.next()? else { break };
+            c.step(&mut j, 1e9)?;
+        }
+        Ok(c)
+    }
+
+    fn format(&self, fs: f32) -> Result<IDWriteTextFormat> {
+        unsafe { self.dw.CreateTextFormat(w!("Caveat"), self.coll.as_ref(), DWRITE_FONT_WEIGHT(500), DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, fs, w!("en-us")) }
+    }
+    fn width(&self, s: &str, fs: f32) -> Result<f32> {
+        let t: Vec<u16> = s.encode_utf16().collect();
+        unsafe {
+            let l = self.dw.CreateTextLayout(&t, &self.format(fs)?, 1e5, fs * 2.0)?;
+            let mut m = DWRITE_TEXT_METRICS::default();
+            l.GetMetrics(&mut m)?;
+            Ok(m.widthIncludingTrailingWhitespace)
+        }
+    }
+    fn col(&self, c: Color) -> Color { if self.white { self.look.ink } else { c } }
+
+    /// find room on the board for a w x h piece
+    fn room(&mut self, w: f32, h: f32) -> Option<(f32, f32)> {
+        for _ in 0..30 {
+            let (x0, x1, y0, y1) = (self.u * 0.04, self.w - w - self.u * 0.04, self.u * 0.04, self.hb - h - self.u * 0.03);
+            if x1 < x0 || y1 < y0 { return None; }
+            let (x, y) = (self.rng.range(x0, x1), self.rng.range(y0, y1));
+            if !self.used.iter().any(|r| x < r.0 + r.2 + 20.0 && x + w + 20.0 > r.0 && y < r.1 + r.3 + 20.0 && y + h + 20.0 > r.1) { self.used.push((x, y, w, h)); return Some((x, y)); }
+        }
+        None
+    }
+
+    /// a word in chalk: powder round the strokes, dust, little gaps; as a bitmap to reveal left to right
+    fn text(&mut self, s: &str, x: f32, y: f32, fs: f32, c: Color) -> Result<Chalked> {
+        let c = self.col(c);
+        let (tw, th) = ((self.width(s, fs)? + fs).ceil(), (fs * 1.5).ceil());
+        let img = unsafe {
+            let props = D2D1_BITMAP_PROPERTIES1 { pixelFormat: D2D1_PIXEL_FORMAT { format: windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT_B8G8R8A8_UNORM, alphaMode: D2D1_ALPHA_MODE_PREMULTIPLIED },
+                                                  dpiX: 96.0 * self.scale, dpiY: 96.0 * self.scale, bitmapOptions: D2D1_BITMAP_OPTIONS_TARGET, colorContext: std::mem::ManuallyDrop::new(None) };
+            self.pdc.CreateBitmap(D2D_SIZE_U { width: (tw * self.scale).ceil() as u32, height: (th * self.scale).ceil() as u32 }, None, 0, &props)?
+        };
+        let t: Vec<u16> = s.encode_utf16().collect();
+        let f = self.format(fs)?;
+        unsafe {
+            f.SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER)?;
+            f.SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP)?;
+            let dc = &self.pdc;
+            dc.SetTarget(&img);
+            dc.BeginDraw();
+            dc.Clear(Some(&D2D1_COLOR_F::default()));
+            let b = dc.CreateSolidColorBrush(&rgba(c), None)?;
+            let o = (fs * 0.05).max(1.0);
+            b.SetOpacity(0.08);
+            for (dx, dy) in [(-o, 0.0), (o, 0.0), (0.0, -o), (0.0, o)] {   // powder round the strokes
+                dc.DrawText(&t, &f, &rect(fs * 0.2 + dx, dy, tw, th), &b, D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL);
+            }
+            b.SetOpacity(1.0);
+            dc.DrawText(&t, &f, &rect(fs * 0.2, 0.0, tw, th), &b, D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL);
+            for _ in 0..(tw / 5.0) as usize {   // dust
+                b.SetOpacity(self.rng.range(0.1, 0.3));
+                dc.FillRectangle(&rect(self.rng.range(0.0, tw), self.rng.range(0.0, th), 1.0, 1.0), &b);
+            }
+            dc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_COPY);   // chalk grain: little gaps in the strokes
+            let gap = dc.CreateSolidColorBrush(&D2D1_COLOR_F::default(), None)?;
+            for _ in 0..(tw * th / 40.0) as usize { dc.FillRectangle(&rect(self.rng.range(0.0, tw).floor(), self.rng.range(0.0, th).floor(), 1.0, 1.0), &gap); }
+            dc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_SOURCE_OVER);
+            dc.EndDraw(None, None)?;
+        }
+        Ok(Chalked::Img(img, x, y - th / 2.0, tw, th))
+    }
+
+    /// the next thing to write: a line of working, a plot, or a little flowchart; as strokes to draw in order
+    fn next(&mut self) -> Result<Option<ChalkJob>> {
+        let u = self.u;
+        let k = match self.content { 1 => 0.3, 2 => 0.7, 3 => 0.9, _ => self.rng.f() };
+        let lw = (u / 300.0).max(2.0);
+        let (ink, acc, acc2) = (self.look.ink, self.look.acc, self.look.acc2);
+        let mut strokes = Vec::new();
+        let mut wob = |r: &mut Rng, st: &mut Vec<Chalked>, x0: f32, y0: f32, x1: f32, y1: f32, c: Color| {
+            let m = (r.range(-2.0, 2.0), r.range(-2.0, 2.0));
+            st.push(Chalked::Pts(vec![(x0, y0), ((x0 + x1) / 2.0 + m.0, (y0 + y1) / 2.0 + m.1), (x1, y1)], c));
+        };
+        if k < 0.62 {   // a line of working, sometimes underlined or boxed
+            let fresh: Vec<&str> = CHALK_LINES.iter().copied().filter(|s| !self.on.iter().any(|o| o == s)).collect();
+            if fresh.is_empty() { return Ok(None); }
+            let s = fresh[(self.rng.f() * fresh.len() as f32) as usize % fresh.len()];
+            let fs = (u * self.rng.range(0.026, 0.036)).round();
+            let tw = self.width(s, fs)? + fs;
+            let Some((x, y)) = self.room(tw, fs * 1.8) else { return Ok(None) };
+            self.on.push(s.to_string());
+            let c = if self.rng.f() < 0.7 { ink } else if self.rng.f() < 0.5 { acc } else { acc2 };
+            let t = self.text(s, x, y + fs * 0.8, fs, c)?;
+            strokes.push(t);
+            let r = self.rng.f();
+            if r < 0.3 { let e = self.rng.range(0.6, 0.95); wob(&mut self.rng, &mut strokes, x, y + fs * 1.55, x + tw * e, y + fs * 1.6, acc); }
+            else if r < 0.45 {
+                let e = [x - 6.0, y, x + tw, y + fs * 1.7];
+                for (a, b, c2, d) in [(e[0], e[1], e[2], e[1]), (e[2], e[1], e[2], e[3]), (e[2], e[3], e[0], e[3]), (e[0], e[3], e[0], e[1])] { wob(&mut self.rng, &mut strokes, a, b, c2, d, acc2); }
+            }
+        } else if k < 0.8 {   // axes, ticks, and a curve through them
+            let pw = u * self.rng.range(0.2, 0.28);
+            let ph = pw * 0.62;
+            let Some((x, y)) = self.room(pw, ph) else { return Ok(None) };
+            let oy = y + ph * self.rng.range(0.48, 0.55);
+            wob(&mut self.rng, &mut strokes, x, oy, x + pw, oy, ink);
+            wob(&mut self.rng, &mut strokes, x + pw * 0.1, y + ph, x + pw * 0.1, y, ink);
+            for i in 1..8 { let tx = x + pw * 0.1 + i as f32 * pw * 0.11; wob(&mut self.rng, &mut strokes, tx, oy - 4.0, tx, oy + 4.0, ink); }
+            let kind = (self.rng.f() * 3.0) as usize % 3;
+            let c = if self.rng.f() < 0.5 { acc } else { acc2 };
+            let pts = (0..=40).map(|i| {
+                let t = i as f32 / 40.0;
+                let v = match kind { 0 => (t * TAU * 1.5).sin() * 0.4, 1 => (t - 0.5).powi(2) * 3.0 - 0.3, _ => -(-t * 4.0).exp() * (t * 18.0).cos() * 0.45 };
+                (x + pw * 0.1 + t * pw * 0.85, oy - v * ph)
+            }).collect();
+            strokes.push(Chalked::Pts(pts, c));
+            let t = self.text(["sin", "x²", "ringing"][kind], x + pw * 0.78, y + ph * 0.12, (u * 0.024).round(), c)?;
+            strokes.push(t);
+        } else {   // a little flowchart: three boxes and arrows
+            let fresh: Vec<&[&str; 3]> = CHALK_FLOWS.iter().filter(|f| !self.on.iter().any(|o| *o == f.join(","))).collect();
+            if fresh.is_empty() { return Ok(None); }
+            let words = *fresh[(self.rng.f() * fresh.len() as f32) as usize % fresh.len()];
+            let (bw, bh, gap) = (u * 0.1, u * 0.046, u * 0.05);
+            let Some((x, y)) = self.room(bw * 3.0 + gap * 2.0, bh * 1.6) else { return Ok(None) };
+            self.on.push(words.join(","));
+            for i in 0..3 {
+                let (bx, by) = (x + i as f32 * (bw + gap), y + bh * 0.3);
+                for (a, b, c2, d) in [(bx, by, bx + bw, by), (bx + bw, by, bx + bw, by + bh), (bx + bw, by + bh, bx, by + bh), (bx, by + bh, bx, by)] { wob(&mut self.rng, &mut strokes, a, b, c2, d, ink); }
+                let t = self.text(words[i], bx + bw * 0.18, by + bh / 2.0, (bh * 0.55).round(), ink)?;
+                strokes.push(t);
+                if i < 2 {
+                    let (ax, ay) = (bx + bw + 6.0, by + bh / 2.0);
+                    wob(&mut self.rng, &mut strokes, ax, ay, ax + gap - 12.0, ay, acc);
+                    wob(&mut self.rng, &mut strokes, ax + gap - 12.0, ay, ax + gap - 22.0, ay - 7.0, acc);
+                    wob(&mut self.rng, &mut strokes, ax + gap - 12.0, ay, ax + gap - 22.0, ay + 7.0, acc);
+                }
+            }
+        }
+        Ok(Some(ChalkJob { strokes, i: 0, j: 0.0, w: lw, done: false }))
+    }
+
+    /// draw up to `px` pixels' worth of the job into the chalk layer
+    fn step(&mut self, job: &mut ChalkJob, mut px: f32) -> Result<()> {
+        unsafe {
+            let dc = self.pdc.clone();
+            dc.SetTarget(&self.layer);
+            dc.BeginDraw();
+            while px > 0.01 && job.i < job.strokes.len() {
+                match &job.strokes[job.i] {
+                    Chalked::Img(img, x, y, tw, th) => {   // writing: the word appears left to right
+                        let (from, to) = (job.j, tw.min(job.j + px));
+                        if to - from < 0.01 && to < *tw { break; }
+                        let s = self.scale;
+                        dc.DrawBitmap(img, Some(&rect(x + from, *y, to - from, *th)), 1.0, D2D1_INTERPOLATION_MODE_LINEAR,
+                                      Some(&rect(from * s, 0.0, (to - from) * s, th * s)), None);
+                        px -= to - from; job.j = to;
+                        if to >= *tw { job.i += 1; job.j = 0.0; }
+                    }
+                    Chalked::Pts(p, c) => {
+                        let jj = job.j as usize;
+                        if jj + 1 >= p.len() { job.i += 1; job.j = 0.0; continue; }
+                        let (a, b) = (p[jj], p[jj + 1]);
+                        let c = self.col(*c);
+                        self.seg(&dc, a, b, c, job.w)?;
+                        px -= ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt();
+                        job.j += 1.0;
+                    }
+                }
+            }
+            dc.EndDraw(None, None)?;
+        }
+        if job.i >= job.strokes.len() { job.done = true; }
+        Ok(())
+    }
+
+    /// chalk on the board: a slightly broken line, a little dust
+    fn seg(&mut self, dc: &ID2D1DeviceContext, (x0, y0): (f32, f32), (x1, y1): (f32, f32), c: Color, w: f32) -> Result<()> {
+        unsafe {
+            let b = dc.CreateSolidColorBrush(&rgba(c), None)?;
+            b.SetOpacity(0.05);
+            dc.DrawLine(p2(x0, y0), p2(x1, y1), &b, w * 3.5, &self.round);   // powder
+            let n = (((x1 - x0).powi(2) + (y1 - y0).powi(2)).sqrt() / 4.0).max(1.0) as usize;
+            for i in 0..n {
+                let (a, e) = (i as f32 / n as f32, (i + 1) as f32 / n as f32);
+                b.SetOpacity(self.rng.range(0.5, 0.85));
+                dc.DrawLine(p2(x0 + (x1 - x0) * a, y0 + (y1 - y0) * a),
+                            p2(x0 + (x1 - x0) * e + self.rng.range(-0.4, 0.4), y0 + (y1 - y0) * e + self.rng.range(-0.4, 0.4)), &b, w * self.rng.range(0.75, 1.15), &self.round);
+                if self.rng.f() < 0.3 {
+                    b.SetOpacity(0.25);
+                    dc.FillRectangle(&rect(x0 + (x1 - x0) * a + self.rng.range(-w * 2.0, w * 2.0), y0 + (y1 - y0) * a + self.rng.range(-w * 2.0, w * 2.0), 1.0, 1.0), &b);
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl Background for Chalk {
+    fn fps(&self) -> f32 { if self.still { 0.0 } else { 20.0 } }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.content = match o.get("content").str() { Some("equations") => 1, Some("plots") => 2, Some("flowcharts") => 3, _ => 0 };
+        self.clean = o.get("wipe").str() == Some("clean");
+        self.white = o.get("colors").str() == Some("white");
+        (o.get("ghosts").str() != Some("off")) != self.ghosts
+    }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        self.still = level <= 0.0;
+        if !self.still {
+            let sp = 0.4 + level * 1.6;
+            let u = self.u;
+            if let Some((mut x, mut y, h, mut dir)) = self.wipe {   // erasing: a band at a time, back and forth, leaving smudge
+                let x0 = x;
+                x += dir * u * 1.6 * dt * sp;
+                unsafe {
+                    let dc = &self.pdc;
+                    dc.SetTarget(&self.layer);
+                    dc.BeginDraw();
+                    dc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_COPY);
+                    dc.FillRectangle(&rect(x0.min(x) - u * 0.06, y, (x - x0).abs() + u * 0.12, h), &dc.CreateSolidColorBrush(&D2D1_COLOR_F::default(), None)?);
+                    dc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_SOURCE_OVER);
+                    let rt: &ID2D1RenderTarget = dc;
+                    let ic = |a: f32| D2D1_COLOR_F { r: look.ink[0], g: look.ink[1], b: look.ink[2], a };
+                    let sm = rt.CreateGradientStopCollection(&[D2D1_GRADIENT_STOP { position: 0.0, color: ic(0.0) }, D2D1_GRADIENT_STOP { position: 0.5, color: ic(0.03) },
+                                                                D2D1_GRADIENT_STOP { position: 1.0, color: ic(0.0) }], D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP)?;
+                    let sb = dc.CreateLinearGradientBrush(&D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES { startPoint: p2(0.0, y), endPoint: p2(0.0, y + h) }, None, &sm)?;
+                    dc.FillRectangle(&rect(x0.min(x), y, (x - x0).abs(), h), &sb);
+                    dc.EndDraw(None, None)?;
+                }
+                if x > self.w + u * 0.1 || x < -u * 0.1 {
+                    y += h; dir = -dir;
+                    if y >= self.hb { self.wipe = None; self.used.clear(); self.on.clear(); self.wait = 1.5; } else { self.wipe = Some((x, y, h, dir)); }
+                } else { self.wipe = Some((x, y, h, dir)); }
+            } else if let Some(mut j) = self.job.take().filter(|j| !j.done) {
+                self.step(&mut j, u * 1.1 * dt * sp)?;
+                self.job = Some(j);
+            } else {
+                self.wait -= dt * sp;
+                if self.wait <= 0.0 {
+                    self.job = self.next()?;
+                    self.wait = self.rng.range(1.5, 4.0);
+                    if self.job.is_none() {   // full: wipe the board
+                        if self.clean {
+                            unsafe { self.pdc.SetTarget(&self.layer); self.pdc.BeginDraw(); self.pdc.Clear(Some(&D2D1_COLOR_F::default())); self.pdc.EndDraw(None, None)?; }
+                            self.used.clear(); self.on.clear(); self.wait = 1.5;
+                        } else { self.wipe = Some((-u * 0.06, 0.0, u * 0.11, 1.0)); }
+                    }
+                }
+            }
+        }
+        unsafe {
+            let dc = &g.dc;
+            let full = rect(0.0, 0.0, self.w, self.h);
+            dc.DrawBitmap(&self.back, Some(&full), 1.0, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, None, None);
+            dc.DrawBitmap(&self.layer, Some(&full), 1.0, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, None, None);
+            if let Some((x, y, h, _)) = self.wipe {   // the eraser, a dark block with a felt edge, moving along its band
+                let (ew, eh) = (self.u * 0.12, h * 0.9);
+                let felt = g.brush(mix(look.bg, [0x8a as f32 / 255.0, 0x73 as f32 / 255.0, 0x56 as f32 / 255.0, 1.0], 0.7))?;
+                felt.SetOpacity(0.9);
+                dc.FillRectangle(&rect(x - ew / 2.0, y + (h - eh) / 2.0, ew, eh), &felt);
+                let edge = g.brush(mix(look.bg, look.ink, 0.35))?;
+                edge.SetOpacity(0.9);
+                dc.FillRectangle(&rect(x - ew / 2.0, y + (h - eh) / 2.0 + eh * 0.8, ew, eh * 0.2), &edge);
+            }
+        }
+        Ok(())
+    }
+}
+
+const CHALK_LINES: [&str; 58] = ["f(x) = x² - 3x + 2", "a² + b² = c²", "O(n log n)", "lim sin(x)/x = 1", "P(A|B) = P(B|A) P(A) / P(B)", "if (tests pass) ship()", "TODO: write the tests!", "y = mx + b", "E = mc²", "2 + 2 = 4", "n! = n (n-1)!", "x = (-b ± √(b² - 4ac)) / 2a", "cache hit / (hit + miss)", "merge, then rebase?", "p(fail) < 0.01", "O(1) amortized", "T(n) = 2T(n/2) + n", "Σ i = n(n+1)/2", "e^(iπ) + 1 = 0", "d/dx sin x = cos x", "∫ x dx = x²/2 + C", "log₂ 1024 = 10", "2¹⁰ = 1024", "0.1 + 0.2 ≠ 0.3", "NaN ≠ NaN", "retry with backoff: 1, 2, 4, 8 s", "latency p99 < 200 ms", "rows / page = 50", "ttl = 3600", "off by one?", "it works on my machine", "never trust user input", "measure, then optimize", "git bisect: good ... bad", "DRY, but not too dry", "a → b → c ⇒ a → c", "¬(A ∧ B) = ¬A ∨ ¬B", "binary search: lo, mid, hi", "hash(k) mod m", "load factor < 0.75", "BFS: queue / DFS: stack", "read the error message", "1 KB = 1024 B", "UTC, always", "v2.3.1 → v2.4.0", "exit code 0 = ok", "200 OK  ·  404 not found", "idempotent: f(f(x)) = f(x)", "n² vs n log n", "cos² + sin² = 1", "mean = Σx / n", "σ² = E[(x - μ)²]", "commit early, commit often", "null check first", "race condition? add a lock", "deadlock: A waits B, B waits A", "tabs or spaces?", "p ⇒ q, ¬q ∴ ¬p"];
+const CHALK_GHOSTS: [&str; 12] = ["x + y = ", "∴", "Q.E.D.", "f′(x)", "lim →", "≈ 3.14159", "Δt", "(a + b)²", "λx. x", "mod 7", "k = 1 .. n", "∂/∂x"];
+const CHALK_FLOWS: [[&str; 3]; 8] = [["plan", "code", "test"], ["read", "edit", "ship"], ["fetch", "parse", "store"], ["build", "lint", "deploy"], ["request", "cache", "db"], ["input", "validate", "save"], ["red", "green", "refactor"], ["clone", "branch", "merge"]];
