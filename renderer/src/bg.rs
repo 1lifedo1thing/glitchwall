@@ -36,7 +36,7 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result
         "draft" => Box::new(Draft::new(g, fonts, look)?),
         "topo" => Box::new(Topo::new(g, fonts, look, o)?),
         "radar" => Box::new(Radar::new(g, fonts, look, o)?),
-        "orb" => Box::new(Orb::new(g, look)?),
+        "orb" => Box::new(Orb::new(g, fonts, look)?),
         "scope" => Box::new(Scope::new(g, fonts, look, o)?),
         "oracle" => Box::new(Oracle::new(g, fonts, look, o)?),
         "signs" => Box::new(Signs::new(g, fonts, look, o)?),
@@ -1923,10 +1923,28 @@ pub struct Orb { back: ID2D1Bitmap1, front: ID2D1Bitmap1, glow: ID2D1Bitmap1, do
                  s: f32, ox: f32, oy: f32, w: f32, h: f32, t: f32, spin: f32, still: bool,
                  dest: Vec<D2D_RECT_F>, tint: Vec<D2D1_COLOR_F>, net: Vec<[f32; 3]>, tris: Vec<[u16; 3]>, mesh: ID2D1Bitmap1, mdc: ID2D1DeviceContext, mdc3: ID2D1DeviceContext3,
                  mbatch: ID2D1SpriteBatch, hole: ID2D1Bitmap1, holes: ID2D1Bitmap1, edge: ID2D1Bitmap1, cage: f32,
-                 turns: (f32, f32), caged: bool, calm: bool }   // how fast the sphere and the cage turn, from the options: 1 right, -1 left, 0 still
+                 turns: (f32, f32), caged: bool, calm: bool,
+                 fmt: IDWriteTextFormat, fs: f32, cy: f32, calls: Vec<OrbCall> }   // the readouts pointing at parts of the sphere   // how fast the sphere and the cage turn, from the options: 1 right, -1 left, 0 still
 
 struct Led { x: f32, y: f32, s: f32, a: f32, red: bool, kind: u8, f: f32, p: f32 }
 struct Rib { phi: f32, n: usize, o: f32, base: Vec<f32>, b: Vec<f32> }
+
+/// a readout: which of the three (each keeps to its own band of slats), the slat, where on it, its age and life,
+/// which label, its drifting value and an id
+struct OrbCall { i: usize, k: usize, th: f32, age: f32, life: f32, lab: usize, v: f32, id: String }
+
+const ORB_LABELS: [&str; 6] = ["DIVERGENCE", "RECALCULATING", "LOAD", "VARIANCE", "THREAD", "CONVERGENCE"];
+
+fn orb_value(lab: usize, v: f32) -> String {
+    match lab {
+        0 => format!("Δ {:.4}", v * 0.09),
+        1 => format!("SECTOR {}", (v * 96.0) as u32 + 1),
+        2 => format!("{:.1} %", 60.0 + v * 39.0),
+        3 => format!("σ {:.3}", v * 0.3),
+        4 => format!("0x{:04X}", (v * 65535.0) as u32),
+        _ => format!("{:.2} %", 90.0 + v * 9.9),
+    }
+}
 
 const ORB_L: usize = 30;
 const ORB_N: usize = 110;
@@ -1969,7 +1987,7 @@ fn mixc(p: Color, q: Color, t: f32) -> Color { [p[0] + (q[0] - p[0]) * t, p[1] +
 fn ca(c: Color, a: f32) -> D2D1_COLOR_F { D2D1_COLOR_F { r: c[0], g: c[1], b: c[2], a } }
 
 impl Orb {
-    fn new(g: &Gfx, look: &Look) -> Result<Orb> {
+    fn new(g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Orb> {
         let (w, h) = (g.w as f32, g.h as f32);
         // the hall is laid out from s0; the sphere (radius s) is smaller than that, sitting in a smaller opening
         let s0 = w.min(h) * 0.29;
@@ -2245,8 +2263,11 @@ impl Orb {
             dc.EndDraw(None, None)?;
             dc.SetTarget(&old);
         }
-        let mut o = Orb { back, front, glow, dot, batch, dc3, factory, sphere, rim, leds, ribs, packets: Vec::new(), rng,
+        let fs = (s * 0.045).round().max(10.0);
+        let mut o = Orb { fmt: fonts.format(&look.mono.family, fs, 400)?, fs, cy, calls: Vec::new(), back, front, glow, dot, batch, dc3, factory, sphere, rim, leds, ribs, packets: Vec::new(), rng,
                           s, ox, oy, w, h, t: 0.0, spin: 0.0, still: false, dest: Vec::new(), tint: Vec::new(), net, tris, mesh, mdc, mdc3, mbatch, hole, holes, edge, cage: 0.0, turns: (1.0, 1.0), caged: true, calm: false };
+        for i in 0..3 { let a = o.rng.range(0.15, 0.5); let c = o.callout(i, a); o.calls.push(c); }
+        o.burn();
         o.t = o.rng.range(0.0, 300.0);
         o.spin = o.rng.range(-0.5, 0.1);
         o.cage = o.spin;
@@ -2262,6 +2283,29 @@ impl Orb {
     }
 
     /// a point on the shell: latitude phi, body longitude th; returns x, y, depth, light
+    /// a readout on one part of the sphere: each of the three keeps to its own band of slats, so they never collide
+    fn callout(&mut self, i: usize, age: f32) -> OrbCall {
+        let used: Vec<usize> = self.calls.iter().filter(|c| c.i != i).map(|c| c.lab).collect();
+        let pool: Vec<usize> = (1..ORB_LABELS.len()).filter(|l| !used.contains(l)).collect();
+        let band = [(22usize, 26usize), (18, 21), (14, 16)][i];
+        let k = (band.0 + (self.rng.f() * (band.1 - band.0 + 1) as f32) as usize).min(band.1).min(self.ribs.len() - 1);
+        let life = self.rng.range(9.0, 15.0);
+        let lab = if i == 0 { 0 } else { pool[(self.rng.f() * pool.len() as f32) as usize % pool.len()] };
+        OrbCall { i, k, th: -self.spin + self.rng.range(-0.9, 0.45), age: age * life, life, lab, v: self.rng.f(),
+                  id: format!("#{:04x}", (self.rng.f() * 65535.0) as u32) }
+    }
+
+    /// where a readout points, a run of lights on that slat burns together, pulsing
+    fn burn(&mut self) {
+        for c in &self.calls {
+            let rb = &mut self.ribs[c.k];
+            for j in 0..rb.n {
+                let d = ((rb.o + j as f32 / rb.n as f32 * TAU - c.th + std::f32::consts::PI).rem_euclid(TAU) - std::f32::consts::PI).abs();
+                if d < 0.2 { rb.b[j] = rb.b[j].max(0.75 + 0.25 * (self.t * 4.0 + j as f32).sin()); }
+            }
+        }
+    }
+
     fn pt(&self, phi: f32, th: f32) -> (f32, f32, f32, f32) {
         let a = th + self.spin;
         let cp = phi.cos();
@@ -2403,6 +2447,12 @@ impl Background for Orb {
                 }
                 self.packets[i] = if self.rng.f() < dt * 0.12 { self.packet() } else { (k, pos, v, len) };
             }
+            for i in 0..self.calls.len() {   // readouts come and go; the numbers drift while they show
+                self.calls[i].age += dt * sp;
+                if self.calls[i].age > self.calls[i].life { let c = self.callout(i, 0.0); self.calls[i] = c; }
+                else if self.rng.f() < dt * 0.6 { let v = self.calls[i].v + self.rng.range(-0.03, 0.03); self.calls[i].v = v.clamp(0.0, 1.0); }
+            }
+            self.burn();
         }
         let light = look.light;
         let full = rect(0.0, 0.0, self.w, self.h);
@@ -2485,6 +2535,35 @@ impl Background for Orb {
         self.sprites(g, &dot, !light)?;
         if self.caged { self.cage_layer(g, look, s, ox, oy, u)?; }
         unsafe { g.dc.DrawBitmap(&self.front, Some(&full), 1.0, D2D1_INTERPOLATION_MODE_LINEAR, None, None); }
+        // the readouts, each pointing at its part of the sphere while that part faces us
+        let (fs, ss) = (self.fs, self.s);
+        let acc = g.brush(look.acc)?;
+        let ink = g.brush(look.ink)?;
+        for c in &self.calls {
+            let (mx, my, mz, _) = self.pt(self.ribs[c.k].phi, c.th);
+            let f = ((mz - 0.2) * 4.0).min(c.age / 0.8).min((c.life - c.age) / 0.8).clamp(0.0, 1.0);
+            if f <= 0.0 || my > self.cy { continue; }
+            let side = if mx < self.ox { -1.0 } else { 1.0 };
+            let x2 = self.ox + side * (ss * 1.05).max((ss * 1.4).min(self.w / 2.0 - fs * 16.0));
+            let ty = my - ss * 0.1 * (c.i as f32 - 1.0);
+            unsafe {
+                let dc = &g.dc;
+                acc.SetOpacity(0.8 * f);
+                dc.DrawLine(p2(mx, my), p2(x2, ty), &acc, 1.0, None);
+                dc.DrawLine(p2(x2, ty), p2(x2 + side * fs * 3.0, ty), &acc, 1.0, None);
+                dc.FillRectangle(&rect(mx - 2.0, my - 2.0, 4.0, 4.0), &acc);
+                let tx = x2 + side * fs * 3.6;
+                let _ = self.fmt.SetTextAlignment(if side < 0.0 { DWRITE_TEXT_ALIGNMENT_TRAILING } else { DWRITE_TEXT_ALIGNMENT_LEADING });
+                let _ = self.fmt.SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+                let at = |y: f32| if side < 0.0 { rect(tx - 600.0, y - fs, 600.0, fs * 2.0) } else { rect(tx, y - fs, 600.0, fs * 2.0) };
+                let l1: Vec<u16> = ORB_LABELS[c.lab].encode_utf16().collect();
+                let l2: Vec<u16> = format!("{}   {}", orb_value(c.lab, c.v), c.id).encode_utf16().collect();
+                ink.SetOpacity(0.65 * f);
+                dc.DrawText(&l1, &self.fmt, &at(ty - fs * 0.7), &ink, D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL);
+                acc.SetOpacity(0.95 * f);
+                dc.DrawText(&l2, &self.fmt, &at(ty + fs * 0.7), &acc, D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL);
+            }
+        }
         Ok(())
     }
 }
