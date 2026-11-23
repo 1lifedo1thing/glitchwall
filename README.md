@@ -322,9 +322,9 @@ nothing is drawn at all.
 | `scope` | `scope` oscilloscope | Overpass Mono / IBM Plex Mono | CRT tube, 0.05 | 30 | a sweeping beam must look continuous |
 | `chalkboard` | `chalk` blackboard | Caveat | none, 0.18 | 20 while writing or wiping | handwriting pace |
 
-Every background drops to 0 fps when the background slider is at 0. The eight extra backgrounds (`code`, `stars`,
-`static`, `snow`, `jukebox`, `starburst`, `testcard`, `print`) belong to no theme and are only in the web page
-for now; the native renderer shows the theme's plain color for them.
+Every background drops to 0 fps when the background slider is at 0. The eight extra backgrounds belong to no
+theme, for mixing your own: `code` and `stars` (30 fps), `snow` (30), `jukebox` and `starburst` (20), `static`,
+`testcard` and `print` (15).
 
 ### Up close
 
@@ -630,7 +630,7 @@ it against WebView2: about 3.5% CPU and 63 MB against 18% and 330 MB. That settl
 - **Measuring honestly.** Early numbers came out impossibly low because a window covered the screen and glitchwall
   had (correctly) gone to sleep. Every number in this README is taken with the desktop showing.
 
-**The payoff (23 November 2026).** All 18 theme backgrounds run natively, each with four options, and native is the
+**The payoff (23 November 2026).** All 27 backgrounds run natively, the 18 theme ones with four options each, and native is the
 default on Windows. With the same looks, glitchwall now uses 6.5% of one core and 153 MB, down from 34% and 699 MB:
 about a fifth of the CPU and a fifth of the memory (see [How it compares](#how-it-compares-with-other-live-wallpapers)).
 The web page is still there, unchanged, for streaming through OBS and for every other platform.

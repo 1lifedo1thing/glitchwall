@@ -1,5 +1,5 @@
 //! Backgrounds: each one draws into the full-screen scene bitmap that the cards' glass blurs.
-//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record", "notebook", "textmode", "sunprint", "draft", "topo", "radar", "orb", "scope", "oracle", "signs" and "chalk": all of them; every other background falls back to a plain fill until it is.
+//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record", "notebook", "textmode", "sunprint", "draft", "topo", "radar", "orb", "scope", "oracle", "signs", "chalk", and the eight no theme uses: "stars", "snow", "static", "code", "jukebox", "starburst", "testcard" and "print". All 27; an unknown name gets a plain fill.
 use crate::fonts::Fonts;
 use crate::gfx::{Gfx, rect, rgba};
 use crate::json::Json;
@@ -45,6 +45,10 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result
         "snow" => Box::new(Snow::new(g)),
         "static" => Box::new(Static::new(g)?),
         "code" => Box::new(Code(Cascade::new(g, fonts, &look.mono.family, &Json::parse(r#"{"layers":"one"}"#).unwrap_or(Json::Null))?)),   // the page's katakana rain: cascade, one depth
+        "jukebox" => Box::new(Jukebox::new(g)?),
+        "starburst" => Box::new(Starburst::new(g)?),
+        "testcard" => Box::new(Testcard::new(g, fonts, look)?),
+        "print" => Box::new(Print::new(g)?),
         _ => Box::new(Plain),
     })
 }
@@ -3800,4 +3804,301 @@ pub struct Code(Cascade);
 impl Background for Code {
     fn fps(&self) -> f32 { self.0.fps() }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> { self.0.draw(g, look, level, dt) }
+}
+
+type M3 = windows::Foundation::Numerics::Matrix3x2;
+fn ell(x: f32, y: f32, rx: f32, ry: f32) -> D2D1_ELLIPSE { D2D1_ELLIPSE { point: p2(x, y), radiusX: rx, radiusY: ry } }
+
+/// a 50s jukebox arch in the corner: three glowing bands drifting between the two accents, a grille, bubbles rising
+/// in the side tubes. The arch shapes are made once; each band is drawn wide and faint (its glow) and then narrow.
+/// 20 fps; still at 0.
+pub struct Jukebox { arches: Vec<ID2D1PathGeometry>, x: f32, y: f32, w: f32, h: f32, t: f32, bub: Vec<(bool, f32, f32, f32)>,
+                     rng: Rng, still: bool }
+
+impl Jukebox {
+    fn new(g: &Gfx) -> Result<Jukebox> {
+        let (sw, sh) = (g.w as f32, g.h as f32);
+        let w = sw.min(sh) * 0.46;
+        let h = w * 1.55;
+        let (x, y) = (sw * 0.05, sh - h * 0.9);
+        let band = w * 0.07;
+        let factory = unsafe { g.dc.GetFactory()? };
+        let mut arches = Vec::new();
+        for i in 0..3 {
+            let inset = band * (i as f32 + 0.5);
+            let (ax, aw, ay, bottom) = (x + inset, w - inset * 2.0, y + inset, y + h + 40.0);
+            unsafe {
+                let path = factory.CreatePathGeometry()?;
+                let sink = path.Open()?;
+                sink.BeginFigure(p2(ax, bottom), D2D1_FIGURE_BEGIN_HOLLOW);
+                sink.AddLine(p2(ax, ay + aw / 2.0));
+                sink.AddArc(&D2D1_ARC_SEGMENT { point: p2(ax + aw, ay + aw / 2.0), size: D2D_SIZE_F { width: aw / 2.0, height: aw / 2.0 },
+                                                rotationAngle: 0.0, sweepDirection: D2D1_SWEEP_DIRECTION_CLOCKWISE, arcSize: D2D1_ARC_SIZE_SMALL });
+                sink.AddLine(p2(ax + aw, bottom));
+                sink.EndFigure(D2D1_FIGURE_END_OPEN);
+                sink.Close()?;
+                arches.push(path);
+            }
+        }
+        let mut rng = Rng(0x00ce_11a5_b0b5_1e55);
+        let bub = (0..28).map(|i| (i % 2 == 1, rng.f(), rng.range(1.5, 4.5), rng.range(0.05, 0.14))).collect();
+        Ok(Jukebox { arches, x, y, w, h, t: 0.0, bub, rng, still: false })
+    }
+}
+
+impl Background for Jukebox {
+    fn fps(&self) -> f32 { if self.still { 0.0 } else { 20.0 } }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        self.still = level <= 0.0;
+        self.t += dt * (0.15 + level * 0.9);
+        let sh = g.h as f32;
+        let band = self.w * 0.07;
+        let (a, b) = (look.acc, look.acc2);
+        unsafe {
+            let dc = &g.dc;
+            dc.Clear(Some(&rgba(look.bg)));
+            for (i, p) in self.arches.iter().enumerate() {
+                let k = ((self.t + i as f32 * 1.3).sin() + 1.0) / 2.0;
+                let c = [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k, 1.0];
+                let br = g.brush(c)?;
+                br.SetOpacity(0.12);
+                dc.DrawGeometry(p, &br, band * 1.5, None);
+                br.SetOpacity(0.5);
+                dc.DrawGeometry(p, &br, band * 0.75, None);
+            }
+            let ink = g.brush(look.ink)?;
+            ink.SetOpacity(0.18);   // the grille
+            let (gx, gw) = (self.x + band * 3.4, self.w - band * 6.8);
+            let mut yy = self.y + self.w * 0.55;
+            while yy < sh { dc.DrawLine(p2(gx, yy), p2(gx + gw, yy), &ink, 1.0, None); yy += 9.0; }
+            ink.SetOpacity(0.45);   // the bubble tubes
+            let (top, bot) = (self.y + self.w * 0.45, sh.min(self.y + self.h));
+            for i in 0..self.bub.len() {
+                let (side, mut f, r, v) = self.bub[i];
+                if !self.still { f += v * dt; }
+                if f > 1.0 { self.bub[i] = (side, 0.0, self.rng.range(1.5, 4.5), self.rng.range(0.05, 0.14)); f = 0.0; } else { self.bub[i].1 = f; }
+                let x = if side { self.x + self.w - band * 1.1 } else { self.x + band * 1.1 };
+                dc.DrawEllipse(&ell(x, bot - (bot - top) * f, r, r), &ink, 1.0, None);
+            }
+        }
+        Ok(())
+    }
+}
+
+/// atomic-age starbursts, boomerangs and atoms scattered over the screen, each slowly turning. The boomerang
+/// shape is made once; everything is drawn turned in place. 20 fps; still at 0.
+pub struct Starburst { items: Vec<Item>, boom: ID2D1PathGeometry, still: bool }
+struct Item { x: f32, y: f32, s: f32, a: f32, spin: f32, kind: u8, n: usize, c: usize }
+
+impl Starburst {
+    fn new(g: &Gfx) -> Result<Starburst> {
+        let mut rng = Rng(0xa70e_1c_a9e5_0050);
+        let (w, h) = (g.w as f32, g.h as f32);
+        let items = (0..34).map(|_| Item { x: rng.range(0.0, w), y: rng.range(0.0, h), s: rng.range(14.0, 46.0), a: rng.range(0.0, TAU),
+            spin: rng.range(-0.25, 0.25), kind: [0u8, 0, 1, 2][(rng.f() * 4.0) as usize % 4], n: 8 + ((rng.f() * 6.0) as usize % 6) * 2,
+            c: (rng.f() * 4.0) as usize % 4 }).collect();
+        // a unit boomerang (L = 1), scaled to each item when drawn
+        let factory = unsafe { g.dc.GetFactory()? };
+        let boom = unsafe {
+            let path = factory.CreatePathGeometry()?;
+            let sink = path.Open()?;
+            sink.BeginFigure(p2(-1.0, 0.0), D2D1_FIGURE_BEGIN_FILLED);
+            sink.AddQuadraticBezier(&D2D1_QUADRATIC_BEZIER_SEGMENT { point1: p2(0.0, -0.95), point2: p2(1.0, 0.0) });
+            sink.AddQuadraticBezier(&D2D1_QUADRATIC_BEZIER_SEGMENT { point1: p2(0.0, -0.4), point2: p2(-1.0, 0.0) });
+            sink.EndFigure(D2D1_FIGURE_END_CLOSED);
+            sink.Close()?;
+            path
+        };
+        Ok(Starburst { items, boom, still: false })
+    }
+}
+
+impl Background for Starburst {
+    fn fps(&self) -> f32 { if self.still { 0.0 } else { 20.0 } }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        self.still = level <= 0.0;
+        let n = (self.items.len() as f32 * (level * 1.6).min(1.0)).round() as usize;
+        let br = [g.brush(look.acc)?, g.brush(look.acc2)?, g.brush(look.ink)?, g.brush(look.muted)?];
+        for b in &br { unsafe { b.SetOpacity(0.45); } }
+        unsafe {
+            let dc = &g.dc;
+            dc.Clear(Some(&rgba(look.bg)));
+            for it in self.items.iter_mut().take(n) {
+                it.a += it.spin * dt;
+                let b = &br[it.c];
+                match it.kind {
+                    0 => {
+                        dc.SetTransform(&turn(it.a, it.x, it.y));
+                        for k in 0..it.n {
+                            let ang = k as f32 / it.n as f32 * TAU;
+                            let l = it.s * if k % 2 == 1 { 0.55 } else { 1.0 };
+                            dc.DrawLine(p2(0.0, 0.0), p2(ang.cos() * l, ang.sin() * l), b, 1.4, None);
+                            if k % 2 == 0 { dc.FillEllipse(&ell(ang.cos() * it.s, ang.sin() * it.s, 2.4, 2.4), b); }
+                        }
+                    }
+                    1 => {
+                        let l = it.s * 1.3;
+                        let (s, c) = it.a.sin_cos();
+                        dc.SetTransform(&M3 { M11: c * l, M12: s * l, M21: -s * l, M22: c * l, M31: it.x, M32: it.y });
+                        dc.FillGeometry(&self.boom, b, None);
+                    }
+                    _ => {
+                        for k in 0..3 {
+                            dc.SetTransform(&turn(it.a + k as f32 * std::f32::consts::PI / 3.0, it.x, it.y));
+                            dc.DrawEllipse(&ell(0.0, 0.0, it.s, it.s * 0.34), b, 1.4, None);
+                        }
+                        dc.FillEllipse(&ell(0.0, 0.0, 3.2, 3.2), b);
+                    }
+                }
+            }
+            dc.SetTransform(&M3::identity());
+        }
+        Ok(())
+    }
+}
+
+/// an old broadcast test card, faded: checker border, bars in a circle, cross, resolution wedges and a name plate,
+/// with a slow roll bar and a little snow over it. Drawn whole each frame (a few hundred shapes). 15 fps; still at 0.
+pub struct Testcard { roll: f32, rng: Rng, still: bool, title: IDWriteTextFormat, sub: IDWriteTextFormat }
+
+impl Testcard {
+    fn new(g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Testcard> {
+        let r = (g.w as f32).min(g.h as f32) * 0.38;
+        let title = fonts.format("Instrument Serif", (r * 0.12).round(), 400)?;
+        let sub = fonts.format(&look.mono.family, (r * 0.04).round().max(8.0), 400)?;
+        for f in [&title, &sub] { unsafe { let _ = f.SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER); let _ = f.SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER); } }
+        Ok(Testcard { roll: 0.0, rng: Rng(0x7e57_ca4d_0047_8330), still: false, title, sub })
+    }
+}
+
+impl Background for Testcard {
+    fn fps(&self) -> f32 { if self.still { 0.0 } else { 15.0 } }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        self.still = level <= 0.0;
+        let (w, h) = (g.w as f32, g.h as f32);
+        if !self.still { self.roll = (self.roll + dt * h * 0.04) % (h + 80.0); }
+        let (cxm, cym, r) = (w / 2.0, h / 2.0, w.min(h) * 0.38);
+        unsafe {
+            let dc = &g.dc;
+            dc.Clear(Some(&rgba(look.bg)));
+            let ink = g.brush(look.ink)?;
+            ink.SetOpacity(0.32);   // the checker border
+            let sq = (w.min(h) / 18.0).round();
+            let (mut x, mut k) = (0.0, 0);
+            while x < w { if k % 2 == 1 { dc.FillRectangle(&rect(x, 0.0, sq, sq), &ink); dc.FillRectangle(&rect(x, h - sq, sq, sq), &ink); } x += sq; k += 1; }
+            let (mut y, mut k) = (0.0, 0);
+            while y < h { if k % 2 == 1 { dc.FillRectangle(&rect(0.0, y, sq, sq), &ink); dc.FillRectangle(&rect(w - sq, y, sq, sq), &ink); } y += sq; k += 1; }
+            // the bars, clipped to the circle (the circle's chord at the bars' height is wide enough: clip each bar by hand)
+            let shades = [look.ink, look.muted, look.faint, look.acc, look.acc2, look.faint];
+            let (by, bh) = (cym - r * 0.32, r * 0.64);
+            for (i, c) in shades.iter().enumerate() {
+                let b = g.brush(*c)?;
+                b.SetOpacity(0.28);
+                let x0 = cxm - r + i as f32 * r / 3.0;
+                // inside the circle at the bars' top and bottom edge
+                let half = (r * r - (r * 0.32) * (r * 0.32)).sqrt();
+                let (l, rr) = (x0.max(cxm - half), (x0 + r / 3.0).min(cxm + half));
+                if rr > l { dc.FillRectangle(&rect(l, by, rr - l, bh), &b); }
+            }
+            ink.SetOpacity(0.4);
+            for rad in [r, r * 0.72] { dc.DrawEllipse(&ell(cxm, cym, rad, rad), &ink, 2.0, None); }
+            dc.DrawLine(p2(cxm - r * 1.25, cym), p2(cxm + r * 1.25, cym), &ink, 2.0, None);
+            dc.DrawLine(p2(cxm, cym - r * 1.15), p2(cxm, cym + r * 1.15), &ink, 2.0, None);
+            for s in [-1.0f32, 1.0] {   // the resolution wedges
+                for k in -6..=6 {
+                    let k = k as f32;
+                    dc.DrawLine(p2(cxm + s * r * 0.78, cym + k * 3.0), p2(cxm + s * r * 1.12, cym + k * 9.0), &ink, 1.0, None);
+                    dc.DrawLine(p2(cxm + k * 3.0, cym + s * r * 0.78), p2(cxm + k * 9.0, cym + s * r * 1.05), &ink, 1.0, None);
+                }
+            }
+            let bg = g.brush(look.bg)?;   // the name plate
+            let plate = rect(cxm - r * 0.42, cym - r * 0.13, r * 0.84, r * 0.26);
+            bg.SetOpacity(0.75);
+            dc.FillRectangle(&plate, &bg);
+            ink.SetOpacity(0.55);
+            dc.DrawRectangle(&plate, &ink, 2.0, None);
+            let t1: Vec<u16> = "glitchwall".encode_utf16().collect();
+            let t2: Vec<u16> = "CHANNEL 47833  ·  TEST TRANSMISSION".encode_utf16().collect();
+            dc.DrawText(&t1, &self.title, &rect(cxm - r, cym - r * 0.02 - r * 0.1, r * 2.0, r * 0.2), &ink, D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL);
+            dc.DrawText(&t2, &self.sub, &rect(cxm - r, cym + r * 0.085 - r * 0.04, r * 2.0, r * 0.08), &ink, D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL);
+            bg.SetOpacity(0.18);   // the slow roll bar
+            dc.FillRectangle(&rect(0.0, self.roll - 40.0, w, 40.0), &bg);
+            ink.SetOpacity(0.35);   // snow
+            for _ in 0..(level * 900.0) as usize {
+                dc.FillRectangle(&rect(self.rng.f() * w, self.rng.f() * h, 1.5, 1.5), &ink);
+            }
+        }
+        Ok(())
+    }
+}
+
+/// mid-century wallpaper: diamonds, dots and four-point stars on a 96-unit tile, drifting slowly. The tile is drawn
+/// once per look into a small bitmap and laid over the screen with a wrapping bitmap brush. 15 fps; still at 0.
+pub struct Print { tile: ID2D1Bitmap1, pdc: ID2D1DeviceContext, factory: ID2D1Factory, off: f32, key: [f32; 4], still: bool, scale: f32 }
+
+const TILE: f32 = 96.0;
+
+impl Print {
+    fn new(g: &Gfx) -> Result<Print> {
+        let px = (TILE * g.scale).round() as u32;
+        let tile = g.bitmap(px, px, None, true)?;
+        let pdc = unsafe { g.dc.GetDevice()?.CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE)? };
+        let factory = unsafe { g.dc.GetFactory()? };
+        unsafe { pdc.SetDpi(96.0 * g.scale, 96.0 * g.scale); pdc.SetTarget(&tile); }
+        Ok(Print { tile, pdc, factory, off: 0.0, key: [-1.0; 4], still: false, scale: g.scale })
+    }
+
+    fn paint(&mut self, look: &Look) -> Result<()> {
+        let c = TILE / 2.0;
+        let shape = |pts: &[(f32, f32)]| -> Result<ID2D1PathGeometry> { unsafe {
+            let path = self.factory.CreatePathGeometry()?;
+            let sink = path.Open()?;
+            sink.BeginFigure(p2(pts[0].0, pts[0].1), D2D1_FIGURE_BEGIN_FILLED);
+            for p in &pts[1..] { sink.AddLine(p2(p.0, p.1)); }
+            sink.EndFigure(D2D1_FIGURE_END_CLOSED);
+            sink.Close()?;
+            Ok(path)
+        } };
+        let diamond = shape(&[(c, c - 18.0), (c + 12.0, c), (c, c + 18.0), (c - 12.0, c)])?;
+        unsafe {
+            let dc = &self.pdc;
+            dc.BeginDraw();
+            dc.Clear(Some(&D2D1_COLOR_F { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }));
+            let b = dc.CreateSolidColorBrush(&rgba(look.dim), None)?;
+            b.SetOpacity(0.5);
+            dc.DrawGeometry(&diamond, &b, 1.2, None);
+            dc.FillEllipse(&ell(c, c, 2.2, 2.2), &b);
+            for (x, y) in [(0.0, 0.0), (TILE, 0.0), (0.0, TILE), (TILE, TILE)] {   // four-point stars on the corners
+                let star = shape(&[(x, y - 9.0), (x + 2.0, y - 2.0), (x + 9.0, y), (x + 2.0, y + 2.0), (x, y + 9.0), (x - 2.0, y + 2.0), (x - 9.0, y), (x - 2.0, y - 2.0)])?;
+                dc.FillGeometry(&star, &b, None);
+            }
+            b.SetOpacity(0.35);
+            for (x, y) in [(c, 8.0), (c, TILE - 8.0), (8.0, c), (TILE - 8.0, c)] { dc.FillEllipse(&ell(x, y, 1.6, 1.6), &b); }
+            dc.EndDraw(None, None)?;
+        }
+        self.key = look.dim;
+        Ok(())
+    }
+}
+
+impl Background for Print {
+    fn fps(&self) -> f32 { if self.still { 0.0 } else { 15.0 } }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        self.still = level <= 0.0;
+        unsafe { g.dc.Clear(Some(&rgba(look.bg))); }
+        if self.still { return Ok(()); }
+        if self.key != look.dim { self.paint(look)?; }
+        self.off = (self.off + dt * 6.0 * level) % TILE;
+        unsafe {
+            let props = D2D1_BITMAP_BRUSH_PROPERTIES1 { extendModeX: D2D1_EXTEND_MODE_WRAP, extendModeY: D2D1_EXTEND_MODE_WRAP,
+                                                        interpolationMode: D2D1_INTERPOLATION_MODE_LINEAR };
+            let bb = g.dc.CreateBitmapBrush(&self.tile, Some(&props), None)?;
+            // the tile bitmap is in device pixels at 96 dpi: scale it back to the tile's size in DIPs, then drift
+            let k = 1.0 / self.scale;
+            bb.SetTransform(&M3 { M11: k, M12: 0.0, M21: 0.0, M22: k, M31: self.off, M32: self.off * 0.5 });
+            bb.SetOpacity(0.4 + level * 0.4);
+            g.dc.FillRectangle(&rect(0.0, 0.0, g.w as f32, g.h as f32), &bb);
+        }
+        Ok(())
+    }
 }
