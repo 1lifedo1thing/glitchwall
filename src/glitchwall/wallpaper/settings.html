@@ -95,8 +95,8 @@
   #readout .err { color:var(--red); }
 
   /* switches: a slide toggle that lights when on */
-  .feedrow { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:5px 8px; align-items:end; }
-  .switches { grid-column:span 2; display:flex; gap:4px; padding-bottom:2px; }
+  .feedrow { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:5px 8px; align-items:end; }
+  .switches { grid-column:1 / -1; display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:8px; padding:4px 0 2px; }   /* a row of their own, a column each */
   .sw { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:6px; padding:3px 2px; border-radius:3px; cursor:pointer; background:none; border:0; }
   .sw .slot { position:relative; width:40px; height:20px; border-radius:10px; border:1px solid var(--ph-dim); }
   .sw .lever { position:absolute; top:3px; left:3px; width:12px; height:12px; border-radius:50%; background:var(--ph-dim); transition:left .12s, background .12s, box-shadow .12s; }
@@ -209,6 +209,7 @@ const FADERS = {
   grain: ['GRAIN', 'Film grain over everything: 0 is none, 5 is what the theme comes with, 10 is double.'],
 };
 const SWITCHES = {
+  terminal: ['TERMINAL', 'Commands you type in PowerShell show too, masked the same way. Only the commands: PowerShell keeps no record of what they printed.'],
   commands_only: ['CALLS ONLY', 'Show each call, never its output.'],
   mask_user: ['MASK USER', 'Your user name shows as "user" everywhere.'],
   mask_email: ['MASK EMAIL', 'Email addresses lose everything before the @.'],
@@ -224,21 +225,20 @@ const GROUP_HELP = {
   look: ['COLORS · BACKDROP · FONT · ARRIVAL', 'back to what the theme comes with.'],
   motion: ['TYPING · LINGER · CARDS · MOTION · GLASS · GRAIN', 'back to the standard values.'],
   options: ['OPTIONS', 'back to how the background comes.'],
-  feed: ['CORNER · MASKED · CALLS ONLY · MASKS · LABEL', 'back to the safe defaults: user name and emails masked, the stock label. Mode stays as it is.'],
+  feed: ['CORNER · MASKED · TERMINAL · CALLS ONLY · MASKS · LABEL', 'back to the safe defaults: user name and emails masked, the stock label. Mode stays as it is.'],
 };
 const differs = k => D[k] !== undefined && S[k] !== D[k];
 
 // ---------- words: what each option is, said once, plainly
 const clean = t => String(t || '').replace(/^extra: /, '');
-const MASKED_SHORT = { dots: '••••', words: '[WORD]', blocks: '████', stars: '****', noise: '#?%&' };
 const CORNER_SHORT = { off: 'OFF', 'top-left': 'TOP-L', 'top-right': 'TOP-R', 'bottom-left': 'BOT-L', 'bottom-right': 'BOT-R' };
 function optName(kind, v) { if (kind === 'font' && v !== 'theme' && C.font[v]) return C.font[v].replace(/ \(.*/, '').toUpperCase();
-  if (kind === 'masked') return MASKED_SHORT[v] || v;
   return kind === 'corner' ? CORNER_SHORT[v] || v : v === 'theme' ? 'AUTO' : kind === 'mode' ? MODE_SHORT[v] || v : v.toUpperCase(); }
 function optText(kind, v) {
   if (kind === 'theme') return clean(C.theme[v]).replace(/([^.!?])$/, '$1.');
   if (kind === 'mode') return C.mode[v][0].toUpperCase() + C.mode[v].slice(1) + '.';
-  if (kind === 'masked') return 'Masked secrets show as ' + C.masked[v] + ', in a color of their own.';
+  if (kind === 'masked') return 'Masked secrets show as ' + C.masked[v] + ', in a color of their own: '
+    + { dots: '••••', words: '[REDACTED]', blocks: '██████', stars: '********', noise: 'x7#qK!2z' }[v] + '.';
   if (kind === 'corner') return C.corner[v][0].toUpperCase() + C.corner[v].slice(1) + '. The glitchwall icon marks it on the wallpaper.';
   if (v === 'theme') {
     const t = S.theme;

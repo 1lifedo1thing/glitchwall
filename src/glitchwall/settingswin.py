@@ -218,7 +218,7 @@ class Settings:
 
 
 # the one page the settings window may open outside itself: the theme request form
-WIN_W, WIN_H = 560, 1000   # the settings window with its frame, in logical px (the page, 956 tall, fits at zoom 1)
+WIN_W, WIN_H = 560, 1050   # the settings window with its frame, in logical px (the page, about 1000 tall, fits at zoom 1)
 THEME_REQUEST_URL = "https://github.com/marklesterb28/glitchwall/issues/new?template=theme-request.yml"
 
 

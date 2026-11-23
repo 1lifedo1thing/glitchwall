@@ -325,7 +325,7 @@ def run_feed(port: int | None = None) -> None:
         threading.Thread(target=wh.watch_corner, args=(lambda: cfg.corner(live.get()), open_settings, threading.Event()),
                          daemon=True).start()
         if live.get().get("tray", True):   # glitchwall in the notification area, for as long as the feed runs
-            start_tray(live, open_settings)
+            start_tray(live, open_settings, on_change)
     if not host:
         httpd.serve_forever()
         return
@@ -333,25 +333,53 @@ def run_feed(port: int | None = None) -> None:
     host.run(threading.Event())   # the windows need this (the main) thread; runs until the process ends
 
 
-def start_tray(live: "LiveSettings", open_settings) -> None:
-    """The notification-area icon: a click opens the settings; its menu also pauses (stream-safe) and quits."""
+def start_tray(live: "LiveSettings", open_settings, on_change=None) -> None:
+    """The notification-area icon: a click opens the settings. Its menu has the everyday settings, each current one
+    ticked (mode, theme, hot corner, how masked secrets show, what shows), plus pause (stream-safe) and quit."""
     import subprocess
+    from . import themes
     from .platforms import live_command, wallpaper_source
     from .tray import Tray
 
-    def set_paused(v: bool) -> None:
+    def change(k, v) -> None:
         s = cfg.load_settings()
-        s["paused"] = v
-        cfg.save_settings(s)
+        new, refused = cfg.apply_changes(s, {k: v})
+        if refused:
+            return
+        if k == "theme" and v != s.get("theme"):   # as the settings window does: a new theme starts clean
+            for x in ("palette", "rain", "font", "transition", *cfg.TUNE):   # its look and motion tweaks
+                new[x] = cfg.DEFAULTS[x]
+        cfg.save_settings(new)
+        if on_change and k in ("mask_user", "mask_email"):
+            on_change(new)
 
     def quit_all() -> None:
         tray.hide()   # take the icon away first, or it lingers in the tray until the mouse passes over it
         subprocess.Popen(live_command("stop"), close_fds=True)
 
+    def pick(k, choices, name=lambda v: v.replace("-", " ").capitalize()) -> list:
+        cur = live.get().get(k, cfg.DEFAULTS.get(k))
+        return [(name(v), (lambda v=v: change(k, v)), v == cur) for v in choices]
+
+    def flip(k, label) -> tuple:
+        on = bool(live.get().get(k, cfg.DEFAULTS.get(k)))
+        return (label, lambda: change(k, not on), on)
+
+    masked = {"dots": "Dots  ••••", "words": "Words  [REDACTED]", "blocks": "Blocks  ████", "stars": "Stars  ****",
+              "noise": "Gibberish  x7#q"}
+
     def menu() -> list:
-        p = bool(live.get().get("paused"))
+        s = live.get()
+        p = bool(s.get("paused"))
         return [("Open settings", open_settings),
-                ("Resume" if p else "Pause (stream-safe)", lambda: set_paused(not p)),
+                ("Resume" if p else "Pause (stream-safe)", lambda: change("paused", not p)),
+                None,
+                ("Mode", pick("mode", cfg.MODES)),
+                ("Theme", pick("theme", themes.THEMES)),
+                ("Hot corner", pick("corner", cfg.CORNERS)),
+                ("Masked secrets", pick("masked", masked, masked.get)),
+                ("Show", [flip("terminal", "My PowerShell commands"), flip("commands_only", "Calls only, no output"),
+                          None, flip("mask_user", "Mask my user name"), flip("mask_email", "Mask emails")]),
                 None,
                 ("Quit glitchwall", quit_all)]
 
@@ -373,6 +401,11 @@ def start_source(mode: str, store: EventStore) -> threading.Event:
 
 def follow_mode(store: EventStore, live: LiveSettings, poll: float = 1.0, quit: threading.Event | None = None) -> None:
     mode, stop = None, None
+    if os.name == "nt":   # your own PowerShell commands, alongside Claude's: live mode with the terminal setting on
+        from .shell_history import ShellHistoryTailer
+        on = lambda: cfg.mode(live.get()) == "live" and bool(live.get().get("terminal", True))   # noqa: E731
+        shell_stop = quit or threading.Event()
+        threading.Thread(target=ShellHistoryTailer(store.add, on).run, args=(shell_stop,), daemon=True).start()
     while not (quit and quit.is_set()):
         m = cfg.mode(live.get())
         if m != mode:

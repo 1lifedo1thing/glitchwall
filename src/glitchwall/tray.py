@@ -25,7 +25,7 @@ WM_LBUTTONUP, WM_RBUTTONUP, WM_CONTEXTMENU, WM_APP = 0x0202, 0x0205, 0x007B, 0x8
 WM_TRAY = WM_APP + 1
 NIM_ADD, NIM_MODIFY, NIM_DELETE = 0, 1, 2
 NIF_MESSAGE, NIF_ICON, NIF_TIP = 0x1, 0x2, 0x4
-MF_STRING, MF_SEPARATOR, MF_GRAYED = 0x0, 0x800, 0x1
+MF_STRING, MF_SEPARATOR, MF_GRAYED, MF_CHECKED, MF_POPUP = 0x0, 0x800, 0x1, 0x8, 0x10
 TPM_RIGHTBUTTON, TPM_RETURNCMD, TPM_NONOTIFY = 0x2, 0x100, 0x80
 IMAGE_ICON, LR_LOADFROMFILE, SM_CXSMICON, SM_CYSMICON = 1, 0x10, 49, 50
 
@@ -84,7 +84,8 @@ kernel32.GetModuleHandleW.restype = wintypes.HMODULE
 kernel32.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
 
 class Tray:
-    """menu() returns a list of (label, action) or None for a separator."""
+    """menu() returns a list of items: (label, action), (label, action, checked) for a ticked choice,
+    (label, [items]) for a submenu, or None for a separator."""
 
     def __init__(self, icon: str | None, tip: str, menu: Callable[[], list], watch: Callable[[], bool] | None = None):
         self.icon_path, self.tip, self.menu, self.watch = icon, tip, menu, watch
@@ -139,16 +140,24 @@ class Tray:
         items = list(self.menu() or [])
         if not items:
             return
-        m = u32.CreatePopupMenu()
-        try:
-            actions = {}
-            for n, item in enumerate(items, start=1):
+        actions = {}
+
+        def build(items) -> int:   # a menu and its submenus; each action gets its own number
+            menu = u32.CreatePopupMenu()
+            for item in items:
                 if item is None:
-                    u32.AppendMenuW(m, MF_SEPARATOR, 0, None)
+                    u32.AppendMenuW(menu, MF_SEPARATOR, 0, None)
+                elif isinstance(item[1], list):
+                    u32.AppendMenuW(menu, MF_POPUP, build(item[1]), item[0])
                 else:
-                    u32.AppendMenuW(m, MF_STRING, n, item[0])
+                    n = len(actions) + 1
                     actions[n] = item[1]
-            first = next((n for n in actions), 0)
+                    u32.AppendMenuW(menu, MF_STRING | (MF_CHECKED if len(item) > 2 and item[2] else 0), n, item[0])
+            return menu
+
+        m = build(items)   # destroying it destroys its submenus too
+        try:
+            first = 1 if items[0] is not None and not isinstance(items[0][1], list) else 0
             if first:
                 u32.SetMenuDefaultItem(m, first, 0)
             pt = wintypes.POINT()
@@ -162,7 +171,7 @@ class Tray:
             self._call(actions[cmd])
 
     def _default(self) -> None:
-        first = next((i for i in (self.menu() or []) if i is not None), None)
+        first = next((i for i in (self.menu() or []) if i is not None and not isinstance(i[1], list)), None)
         if first:
             self._call(first[1])
 
