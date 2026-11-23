@@ -11,6 +11,7 @@ mod feed;
 mod fonts;
 mod gfx;
 mod json;
+mod logs;
 mod looks;
 mod redact;
 mod scene;

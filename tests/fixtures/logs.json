@@ -1,0 +1,964 @@
+{
+ "project": "C--code-orbit",
+ "file": "abcd1234.jsonl",
+ "streams": [
+  {
+   "newer_than": null,
+   "lines": [
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_00_ABCDEFGHIJKLMNOP\", \"name\": \"Bash\", \"input\": {\"command\": \"git status -sb\", \"description\": \"status\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_00_ABCDEFGHIJKLMNOP\", \"content\": \"result 0\\nsecond line\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_01_ABCDEFGHIJKLMNOP\", \"name\": \"PowerShell\", \"input\": {\"command\": \"Get-ChildItem C:\\\\dev\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_01_ABCDEFGHIJKLMNOP\", \"content\": \"result 1\\nsecond line\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_02_ABCDEFGHIJKLMNOP\", \"name\": \"Read\", \"input\": {\"file_path\": \"C:\\\\dev\\\\x\\\\main.rs\", \"offset\": 10, \"limit\": 40}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_02_ABCDEFGHIJKLMNOP\", \"content\": \"result 2\\nsecond line\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_03_ABCDEFGHIJKLMNOP\", \"name\": \"Write\", \"input\": {\"file_path\": \"/tmp/a.txt\", \"content\": \"the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away \"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_03_ABCDEFGHIJKLMNOP\", \"content\": \"result 3\\nsecond line\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_04_ABCDEFGHIJKLMNOP\", \"name\": \"Write\", \"input\": {\"file_path\": \"/tmp/b.txt\", \"content\": \"short\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_04_ABCDEFGHIJKLMNOP\", \"content\": \"result 4\\nsecond line\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_05_ABCDEFGHIJKLMNOP\", \"name\": \"Edit\", \"input\": {\"file_path\": \"a.py\", \"old_string\": \"the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away \", \"new_string\": \"the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away !\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_05_ABCDEFGHIJKLMNOP\", \"content\": \"result 5\\nsecond line\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_06_ABCDEFGHIJKLMNOP\", \"name\": \"Edit\", \"input\": {\"file_path\": \"a.py\", \"old_string\": \"x = 1\", \"new_string\": \"x = 2\", \"replace_all\": true}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_06_ABCDEFGHIJKLMNOP\", \"content\": \"result 6\\nsecond line\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_07_ABCDEFGHIJKLMNOP\", \"name\": \"Grep\", \"input\": {\"pattern\": \"fn main\", \"path\": \"src\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_07_ABCDEFGHIJKLMNOP\", \"content\": \"result 7\\nsecond line\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_08_ABCDEFGHIJKLMNOP\", \"name\": \"Grep\", \"input\": {\"pattern\": \"TODO\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_08_ABCDEFGHIJKLMNOP\", \"content\": \"result 8\\nsecond line\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_09_ABCDEFGHIJKLMNOP\", \"name\": \"Glob\", \"input\": {\"pattern\": \"**/*.rs\", \"path\": \"\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_09_ABCDEFGHIJKLMNOP\", \"content\": \"result 9\\nsecond line\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_10_ABCDEFGHIJKLMNOP\", \"name\": \"WebFetch\", \"input\": {\"url\": \"https://example.com/a\", \"prompt\": \"summarize\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_10_ABCDEFGHIJKLMNOP\", \"content\": \"result 10\\nsecond line\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_11_ABCDEFGHIJKLMNOP\", \"name\": \"WebSearch\", \"input\": {\"query\": \"rust fancy-regex\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_11_ABCDEFGHIJKLMNOP\", \"content\": \"result 11\\nsecond line\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_12_ABCDEFGHIJKLMNOP\", \"name\": \"WebSearch\", \"input\": {\"url\": \"\", \"query\": \"fallback to query\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_12_ABCDEFGHIJKLMNOP\", \"content\": \"result 12\\nsecond line\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_13_ABCDEFGHIJKLMNOP\", \"name\": \"Agent\", \"input\": {\"description\": \"Find the bug\", \"prompt\": \"look\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_13_ABCDEFGHIJKLMNOP\", \"content\": \"result 13\\nsecond line\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_14_ABCDEFGHIJKLMNOP\", \"name\": \"Task\", \"input\": {\"description\": \"Old style task\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_14_ABCDEFGHIJKLMNOP\", \"content\": \"result 14\\nsecond line\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_15_ABCDEFGHIJKLMNOP\", \"name\": \"mcp__claude-in-chrome__computer\", \"input\": {\"action\": \"left_click\", \"action_summary\": \"Opens the menu\", \"coordinate\": [10, 20]}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_15_ABCDEFGHIJKLMNOP\", \"content\": \"result 15\\nsecond line\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_16_ABCDEFGHIJKLMNOP\", \"name\": \"mcp__computer-use__screenshot\", \"input\": {}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_16_ABCDEFGHIJKLMNOP\", \"content\": \"result 16\\nsecond line\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_17_ABCDEFGHIJKLMNOP\", \"name\": \"mcp__ccd_session__start_session\", \"input\": {\"title\": \"Löwe 🦁 \\\"quoted\\\"\", \"n\": 3, \"x\": 2.5, \"ok\": true, \"none\": null, \"list\": [1, \"two\", {\"three\": 3}], \"tab\": \"a\\tb\\nc\", \"neg\": -7, \"big\": 1e+20, \"small\": 1e-07, \"ctl\": \"\\u0001 \"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_17_ABCDEFGHIJKLMNOP\", \"content\": \"result 17\\nsecond line\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_18_ABCDEFGHIJKLMNOP\", \"name\": \"mcp__x__y\", \"input\": {\"q\": \"z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z end\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_18_ABCDEFGHIJKLMNOP\", \"content\": \"result 18\\nsecond line\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_19_ABCDEFGHIJKLMNOP\", \"name\": \"SomeTool\", \"input\": {}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_19_ABCDEFGHIJKLMNOP\", \"content\": \"result 19\\nsecond line\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_20_ABCDEFGHIJKLMNOP\", \"name\": \"NotebookEdit\", \"input\": {\"notebook_path\": \"n.ipynb\", \"new_source\": \"print(1)\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"toolu_20_ABCDEFGHIJKLMNOP\", \"content\": \"result 20\\nsecond line\"}]}}"
+   ],
+   "events": [
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "EFGHIJKLMNOP",
+     "text": "git status -sb"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 0\nsecond line"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "PS>",
+     "ref": "EFGHIJKLMNOP",
+     "text": "Get-ChildItem C:\\dev"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 1\nsecond line"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "read",
+     "ref": "EFGHIJKLMNOP",
+     "text": "C:\\dev\\x\\main.rs"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 2\nsecond line"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "write",
+     "ref": "EFGHIJKLMNOP",
+     "text": "/tmp/a.txt\nthe quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the …"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 3\nsecond line"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "write",
+     "ref": "EFGHIJKLMNOP",
+     "text": "/tmp/b.txt\nshort"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 4\nsecond line"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "edit",
+     "ref": "EFGHIJKLMNOP",
+     "text": "a.py\n- the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown …\n+ the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running …"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 5\nsecond line"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "edit",
+     "ref": "EFGHIJKLMNOP",
+     "text": "a.py\n- x = 1\n+ x = 2"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 6\nsecond line"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "find",
+     "ref": "EFGHIJKLMNOP",
+     "text": "fn main  in src"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 7\nsecond line"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "find",
+     "ref": "EFGHIJKLMNOP",
+     "text": "TODO"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 8\nsecond line"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "find",
+     "ref": "EFGHIJKLMNOP",
+     "text": "**/*.rs"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 9\nsecond line"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "web",
+     "ref": "EFGHIJKLMNOP",
+     "text": "https://example.com/a"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 10\nsecond line"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "web",
+     "ref": "EFGHIJKLMNOP",
+     "text": "rust fancy-regex"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 11\nsecond line"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "web",
+     "ref": "EFGHIJKLMNOP",
+     "text": "fallback to query"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 12\nsecond line"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "agent",
+     "ref": "EFGHIJKLMNOP",
+     "text": "Find the bug"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 13\nsecond line"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "agent",
+     "ref": "EFGHIJKLMNOP",
+     "text": "Old style task"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 14\nsecond line"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "mouse",
+     "ref": "EFGHIJKLMNOP",
+     "text": "left_click Opens the menu"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 15\nsecond line"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 16\nsecond line"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "tool",
+     "ref": "EFGHIJKLMNOP",
+     "text": "start_session {\"title\": \"Löwe 🦁 \\\"quoted\\\"\", \"n\": 3, \"x\": 2.5, \"ok\": true, \"none\": null, \"list\": [1, \"two\", {\"three\": 3}], \"tab\": \"a\\tb\\nc\", \"neg\": -7, \"big\": 1e+20, \"small\": 1e-07, \"ctl\": \"\\u0001 \"}"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 17\nsecond line"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "tool",
+     "ref": "EFGHIJKLMNOP",
+     "text": "y {\"q\": \"z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z …"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 18\nsecond line"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "tool",
+     "ref": "EFGHIJKLMNOP",
+     "text": "SomeTool {}"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 19\nsecond line"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "tool",
+     "ref": "EFGHIJKLMNOP",
+     "text": "NotebookEdit {\"notebook_path\": \"n.ipynb\", \"new_source\": \"print(1)\"}"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "EFGHIJKLMNOP",
+     "text": "result 20\nsecond line"
+    }
+   ]
+  },
+  {
+   "newer_than": null,
+   "lines": [
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"h1\", \"name\": \"TodoWrite\", \"input\": {\"todos\": []}}, {\"type\": \"tool_use\", \"id\": \"h2\", \"name\": \"ToolSearch\", \"input\": {\"query\": \"x\"}}, {\"type\": \"tool_use\", \"id\": \"h3\", \"name\": \"mcp__ccd_turn__update_plan\", \"input\": {\"items\": []}}, {\"type\": \"tool_use\", \"id\": \"h4\", \"name\": \"mcp__ccd_turn__wrap_up\", \"input\": {\"recap\": \"r\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"h1\", \"content\": \"x\"}, {\"type\": \"tool_result\", \"tool_use_id\": \"h2\", \"content\": \"y\"}, {\"type\": \"tool_result\", \"tool_use_id\": \"unknown\", \"content\": \"z\"}, {\"type\": \"tool_result\", \"tool_use_id\": \"h3\", \"content\": \"w\"}]}}"
+   ],
+   "events": []
+  },
+  {
+   "newer_than": null,
+   "lines": [
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"o0\", \"name\": \"Bash\", \"input\": {\"command\": \"cmd 0\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"o0\", \"content\": [{\"type\": \"text\", \"text\": \"from a list\"}, {\"type\": \"image\", \"source\": {}}, {\"type\": \"text\", \"text\": \"and more\"}], \"is_error\": true}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"o1\", \"name\": \"Bash\", \"input\": {\"command\": \"cmd 1\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"o1\", \"content\": \"  padded with spaces  \\n\\n\", \"is_error\": false}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"o2\", \"name\": \"Bash\", \"input\": {\"command\": \"cmd 2\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"o2\", \"content\": \"\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"o3\", \"name\": \"Bash\", \"input\": {\"command\": \"cmd 3\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"o3\", \"content\": null, \"is_error\": true}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"o4\", \"name\": \"Bash\", \"input\": {\"command\": \"cmd 4\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"o4\", \"content\": [], \"is_error\": false}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"o5\", \"name\": \"Bash\", \"input\": {\"command\": \"cmd 5\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"o5\", \"content\": \"line 0\\nline 1\\nline 2\\nline 3\\nline 4\\nline 5\\nline 6\\nline 7\\nline 8\\nline 9\\nline 10\\nline 11\\nline 12\\nline 13\\nline 14\\nline 15\\nline 16\\nline 17\\nline 18\\nline 19\\nline 20\\nline 21\\nline 22\\nline 23\\nline 24\\nline 25\\nline 26\\nline 27\\nline 28\\nline 29\\nline 30\\nline 31\\nline 32\\nline 33\\nline 34\\nline 35\\nline 36\\nline 37\\nline 38\\nline 39\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"o6\", \"name\": \"Bash\", \"input\": {\"command\": \"cmd 6\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"o6\", \"content\": \"the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away \", \"is_error\": true}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"o7\", \"name\": \"Bash\", \"input\": {\"command\": \"cmd 7\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"o7\", \"content\": \"cr\\rlf\\r\\nvt\\u000bff\\ffs\\u001cnells ps end\", \"is_error\": false}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"o8\", \"name\": \"Bash\", \"input\": {\"command\": \"cmd 8\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"o8\", \"content\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"o9\", \"name\": \"Bash\", \"input\": {\"command\": \"cmd 9\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"o9\", \"content\": \"tabs\\tand  double  spaces\", \"is_error\": true}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"o10\", \"name\": \"Bash\", \"input\": {\"command\": \"cmd 10\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"o10\", \"content\": \"ends in a key ghp_a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8\", \"is_error\": false}]}}"
+   ],
+   "events": [
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "o0",
+     "text": "cmd 0"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "o0",
+     "text": "from a list\nand more"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "o1",
+     "text": "cmd 1"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "o1",
+     "text": "padded with spaces"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "o2",
+     "text": "cmd 2"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "o2",
+     "text": "(no output)"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "o3",
+     "text": "cmd 3"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "o3",
+     "text": "(no output)"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "o4",
+     "text": "cmd 4"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "o4",
+     "text": "(no output)"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "o5",
+     "text": "cmd 5"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "o5",
+     "text": "line 0\nline 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\n… 26 more lines"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "o6",
+     "text": "cmd 6"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "o6",
+     "text": "the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick …"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "o7",
+     "text": "cmd 7"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "o7",
+     "text": "cr\rlf\r\nvt\u000bff\ffs\u001cnells ps end"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "o8",
+     "text": "cmd 8"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "o8",
+     "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx …"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "o9",
+     "text": "cmd 9"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "o9",
+     "text": "tabs\tand  double  spaces"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "o10",
+     "text": "cmd 10"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "o10",
+     "text": "ends in a key ghp_a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8"
+    }
+   ]
+  },
+  {
+   "newer_than": null,
+   "lines": [
+    "not json",
+    "[]",
+    "{}",
+    "null",
+    "42",
+    "\"a string\"",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": \"text content\"}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": []}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [1, \"x\", null]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": \"not a dict\"}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\"}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"d1\", \"name\": \"Bash\", \"input\": {\"command\": \"ls\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"d1\", \"name\": \"Bash\", \"input\": {\"command\": \"ls\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"d1\", \"name\": \"Bash\", \"input\": {\"command\": \"ls\"}}, {\"type\": \"tool_result\", \"tool_use_id\": \"d1\", \"content\": \"a\\nb\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"d1\", \"content\": \"a\\nb\"}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"s1\", \"name\": \"Read\", \"input\": {\"file_path\": \"/side\"}}]}, \"isSidechain\": true}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"s2\", \"name\": \"Read\", \"input\": {\"file_path\": \"/side2\"}}]}, \"isSidechain\": \"yes\"}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"s3\", \"name\": \"Read\", \"input\": {\"file_path\": \"/side3\"}}]}, \"isSidechain\": 0}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"\", \"name\": \"Bash\", \"input\": {\"command\": \"no id\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": null, \"name\": \"Bash\", \"input\": {\"command\": \"null id\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"name\": \"Bash\", \"input\": {\"command\": \"missing id\"}, \"id\": \"m1\"}]}}\r",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"w1\", \"name\": \"Bash\", \"input\": {\"command\": \"   \"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"w2\", \"name\": \"Bash\", \"input\": {\"command\": null}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"w3\", \"name\": \"Bash\", \"input\": {\"command\": 0}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"w4\", \"name\": \"Bash\", \"input\": {\"command\": 12}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"w5\", \"name\": \"Bash\", \"input\": {}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"w6\", \"name\": \"Bash\", \"input\": null}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"w7\", \"input\": {\"command\": \"no name\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"w8\", \"name\": \"Read\", \"input\": {\"file_path\": true}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"w9\", \"name\": \"Read\", \"input\": {\"file_path\": \"ééé\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.000Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"toolu_0123456789abcdefghij\", \"name\": \"Bash\", \"input\": {\"command\": \"long id\"}}]}}",
+    "{\"message\": {\"content\": [{\"type\": \"tool_use\", \"id\": \"nt\", \"name\": \"Bash\", \"input\": {\"command\": \"no timestamp\"}}]}}",
+    "{\"timestamp\": 12345, \"message\": {\"content\": [{\"type\": \"tool_use\", \"id\": \"nt2\", \"name\": \"Bash\", \"input\": {\"command\": \"number timestamp\"}}]}}",
+    "{\"timestamp\": \"x\", \"message\": {\"content\": [{\"type\": \"tool_use\", \"id\": \"dup\", \"name\": \"Bash\", \"name\": \"Read\", \"input\": {\"file_path\": \"/dup\"}}]}}"
+   ],
+   "events": [
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "d1",
+     "text": "ls"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "d1",
+     "text": "a\nb"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": true,
+     "kind": "read",
+     "ref": "s1",
+     "text": "/side"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": true,
+     "kind": "read",
+     "ref": "s2",
+     "text": "/side2"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "read",
+     "ref": "s3",
+     "text": "/side3"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "",
+     "text": "no id"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "m1",
+     "text": "missing id"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "w4",
+     "text": "12"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "tool",
+     "ref": "w7",
+     "text": " {\"command\": \"no name\"}"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "read",
+     "ref": "w8",
+     "text": "True"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "read",
+     "ref": "w9",
+     "text": "ééé"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.000Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "89abcdefghij",
+     "text": "long id"
+    },
+    {
+     "ts": "",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "nt",
+     "text": "no timestamp"
+    },
+    {
+     "ts": "12345",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "nt2",
+     "text": "number timestamp"
+    },
+    {
+     "ts": "x",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "read",
+     "ref": "dup",
+     "text": "/dup"
+    }
+   ]
+  },
+  {
+   "newer_than": 1795428000.0,
+   "lines": [
+    "{\"timestamp\": \"2026-11-23T09:59:59Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"t0\", \"name\": \"Bash\", \"input\": {\"command\": \"stamp 2026-11-23T09:59:59Z\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"t1\", \"name\": \"Bash\", \"input\": {\"command\": \"stamp 2026-11-23T10:00:00Z\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.5Z\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"t2\", \"name\": \"Bash\", \"input\": {\"command\": \"stamp 2026-11-23T10:00:00.5Z\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T18:00:00+08:00\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"t3\", \"name\": \"Bash\", \"input\": {\"command\": \"stamp 2026-11-23T18:00:00+08:00\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T04:00:01-06:00\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"t4\", \"name\": \"Bash\", \"input\": {\"command\": \"stamp 2026-11-23T04:00:01-06:00\"}}]}}",
+    "{\"timestamp\": \"2026-11-23T10:00:00.123456+00:00\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"t5\", \"name\": \"Bash\", \"input\": {\"command\": \"stamp 2026-11-23T10:00:00.123456+00:00\"}}]}}",
+    "{\"timestamp\": \"garbage\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"t6\", \"name\": \"Bash\", \"input\": {\"command\": \"stamp garbage\"}}]}}",
+    "{\"timestamp\": \"\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"t7\", \"name\": \"Bash\", \"input\": {\"command\": \"stamp \"}}]}}",
+    "{\"timestamp\": \"2026-11-23\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"t8\", \"name\": \"Bash\", \"input\": {\"command\": \"stamp 2026-11-23\"}}]}}",
+    "{\"message\": {\"content\": [{\"type\": \"tool_use\", \"id\": \"t9\", \"name\": \"Bash\", \"input\": {\"command\": \"no stamp\"}}]}}"
+   ],
+   "events": [
+    {
+     "ts": "2026-11-23T10:00:00Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "t1",
+     "text": "stamp 2026-11-23T10:00:00Z"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.5Z",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "t2",
+     "text": "stamp 2026-11-23T10:00:00.5Z"
+    },
+    {
+     "ts": "2026-11-23T18:00:00+08:00",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "t3",
+     "text": "stamp 2026-11-23T18:00:00+08:00"
+    },
+    {
+     "ts": "2026-11-23T04:00:01-06:00",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "t4",
+     "text": "stamp 2026-11-23T04:00:01-06:00"
+    },
+    {
+     "ts": "2026-11-23T10:00:00.123456+00:00",
+     "proj": "orbit",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "t5",
+     "text": "stamp 2026-11-23T10:00:00.123456+00:00"
+    }
+   ]
+  }
+ ],
+ "clips": [
+  {
+   "s": "short",
+   "n": 10,
+   "out": "short"
+  },
+  {
+   "s": "one two three",
+   "n": 9,
+   "out": "one two …"
+  },
+  {
+   "s": "one two three",
+   "n": 8,
+   "out": "one two …"
+  },
+  {
+   "s": "one two three",
+   "n": 3,
+   "out": "one …"
+  },
+  {
+   "s": "onetwothree",
+   "n": 5,
+   "out": " …"
+  },
+  {
+   "s": "one two\nthree four",
+   "n": 10,
+   "out": "one two …"
+  },
+  {
+   "s": "abc def\nghi",
+   "n": 8,
+   "out": "abc …"
+  },
+  {
+   "s": "abc  def",
+   "n": 4,
+   "out": "abc …"
+  },
+  {
+   "s": "abc　def ghi",
+   "n": 5,
+   "out": "abc …"
+  },
+  {
+   "s": "",
+   "n": 0,
+   "out": ""
+  },
+  {
+   "s": "éééééééééé",
+   "n": 5,
+   "out": " …"
+  },
+  {
+   "s": "x y",
+   "n": 1,
+   "out": "x …"
+  },
+  {
+   "s": "x y",
+   "n": 2,
+   "out": "x …"
+  }
+ ]
+}

@@ -14,9 +14,9 @@ impl Json {
         if p.i != p.b.len() { return Err(format!("trailing text at {}", p.i)); }
         Ok(v)
     }
-    /// a member of an object (Null when missing or not an object); keeps the file's order
+    /// a member of an object (Null when missing or not an object; the last one if a name repeats, as Python and JS read it)
     pub fn get(&self, k: &str) -> &Json {
-        match self { Json::Obj(m) => m.iter().find(|(n, _)| n == k).map(|(_, v)| v).unwrap_or(&NULL), _ => &NULL }
+        match self { Json::Obj(m) => m.iter().rev().find(|(n, _)| n == k).map(|(_, v)| v).unwrap_or(&NULL), _ => &NULL }
     }
     pub fn entries(&self) -> &[(String, Json)] { match self { Json::Obj(m) => m, _ => &[] } }
     pub fn items(&self) -> &[Json] { match self { Json::Arr(a) => a, _ => &[] } }
