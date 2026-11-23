@@ -1,5 +1,5 @@
 //! Backgrounds: each one draws into the full-screen scene bitmap that the cards' glass blurs.
-//! Ported so far: the page's "pixel", "cascade" and "broadsheet"; every other background falls back to a plain fill until it is.
+//! Ported so far: the page's "pixel", "cascade", "broadsheet" and "halftone"; every other background falls back to a plain fill until it is.
 use crate::fonts::Fonts;
 use crate::gfx::{Gfx, rect, rgba};
 use crate::looks::{Color, Look};
@@ -21,6 +21,7 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Box<dyn B
         "pixel" => Box::new(Pixel::new(g)?),
         "cascade" => Box::new(Cascade::new(g, fonts, &look.mono.family)?),
         "broadsheet" => Box::new(Broadsheet::new(g, fonts, look)?),
+        "halftone" => Box::new(Halftone::new(g)?),
         _ => Box::new(Plain),
     })
 }
@@ -447,6 +448,83 @@ impl Background for Broadsheet {
             let ink = g.brush([look.ink[0], look.ink[1], look.ink[2], a])?;
             g.dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);   // FillOpacityMask needs it
             g.dc.FillOpacityMask(&self.page, &ink, Some(&rect(0.0, 0.0, self.w, self.h)), None);
+            g.dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+        }
+        Ok(())
+    }
+}
+
+/// two-drum riso print: a slowly breathing halftone field, the dim drum plus the bright drum off true.
+/// One circle drawn up front; each frame is one sprite batch of it, scaled per dot. The page blends the dots with
+/// multiply (light themes) or screen (dark); over its flat background that equals plain drawing in the blended
+/// color, worked out here once per drum.
+pub struct Halftone { dot: ID2D1Bitmap1, batch: ID2D1SpriteBatch, dc3: ID2D1DeviceContext3, t: f32, w: f32, h: f32,
+                      still: bool, dest: Vec<D2D_RECT_F>, tint: Vec<D2D1_COLOR_F> }
+
+const HT_SP: f32 = 18.0;
+const HT_MAX: f32 = HT_SP * 0.48;
+
+impl Halftone {
+    fn new(g: &Gfx) -> Result<Halftone> {
+        let d = HT_MAX * 2.0 + 2.0;
+        let dot = g.surface(d, d)?;
+        unsafe {
+            let dc = &g.dc;
+            let old = dc.GetTarget()?;
+            dc.SetTarget(&dot);
+            dc.BeginDraw();
+            dc.Clear(Some(&D2D1_COLOR_F::default()));
+            dc.FillEllipse(&D2D1_ELLIPSE { point: D2D_POINT_2F { x: d / 2.0, y: d / 2.0 }, radiusX: HT_MAX, radiusY: HT_MAX },
+                           &g.brush([1.0, 1.0, 1.0, 1.0])?);
+            dc.EndDraw(None, None)?;
+            dc.SetTarget(&old);
+        }
+        let dc3: ID2D1DeviceContext3 = g.dc.cast()?;
+        let batch = unsafe { dc3.CreateSpriteBatch()? };
+        let mut rng = Rng(0x7a11_7012_0b5e_ed00);
+        Ok(Halftone { dot, batch, dc3, t: rng.range(0.0, 100.0), w: g.w as f32, h: g.h as f32, still: false, dest: Vec::new(), tint: Vec::new() })
+    }
+}
+
+impl Background for Halftone {
+    fn fps(&self) -> f32 { if self.still { 0.0 } else { 12.0 } }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        self.t += dt * (0.15 + level * 0.35);
+        self.still = level <= 0.0;
+        unsafe { g.dc.Clear(Some(&rgba(look.bg))); }
+        if self.still { return Ok(()); }
+        let (t, bg) = (self.t, look.bg);
+        let a = 0.16 + level * 0.12;
+        let half = (HT_MAX + 1.0) / HT_MAX;   // the sprite's half-size per unit of radius (it has a pixel of margin)
+        self.dest.clear(); self.tint.clear();
+        for (col, ph, ox, oy) in [(look.dim, 0.0f32, 0.0f32, 0.0f32), (look.hi, 2.1, 3.0, 2.0)] {
+            // multiply / screen over the flat background, then premultiplied at the drum's alpha
+            let mix = |i: usize| if look.light { bg[i] * col[i] } else { bg[i] + col[i] - bg[i] * col[i] };
+            let c = D2D1_COLOR_F { r: mix(0) * a, g: mix(1) * a, b: mix(2) * a, a };
+            let mut y = HT_SP / 2.0;
+            while y < self.h {
+                let mut x = HT_SP / 2.0;
+                while x < self.w {
+                    let v = ((x * 0.004 + t + ph).sin() + (y * 0.005 - t * 0.8 + ph).sin() + ((x + y) * 0.0025 + t * 0.5).sin()) / 3.0;
+                    let r = v.max(0.0).powf(1.4) * HT_MAX;
+                    if r >= 0.6 {
+                        let s = r * half;
+                        self.dest.push(rect(x + ox - s, y + oy - s, s * 2.0, s * 2.0));
+                        self.tint.push(c);
+                    }
+                    x += HT_SP;
+                }
+                y += HT_SP;
+            }
+        }
+        if self.dest.is_empty() { return Ok(()); }
+        unsafe {
+            let n = self.dest.len() as u32;
+            self.batch.Clear();
+            self.batch.AddSprites(n, self.dest.as_ptr(), None, Some(self.tint.as_ptr()), None,
+                                  size_of::<D2D_RECT_F>() as u32, 0, size_of::<D2D1_COLOR_F>() as u32, 0)?;
+            g.dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);   // sprite batches need it
+            self.dc3.DrawSpriteBatch(&self.batch, 0, n, &self.dot, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, D2D1_SPRITE_OPTIONS_NONE);
             g.dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
         }
         Ok(())
