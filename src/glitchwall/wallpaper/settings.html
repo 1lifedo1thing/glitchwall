@@ -9,13 +9,13 @@
   @font-face { font-family:'Departure Mono'; src:url('DepartureMono-Regular.otf') format('opentype'); font-display:block; }
   @font-face { font-family:'VT323'; src:url('fonts/VT323-Regular.ttf'); font-display:block; }
   :root {
-    --bg:#010401; --glass:#031008; --ph:#5dff7a; --ph-hi:#c8ffd0; --ph-dim:#2c8f41; --ph-line:rgba(93,255,122,.3); --ph-faint:rgba(93,255,122,.12);
-    --glow:0 0 5px rgba(93,255,122,.6); --amber:#ffb000; --red:#ff5a4a;
+    --bg:#010401; --glass:#031008; --ph:#5dff7a; --ph-hi:#c8ffd0; --ph-dim:#2c8f41; --ph-line:rgba(var(--ph-rgb),.3); --ph-faint:rgba(var(--ph-rgb),.12);
+    --glow:0 0 5px rgba(var(--ph-rgb),.6); --ph-rgb:93,255,122; --amber:#ffb000; --red:#ff5a4a;
   }
   * { box-sizing:border-box; }
   html, body { margin:0; height:100%; background:var(--bg); color:var(--ph-dim); font:12px/1.4 'Departure Mono', Consolas, monospace; }
   body { display:grid; grid-template-rows:auto minmax(0,1fr) auto; height:100vh; overflow:hidden;
-         background:radial-gradient(120% 100% at 50% 35%, #03140a, var(--bg) 75%); }
+         background:radial-gradient(120% 100% at 50% 35%, var(--glass), var(--bg) 75%); }
   body::after { content:''; position:fixed; inset:0; pointer-events:none; z-index:50;   /* scanlines over the whole tube */
                 background:repeating-linear-gradient(transparent 0 2px, rgba(0,0,0,.18) 2px 3px); }
   button { font:inherit; color:inherit; }
@@ -24,7 +24,7 @@
 
   /* ---------- header: name, status lamps, sound, the pause key */
   header { display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; padding:10px 14px; border-bottom:1px solid var(--ph-line); }
-  .brand { font:21px/1 'Departure Mono', monospace; letter-spacing:.4em; color:var(--ph); text-shadow:var(--glow), 0 0 16px rgba(93,255,122,.3); }
+  .brand { font:21px/1 'Departure Mono', monospace; letter-spacing:.4em; color:var(--ph); text-shadow:var(--glow), 0 0 16px rgba(var(--ph-rgb),.3); }
   .brand small { display:block; font-size:9px; letter-spacing:.3em; color:var(--ph-dim); margin-top:5px; text-shadow:none; }
   .brand .cur { display:inline-block; width:.55em; height:.9em; margin-left:.1em; vertical-align:-2px; background:var(--ph); box-shadow:var(--glow); }
   .brand .cur.off { opacity:0; }
@@ -64,7 +64,7 @@
   .reset { position:absolute; top:4px; right:8px; padding:1px 7px; font-size:9px; letter-spacing:.14em; cursor:pointer;
            background:none; border:1px solid var(--ph-line); border-radius:2px; color:var(--ph-dim); opacity:.45; }
   .reset.live { opacity:1; color:var(--ph); border-color:var(--ph); text-shadow:var(--glow); }
-  .reset.live:hover { background:rgba(93,255,122,.12); }
+  .reset.live:hover { background:rgba(var(--ph-rgb),.12); }
   .reset:focus-visible { outline:1px dashed var(--ph-hi); outline-offset:2px; }
   /* a control that differs from its default gets a mark by its name */
   .changed .name::after { content:' *'; color:var(--ph); text-shadow:var(--glow); }
@@ -178,6 +178,7 @@
   <span><kbd>M</kbd>sound</span>
 </footer>
 
+<script src="looks.js"></script>
 <script>
 const KEY = decodeURIComponent(location.hash.startsWith('#key=') ? location.hash.slice(5) : '');
 const API = `/settings?key=${encodeURIComponent(KEY)}`;
@@ -496,7 +497,19 @@ function renderOpts() {
   $('opts-t').textContent = `${(bg || '').toUpperCase()} OPTIONS`;
   GROUP_HELP.options = [names.join(' · '), 'back to how the background comes.'];
 }
+// the window wears the chosen dark colors: the theme's own, or the palette picked for it (phosphor is the window's own look)
+function wear() {
+  const L = window.LOOKS && window.LOOKS.themes, name = S.palette && S.palette !== 'theme' ? S.palette : S.theme;
+  const t = L && L[name], st = document.documentElement.style;
+  // light themes keep the terminal look: its panels are dark glass
+  if (!t || name === 'phosphor' || t.mode === 'light') { ['--bg', '--glass', '--ph', '--ph-hi', '--ph-dim', '--ph-rgb', '--amber'].forEach(k => st.removeProperty(k)); return; }
+  const hex = c => { const m = /^#?([0-9a-f]{6})/i.exec(c || ''); return m ? [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16)).join(',') : null; };
+  st.setProperty('--bg', t.bg); st.setProperty('--glass', t.surface || t.bg);
+  st.setProperty('--ph', t.ink); st.setProperty('--ph-hi', t.hi || t.ink); st.setProperty('--ph-dim', t.muted || t.ink);
+  st.setProperty('--ph-rgb', hex(t.ink) || '93,255,122'); st.setProperty('--amber', t.acc || '#ffb000');
+}
 function render() {
+  wear();
   renderOpts();
   document.querySelectorAll('.knob').forEach(b => {
     const kind = b.dataset.help, o = Object.keys(C[kind]), i = Math.max(0, o.indexOf(S[kind]));
