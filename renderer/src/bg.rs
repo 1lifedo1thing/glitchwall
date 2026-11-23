@@ -1,5 +1,5 @@
 //! Backgrounds: each one draws into the full-screen scene bitmap that the cards' glass blurs.
-//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone" and "stop"; every other background falls back to a plain fill until it is.
+//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop" and "grid"; every other background falls back to a plain fill until it is.
 use crate::fonts::Fonts;
 use crate::gfx::{Gfx, rect, rgba};
 use crate::looks::{Color, Look};
@@ -23,6 +23,7 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Box<dyn B
         "broadsheet" => Box::new(Broadsheet::new(g, fonts, look)?),
         "halftone" => Box::new(Halftone::new(g)?),
         "stop" => Box::new(Stop::new(g, fonts, look)?),
+        "grid" => Box::new(Grid { ph: 0.0, still: false }),
         _ => Box::new(Plain),
     })
 }
@@ -580,6 +581,58 @@ impl Background for Stop {
             let ink = g.brush(a(look.ink, 0.17))?;   // faint, so cards on top stay readable
             for l in &self.lines { dc.DrawTextLayout(D2D_POINT_2F { x, y }, l, &ink, o); y += fs * 1.35; }
             dc.DrawTextLayout(D2D_POINT_2F { x, y }, &self.cursor[if on { 0 } else { 1 }], &ink, o);
+        }
+        Ok(())
+    }
+}
+
+/// synthwave: striped sun over a perspective grid rolling toward you. Plain Direct2D shapes, 30 fps; still at 0.
+pub struct Grid { ph: f32, still: bool }
+
+impl Background for Grid {
+    fn fps(&self) -> f32 { if self.still { 0.0 } else { 30.0 } }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        self.ph = (self.ph + dt * (0.25 + level * 0.9)) % 1.0;
+        self.still = level <= 0.0;
+        unsafe { g.dc.Clear(Some(&rgba(look.bg))); }
+        if self.still { return Ok(()); }
+        let (w, h) = (g.w as f32, g.h as f32);
+        let (y0, cxm, a) = (h * 0.6, w / 2.0, 0.25 + level * 0.5);
+        let sr = w.min(h) * 0.2;
+        let sy = y0 - sr * 0.35;
+        unsafe {
+            let dc = &g.dc;
+            // the sun: accent at the top to ink at the bottom
+            let stops = [D2D1_GRADIENT_STOP { position: 0.0, color: rgba(look.acc) }, D2D1_GRADIENT_STOP { position: 1.0, color: rgba(look.ink) }];
+            let rt: &ID2D1RenderTarget = dc;   // the plain version (the device context's own takes six arguments)
+            let coll = rt.CreateGradientStopCollection(&stops, D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP)?;
+            let sun = dc.CreateLinearGradientBrush(
+                &D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES { startPoint: D2D_POINT_2F { x: 0.0, y: sy - sr }, endPoint: D2D_POINT_2F { x: 0.0, y: sy + sr } },
+                Some(&D2D1_BRUSH_PROPERTIES { opacity: a * 0.9, transform: Default::default() }), &coll)?;
+            dc.FillEllipse(&D2D1_ELLIPSE { point: D2D_POINT_2F { x: cxm, y: sy }, radiusX: sr, radiusY: sr }, &sun);
+            // its stripes, and the ground hiding its lower part
+            let bg = g.brush(look.bg)?;
+            for k in 0..7 {
+                let (yy, hh) = (sy + sr * (0.05 + k as f32 * 0.14), 1.0 + k as f32 * 1.6);
+                dc.FillRectangle(&rect(cxm - sr, yy, sr * 2.0, hh), &bg);
+            }
+            dc.FillRectangle(&rect(0.0, y0, w, h - y0), &bg);
+            // the grid: rows closing in on the horizon, fading near it; rays fanning out from it
+            let line = g.brush(look.dim)?;
+            let c = (h - y0) * 0.5;
+            for k in 0..40 {
+                let z = k as f32 + 1.0 - self.ph;
+                if z < 0.5 { continue; }
+                let y = y0 + c / z;
+                line.SetOpacity(a * ((y - y0) / (h - y0) * 3.0).min(1.0));
+                dc.DrawLine(D2D_POINT_2F { x: 0.0, y }, D2D_POINT_2F { x: w, y }, &line, 1.2, None);
+            }
+            line.SetOpacity(a);
+            let sp = w / 14.0;
+            for j in -20..=20 {
+                let j = j as f32;
+                dc.DrawLine(D2D_POINT_2F { x: cxm + j * sp * 0.08, y: y0 }, D2D_POINT_2F { x: cxm + j * sp * 2.2, y: h }, &line, 1.2, None);
+            }
         }
         Ok(())
     }
