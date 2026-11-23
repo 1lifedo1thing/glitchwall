@@ -1,5 +1,5 @@
 //! Backgrounds: each one draws into the full-screen scene bitmap that the cards' glass blurs.
-//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record", "notebook", "textmode", "sunprint", "draft", "topo" and "radar"; every other background falls back to a plain fill until it is.
+//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record", "notebook", "textmode", "sunprint", "draft", "topo", "radar" and "orb"; every other background falls back to a plain fill until it is.
 use crate::fonts::Fonts;
 use crate::gfx::{Gfx, rect, rgba};
 use crate::looks::{Color, Look};
@@ -31,6 +31,7 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Box<dyn B
         "draft" => Box::new(Draft::new(g, fonts, look)?),
         "topo" => Box::new(Topo::new(g, fonts, look)?),
         "radar" => Box::new(Radar::new(g, fonts, look)?),
+        "orb" => Box::new(Orb::new(g, look)?),
         _ => Box::new(Plain),
     })
 }
@@ -1755,6 +1756,427 @@ impl Background for Radar {
             text(&format!("BRG {brg:03}°   TRK {seen:02}"), ox + r + fs * 6.0, oy + r + fs * 1.5, true, &ink);
             let _ = self.fmt.SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
         }
+        Ok(())
+    }
+}
+
+/// a ribbed black sphere sunk in the floor of a vast, dark data hall: rows of racks to the horizon with status lights
+/// blinking, the sphere's slats lit by the room, and on its shell rows of red lights that flicker, with packets
+/// streaming along them. The hall and the floor in front of the opening are drawn once (in the theme's colors); each
+/// frame draws the rack lights and the glows as sprite batches. 20 fps; still at 0. (The page's readouts: not yet.)
+pub struct Orb { back: ID2D1Bitmap1, front: ID2D1Bitmap1, glow: ID2D1Bitmap1, dot: ID2D1Bitmap1, batch: ID2D1SpriteBatch,
+                 dc3: ID2D1DeviceContext3, factory: ID2D1Factory, sphere: [ID2D1Brush; 3], rim: ID2D1Brush,
+                 leds: Vec<Led>, ribs: Vec<Rib>, packets: Vec<(usize, f32, f32, usize)>, rng: Rng,
+                 s: f32, ox: f32, oy: f32, w: f32, h: f32, t: f32, spin: f32, still: bool,
+                 dest: Vec<D2D_RECT_F>, tint: Vec<D2D1_COLOR_F> }
+
+struct Led { x: f32, y: f32, s: f32, a: f32, red: bool, kind: u8, f: f32, p: f32 }
+struct Rib { phi: f32, n: usize, o: f32, base: Vec<f32>, b: Vec<f32> }
+
+const ORB_L: usize = 30;
+const ORB_N: usize = 110;
+
+fn mixc(p: Color, q: Color, t: f32) -> Color { [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t, 1.0] }
+fn ca(c: Color, a: f32) -> D2D1_COLOR_F { D2D1_COLOR_F { r: c[0], g: c[1], b: c[2], a } }
+
+impl Orb {
+    fn new(g: &Gfx, look: &Look) -> Result<Orb> {
+        let (w, h) = (g.w as f32, g.h as f32);
+        let s = w.min(h) * 0.29;
+        let (ox, oy) = (w / 2.0, h * 0.44);
+        let light = look.light;
+        let mut rng = Rng(0x0eb0_5f1e_0000_0001);
+        let (ink, bg, acc) = (look.ink, look.bg, look.acc);
+        let body: Color = if light { ink } else { [0.0, 0.0, 0.0, 1.0] };
+        let (cy, cr, ce) = (oy + s * 0.45, s * 0.96, 0.24f32);
+        let vy = oy - s * 0.38;
+        let (hc, rh, ceil) = (5.0f32, 2.2f32, 8.0f32);
+        let f = (cy - vy) * 10.0 / hc;
+        let sx = |x: f32, z: f32| ox + f * x / z;
+        let sy = |y: f32, z: f32| vy + f * (hc - y) / z;
+        let back = g.surface(w, h)?;
+        let front = g.surface(w, h)?;
+        let factory = unsafe { g.dc.GetFactory()? };
+        let mut leds = Vec::new();
+        let rt: &ID2D1RenderTarget = &g.dc;
+        let grad = |stops: &[(f32, D2D1_COLOR_F)]| -> Result<ID2D1GradientStopCollection> {
+            let st: Vec<D2D1_GRADIENT_STOP> = stops.iter().map(|&(position, color)| D2D1_GRADIENT_STOP { position, color }).collect();
+            unsafe { rt.CreateGradientStopCollection(&st, D2D1_GAMMA_1_0, D2D1_EXTEND_MODE_CLAMP) }
+        };
+        let radial = |cx: f32, cy: f32, offx: f32, offy: f32, rx: f32, ry: f32, stops: &[(f32, D2D1_COLOR_F)]| -> Result<ID2D1RadialGradientBrush> {
+            unsafe { g.dc.CreateRadialGradientBrush(&D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES { center: p2(cx, cy), gradientOriginOffset: p2(offx, offy),
+                                                                                         radiusX: rx, radiusY: ry }, None, &grad(stops)?) }
+        };
+        let quad = |pts: [D2D_POINT_2F; 4]| -> Result<ID2D1PathGeometry> {
+            unsafe {
+                let p = factory.CreatePathGeometry()?;
+                let k = p.Open()?;
+                k.BeginFigure(pts[0], D2D1_FIGURE_BEGIN_FILLED);
+                for q in &pts[1..] { k.AddLine(*q); }
+                k.EndFigure(D2D1_FIGURE_END_CLOSED);
+                k.Close()?;
+                Ok(p)
+            }
+        };
+        let ell = |r: f32| D2D1_ELLIPSE { point: p2(ox, cy), radiusX: r, radiusY: r * ce };
+        unsafe {
+            let dc = &g.dc;
+            let old = dc.GetTarget()?;
+            dc.SetTarget(&back);
+            dc.BeginDraw();
+            dc.Clear(Some(&rgba(bg)));
+            // a faint haze lying along the horizon
+            let lin = dc.CreateLinearGradientBrush(&D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES { startPoint: p2(0.0, 0.0), endPoint: p2(0.0, h) }, None,
+                &grad(&[(0.0, ca(ink, 0.0)), (vy / h * 0.8, ca(ink, if light { 0.03 } else { 0.015 })), (vy / h, ca(ink, if light { 0.09 } else { 0.06 })),
+                        ((cy / h).min(1.0), ca(ink, if light { 0.03 } else { 0.02 })), (1.0, ca(ink, 0.0))])?)?;
+            dc.FillRectangle(&rect(0.0, 0.0, w, h), &lin);
+            let pen = g.brush(ink)?;
+            // the ceiling: long strips of light running away from us, most dark, the rest barely on
+            let mut x = -48.75f32;
+            while x <= 48.75 {
+                pen.SetOpacity(if light { 0.05 } else { 0.035 });
+                dc.DrawLine(p2(sx(x, 4.0), sy(ceil, 4.0)), p2(sx(x, 400.0), sy(ceil, 400.0)), &pen, 1.0, None);
+                let mut z = 6.0f32;
+                while z < 260.0 {
+                    if rng.f() >= 0.2 {
+                        let z2 = z + 1.6;
+                        pen.SetOpacity((if light { 0.14 } else { 0.2 }) * (30.0 / z).min(1.0) * rng.range(0.6, 1.0));
+                        dc.DrawLine(p2(sx(x, z), sy(ceil, z)), p2(sx(x, z2), sy(ceil, z2)), &pen, (f * 0.12 / z).clamp(1.0, 2.5), None);
+                    }
+                    z += 4.5;
+                }
+                x += 7.5;
+            }
+            // the floor of the clearing: tiles running toward the racks
+            pen.SetOpacity(if light { 0.06 } else { 0.045 });
+            let mut x = -40.0f32; while x <= 40.0 { dc.DrawLine(p2(sx(x, 2.5), sy(0.0, 2.5)), p2(sx(x, 15.0), sy(0.0, 15.0)), &pen, 1.0, None); x += 1.2; }
+            let mut z = 3.0f32; while z < 15.0 { dc.DrawLine(p2(0.0, sy(0.0, z)), p2(w, sy(0.0, z)), &pen, 1.0, None); z *= 1.12; }
+            // rows of racks to the horizon, broken by cross aisles; far ones sink into the haze
+            let fog = if light { bg } else { mixc(bg, ink, 0.06) };
+            let near = if light { mixc(bg, ink, 0.12) } else { mixc(bg, ink, 0.025) };
+            let (seg, gapx) = (6.6f32, 2.2f32);
+            let fill = g.brush(ink)?;
+            for k in (0..=60).rev() {
+                let kf = k as f32;
+                let z = 15.0 + kf * 2.6 * (1.0 + kf * 0.012);
+                let d = z + 1.1;
+                let haze = ((z - 15.0) / 160.0).min(1.0).powf(0.8);
+                let (yt, yb, ytb) = (sy(rh, z), sy(0.0, z), sy(rh, d));
+                if yb - yt < 1.2 { continue; }
+                let face = mixc(near, fog, haze);
+                let top = mixc(mixc(near, ink, if light { 0.06 } else { 0.09 }), fog, haze);
+                let half = (ox + 40.0) * z / f;
+                let mut x0 = -(half / (seg + gapx)).ceil() * (seg + gapx) - gapx / 2.0;
+                while x0 < half {
+                    let x1 = x0 + seg;
+                    let (l, r) = (sx(x0, z), sx(x1, z));
+                    if !(r < 0.0 || l > w) {
+                        fill.SetColor(&rgba(top));
+                        dc.FillGeometry(&quad([p2(sx(x0, d), ytb), p2(sx(x1, d), ytb), p2(r, yt), p2(l, yt)])?, &fill, None);
+                        fill.SetColor(&rgba(face));
+                        dc.FillRectangle(&rect(l, yt, r - l, yb - yt), &fill);
+                        fill.SetColor(&rgba(mixc(face, bg, 0.5)));   // the run's end faces, seen down the cross aisles
+                        if x0 > 0.0 { dc.FillGeometry(&quad([p2(l, yt), p2(sx(x0, d), ytb), p2(sx(x0, d), sy(0.0, d)), p2(l, yb)])?, &fill, None); }
+                        if x1 < 0.0 { dc.FillGeometry(&quad([p2(r, yt), p2(sx(x1, d), ytb), p2(sx(x1, d), sy(0.0, d)), p2(r, yb)])?, &fill, None); }
+                        pen.SetOpacity((if light { 0.22 } else { 0.2 }) * (1.0 - haze * 0.7));
+                        dc.DrawLine(p2(l, yt + 0.5), p2(r, yt + 0.5), &pen, 1.0, None);
+                        let rw = f * 0.6 / z;
+                        if rw > 3.5 {   // seams between the racks
+                            pen.SetOpacity((if light { 0.1 } else { 0.07 }) * (1.0 - haze));
+                            let mut xx = x0 + 0.6;
+                            while xx < x1 - 0.1 { let q = sx(xx, z).round() + 0.5; dc.DrawLine(p2(q, yt), p2(q, yb), &pen, 1.0, None); xx += 0.6; }
+                        }
+                        // status lights on the rack fronts, only where the next row nearer us leaves them showing
+                        if z < 70.0 && rw > 1.5 {
+                            let nk = kf - 1.0;
+                            let yhide = if k > 0 { yb.min(sy(rh, 15.0 + nk * 2.6 * (1.0 + nk * 0.012) + 1.1)) } else { yb };
+                            let u = (yb - yt) / 22.0;
+                            let mut rr = 0.0f32;
+                            while rr < seg / 0.6 - 0.5 {
+                                let (lx, lx2) = (sx(x0 + rr * 0.6 + 0.1, z).round(), sx(x0 + rr * 0.6 + 0.32, z).round());
+                                for uu in 1..21 {
+                                    let y = (yt + uu as f32 * u).round();
+                                    if y > yhide - 1.0 || rng.f() > 0.3 { continue; }
+                                    let red = rng.f() < 0.18;
+                                    let kind = rng.f();
+                                    let xx = if rng.f() < 0.7 { lx } else { lx2 };
+                                    leds.push(Led { x: xx, y, s: (rw / 10.0).clamp(1.0, 2.0), a: (if red { 0.95 } else { 0.6 }) * (1.0 - haze * 0.85) * rng.range(0.35, 1.0),
+                                                    red, kind: if kind < 0.45 { 0 } else if kind < 0.8 { 1 } else { 2 }, f: rng.range(0.3, 2.2), p: rng.range(0.0, TAU) });
+                                }
+                                rr += 1.0;
+                            }
+                        }
+                    }
+                    x0 += seg + gapx;
+                }
+            }
+            // rings in the floor round the opening; its raised lip and the dark well inside
+            for (r, a) in [(1.14, 0.2), (1.36, 0.1), (1.75, 0.06), (2.4, 0.04)] { pen.SetOpacity(a); dc.DrawEllipse(&ell(cr * r), &pen, 1.0, None); }
+            fill.SetColor(&rgba(body));
+            dc.FillEllipse(&ell(cr * 1.07), &fill);
+            fill.SetColor(&ca(ink, if light { 0.12 } else { 0.07 }));
+            let lip = factory.CreatePathGeometry()?;
+            {
+                let k = lip.Open()?;
+                k.SetFillMode(D2D1_FILL_MODE_ALTERNATE);
+                for r in [cr * 1.07, cr] {
+                    k.BeginFigure(p2(ox + r, cy), D2D1_FIGURE_BEGIN_FILLED);
+                    for end in [p2(ox - r, cy), p2(ox + r, cy)] {
+                        k.AddArc(&D2D1_ARC_SEGMENT { point: end, size: D2D_SIZE_F { width: r, height: r * ce }, rotationAngle: 0.0,
+                                                     sweepDirection: D2D1_SWEEP_DIRECTION_CLOCKWISE, arcSize: D2D1_ARC_SIZE_SMALL });
+                    }
+                    k.EndFigure(D2D1_FIGURE_END_CLOSED);
+                }
+                k.Close()?;
+            }
+            dc.FillGeometry(&lip, &fill, None);
+            pen.SetOpacity(0.28);
+            dc.DrawEllipse(&ell(cr * 1.07), &pen, 1.0, None);
+            // a little light falling on the sphere from above; on dark themes the hall darkens toward the edges
+            dc.FillRectangle(&rect(0.0, 0.0, w, h), &radial(ox, oy, 0.0, -s * 0.8, s * 2.4, s * 2.4,
+                &[(0.08, ca(ink, if light { 0.06 } else { 0.05 })), (1.0, ca(ink, 0.0))])?);
+            if !light {
+                let far = (w * w + h * h).sqrt() * 0.6;
+                dc.FillRectangle(&rect(0.0, 0.0, w, h), &radial(ox, vy, 0.0, 0.0, far, far,
+                    &[(s * 1.2 / far, D2D1_COLOR_F::default()), (1.0, D2D1_COLOR_F { r: 0.0, g: 0.0, b: 0.0, a: 0.55 })])?);
+            }
+            // red light spilling onto the floor
+            // (stacked solid ellipses, not a gradient: the gradient's faint edge came out as white specks)
+            let spill = g.brush([acc[0], acc[1], acc[2], 0.15 / 24.0])?;
+            for i in 0..24 { dc.FillEllipse(&ell(cr * (2.6 - 1.6 * i as f32 / 24.0)), &spill); }
+            dc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_SOURCE_OVER);
+            dc.EndDraw(None, None)?;
+            // the floor in front of the opening, drawn again over the sphere's lower part, and the opening's lit near edge
+            dc.SetTarget(&front);
+            dc.BeginDraw();
+            dc.Clear(Some(&D2D1_COLOR_F::default()));
+            let fg = factory.CreatePathGeometry()?;
+            {
+                let k = fg.Open()?;
+                k.SetFillMode(D2D1_FILL_MODE_ALTERNATE);
+                k.BeginFigure(p2(0.0, cy), D2D1_FIGURE_BEGIN_FILLED);
+                for q in [p2(w, cy), p2(w, h), p2(0.0, h)] { k.AddLine(q); }
+                k.EndFigure(D2D1_FIGURE_END_CLOSED);
+                k.BeginFigure(p2(ox + cr, cy), D2D1_FIGURE_BEGIN_FILLED);
+                k.AddArc(&D2D1_ARC_SEGMENT { point: p2(ox - cr, cy), size: D2D_SIZE_F { width: cr, height: cr * ce }, rotationAngle: 0.0,
+                                             sweepDirection: D2D1_SWEEP_DIRECTION_CLOCKWISE, arcSize: D2D1_ARC_SIZE_SMALL });
+                k.EndFigure(D2D1_FIGURE_END_CLOSED);
+                k.Close()?;
+            }
+            let bprops = D2D1_BITMAP_BRUSH_PROPERTIES1 { extendModeX: D2D1_EXTEND_MODE_CLAMP, extendModeY: D2D1_EXTEND_MODE_CLAMP,
+                                                         interpolationMode: D2D1_INTERPOLATION_MODE_LINEAR };
+            dc.FillGeometry(&fg, &dc.CreateBitmapBrush(&back, Some(&bprops), None)?, None);
+            let edge = |r: f32, dy: f32, a0: f32, a1: f32, al: f32| -> Result<()> {
+                let p = factory.CreatePathGeometry()?;
+                let k = p.Open()?;
+                let at = |a: f32| p2(ox + r * a.cos(), cy + dy + r * ce * a.sin());
+                k.BeginFigure(at(a0), D2D1_FIGURE_BEGIN_HOLLOW);
+                let m = (a0 + a1) / 2.0;
+                for e in [m, a1] { k.AddArc(&D2D1_ARC_SEGMENT { point: at(e), size: D2D_SIZE_F { width: r, height: r * ce }, rotationAngle: 0.0,
+                                                                sweepDirection: D2D1_SWEEP_DIRECTION_CLOCKWISE, arcSize: D2D1_ARC_SIZE_SMALL }); }
+                k.EndFigure(D2D1_FIGURE_END_OPEN);
+                k.Close()?;
+                pen.SetOpacity(al);
+                dc.DrawGeometry(&p, &pen, 1.0, None);
+                Ok(())
+            };
+            edge(cr, 0.0, 0.05, std::f32::consts::PI - 0.05, 0.45)?;
+            edge(cr * 1.07, s * 0.012, 0.0, std::f32::consts::PI, 0.14)?;
+            dc.EndDraw(None, None)?;
+            dc.SetTarget(&old);
+        }
+        // one light's glow, drawn scaled for every light; and a white dot for the rack lights
+        let glow = g.surface(32.0, 32.0)?;
+        let dot = g.surface(2.0, 2.0)?;
+        unsafe {
+            let dc = &g.dc;
+            let old = dc.GetTarget()?;
+            dc.SetTarget(&glow);
+            dc.BeginDraw();
+            dc.Clear(Some(&D2D1_COLOR_F::default()));
+            dc.FillRectangle(&rect(0.0, 0.0, 32.0, 32.0), &radial(16.0, 16.0, 0.0, 0.0, 16.0, 16.0,
+                &[(0.0, ca(acc, 0.7)), (0.3, ca(acc, 0.28)), (1.0, ca(acc, 0.0))])?);
+            dc.EndDraw(None, None)?;
+            dc.SetTarget(&dot);
+            dc.BeginDraw();
+            dc.Clear(Some(&D2D1_COLOR_F { r: 1.0, g: 1.0, b: 1.0, a: 1.0 }));
+            dc.EndDraw(None, None)?;
+            dc.SetTarget(&old);
+        }
+        // the sphere's body: near black, a faint sheen up and to the left, a fresnel glow, a thin rim of light
+        let gloss = if light { bg } else { ink };
+        let sphere: [ID2D1Brush; 3] = [
+            g.brush(body)?.cast()?,
+            radial(ox - s * 0.2, oy - s * 0.2, -s * 0.18, -s * 0.22, s * 1.35, s * 1.35, &[(0.0, ca(gloss, 0.1)), (0.45, ca(gloss, 0.025)), (1.0, ca(gloss, 0.0))])?.cast()?,
+            radial(ox, oy, 0.0, 0.0, s, s, &[(0.7, ca(gloss, 0.0)), (0.94, ca(gloss, 0.015)), (1.0, ca(gloss, 0.16))])?.cast()?,
+        ];
+        let rim: ID2D1Brush = unsafe { g.dc.CreateLinearGradientBrush(
+            &D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES { startPoint: p2(ox + s * 0.7, oy - s * 0.7), endPoint: p2(ox - s * 0.7, oy + s * 0.7) }, None,
+            &grad(&[(0.0, ca(gloss, 0.7)), (0.5, ca(gloss, 0.12)), (1.0, ca(gloss, 0.03))])?)?.cast()? };
+        // the shell: stacked slats, each carrying a row of red lights; some burn steadily, others flicker
+        let ribs: Vec<Rib> = (0..ORB_L).map(|k| {
+            let phi = -1.4 + 2.8 * (k as f32 + 0.5) / ORB_L as f32;
+            let n = ((phi.cos() * 84.0).round() as usize).max(6);
+            let base: Vec<f32> = (0..n).map(|_| if rng.f() < 0.17 { rng.range(0.3, 0.65) } else { 0.0 }).collect();
+            let b = base.iter().map(|&v| v.max(if rng.f() < 0.12 { rng.range(0.3, 1.0) } else { 0.0 })).collect();
+            Rib { phi, n, o: rng.range(0.0, TAU), base, b }
+        }).collect();
+        let dc3: ID2D1DeviceContext3 = g.dc.cast()?;
+        let batch = unsafe { dc3.CreateSpriteBatch()? };
+        let mut o = Orb { back, front, glow, dot, batch, dc3, factory, sphere, rim, leds, ribs, packets: Vec::new(), rng,
+                          s, ox, oy, w, h, t: 0.0, spin: 0.0, still: false, dest: Vec::new(), tint: Vec::new() };
+        o.t = o.rng.range(0.0, 300.0);
+        o.spin = o.rng.range(-0.5, 0.1);
+        o.packets = (0..22).map(|_| o.packet()).collect();
+        Ok(o)
+    }
+
+    fn packet(&mut self) -> (usize, f32, f32, usize) {
+        let k = (self.rng.f() * ORB_L as f32) as usize % ORB_L;
+        let pos = self.rng.range(0.0, self.ribs[k].n as f32);
+        let v = self.rng.range(3.0, 11.0) * if self.rng.f() < 0.5 { -1.0 } else { 1.0 };
+        (k, pos, v, 2 + (self.rng.f() * 6.0) as usize)
+    }
+
+    /// a point on the shell: latitude phi, body longitude th; returns x, y, depth, light
+    fn pt(&self, phi: f32, th: f32) -> (f32, f32, f32, f32) {
+        let a = th + self.spin;
+        let cp = phi.cos();
+        let (x, y, z) = (cp * a.sin(), phi.sin(), cp * a.cos());
+        let t1 = 0.34f32;
+        let (y2, z2) = (y * t1.cos() - z * t1.sin(), y * t1.sin() + z * t1.cos());
+        let lam = (-0.48 * x + 0.58 * y2 + 0.66 * z2).max(0.0);
+        (self.ox + x * self.s, self.oy - y2 * self.s, z2, lam)
+    }
+
+    fn sprites(&mut self, g: &Gfx, bmp: &ID2D1Bitmap1, add: bool) -> Result<()> {
+        if self.dest.is_empty() { return Ok(()); }
+        unsafe {
+            let n = self.dest.len() as u32;
+            self.batch.Clear();
+            self.batch.AddSprites(n, self.dest.as_ptr(), None, Some(self.tint.as_ptr()), None,
+                                  size_of::<D2D_RECT_F>() as u32, 0, size_of::<D2D1_COLOR_F>() as u32, 0)?;
+            g.dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);   // sprite batches need it
+            if add { g.dc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_ADD); }
+            self.dc3.DrawSpriteBatch(&self.batch, 0, n, bmp, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, D2D1_SPRITE_OPTIONS_NONE);
+            g.dc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_SOURCE_OVER);
+            g.dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+        }
+        self.dest.clear(); self.tint.clear();
+        Ok(())
+    }
+}
+
+impl Background for Orb {
+    fn fps(&self) -> f32 { if self.still { 0.0 } else { 20.0 } }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        self.still = level <= 0.0;   // 0 stills it: the frame as it is stays up
+        if !self.still {
+            let sp = 0.4 + level * 1.6;
+            self.t += dt * sp;
+            self.spin += dt * 0.05 * sp;
+            let fade = (-dt * sp * 1.1).exp();   // lights die down to their resting glow
+            for rb in &mut self.ribs { for j in 0..rb.n { rb.b[j] = rb.base[j].max(rb.b[j] * fade); } }
+            let mut n = dt * sp * 70.0;   // flickers
+            while n > 0.0 {
+                if n < 1.0 && self.rng.f() > n { break; }
+                let k = (self.rng.f() * ORB_L as f32) as usize % ORB_L;
+                let j = (self.rng.f() * self.ribs[k].n as f32) as usize % self.ribs[k].n;
+                self.ribs[k].b[j] = self.rng.range(0.5, 1.0);
+                n -= 1.0;
+            }
+            for i in 0..self.packets.len() {   // packets streaming along the slats
+                let (k, mut pos, v, len) = self.packets[i];
+                pos += v * dt * sp;
+                let rn = self.ribs[k].n as i64;
+                for j in 0..len {
+                    let q = ((pos.floor() as i64 - v.signum() as i64 * j as i64) % rn + rn) % rn;
+                    let b = &mut self.ribs[k].b[q as usize];
+                    *b = b.max(1.0 - j as f32 / len as f32 * 0.6);
+                }
+                self.packets[i] = if self.rng.f() < dt * 0.12 { self.packet() } else { (k, pos, v, len) };
+            }
+        }
+        let light = look.light;
+        let full = rect(0.0, 0.0, self.w, self.h);
+        unsafe { g.dc.DrawBitmap(&self.back, Some(&full), 1.0, D2D1_INTERPOLATION_MODE_LINEAR, None, None); }
+        // the racks' status lights: steady, blinking, or flickering with traffic
+        let tt = self.t;
+        for l in &self.leds {
+            let on = match l.kind { 0 => 1.0, 1 => if (tt * l.f + l.p).sin() > -0.2 { 1.0 } else { 0.08 },
+                                    _ => if (tt * l.f * 9.0 + l.p).sin() * (tt * l.f * 4.3).sin() > 0.0 { 1.0 } else { 0.15 } };
+            let a = l.a * on;
+            let c = if l.red { look.acc } else { look.ink };
+            self.dest.push(rect(l.x, l.y, l.s, l.s));
+            self.tint.push(D2D1_COLOR_F { r: c[0] * a, g: c[1] * a, b: c[2] * a, a });
+        }
+        let dot = self.dot.clone();
+        self.sprites(g, &dot, false)?;
+        let (ox, oy, s) = (self.ox, self.oy, self.s);
+        unsafe {
+            let dc = &g.dc;
+            let e = D2D1_ELLIPSE { point: p2(ox, oy), radiusX: s, radiusY: s };
+            for b in &self.sphere { dc.FillEllipse(&e, b); }
+            dc.DrawEllipse(&D2D1_ELLIPSE { point: p2(ox, oy), radiusX: s - 0.7, radiusY: s - 0.7 }, &self.rim, 1.4, None);
+            // the slats: a lit upper lip and a fainter lower one per slat, in four steps of how far each stretch
+            // faces us and the light
+            let gap = 2.8 / ORB_L as f32;
+            let paths: Vec<ID2D1PathGeometry> = (0..4).map(|_| self.factory.CreatePathGeometry()).collect::<Result<_>>()?;
+            let sinks: Vec<ID2D1GeometrySink> = paths.iter().map(|p| p.Open()).collect::<Result<_>>()?;
+            for rb in &self.ribs {
+                for (dphi, dim) in [(gap * 0.42, false), (-gap * 0.3, true)] {
+                    let mut prev: Option<(f32, f32, f32, f32)> = None;
+                    for i in 0..=ORB_N {
+                        let p = self.pt(rb.phi + dphi, (i % ORB_N) as f32 / ORB_N as f32 * TAU);
+                        if let Some(q) = prev {
+                            if p.2 > 0.0 && q.2 > 0.0 {
+                                let b = p.2.min(q.2).powf(0.7) * (0.25 + 0.75 * p.3) * if dim { 0.45 } else { 1.0 };
+                                if b > 0.04 {
+                                    let st = &sinks[if b < 0.18 { 0 } else if b < 0.36 { 1 } else if b < 0.6 { 2 } else { 3 }];
+                                    st.BeginFigure(p2(q.0, q.1), D2D1_FIGURE_BEGIN_HOLLOW);
+                                    st.AddLine(p2(p.0, p.1));
+                                    st.EndFigure(D2D1_FIGURE_END_OPEN);
+                                }
+                            }
+                        }
+                        prev = Some(p);
+                    }
+                }
+            }
+            let skin = g.brush(if light { look.bg } else { look.dim })?;
+            for (j, al) in [0.04, 0.09, 0.17, 0.3].iter().enumerate() {
+                sinks[j].Close()?;
+                skin.SetOpacity(*al);
+                dc.DrawGeometry(&paths[j], &skin, 0.9, None);
+            }
+        }
+        // the lights: a soft glow under each, then the point itself, narrower toward the edge of the sphere
+        let u = (s / 160.0).max(1.0);
+        let mut lit = Vec::new();
+        for rb in &self.ribs {
+            for j in 0..rb.n {
+                if rb.b[j] < 0.04 { continue; }
+                let p = self.pt(rb.phi, rb.o + j as f32 / rb.n as f32 * TAU);
+                if p.2 > 0.04 { lit.push((p.0, p.1, p.2, rb.b[j])); }
+            }
+        }
+        for &(x, y, z, b) in &lit {
+            let a = (b * z.sqrt() * 0.9).min(1.0);
+            let (gw, gh) = (u * (7.0 + 13.0 * z), u * 10.0);
+            self.dest.push(rect(x - gw / 2.0, y - gh / 2.0, gw, gh));
+            self.tint.push(D2D1_COLOR_F { r: a, g: a, b: a, a });
+        }
+        let glow = self.glow.clone();
+        self.sprites(g, &glow, !light)?;
+        let core = if light { look.acc } else { mixc(look.acc, [1.0, 1.0, 1.0, 1.0], 0.45) };
+        for &(x, y, z, b) in &lit {
+            let a = (b * z.sqrt() * 1.2).min(1.0);
+            let wd = u * (0.8 + 1.6 * z);
+            self.dest.push(rect(x - wd / 2.0, y - u * 0.5, wd, u));
+            self.tint.push(D2D1_COLOR_F { r: core[0] * a, g: core[1] * a, b: core[2] * a, a });
+        }
+        self.sprites(g, &dot, !light)?;
+        unsafe { g.dc.DrawBitmap(&self.front, Some(&full), 1.0, D2D1_INTERPOLATION_MODE_LINEAR, None, None); }
         Ok(())
     }
 }
