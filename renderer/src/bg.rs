@@ -1,5 +1,5 @@
 //! Backgrounds: each one draws into the full-screen scene bitmap that the cards' glass blurs.
-//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record", "notebook", "textmode", "sunprint" and "draft"; every other background falls back to a plain fill until it is.
+//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record", "notebook", "textmode", "sunprint", "draft" and "topo"; every other background falls back to a plain fill until it is.
 use crate::fonts::Fonts;
 use crate::gfx::{Gfx, rect, rgba};
 use crate::looks::{Color, Look};
@@ -29,6 +29,7 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Box<dyn B
         "textmode" => Box::new(Textmode::new(g, fonts, look)?),
         "sunprint" => Box::new(Sunprint::new(g)?),
         "draft" => Box::new(Draft::new(g, fonts, look)?),
+        "topo" => Box::new(Topo::new(g, fonts, look)?),
         _ => Box::new(Plain),
     })
 }
@@ -1321,6 +1322,202 @@ impl Background for Draft {
             keep.push(s);
         }
         self.shapes = keep;
+        Ok(())
+    }
+}
+
+/// a field map: contour lines of made-up ground (every fifth heavier), a lettered grid, a north arrow and a scale
+/// bar; a route draws itself from waypoint to waypoint to an objective, which pulses; then a new route. The map is
+/// all one ink at different strengths, so it is drawn once as a mask and tinted each frame. 24 fps; still at 0.
+pub struct Topo { mask: ID2D1Bitmap1, factory: ID2D1Factory, dash: ID2D1StrokeStyle, fmt: IDWriteTextFormat,
+                  rng: Rng, u: f32, w: f32, h: f32, gs: f32, fs: f32,
+                  pts: Vec<(f32, f32)>, refs: Vec<String>, len: f32, p: f32, hold: f32, fade: f32, still: bool }
+
+impl Topo {
+    fn new(g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Topo> {
+        let (w, h) = (g.w as f32, g.h as f32);
+        let u = w.min(h);
+        let light = look.light;
+        let mut rng = Rng(0x70b0_f1e1_d000_0001);
+        let mask = g.surface(w, h)?;
+        let factory = unsafe { g.dc.GetFactory()? };
+        let gs = (u / 5.0).round();
+        let fs = (u / 70.0).round().max(10.0);
+        let fmt = fonts.format(&look.mono.family, fs, 400)?;
+        unsafe {
+            let dc = &g.dc;
+            let old = dc.GetTarget()?;
+            dc.SetTarget(&mask);
+            dc.BeginDraw();
+            dc.Clear(Some(&D2D1_COLOR_F::default()));
+            let white = g.brush([1.0, 1.0, 1.0, 1.0])?;
+            // the ground: a sum of soft hills and hollows, contoured by marching squares
+            let hills: Vec<(f32, f32, f32, f32)> = (0..9).map(|_| (rng.range(-0.1, 1.1) * w, rng.range(-0.1, 1.1) * h,
+                                                                  rng.range(0.12, 0.32) * u * 1.6, rng.range(-0.7, 1.0))).collect();
+            let ht = |x: f32, y: f32| hills.iter().map(|&(hx, hy, r, a)| a * (-((x - hx).powi(2) + (y - hy).powi(2)) / (r * r)).exp()).sum::<f32>();
+            let c = (u / 90.0).round().max(8.0);
+            let (nx, ny) = ((w / c).ceil() as usize + 1, (h / c).ceil() as usize + 1);
+            let mut f = vec![0.0f32; nx * ny];
+            let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+            for j in 0..ny { for i in 0..nx { let v = ht(i as f32 * c, j as f32 * c); f[j * nx + i] = v; lo = lo.min(v); hi = hi.max(v); } }
+            let step = (hi - lo) / 26.0;
+            for k in 1..26 {
+                let lv = lo + k as f32 * step;
+                let heavy = k % 5 == 0;
+                let path = factory.CreatePathGeometry()?;
+                let sink = path.Open()?;
+                for j in 0..ny - 1 {
+                    for i in 0..nx - 1 {
+                        let (a, b, d, e) = (f[j * nx + i], f[j * nx + i + 1], f[(j + 1) * nx + i], f[(j + 1) * nx + i + 1]);
+                        let (x, y) = (i as f32 * c, j as f32 * c);
+                        let mut pts: Vec<D2D_POINT_2F> = Vec::with_capacity(4);
+                        if (a < lv) != (b < lv) { pts.push(p2(x + c * (lv - a) / (b - a), y)); }
+                        if (b < lv) != (e < lv) { pts.push(p2(x + c, y + c * (lv - b) / (e - b))); }
+                        if (d < lv) != (e < lv) { pts.push(p2(x + c * (lv - d) / (e - d), y + c)); }
+                        if (a < lv) != (d < lv) { pts.push(p2(x, y + c * (lv - a) / (d - a))); }
+                        let mut q = 0;
+                        while q + 1 < pts.len() {
+                            sink.BeginFigure(pts[q], D2D1_FIGURE_BEGIN_HOLLOW);
+                            sink.AddLine(pts[q + 1]);
+                            sink.EndFigure(D2D1_FIGURE_END_OPEN);
+                            q += 2;
+                        }
+                    }
+                }
+                sink.Close()?;
+                white.SetOpacity(if heavy { if light { 0.22 } else { 0.2 } } else if light { 0.1 } else { 0.09 });
+                dc.DrawGeometry(&path, &white, if heavy { 1.4 } else { 1.0 }, None);
+            }
+            // the grid with its references
+            white.SetOpacity(if light { 0.16 } else { 0.14 });
+            let mut x = gs; while x < w { let xx = x.round() + 0.5; dc.DrawLine(p2(xx, 0.0), p2(xx, h), &white, 1.0, None); x += gs; }
+            let mut y = gs; while y < h { let yy = y.round() + 0.5; dc.DrawLine(p2(0.0, yy), p2(w, yy), &white, 1.0, None); y += gs; }
+            white.SetOpacity(0.45);
+            let text = |s: &str, x: f32, y: f32, al: f32| {   // al: 0 left, .5 centre, 1 right of x; y is the top
+                let t: Vec<u16> = s.encode_utf16().collect();
+                let wd = 200.0;
+                if let Ok(l) = fonts.dw.CreateTextLayout(&t, &fmt, wd, fs * 2.0) {
+                    let _ = l.SetTextAlignment(if al == 0.0 { DWRITE_TEXT_ALIGNMENT_LEADING } else if al == 1.0 { DWRITE_TEXT_ALIGNMENT_TRAILING } else { DWRITE_TEXT_ALIGNMENT_CENTER });
+                    dc.DrawTextLayout(p2(x - wd * al, y), &l, &white, D2D1_DRAW_TEXT_OPTIONS_NONE);
+                }
+            };
+            let (mut x, mut n) = (0.0, 0u8); while x < w { text(&((b'A' + n % 26) as char).to_string(), x + fs * 0.4, fs * 0.4, 0.0); x += gs; n += 1; }
+            let (mut y, mut n) = (gs, 1); while y < h { text(&format!("{n:02}"), fs * 0.4, y + fs * 0.4, 0.0); y += gs; n += 1; }
+            // north arrow and scale bar, bottom right
+            let (ax, ay) = (w - u * 0.07, h - u * 0.16);
+            white.SetOpacity(0.5);
+            let arrow = factory.CreatePathGeometry()?;
+            let sink = arrow.Open()?;
+            sink.BeginFigure(p2(ax, ay - u * 0.05), D2D1_FIGURE_BEGIN_FILLED);
+            sink.AddLine(p2(ax + u * 0.015, ay)); sink.AddLine(p2(ax, ay - u * 0.012)); sink.AddLine(p2(ax - u * 0.015, ay));
+            sink.EndFigure(D2D1_FIGURE_END_CLOSED);
+            sink.Close()?;
+            dc.FillGeometry(&arrow, &white, None);
+            text("N", ax, ay + fs * 0.4, 0.5);
+            let (sx, sy) = (w - u * 0.3, h - u * 0.05);
+            for i in 0..4 { white.SetOpacity(if i % 2 == 1 { 0.2 } else { 0.5 }); dc.FillRectangle(&rect(sx + i as f32 * u * 0.05, sy, u * 0.05, fs * 0.4), &white); }
+            white.SetOpacity(0.45);
+            text("0", sx, sy + fs * 0.8, 0.0);
+            text("2 KM", sx + u * 0.2, sy + fs * 0.8, 1.0);
+            dc.EndDraw(None, None)?;
+            dc.SetTarget(&old);
+        }
+        let lw = (u / 400.0).max(1.5);
+        let props = D2D1_STROKE_STYLE_PROPERTIES { dashStyle: D2D1_DASH_STYLE_CUSTOM, ..Default::default() };
+        let dash = unsafe { factory.CreateStrokeStyle(&props, Some(&[u / 90.0 / lw, u / 140.0 / lw]))? };
+        let mut t = Topo { mask, factory, dash, fmt, rng, u, w, h, gs, fs, pts: Vec::new(), refs: Vec::new(), len: 0.0,
+                           p: 0.0, hold: 0.0, fade: 1.0, still: false };
+        t.route();
+        t.p = t.len;   // the first route is already drawn; later ones draw themselves
+        Ok(t)
+    }
+
+    /// waypoints in a loose line across the map, ending at the objective
+    fn route(&mut self) {
+        let (w, h) = (self.w, self.h);
+        let m = self.u * 0.12;
+        let n = 4 + (self.rng.f() * 3.0) as usize;
+        let (mut x, mut y) = (self.rng.range(m, w * 0.3), self.rng.range(m, h - m));
+        self.pts.clear();
+        for _ in 0..n {
+            self.pts.push((x, y));
+            x += self.rng.range(0.1, 0.2) * w;
+            y = (y + self.rng.range(-0.25, 0.25) * h).clamp(m, h - m);
+        }
+        self.len = self.pts.windows(2).map(|s| ((s[1].0 - s[0].0).powi(2) + (s[1].1 - s[0].1).powi(2)).sqrt()).sum();
+        let gs = self.gs;
+        self.refs = self.pts.iter().map(|&(px, py)| format!("{}{:02}", (b'A' + ((px / gs) as u32 % 26) as u8) as char, (py / gs) as u32 + 1)).collect();
+        self.p = 0.0; self.hold = 0.0; self.fade = 1.0;
+    }
+}
+
+impl Background for Topo {
+    fn fps(&self) -> f32 { if self.still { 0.0 } else { 24.0 } }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        self.still = level <= 0.0;
+        if !self.still {
+            let sp = 0.4 + level * 1.6;
+            if self.p < self.len { self.p += dt * sp * self.u * 0.06; }
+            else { self.hold += dt * sp; if self.hold > 14.0 { self.fade -= dt * 0.5; if self.fade <= 0.0 { self.route(); } } }
+        }
+        let (fs, s) = (self.fs, self.u / 110.0);
+        unsafe {
+            let dc = &g.dc;
+            dc.Clear(Some(&rgba(look.bg)));
+            let ink = g.brush(look.ink)?;
+            dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);   // FillOpacityMask needs it
+            dc.FillOpacityMask(&self.mask, &ink, Some(&rect(0.0, 0.0, self.w, self.h)), None);
+            dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+            // the route so far, dashed
+            let acc = g.brush(look.acc)?;
+            acc.SetOpacity(0.85 * self.fade);
+            let lw = (self.u / 400.0).max(1.5);
+            let path = self.factory.CreatePathGeometry()?;
+            let sink = path.Open()?;
+            let pts = &self.pts;
+            sink.BeginFigure(p2(pts[0].0, pts[0].1), D2D1_FIGURE_BEGIN_HOLLOW);
+            let (mut left, mut reached) = (self.p, 0);
+            for i in 1..pts.len() {
+                if left <= 0.0 { break; }
+                let ((ax, ay), (bx, by)) = (pts[i - 1], pts[i]);
+                let d = ((bx - ax).powi(2) + (by - ay).powi(2)).sqrt();
+                let f = (left / d).min(1.0);
+                sink.AddLine(p2(ax + (bx - ax) * f, ay + (by - ay) * f));
+                left -= d;
+                if f >= 1.0 { reached = i; }
+            }
+            sink.EndFigure(D2D1_FIGURE_END_OPEN);
+            sink.Close()?;
+            dc.DrawGeometry(&path, &acc, lw, &self.dash);
+            let label = |t: &str, x: f32, y: f32, b: &ID2D1SolidColorBrush| {
+                let t: Vec<u16> = t.encode_utf16().collect();
+                let f = &self.fmt;
+                let _ = f.SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+                dc.DrawText(&t, f, &rect(x, y - fs, 400.0, fs * 2.0), b, D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL);
+            };
+            let inkt = g.brush(look.ink)?;
+            inkt.SetOpacity(0.7 * self.fade);
+            for i in 0..=reached {
+                let (x, y) = pts[i];
+                acc.SetOpacity(0.9 * self.fade);
+                if i == pts.len() - 1 {   // the objective: a ringed cross, pulsing
+                    let k = 0.5 + 0.5 * (self.hold * 4.0).sin();
+                    dc.DrawEllipse(&D2D1_ELLIPSE { point: p2(x, y), radiusX: s * (2.0 + k), radiusY: s * (2.0 + k) }, &acc, lw, None);
+                    dc.DrawLine(p2(x - s * 3.5, y), p2(x + s * 3.5, y), &acc, lw, None);
+                    dc.DrawLine(p2(x, y - s * 3.5), p2(x, y + s * 3.5), &acc, lw, None);
+                    label(&format!("OBJ  {}", self.refs[i]), x + s * 4.5, y - s * 3.0, &acc);
+                } else {
+                    let tri = self.factory.CreatePathGeometry()?;
+                    let sk = tri.Open()?;
+                    sk.BeginFigure(p2(x, y - s * 1.6), D2D1_FIGURE_BEGIN_HOLLOW);
+                    sk.AddLine(p2(x + s * 1.4, y + s)); sk.AddLine(p2(x - s * 1.4, y + s));
+                    sk.EndFigure(D2D1_FIGURE_END_CLOSED);
+                    sk.Close()?;
+                    dc.DrawGeometry(&tri, &acc, lw, None);
+                    label(&format!("WP{}  {}", i + 1, self.refs[i]), x + s * 2.4, y - s * 1.8, &inkt);
+                }
+            }
+        }
         Ok(())
     }
 }
