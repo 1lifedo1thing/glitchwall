@@ -8,12 +8,26 @@
   /* A green phosphor terminal: glowing green lines and type on black glass, amber for anything paused. All fonts bundled. */
   @font-face { font-family:'Departure Mono'; src:url('DepartureMono-Regular.otf') format('opentype'); font-display:block; }
   @font-face { font-family:'VT323'; src:url('fonts/VT323-Regular.ttf'); font-display:block; }
+  @font-face { font-family:'IBM Plex Mono'; src:url('fonts/IBMPlexMono-Regular.ttf'); font-display:block; }
+  @font-face { font-family:'Chakra Petch'; src:url('fonts/ChakraPetch-Regular.ttf'); font-display:block; }
+  @font-face { font-family:'Doto'; src:url('fonts/Doto.ttf'); font-weight:100 900; font-display:block; }
+  @font-face { font-family:'Saira Stencil One'; src:url('fonts/SairaStencilOne-Regular.ttf'); font-display:block; }
+  @font-face { font-family:'Instrument Serif'; src:url('fonts/InstrumentSerif-Regular.ttf'); font-display:block; }
+  @font-face { font-family:'Courier Prime'; src:url('fonts/CourierPrime-Regular.ttf'); font-display:block; }
+  @font-face { font-family:'DM Mono'; src:url('fonts/DMMono-Regular.ttf'); font-display:block; }
+  @font-face { font-family:'Fira Code'; src:url('fonts/FiraCode.ttf'); font-weight:300 700; font-display:block; }
+  @font-face { font-family:'Overpass Mono'; src:url('fonts/OverpassMono.ttf'); font-weight:300 700; font-display:block; }
+  @font-face { font-family:'Gelasio'; src:url('fonts/Gelasio.ttf'); font-weight:400 700; font-display:block; }
+  @font-face { font-family:'Caveat'; src:url('fonts/Caveat.ttf'); font-weight:400 700; font-display:block; }
+  @font-face { font-family:'Cascadia Mono'; src:url('fonts/CascadiaMono.ttf'); font-weight:200 700; font-display:block; }
+  @font-face { font-family:'Inconsolata'; src:url('fonts/Inconsolata.ttf'); font-weight:200 900; font-display:block; }
+  @font-face { font-family:'DotGothic16'; src:url('fonts/DotGothic16-Rain.ttf'); font-display:block; }
   :root {
     --bg:#010401; --glass:#031008; --ph:#5dff7a; --ph-hi:#c8ffd0; --ph-dim:#2c8f41; --ph-line:rgba(var(--ph-rgb),.3); --ph-faint:rgba(var(--ph-rgb),.12);
     --glow:0 0 5px rgba(var(--ph-rgb),.6); --ph-rgb:93,255,122; --amber:#ffb000; --red:#ff5a4a;
   }
   * { box-sizing:border-box; }
-  html, body { margin:0; height:100%; background:var(--bg); color:var(--ph-dim); font:12px/1.4 'Departure Mono', Consolas, monospace; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--ph-dim); font:var(--fmw, 400) calc(12px * var(--fms, 1))/1.4 var(--fm, 'Departure Mono', Consolas, monospace); }
   body { display:grid; grid-template-rows:auto minmax(0,1fr) auto; height:calc(100vh / var(--z, 1)); overflow:hidden;
          background:radial-gradient(120% 100% at 50% 35%, var(--glass), var(--bg) 75%); }
   body::after { content:''; position:fixed; inset:0; pointer-events:none; z-index:50;   /* scanlines over the whole tube */
@@ -24,7 +38,7 @@
 
   /* ---------- header: name, status lamps, sound, the pause key */
   header { display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; padding:10px 14px; border-bottom:1px solid var(--ph-line); }
-  .brand { font:21px/1 'Departure Mono', monospace; letter-spacing:.4em; color:var(--ph); text-shadow:var(--glow), 0 0 16px rgba(var(--ph-rgb),.3); }
+  .brand { font:var(--fmw, 400) calc(21px * var(--fms, 1))/1 var(--fm, 'Departure Mono', Consolas, monospace); letter-spacing:.4em; color:var(--ph); text-shadow:var(--glow), 0 0 16px rgba(var(--ph-rgb),.3); }
   .brand small { display:block; font-size:9px; letter-spacing:.3em; color:var(--ph-dim); margin-top:5px; text-shadow:none; }
   .brand .cur { display:inline-block; width:.55em; height:.9em; margin-left:.1em; vertical-align:-2px; background:var(--ph); box-shadow:var(--glow); }
   .brand .cur.off { opacity:0; }
@@ -72,9 +86,9 @@
 
   /* the readout: what the control under the mouse or keyboard does */
   #readout { min-width:0; min-height:0; overflow:hidden; color:var(--ph); text-shadow:var(--glow); }
-  #readout .l1 { font:22px/1 'VT323', monospace; letter-spacing:.08em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #readout .l1 { font:var(--fdw, 400) calc(22px * var(--fds, 1))/1 var(--fd, 'VT323', monospace); letter-spacing:.08em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   #readout .l1::before { content:'$ '; color:var(--ph-dim); }
-  #readout .l2 { font:18px/1.15 'VT323', monospace; margin-top:7px; color:var(--ph-dim); text-shadow:none; overflow-wrap:anywhere; }
+  #readout .l2 { font:var(--fdw, 400) calc(18px * var(--fds, 1))/1.15 var(--fd, 'VT323', monospace); margin-top:7px; color:var(--ph-dim); text-shadow:none; overflow-wrap:anywhere; }
   #readout .err { color:var(--red); }
 
   /* switches: a slide toggle that lights when on */
@@ -89,7 +103,7 @@
   .sw.on .name { color:var(--ph); text-shadow:var(--glow); }
   .labelrow { display:flex; gap:10px; align-items:center; margin-top:10px; }
   .labelrow label { font-size:9px; letter-spacing:.15em; }
-  #label { flex:1; min-width:0; padding:3px 8px; font:19px 'VT323', monospace; color:var(--ph); background:transparent; border:1px solid var(--ph-line); border-radius:2px; outline:none; text-shadow:var(--glow); }
+  #label { flex:1; min-width:0; padding:3px 8px; font:var(--fdw, 400) calc(19px * var(--fds, 1)) var(--fd, 'VT323', monospace); color:var(--ph); background:transparent; border:1px solid var(--ph-line); border-radius:2px; outline:none; text-shadow:var(--glow); }
   #label:focus { border-color:var(--ph); box-shadow:var(--glow); }
 
   /* selectors: the setting in a window, ridges beside it that roll as it turns */
@@ -99,7 +113,7 @@
   .knob { display:flex; flex-direction:column; align-items:center; gap:6px; background:none; border:0; padding:3px 0; cursor:ns-resize; border-radius:3px; min-width:0; }
   .rotor { display:flex; gap:3px; width:100%; height:44px; }
   .win { flex:1; min-width:0; display:grid; place-items:center; overflow:hidden; padding:0 3px; border:1px solid var(--ph-line); border-radius:2px; background:var(--glass); }
-  .win .val { display:block; max-width:100%; text-align:center; font:18px 'VT323', monospace; color:var(--ph); text-shadow:var(--glow); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .win .val { display:block; max-width:100%; text-align:center; font:var(--fdw, 400) calc(18px * var(--fds, 1)) var(--fd, 'VT323', monospace); color:var(--ph); text-shadow:var(--glow); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .wheel { width:8px; border:1px solid var(--ph-dim); border-radius:2px; transition:background-position .18s;
            background:repeating-linear-gradient(180deg, var(--ph-dim) 0 1px, transparent 1px 5px); }
   .knob .name { font-size:9px; letter-spacing:.12em; }
@@ -108,16 +122,16 @@
   .drum { position:relative; height:54px; overflow:hidden; cursor:ew-resize; touch-action:none; border:1px solid var(--ph-line); border-radius:2px; background:var(--glass); }
   .drum .window { position:absolute; left:50%; top:6px; bottom:6px; width:132px; margin-left:-66px; border:1px solid var(--ph); box-shadow:var(--glow); }
   .drum .item { position:absolute; left:50%; top:0; height:100%; width:124px; margin-left:-62px; display:grid; place-items:center;
-                font:22px 'VT323', monospace; letter-spacing:.06em; color:var(--ph-dim); white-space:nowrap; transition:transform .22s, opacity .22s; }
+                font:var(--fdw, 400) calc(22px * var(--fds, 1)) var(--fd, 'VT323', monospace); letter-spacing:.06em; color:var(--ph-dim); white-space:nowrap; transition:transform .22s, opacity .22s; }
   .drum .item.sel { color:var(--ph); text-shadow:var(--glow); }
   .drum::after { content:''; position:absolute; inset:0; pointer-events:none; background:linear-gradient(90deg, var(--glass), transparent 32%, transparent 68%, var(--glass)); }
-  .drumfoot { display:flex; justify-content:space-between; margin-top:6px; font:16px/1 'VT323', monospace; }
+  .drumfoot { display:flex; justify-content:space-between; margin-top:6px; font:var(--fdw, 400) calc(16px * var(--fds, 1))/1 var(--fd, 'VT323', monospace); }
 
   /* faders, lying flat, two to a row, so the module stays short */
   .faders { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:6px 16px; }
   .fader { display:grid; grid-template-columns:50px minmax(0,1fr) 30px; align-items:center; gap:7px; padding:1px 3px; border-radius:3px; }
   .fader .name { font-size:9px; letter-spacing:.12em; }
-  .fader .val { text-align:center; font:18px/1.15 'VT323', monospace; color:var(--ph); text-shadow:var(--glow); border:1px solid var(--ph-line); border-radius:2px; }
+  .fader .val { text-align:center; font:var(--fdw, 400) calc(18px * var(--fds, 1))/1.15 var(--fd, 'VT323', monospace); color:var(--ph); text-shadow:var(--glow); border:1px solid var(--ph-line); border-radius:2px; }
   .track { position:relative; height:20px; touch-action:none; cursor:ew-resize; }
   .track .ticks { position:absolute; inset:0 4px; background:repeating-linear-gradient(90deg, var(--ph-faint) 0 1px, transparent 1px 10%);
                   -webkit-mask:linear-gradient(#000 0 5px, transparent 5px 15px, #000 15px); mask:linear-gradient(#000 0 5px, transparent 5px 15px, #000 15px); }
@@ -130,7 +144,7 @@
 
   /* the key legend */
   footer { display:flex; flex-wrap:wrap; gap:6px 18px; padding:7px 16px; border-top:1px solid var(--ph-line); font-size:10px; letter-spacing:.05em; }
-  kbd { display:inline-block; min-width:18px; padding:0 4px; margin-right:4px; text-align:center; font:10px/16px 'Departure Mono', monospace; color:var(--ph); border:1px solid var(--ph-dim); border-radius:2px; }
+  kbd { display:inline-block; min-width:18px; padding:0 4px; margin-right:4px; text-align:center; font:var(--fmw, 400) calc(10px * var(--fms, 1))/16px var(--fm, 'Departure Mono', Consolas, monospace); color:var(--ph); border:1px solid var(--ph-dim); border-radius:2px; }
 
 
   #resetall:hover, #snd:hover, #ask:hover { border-color:var(--ph); color:var(--ph); }
@@ -501,7 +515,7 @@ function renderOpts() {
 function wear() {
   const L = window.LOOKS && window.LOOKS.themes, name = S.palette && S.palette !== 'theme' ? S.palette : S.theme;
   const t = L && L[name], st = document.documentElement.style;
-  const keys = ['--bg', '--glass', '--ph', '--ph-hi', '--ph-dim', '--ph-rgb', '--amber', '--mod', '--glow', '--scan'];
+  const keys = ['--bg', '--glass', '--ph', '--ph-hi', '--ph-dim', '--ph-rgb', '--amber', '--mod', '--glow', '--scan', '--fd', '--fds', '--fm', '--fms', '--fdw', '--fmw'];
   if (!t || name === 'phosphor') { keys.forEach(k => st.removeProperty(k)); return; }
   const hex = c => { const m = /^#?([0-9a-f]{6})/i.exec(c || ''); return m ? [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16)).join(',') : null; };
   st.setProperty('--bg', t.bg); st.setProperty('--glass', t.surface || t.bg);
@@ -510,6 +524,12 @@ function wear() {
   // the orb's window is lit by its red lights (white would make it oracle's twin): red type, white for anything paused
   if (name === 'orb') { st.setProperty('--ph', t.acc); st.setProperty('--ph-hi', '#ff9d94'); st.setProperty('--ph-dim', '#a8302a');
                         st.setProperty('--ph-rgb', hex(t.acc)); st.setProperty('--amber', t.ink); }
+  // the theme's own fonts (or the one picked for it): its title face for the readouts, its typing face for the rest,
+  // sized by how big each draws next to the window's own (VT323 draws small: its scale is 1.4)
+  const F = window.LOOKS.fonts || {}, pick = S.font && S.font !== 'theme' && F[S.font];
+  const disp = pick || F[t.display], mono = pick || F[t.mono];
+  if (disp) { st.setProperty('--fd', disp.family); st.setProperty('--fds', String(Math.min(1.1, (disp.scale || 1) / 1.4))); st.setProperty('--fdw', String(disp.weight || 400)); }
+  if (mono) { st.setProperty('--fm', mono.family); st.setProperty('--fms', String(Math.min(1.2, mono.scale || 1))); st.setProperty('--fmw', String(mono.weight || 400)); }
   // on paper: solid paper panels, no glow, barely-there scan lines
   if (t.mode === 'light') { st.setProperty('--mod', t.surface || t.bg); st.setProperty('--glow', 'none'); st.setProperty('--scan', 'rgba(0,0,0,.04)'); }
   else ['--mod', '--glow', '--scan'].forEach(k => st.removeProperty(k));
