@@ -20,7 +20,9 @@ init, call = redact.Redactor.__init__, redact.Redactor.__call__
 
 def rec_init(self, home=None, user=None, mask_user=True, mask_email=True, entropy_check=True):
     init(self, home, user, mask_user, mask_email, entropy_check)
-    self._cfg = {"home": home, "user": user, "mask_user": mask_user, "mask_email": mask_email, "entropy_check": entropy_check}
+    # the 8.3 short home it saw (a test fakes one), so the port can be handed the same
+    short = redact._short_home(home) if home else ""
+    self._cfg = {"home": home, "short": short, "user": user, "mask_user": mask_user, "mask_email": mask_email, "entropy_check": entropy_check}
 
 
 def rec_call(self, text):

@@ -12,6 +12,7 @@ mod fonts;
 mod gfx;
 mod json;
 mod looks;
+mod redact;
 mod scene;
 
 use std::path::PathBuf;
