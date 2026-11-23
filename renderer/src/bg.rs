@@ -1,5 +1,5 @@
 //! Backgrounds: each one draws into the full-screen scene bitmap that the cards' glass blurs.
-//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid" and "record"; every other background falls back to a plain fill until it is.
+//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record" and "notebook"; every other background falls back to a plain fill until it is.
 use crate::fonts::Fonts;
 use crate::gfx::{Gfx, rect, rgba};
 use crate::looks::{Color, Look};
@@ -25,6 +25,7 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Box<dyn B
         "stop" => Box::new(Stop::new(g, fonts, look)?),
         "grid" => Box::new(Grid { ph: 0.0, still: false }),
         "record" => Box::new(Record::new(g, fonts, look)?),
+        "notebook" => Box::new(Notebook::new(g)?),
         _ => Box::new(Plain),
     })
 }
@@ -742,6 +743,124 @@ impl Background for Record {
             dc.FillEllipse(&e(lr * 0.07), &g.brush(look.bg)?);
             dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2::identity());
         }
+        Ok(())
+    }
+}
+
+/// ruled notebook paper, red margin, punched holes; pencil doodles sketch themselves, hold, then fade. The paper is a
+/// few dozen lines, cheap enough to draw each frame (so a palette change shows at once); 30 fps, still at 0 once
+/// the last doodle has faded.
+pub struct Notebook { doodles: Vec<Doodle>, wait: f32, rng: Rng, round: ID2D1StrokeStyle, factory: ID2D1Factory }
+
+struct Doodle { strokes: Vec<Vec<(f32, f32)>>, n: usize, x: f32, y: f32, rot: f32, t: f32, dur: f32, hold: f32 }
+
+const NB_LINE: f32 = 30.0;
+
+impl Notebook {
+    fn new(g: &Gfx) -> Result<Notebook> {
+        let factory = unsafe { g.dc.GetFactory()? };
+        let props = D2D1_STROKE_STYLE_PROPERTIES { startCap: D2D1_CAP_STYLE_ROUND, endCap: D2D1_CAP_STYLE_ROUND,
+                                                   dashCap: D2D1_CAP_STYLE_ROUND, lineJoin: D2D1_LINE_JOIN_ROUND, ..Default::default() };
+        let round = unsafe { factory.CreateStrokeStyle(&props, None)? };
+        Ok(Notebook { doodles: Vec::new(), wait: 1.0, rng: Rng(0x0b00c_5ce7c4_0001), round, factory })
+    }
+
+    /// the page's six doodles: spiral, star, arrow, wave, ticked box, cube
+    fn shape(&mut self, w: f32, h: f32) -> Doodle {
+        let r = &mut self.rng;
+        let s = r.range(14.0, 30.0);
+        let k = r.f();
+        let mut strokes: Vec<Vec<(f32, f32)>> = Vec::new();
+        let mut poly = |r: &mut Rng, pts: Vec<(f32, f32)>| strokes.push(pts.into_iter().map(|(x, y)| (x + r.range(-0.9, 0.9), y + r.range(-0.9, 0.9))).collect());
+        let pi = std::f32::consts::PI;
+        let sq = |dx: f32, dy: f32| vec![(-s / 2.0 + dx, -s / 2.0 + dy), (s / 2.0 + dx, -s / 2.0 + dy), (s / 2.0 + dx, s / 2.0 + dy),
+                                         (-s / 2.0 + dx, s / 2.0 + dy), (-s / 2.0 + dx, -s / 2.0 + dy)];
+        if k < 0.2 {
+            let mut p = Vec::new(); let mut a = 0.0f32;
+            while a < pi * 6.0 { let rr = 2.0 + a * s / 9.0; p.push((a.cos() * rr, a.sin() * rr)); a += 0.2; }
+            poly(r, p);
+        } else if k < 0.4 {
+            poly(r, (0..=10).map(|i| { let a = -pi / 2.0 + i as f32 * pi / 5.0; let rr = if i % 2 == 1 { s * 0.42 } else { s }; (a.cos() * rr, a.sin() * rr) }).collect());
+        } else if k < 0.55 {
+            poly(r, vec![(-s * 2.0, 0.0), (s * 2.0, 0.0)]);
+            poly(r, vec![(s * 1.4, -s * 0.5), (s * 2.0, 0.0), (s * 1.4, s * 0.5)]);
+        } else if k < 0.7 {
+            let mut p = Vec::new(); let mut x = -s * 3.0;
+            while x <= s * 3.0 { p.push((x, (x * 0.18).sin() * s * 0.25)); x += 4.0; }
+            poly(r, p);
+        } else if k < 0.85 {
+            poly(r, sq(0.0, 0.0));
+            poly(r, vec![(-s * 0.3, 0.0), (-s * 0.05, s * 0.3), (s * 0.55, -s * 0.6)]);
+        } else {
+            let o = s * 0.4;
+            poly(r, sq(0.0, 0.0));
+            poly(r, sq(o, -o));
+            for (x, y) in [(-s / 2.0, -s / 2.0), (s / 2.0, -s / 2.0), (s / 2.0, s / 2.0), (-s / 2.0, s / 2.0)] { poly(r, vec![(x, y), (x + o, y - o)]); }
+        }
+        let n = strokes.iter().map(|p| p.len()).sum();
+        Doodle { strokes, n, x: r.range(w * 0.12, w * 0.95), y: r.range(h * 0.12, h * 0.92), rot: r.range(-0.3, 0.3),
+                 t: 0.0, dur: r.range(1.5, 3.0), hold: r.range(5.0, 9.0) }
+    }
+}
+
+impl Background for Notebook {
+    fn fps(&self) -> f32 { if self.doodles.is_empty() && self.wait <= -1.0e6 { 0.0 } else { 30.0 } }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        let (w, h) = (g.w as f32, g.h as f32);
+        let with = |c: Color, a: f32| [c[0], c[1], c[2], a];
+        unsafe {
+            let dc = &g.dc;
+            dc.Clear(Some(&rgba(look.bg)));
+            let rule = g.brush(with(look.dim, 0.75))?;
+            let mut y = NB_LINE * 3.0 + 0.5;
+            while y < h { dc.DrawLine(D2D_POINT_2F { x: 0.0, y }, D2D_POINT_2F { x: w, y }, &rule, 1.0, None); y += NB_LINE; }
+            let margin = g.brush(with(look.acc, 0.55))?;
+            let mx = (w * 0.08).round() + 0.5;
+            for x in [mx, mx + 3.0] { dc.DrawLine(D2D_POINT_2F { x, y: 0.0 }, D2D_POINT_2F { x, y: h }, &margin, 1.0, None); }
+            let hole = g.brush([0.0, 0.0, 0.0, 0.07])?;
+            let hr = w.min(h) * 0.016;
+            for f in [0.18, 0.5, 0.82] {
+                dc.FillEllipse(&D2D1_ELLIPSE { point: D2D_POINT_2F { x: w * 0.03, y: h * f }, radiusX: hr, radiusY: hr }, &hole);
+            }
+        }
+        // a new doodle every 1.5-4 s, up to `level` x 8 at once; none while the rain is off
+        self.wait -= dt;
+        if level <= 0.0 { if self.doodles.is_empty() { self.wait = -1.0e7; } }   // nothing left to animate: still
+        else if self.wait < -1.0e6 { self.wait = 1.0; }
+        if self.wait <= 0.0 && self.wait > -1.0e6 && self.doodles.len() < (level * 8.0).round() as usize {
+            let d = self.shape(w, h);
+            self.doodles.push(d);
+            self.wait = self.rng.range(1.5, 4.0);
+        }
+        let pencil = g.brush(look.hi)?;
+        let mut keep = Vec::new();
+        for mut d in std::mem::take(&mut self.doodles) {
+            d.t += dt;
+            let end = d.dur + d.hold;
+            let a = if d.t < end { 1.0 } else { 1.0 - (d.t - end) / 2.0 };
+            if a <= 0.0 { continue; }
+            let mut left = (d.n as f32 * (d.t / d.dur).min(1.0)).floor() as usize;
+            unsafe {
+                let (s, c) = d.rot.sin_cos();
+                g.dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2 { M11: c, M12: s, M21: -s, M22: c, M31: d.x, M32: d.y });
+                pencil.SetOpacity(0.55 * a);
+                for p in &d.strokes {
+                    if left <= 1 { break; }
+                    let upto = p.len().min(left);
+                    let path = self.factory.CreatePathGeometry()?;
+                    let sink = path.Open()?;
+                    sink.BeginFigure(D2D_POINT_2F { x: p[0].0, y: p[0].1 }, D2D1_FIGURE_BEGIN_HOLLOW);
+                    for &(x, y) in &p[1..upto] { sink.AddLine(D2D_POINT_2F { x, y }); }
+                    sink.EndFigure(D2D1_FIGURE_END_OPEN);
+                    sink.Close()?;
+                    g.dc.DrawGeometry(&path, &pencil, 1.5, &self.round);
+                    left -= p.len().min(left);
+                }
+                g.dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2::identity());
+            }
+            keep.push(d);
+        }
+        self.doodles = keep;
         Ok(())
     }
 }
