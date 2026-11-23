@@ -45,6 +45,7 @@ DEFAULTS = {
     "glass": 58,             # card opacity, 20-95
     "corner": "top-left",    # rest the mouse in this screen corner to open the settings; see CORNERS
     "screens": "all",        # all | primary
+    "tray": False,           # minimizing or closing the settings window sends it to the system tray
 }
 
 TUNE = {   # setting -> (page slider name, lowest, highest)
@@ -75,7 +76,7 @@ def apply_changes(s: dict, changes: dict) -> tuple[dict, list[str]]:
             ok = isinstance(v, str) and v in themes.KINDS[k]
         elif k == "mode":
             ok = v in MODES
-        elif k in ("paused", "commands_only", "mask_user", "mask_email"):
+        elif k in ("paused", "commands_only", "mask_user", "mask_email", "tray"):
             ok = isinstance(v, bool)
         elif k in TUNE:
             _, lo, hi = TUNE[k]

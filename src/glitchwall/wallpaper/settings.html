@@ -35,7 +35,7 @@
   .led.a { background:var(--amber); border-color:var(--amber); box-shadow:0 0 6px var(--amber); }
   .led.r { background:var(--red); border-color:var(--red); box-shadow:0 0 6px var(--red); }
   .grow { flex:1; }
-  #snd { display:flex; align-items:center; gap:7px; background:none; border:1px solid var(--ph-line); cursor:pointer; font-size:10px; letter-spacing:.15em; padding:6px 10px; border-radius:3px; }
+  #snd, #tray { display:flex; align-items:center; gap:7px; background:none; border:1px solid var(--ph-line); cursor:pointer; font-size:10px; letter-spacing:.15em; padding:6px 10px; border-radius:3px; }
   #resetall { display:flex; align-items:center; gap:7px; background:none; border:1px solid var(--ph-line); cursor:pointer; font-size:10px; letter-spacing:.15em; padding:6px 10px; border-radius:3px; }
   #resetall.armed { color:var(--amber); border-color:var(--amber); box-shadow:0 0 8px rgba(255,176,0,.5); text-shadow:0 0 5px rgba(255,176,0,.6); }
   #resetall:focus-visible { outline:1px dashed var(--ph-hi); outline-offset:3px; }
@@ -123,7 +123,7 @@
   .track .slotv { position:absolute; left:4px; right:4px; top:9px; height:2px; background:var(--ph-dim); }
   .track .capf { position:absolute; top:2px; width:10px; height:16px; margin-left:-5px; background:var(--ph); border-radius:1px; box-shadow:0 0 6px var(--ph); }
 
-  .sw:focus-visible, .knob:focus-visible, .fader:focus-visible, #pause:focus-visible, #snd:focus-visible, .drum:focus-visible { outline:1px dashed var(--ph-hi); outline-offset:3px; }
+  .sw:focus-visible, .knob:focus-visible, .fader:focus-visible, #pause:focus-visible, #snd:focus-visible, #tray:focus-visible, .drum:focus-visible { outline:1px dashed var(--ph-hi); outline-offset:3px; }
   .knob:hover .win, .fader:hover .val, .sw:hover .slot { border-color:var(--ph); }
   :focus { outline:none; }
 
@@ -132,7 +132,8 @@
   kbd { display:inline-block; min-width:18px; padding:0 4px; margin-right:4px; text-align:center; font:10px/16px 'Departure Mono', monospace; color:var(--ph); border:1px solid var(--ph-dim); border-radius:2px; }
 
 
-  #resetall:hover, #snd:hover { border-color:var(--ph); color:var(--ph); }
+  #tray[hidden] { display:none; }   /* only in the settings window: a browser tab has no tray to go to */
+  #resetall:hover, #snd:hover, #tray:hover { border-color:var(--ph); color:var(--ph); }
 </style>
 </head>
 <body>
@@ -144,6 +145,7 @@
   </div>
   <span class="grow"></span>
   <button id="resetall" data-help="resetall"><span class="led" id="led-reset"></span><span id="resetall-t">RESET ALL</span></button>
+  <button id="tray" data-help="tray" hidden><span class="led" id="led-tray"></span>TRAY</button>
   <button id="snd" data-help="sound"><span class="led" id="led-snd"></span>SOUND</button>
   <button id="pause" data-help="pause"><span class="cap">P</span><span class="t"><b id="pause-t">PAUSE</b><small id="pause-s">STREAM-SAFE</small></span></button>
 </header>
@@ -239,6 +241,7 @@ function help(h) {
   const [kind, extra] = h.split(':');
   if (kind === 'pause') return say(S.paused ? 'PAUSE · ON' : 'PAUSE · OFF', S.paused ? 'The wallpaper shows nothing at all until you resume. Safe to stream.' : 'Press before you stream or share your screen: the wallpaper goes blank at once.');
   if (kind === 'sound') return say(`SOUND · ${muted ? 'OFF' : 'ON'}`, 'Clicks and clacks in this window as you turn and flip things. Never on the wallpaper. M toggles it.');
+  if (kind === 'tray') return say(`TRAY · ${S.tray ? 'ON' : 'OFF'}`, S.tray ? 'Minimize or close this window and it waits in the system tray: open, pause or quit from its icon.' : 'Closing this window quits it. Turn on to send it to the system tray instead.');
   if (kind === 'label') return say('CORNER LABEL', 'The text in the bottom-right corner of the wallpaper. Enter saves it.');
   if (kind === 'theme') { const v = extra || S.theme; return say(`THEME · ${v.toUpperCase()}${v === S.theme ? '' : '  (CLICK TO PICK)'}`,
                           optText('theme', v) + (cleared && v === S.theme ? ' Earlier tweaks cleared: the theme starts as it comes.' : '')); }
@@ -403,7 +406,7 @@ function snd(kind) {
     if (kind === 'thunk') { tone(t, 120, 45, .16, .55); noise(t, .06, 'lowpass', 700, 1, .6); }
   } catch {}
 }
-const SOUND_OF = k => k === 'theme' ? 'drum' : k === 'paused' ? 'thunk' : SWITCHES[k] ? 'clack' : FADERS[k] ? 'tick' : KNOB_HELP[k] ? 'click' : null;
+const SOUND_OF = k => k === 'theme' ? 'drum' : k === 'paused' ? 'thunk' : SWITCHES[k] || k === 'tray' ? 'clack' : FADERS[k] ? 'tick' : KNOB_HELP[k] ? 'click' : null;
 function toggleSound() {
   muted = !muted;
   try { localStorage.setItem('gw-sound', muted ? 'off' : 'on'); } catch {}
@@ -451,6 +454,9 @@ function build() {
   drum();
   $('pause').addEventListener('click', () => set('paused', !S.paused, true));
   $('snd').addEventListener('click', toggleSound);
+  $('tray').addEventListener('click', () => set('tray', !S.tray, true));
+  const showTray = () => { if (winApi()) $('tray').hidden = false; };
+  showTray(); addEventListener('pywebviewready', showTray);
   $('label').addEventListener('focus', () => { const a = winApi(); if (a && a.keep) a.keep(true); });
   $('label').addEventListener('blur', () => { const a = winApi(); if (a && a.keep) a.keep(false); });
   $('resetall').addEventListener('click', resetAll);
@@ -505,6 +511,7 @@ function render() {
   document.querySelectorAll('.knob, .fader, .sw').forEach(b => b.classList.toggle('changed', b.dataset.help !== 'mode' && differs(b.dataset.help)));
   document.querySelectorAll('.reset').forEach(b => b.classList.toggle('live', GROUPS[b.dataset.group].some(differs)));
   $('led-snd').className = 'led ' + (muted ? '' : 'g');
+  $('led-tray').className = 'led ' + (S.tray ? 'g' : '');
   if (document.activeElement !== $('label')) $('label').value = S.label || '';
   $('pause').classList.toggle('on', !!S.paused);
   $('pause-t').textContent = S.paused ? 'PAUSED' : 'PAUSE';

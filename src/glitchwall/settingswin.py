@@ -5,6 +5,9 @@ idle seconds it slides away leaving a thin strip, and touching the strip brings 
 to undock. While you hold a control the window fades away, so the wallpaper behind is the preview: the page
 asks for that through pywebview's js_api (the `Api` below). Windows only for the fade and docking; elsewhere
 the page still works as a plain window.
+
+With the `tray` setting on, minimizing or closing the window hides it to a notification-area icon instead
+(open the settings, pause/resume the feed, quit); with it off, closing quits as it always did.
 """
 from __future__ import annotations
 
@@ -86,6 +89,7 @@ class Settings:
         self.window = None
         self._fade_gen, self._alpha = 0, 1.0
         self._keep = False                      # the page says: don't hide now (typing in the label)
+        self._tray, self._in_tray, self._quitting, self._was_min = None, False, False, False
 
     def open(self):
         import webview
@@ -97,6 +101,9 @@ class Settings:
         y = int(y0 / scale + max(0, ((y1 - y0) / scale - h) / 2))
         self.window = webview.create_window("glitchwall settings", self.url, js_api=Api(self), width=560, height=h,
                                             x=x, y=y, min_size=(480, 520), background_color="#010401")
+        if WIN:
+            self.window.events.closing += self._on_closing
+            self.window.events.minimized += self._on_minimized
         threading.Thread(target=self._dock_loop, args=(self.window,), daemon=True).start()
         return self.window
 
@@ -131,6 +138,82 @@ class Settings:
 
     def keep(self, on: bool) -> None:
         self._keep = bool(on)
+
+    # ---------- the system tray (the `tray` setting)
+    @staticmethod
+    def _tray_wanted() -> bool:
+        from . import settings as cfg
+        return bool(cfg.load_settings().get("tray"))
+
+    def _on_closing(self):
+        """The window's close button (or Alt+F4). Returning False keeps the window: it goes to the tray."""
+        if self._quitting or not self._tray_wanted():
+            return True
+        threading.Thread(target=self.to_tray, daemon=True).start()   # not on the UI thread: hide() waits for it
+        return False
+
+    def _on_minimized(self):
+        if not self._quitting and self._tray_wanted():
+            self._was_min = True
+            self.to_tray()
+
+    def to_tray(self) -> None:
+        from .tray import Tray
+        if self._tray is None:
+            self._tray = Tray(self.icon, self._tray_tip(), self._tray_menu, watch=self._tray_watch)
+        self._in_tray = True
+        self.window.hide()
+        self._tray.set_tip(self._tray_tip())
+        self._tray.show()
+
+    def from_tray(self) -> None:
+        self._in_tray = False
+        self.window.show()
+        if self._was_min:
+            self._was_min = False
+            self.window.restore()
+        h = self.hwnd()
+        if h:
+            u32.SetForegroundWindow(h)
+        if self._tray:
+            self._tray.hide()
+
+    def quit(self) -> None:
+        self._quitting = True
+        if self._tray:
+            self._tray.hide()
+        self.window.destroy()
+
+    def toggle_pause(self) -> None:
+        from . import settings as cfg
+        s = cfg.load_settings()
+        s["paused"] = not s.get("paused")
+        cfg.save_settings(s)   # the feed sees the file change; the page follows within a few seconds
+        if self._tray:
+            self._tray.set_tip(self._tray_tip())
+
+    @staticmethod
+    def _tray_tip() -> str:
+        from . import settings as cfg
+        return "glitchwall: feed paused" if cfg.load_settings().get("paused") else "glitchwall"
+
+    def _tray_menu(self) -> list:
+        from . import settings as cfg
+        paused = bool(cfg.load_settings().get("paused"))
+        return [("Open settings", self.from_tray),
+                ("Resume the feed" if paused else "Pause the feed (stream-safe)", self.toggle_pause),
+                None,
+                ("Quit settings", self.quit)]
+
+    def _tray_watch(self) -> bool:
+        """Keep the icon while the window is hidden; if it came back some other way (opened again from the Start
+        menu or the hot corner), the icon goes."""
+        h = self.hwnd()
+        if h is None or not u32.IsWindow(h):
+            return False
+        if self._in_tray and u32.IsWindowVisible(h):
+            self._in_tray = False
+        return self._in_tray
 
     # ---------- dock to an edge, slide away when idle
     def _slide(self, h, x: int, y: int, ms: int = 140) -> None:
@@ -204,7 +287,11 @@ class Settings:
 
     def run(self) -> None:
         import webview
-        if WIN:   # its own taskbar button with its own icon, not grouped under Python
+        if WIN:
+            from .winhost import bring_settings_forward
+            if bring_settings_forward():   # already open (maybe waiting in the tray): show that one, not a second
+                return
+            # its own taskbar button with its own icon, not grouped under Python
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("glitchwall.settings")
             from .winhost import quiet_webview
             quiet_webview()
