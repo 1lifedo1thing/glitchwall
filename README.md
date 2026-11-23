@@ -5,6 +5,7 @@
 **Your AI coding agent, live on your desktop.**
 Every command it runs lands on your wallpaper, types itself out with its output, and fades away in the style of the theme you picked.
 
+![Windows only](https://img.shields.io/badge/platform-Windows%20only-00ff41?style=flat-square&labelColor=0c0e0c)
 ![MIT license](https://img.shields.io/badge/license-MIT-00ff41?style=flat-square&labelColor=0c0e0c)
 ![no wallpaper app needed](https://img.shields.io/badge/windows-no%20wallpaper%20app%20needed-00ff41?style=flat-square&labelColor=0c0e0c)
 ![local only](https://img.shields.io/badge/network-localhost%20only-00ff41?style=flat-square&labelColor=0c0e0c)
@@ -210,21 +211,6 @@ The exe version copies `glitchwall.exe` and `glitchwall-feed.exe` (the windowed 
 at logon, no console window) into `%USERPROFILE%\.glitchwall\bin`, so you can delete the download.
 Use `%USERPROFILE%\.glitchwall\bin\glitchwall.exe pause` (or `resume`, `status`, `uninstall`) from then on.
 The exes aren't code-signed, so SmartScreen may say "unknown publisher".
-
-### 3 · macOS / Linux
-
-```
-uv tool install .
-glitchwall install
-```
-
-This writes the wallpaper to the state folder, adds a login item (LaunchAgent / XDG autostart),
-starts the feed and prints the page's `file://` path. Then either point a web-wallpaper app at it
-([Plash](https://github.com/sindresorhus/Plash) on macOS, [Komorebi](https://github.com/Komorebi-Fork/komorebi)
-or KDE's HTML wallpaper plugins on Linux), or open it fullscreen on a spare monitor:
-`chromium --kiosk file:///path/to/index.html` (or `firefox --kiosk`).
-A `file://` page sends `Origin: null`, which the feed accepts with the key.
-<sub>The macOS/Linux path is written but not tested yet. Reports welcome.</sub>
 
 ## Themes 🎨
 
@@ -481,7 +467,7 @@ In `ambient` and `art` mode it reads no logs at all, only its own settings. In `
 
 | Where | What |
 | --- | --- |
-| `%USERPROFILE%\.glitchwall\` (Windows), `~/Library/Application Support/glitchwall/` (macOS), `~/.local/state/glitchwall/` (Linux) | key, settings, pid file, refusal note, `webview\` and `webview-settings\` (WebView2's caches for glitchwall's own windows), and `bin\` for the exe version |
+| `%USERPROFILE%\.glitchwall\` | key, settings, pid file, refusal note, `webview\` and `webview-settings\` (WebView2's caches for glitchwall's own windows), and `bin\` for the exe version |
 | `HKCU\...\CurrentVersion\Run\glitchwall` / `~/.config/autostart/glitchwall.desktop` / `~/Library/LaunchAgents/io.github.glitchwall.plist` | start at logon |
 | `%APPDATA%\Microsoft\Windows\Start Menu\Programs\glitchwall settings.lnk` | Windows: the settings window in the Start menu |
 | `HKCU\Software\Classes\DesktopBackground\Shell\glitchwall` | Windows: *glitchwall settings* in the desktop's right-click menu |
@@ -531,7 +517,7 @@ The web page figure is from 2026-11-22.
 **What the native renderer does.** On Windows, glitchwall draws every background with Direct2D straight from
 a small Rust program, with no browser in between: about a fifth of the CPU and a fifth of the memory of the
 web page. If the renderer is missing, it falls back to the page (`glitchwall config --renderer web` picks the
-page on purpose). On macOS, Linux, OBS and Wallpaper Engine, the web page is the way to run glitchwall.
+page on purpose). In OBS and Wallpaper Engine, the web page is the way to run glitchwall.
 
 **Why the web page is heavier than a video wallpaper.** A video wallpaper hands its work to the graphics
 card's video decoder, so the CPU barely notices. glitchwall draws every frame live (falling glyphs, cards,
@@ -571,11 +557,15 @@ Wallpaper Engine do.
 [`index.html`](src/glitchwall/wallpaper/index.html) plus its name in [`themes.py`](src/glitchwall/themes.py);
 a test checks they agree. Pull requests welcome.
 
+**Does it run on macOS or Linux?** Not today: glitchwall is Windows only (tested on Windows 11). Its renderer draws with
+Direct2D and sits behind your icons through the Windows desktop, both Windows-only. A version for macOS and Linux
+would need a cross-platform renderer and a desktop host for each system, tested on real machines, which this
+project doesn't have yet.
+
 **Can I use another wallpaper app?** You don't need one: on Windows glitchwall puts itself behind your
 icons. But the wallpaper is a plain web page and the feed is a local web server, so anything that can show
 a web page can show it. `glitchwall export DIR` writes the page and its `config.js` to a folder. Use that folder in Wallpaper Engine
-(Windows, as a web wallpaper), [Plash](https://github.com/sindresorhus/Plash) (macOS), a KDE or GNOME web
-wallpaper plugin (Linux), a browser window in kiosk mode, or an OBS **browser source** to put your agent on
+(as a web wallpaper), a browser window in kiosk mode, or an OBS **browser source** to put your agent on
 stream as an overlay (`glitchwall pause` still clears it instantly). Only glitchwall's own windows are tested so far;
 reports welcome.
 
@@ -613,7 +603,7 @@ it against WebView2: about 3.5% CPU and 63 MB against 18% and 330 MB. That settl
    renderer read, so a theme is defined once.
 2. A small Rust renderer (`glitchwall-render`) that reads the same feed as the page and draws behind the icons.
 3. Port the backgrounds one at a time, each checked against the page side by side.
-4. Make native the default on Windows, and keep the page for OBS, Wallpaper Engine, macOS and Linux.
+4. Make native the default on Windows, and keep the page for OBS and Wallpaper Engine.
 
 **The hurdles on the way:**
 
@@ -633,7 +623,7 @@ it against WebView2: about 3.5% CPU and 63 MB against 18% and 330 MB. That settl
 **The payoff (23 November 2026).** All 27 backgrounds run natively, the 18 theme ones with four options each, and native is the
 default on Windows. With the same looks, glitchwall now uses 6.5% of one core and 153 MB, down from 34% and 699 MB:
 about a fifth of the CPU and a fifth of the memory (see [How it compares](#how-it-compares-with-other-live-wallpapers)).
-The web page is still there, unchanged, for streaming through OBS and for every other platform.
+The web page is still there, unchanged, for OBS browser sources and Wallpaper Engine.
 
 ## Development
 

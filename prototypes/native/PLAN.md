@@ -107,3 +107,27 @@ It would be ported with the existing tests turned into shared test vectors.
 - Transition and glow fidelity. CSS filters such as hue-rotate and backdrop blur have direct Direct2D effects, but small
   differences will show side by side.
 - Multi-monitor and DPI. winhost.py handles these today; the renderer gets one window per screen from it.
+
+## M4: Rust everything (planned 2026-11-23)
+
+Goal: one `glitchwall.exe`, no Python, no `uv tool install`. The web page stays (OBS browser source, Wallpaper
+Engine, the no-install demo, the README image tools) and is served by the Rust feed exactly as today.
+
+What is still Python: about 3,300 lines (cli 519, winhost 513, server 355, platforms 314, redact 263, settingswin 235,
+settings 224, ambient 203, prereqs 185, winexe 178, claude_logs 174, demo 97, themes 41) and 1,080 lines of tests.
+
+Pieces, in order; each one is built, tested against the Python version and committed on its own:
+
+1. **Redaction and log following** (redact, claude_logs): a Rust library. The riskiest part, so it goes first
+   with parity tests: the Python tests' inputs and outputs are dumped to JSON fixtures, and Rust must match every
+   one. Medium.
+2. **The feed** (server, settings, ambient, themes, demo): same HTTP API and access checks, so the renderer and the
+   page don't change. Parity tests from test_server, test_settings, test_modes. Large.
+3. **The desktop host** (winhost): screens, behind the icons, sleep and fullscreen checks, restarts, moved into the
+   renderer's process. Medium to large.
+4. **The CLI and install** (cli, platforms, prereqs, winexe): `glitchwall` subcommands, autostart, the desktop
+   menu entry. Medium.
+5. **The settings window** (settingswin): the same settings.html in WebView2, opened from Rust with the `wry`
+   crate instead of pywebview. Small to medium.
+
+Then: package one exe (zip or installer), update the README's install steps and the measurements.
