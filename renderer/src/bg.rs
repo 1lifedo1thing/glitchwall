@@ -1,5 +1,5 @@
 //! Backgrounds: each one draws into the full-screen scene bitmap that the cards' glass blurs.
-//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record", "notebook", "textmode", "sunprint", "draft" and "topo"; every other background falls back to a plain fill until it is.
+//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record", "notebook", "textmode", "sunprint", "draft", "topo" and "radar"; every other background falls back to a plain fill until it is.
 use crate::fonts::Fonts;
 use crate::gfx::{Gfx, rect, rgba};
 use crate::looks::{Color, Look};
@@ -30,6 +30,7 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Box<dyn B
         "sunprint" => Box::new(Sunprint::new(g)?),
         "draft" => Box::new(Draft::new(g, fonts, look)?),
         "topo" => Box::new(Topo::new(g, fonts, look)?),
+        "radar" => Box::new(Radar::new(g, fonts, look)?),
         _ => Box::new(Plain),
     })
 }
@@ -1517,6 +1518,242 @@ impl Background for Topo {
                     label(&format!("WP{}  {}", i + 1, self.refs[i]), x + s * 2.4, y - s * 1.8, &inkt);
                 }
             }
+        }
+        Ok(())
+    }
+}
+
+/// an amber radar screen: range rings and bearing ticks on dark glass, a sweep turning, and what it finds (ground
+/// clutter, a few slow contacts with their tracks) lit as the beam passes and fading until it comes round again.
+/// The glass is one mask (tinted each frame); what the beam lights goes into a phosphor layer kept by a second
+/// device context, faded a little each frame; the trailing glow is one wedge mask drawn turned. 30 fps; still at 0.
+pub struct Radar { glass: ID2D1Bitmap1, wedge: ID2D1Bitmap1, pc: ID2D1Bitmap1, pdc: ID2D1DeviceContext, flood: ID2D1Effect,
+                   fmt: IDWriteTextFormat, r: f32, ox: f32, oy: f32, fs: f32, w: f32, h: f32, a: f32, still: bool,
+                   clut: Vec<(f32, f32, f32)>, tgts: Vec<Contact>, rng: Rng }
+
+struct Contact { x: f32, y: f32, hd: f32, v: f32, id: String, seen: bool, trail: Vec<(f32, f32)> }
+
+const TAU: f32 = std::f32::consts::TAU;
+
+impl Radar {
+    fn new(g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Radar> {
+        let (w, h) = (g.w as f32, g.h as f32);
+        let r = w.min(h) * 0.44;
+        let (ox, oy) = (w / 2.0, h / 2.0);
+        let light = look.light;
+        let fs = (r * 0.035).round().max(10.0);
+        let fmt = fonts.format(&look.mono.family, fs, 400)?;
+        unsafe {
+            fmt.SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER)?;
+        }
+        let mut rng = Rng(0x7ada_2000_0000_0001);
+        let (glass, pc) = (g.surface(w, h)?, g.surface(w, h)?);
+        let wd = (r + 2.0).ceil();
+        let wedge = g.surface(wd, wd * 2.0)?;   // the glow: origin at its left middle, pointing right, trailing upwards
+        unsafe {
+            let dc = &g.dc;
+            let old = dc.GetTarget()?;
+            let white = g.brush([1.0, 1.0, 1.0, 1.0])?;
+            let pos = |rr: f32, a: f32| p2(ox + a.sin() * rr, oy - a.cos() * rr);
+            dc.SetTarget(&glass);
+            dc.BeginDraw();
+            dc.Clear(Some(&D2D1_COLOR_F::default()));
+            // the faint glow of the glass, then rings, spokes, ticks and bearings
+            let rt: &ID2D1RenderTarget = dc;
+            let stops = [D2D1_GRADIENT_STOP { position: 0.0, color: D2D1_COLOR_F { r: 1.0, g: 1.0, b: 1.0, a: if light { 0.06 } else { 0.05 } } },
+                         D2D1_GRADIENT_STOP { position: 1.0, color: D2D1_COLOR_F::default() }];
+            let coll = rt.CreateGradientStopCollection(&stops, D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP)?;
+            let glow = dc.CreateRadialGradientBrush(&D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES { center: p2(ox, oy), gradientOriginOffset: p2(0.0, 0.0),
+                                                                                         radiusX: r * 1.1, radiusY: r * 1.1 }, None, &coll)?;
+            dc.FillRectangle(&rect(0.0, 0.0, w, h), &glow);
+            for i in 1..=5 {
+                white.SetOpacity(if i == 5 { 0.32 } else { 0.14 });
+                let rr = r * i as f32 / 5.0;
+                dc.DrawEllipse(&D2D1_ELLIPSE { point: p2(ox, oy), radiusX: rr, radiusY: rr }, &white, 1.0, None);
+            }
+            white.SetOpacity(0.08);
+            for k in 0..12 { dc.DrawLine(p2(ox, oy), pos(r, (k * 30) as f32 * TAU / 360.0), &white, 1.0, None); }
+            white.SetOpacity(0.3);
+            for k in 0..72 {
+                let deg = k * 5;
+                let l = if deg % 30 != 0 { r * 0.02 } else { r * 0.045 };
+                let t = deg as f32 * TAU / 360.0;
+                dc.DrawLine(pos(r, t), pos(r + l, t), &white, 1.0, None);
+            }
+            white.SetOpacity(0.45);
+            for k in 0..12 {
+                let deg = k * 30;
+                let at = pos(r + fs * 2.0, deg as f32 * TAU / 360.0);
+                let s: Vec<u16> = format!("{deg:03}").encode_utf16().collect();
+                let l = fonts.dw.CreateTextLayout(&s, &fmt, 100.0, fs * 2.0)?;
+                l.SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER)?;
+                dc.DrawTextLayout(p2(at.x - 50.0, at.y - fs), &l, &white, D2D1_DRAW_TEXT_OPTIONS_NONE);
+            }
+            dc.EndDraw(None, None)?;
+            // the wedge of glow trailing the beam: .9 rad, brightest at the beam, as thin slices
+            dc.SetTarget(&wedge);
+            dc.BeginDraw();
+            dc.Clear(Some(&D2D1_COLOR_F::default()));
+            let factory = dc.GetFactory()?;
+            let n = 40;
+            for k in 0..n {
+                let (a0, a1) = (-0.9 + 0.9 * k as f32 / n as f32, -0.9 + 0.9 * (k + 1) as f32 / n as f32 + 0.004);
+                let path = factory.CreatePathGeometry()?;
+                let sink = path.Open()?;
+                sink.BeginFigure(p2(0.0, wd), D2D1_FIGURE_BEGIN_FILLED);
+                sink.AddLine(p2(r * a0.cos(), wd + r * a0.sin()));
+                sink.AddArc(&D2D1_ARC_SEGMENT { point: p2(r * a1.cos(), wd + r * a1.sin()), size: D2D_SIZE_F { width: r, height: r },
+                                                rotationAngle: 0.0, sweepDirection: D2D1_SWEEP_DIRECTION_CLOCKWISE, arcSize: D2D1_ARC_SIZE_SMALL });
+                sink.EndFigure(D2D1_FIGURE_END_CLOSED);
+                sink.Close()?;
+                white.SetOpacity((k as f32 + 0.5) / n as f32);
+                dc.FillGeometry(&path, &white, None);
+            }
+            dc.EndDraw(None, None)?;
+            dc.SetTarget(&old);
+        }
+        // ground clutter: a few patches of land, speckled; and six slow contacts
+        let mut clut = Vec::new();
+        for _ in 0..5 {
+            let (ca, cr) = (rng.range(0.0, TAU), rng.range(0.35, 0.9));
+            let n = 90 + (rng.f() * 160.0) as usize;
+            let (sa, sr) = (rng.range(0.08, 0.3), rng.range(0.04, 0.1));
+            for _ in 0..n {
+                let rr = (cr + (rng.f() + rng.f() - 1.0) * sr).clamp(0.05, 0.98);
+                let a = ca + (rng.f() + rng.f() - 1.0) * sa / rr * 0.4;
+                clut.push((a.rem_euclid(TAU), rr, rng.range(0.25, 0.9)));
+            }
+        }
+        let tgts = (0..6).map(|_| Contact { x: rng.range(-0.8, 0.8), y: rng.range(-0.8, 0.8), hd: rng.range(0.0, TAU), v: rng.range(0.004, 0.012),
+                                            id: format!("TK {}", 100 + (rng.f() * 800.0) as u32), seen: false, trail: Vec::new() }).collect();
+        let pdc = unsafe { g.dc.GetDevice()?.CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE)? };
+        let flood = unsafe { pdc.CreateEffect(&CLSID_D2D1Flood)? };
+        unsafe { pdc.SetDpi(96.0 * g.scale, 96.0 * g.scale); pdc.SetTarget(&pc); }
+        let a = rng.range(0.0, TAU);
+        let mut rd = Radar { glass, wedge, pc, pdc, flood, fmt, r, ox, oy, fs, w, h, a, still: false, clut, tgts, rng };
+        // the stilled frame: one turn's worth already swept, older bearings dimmer
+        unsafe {
+            rd.pdc.BeginDraw();
+            rd.pdc.Clear(Some(&D2D1_COLOR_F::default()));
+            for i in 0..64 { rd.sweep(look, a - TAU + i as f32 * TAU / 64.0, a - TAU + (i + 1) as f32 * TAU / 64.0, (i + 1) as f32 / 64.0)?; }
+            rd.pdc.EndDraw(None, None)?;
+        }
+        Ok(rd)
+    }
+
+    fn pos(&self, rr: f32, a: f32) -> (f32, f32) { (self.ox + a.sin() * rr * self.r, self.oy - a.cos() * rr * self.r) }
+
+    /// light what lies between bearings a0 and a1 into the phosphor layer (its BeginDraw is open); f scales brightness
+    fn sweep(&mut self, look: &Look, a0: f32, a1: f32, f: f32) -> Result<()> { unsafe {
+        let in_arc = |a: f32| (a - a0).rem_euclid(TAU) < a1 - a0;
+        let dc = &self.pdc;
+        dc.SetPrimitiveBlend(if look.light { D2D1_PRIMITIVE_BLEND_SOURCE_OVER } else { D2D1_PRIMITIVE_BLEND_ADD });
+        let ink = dc.CreateSolidColorBrush(&rgba(look.ink), None)?;
+        let cs = (self.r * 0.007).max(2.0);
+        for &(ca, cr, v) in &self.clut {
+            if !in_arc(ca) { continue; }
+            let (x, y) = self.pos(cr, ca);
+            ink.SetOpacity((v * f).min(1.0));
+            dc.FillRectangle(&rect(x - cs / 2.0, y - cs / 2.0, cs, cs), &ink);
+        }
+        let s = (self.r * 0.011).max(2.5);
+        let rt: &ID2D1RenderTarget = dc;
+        for i in 0..self.tgts.len() {
+            let (tx, ty) = (self.tgts[i].x, self.tgts[i].y);
+            let rr = (tx * tx + ty * ty).sqrt();
+            let a = tx.atan2(-ty).rem_euclid(TAU);
+            if rr > 0.97 || !in_arc(a) { continue; }
+            let (x, y) = self.pos(rr, a);
+            let c = |col: Color, al: f32| D2D1_COLOR_F { r: col[0], g: col[1], b: col[2], a: al };
+            let stops = [D2D1_GRADIENT_STOP { position: 0.0, color: c(look.hi, f) },
+                         D2D1_GRADIENT_STOP { position: 0.35, color: c(look.ink, 0.7 * f) },
+                         D2D1_GRADIENT_STOP { position: 1.0, color: c(look.ink, 0.0) }];
+            let coll = rt.CreateGradientStopCollection(&stops, D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP)?;
+            let blip = dc.CreateRadialGradientBrush(&D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES { center: p2(x, y), gradientOriginOffset: p2(0.0, 0.0),
+                                                                                         radiusX: s * 2.4, radiusY: s * 2.4 }, None, &coll)?;
+            dc.FillRectangle(&rect(x - s * 2.4, y - s * 2.4, s * 4.8, s * 4.8), &blip);
+            let t = &mut self.tgts[i];
+            t.trail.insert(0, (x, y));
+            t.trail.truncate(6);
+            t.seen = true;
+        }
+        dc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_SOURCE_OVER);
+        Ok(())
+    } }
+}
+
+impl Background for Radar {
+    fn fps(&self) -> f32 { if self.still { 0.0 } else { 30.0 } }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        self.still = level <= 0.0;
+        if !self.still {
+            let sp = 0.4 + level * 1.6;
+            unsafe {
+                self.pdc.BeginDraw();
+                // the phosphor fades: everything lit loses a little each frame (the page's destination-out)
+                let k = 1.0 - (-dt * sp * 0.12).exp();
+                crate::gfx::set_floats(&self.flood, D2D1_FLOOD_PROP_COLOR.0 as u32, D2D1_PROPERTY_TYPE_VECTOR4, &[0.0, 0.0, 0.0, k])?;
+                self.pdc.DrawImage(&self.flood.GetOutput()?, None, Some(&rect(0.0, 0.0, self.w, self.h)),
+                                   D2D1_INTERPOLATION_MODE_LINEAR, D2D1_COMPOSITE_MODE_DESTINATION_OUT);
+                // contacts drift on their headings, and turn now and then
+                for i in 0..self.tgts.len() {
+                    let turn = self.rng.f() < dt * 0.05;
+                    let dh = self.rng.range(-0.6, 0.6);
+                    let t = &mut self.tgts[i];
+                    t.x += t.hd.sin() * t.v * dt * sp;
+                    t.y -= t.hd.cos() * t.v * dt * sp;
+                    if turn { t.hd += dh; }
+                    if (t.x * t.x + t.y * t.y).sqrt() > 1.05 { t.x *= -0.9; t.y *= -0.9; t.trail.clear(); t.seen = false; }
+                }
+                let a0 = self.a;
+                self.a += dt * sp * 0.6;
+                self.sweep(look, a0, self.a, 1.0)?;
+                self.pdc.EndDraw(None, None)?;
+            }
+        }
+        let (r, fs, ox, oy) = (self.r, self.fs, self.ox, self.oy);
+        unsafe {
+            let dc = &g.dc;
+            dc.Clear(Some(&rgba(look.bg)));
+            let ink = g.brush(look.ink)?;
+            dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);   // FillOpacityMask needs it
+            dc.FillOpacityMask(&self.glass, &ink, Some(&rect(0.0, 0.0, self.w, self.h)), None);
+            dc.DrawBitmap(&self.pc, Some(&rect(0.0, 0.0, self.w, self.h)), 1.0, D2D1_INTERPOLATION_MODE_LINEAR, None, None);
+            // the glow trailing the beam, turned to where the beam points (screen angle a - 90 degrees)
+            let wd = (r + 2.0).ceil();
+            let (s, c) = (self.a - TAU / 4.0).sin_cos();
+            dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2 { M11: c, M12: s, M21: -s, M22: c, M31: ox, M32: oy });
+            ink.SetOpacity(if look.light { 0.12 } else { 0.16 });
+            dc.FillOpacityMask(&self.wedge, &ink, Some(&rect(0.0, -wd, wd, wd * 2.0)), None);
+            dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2::identity());
+            dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+            let (ex, ey) = self.pos(1.0, self.a);
+            dc.DrawLine(p2(ox, oy), p2(ex, ey), &g.brush([look.hi[0], look.hi[1], look.hi[2], 0.85])?, 1.5, None);
+            // the contacts' tracks and tags, for those the beam has found
+            let text = |s: &str, x: f32, y: f32, right: bool, b: &ID2D1SolidColorBrush| {
+                let t: Vec<u16> = s.encode_utf16().collect();
+                let rc = if right { rect(x - 400.0, y - fs, 400.0, fs * 2.0) } else { rect(x, y - fs, 400.0, fs * 2.0) };
+                let _ = self.fmt.SetTextAlignment(if right { DWRITE_TEXT_ALIGNMENT_TRAILING } else { DWRITE_TEXT_ALIGNMENT_LEADING });
+                dc.DrawText(&t, &self.fmt, &rc, b, D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL);
+            };
+            for t in &self.tgts {
+                if !t.seen || t.trail.is_empty() { continue; }
+                for (i, &(x, y)) in t.trail.iter().enumerate().skip(1) {
+                    ink.SetOpacity(0.4 * (1.0 - i as f32 / 6.0));
+                    dc.FillRectangle(&rect(x - 1.0, y - 1.0, 2.0, 2.0), &ink);
+                }
+                let (x, y) = t.trail[0];
+                ink.SetOpacity(0.55);
+                dc.DrawRectangle(&rect(x - fs * 0.5, y - fs * 0.5, fs, fs), &ink, 1.0, None);
+                ink.SetOpacity(0.7);
+                text(&t.id, x + fs * 0.9, y - fs * 0.5, false, &ink);
+            }
+            ink.SetOpacity(0.5);
+            text("RANGE  40 NM", ox - r - fs * 6.0, oy + r + fs * 1.5, false, &ink);
+            let brg = (self.a.rem_euclid(TAU) * 360.0 / TAU).round() as u32 % 360;
+            let seen = self.tgts.iter().filter(|t| t.seen).count();
+            text(&format!("BRG {brg:03}°   TRK {seen:02}"), ox + r + fs * 6.0, oy + r + fs * 1.5, true, &ink);
+            let _ = self.fmt.SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
         }
         Ok(())
     }
