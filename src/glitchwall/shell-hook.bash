@@ -42,7 +42,11 @@ __gw_prompt() {
     local ok=$? n
     n=$(__gw_hist)
     if [[ -n $__gw_seen && -n $n && $n != "$__gw_seen" ]]; then
-        __gw_write "\"t\": \"out\", \"id\": $n, \"ok\": $( ((ok == 0)) && echo true || echo false), \"text\": \"exit $ok\""
+        # the prompt about to show, as it will look (colors taken out): glitchwall reads the command's output off the
+        # window's screen and stops there
+        local p=${PS1@P}
+        p=$(printf '%s' "${p%%$'\n'*}" | sed 's/\x1b\[[0-9;?]*[A-Za-z]//g; s/\x1b\][^\x07]*\x07//g; s/[\x01\x02]//g')
+        __gw_write "\"t\": \"out\", \"id\": $n, \"ok\": $( ((ok == 0)) && echo true || echo false), \"text\": \"exit $ok\", \"prompt\": $(__gw_json "$p")"
     fi
     __gw_seen=$n
     return $ok

@@ -129,3 +129,27 @@ class TestWslHook(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestWslScreen(unittest.TestCase):
+    PROMPT = "me@box:~$"
+
+    def test_output_between_command_and_prompt(self):
+        from glitchwall.wslscreen import find_output
+        screen = ["me@box:~$ echo old", "old", "me@box:~$ ls /tmp", "a.txt", "b.txt", "me@box:~$"]
+        self.assertEqual(find_output(screen, "ls /tmp", self.PROMPT), "a.txt\nb.txt")
+        self.assertEqual(find_output(screen, "echo old", self.PROMPT), "old")
+        self.assertIsNone(find_output(screen, "not there", self.PROMPT))
+        self.assertEqual(find_output(["me@box:~$ true", "me@box:~$"], "true", self.PROMPT), "")
+
+    def test_tailer_uses_the_screen(self):
+        events = []
+        d = Path(tempfile.mkdtemp())
+        t = sh.ShellTailer(events.append, root=d)
+        t.screen_output = lambda cmd, prompt: f"printed by {cmd} before {prompt}"
+        with open(d / "wsl-1.jsonl", "w", encoding="utf-8") as f:
+            f.write(json.dumps({"sh": "bash", "t": "cmd", "id": 1, "text": "ls"}) + "\n")
+            f.write(json.dumps({"sh": "bash", "t": "out", "id": 1, "ok": True, "text": "exit 0", "prompt": "p$"}) + "\n")
+            f.write(json.dumps({"sh": "bash", "t": "out", "id": 9, "ok": False, "text": "exit 1", "prompt": "p$"}) + "\n")
+        t.scan()
+        self.assertEqual([e["text"] for e in events], ["ls", "printed by ls before p$", "exit 1"])

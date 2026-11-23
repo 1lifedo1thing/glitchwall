@@ -493,13 +493,24 @@ reading before you turn this on. Nothing else in your profiles is touched.
 | | PowerShell | WSL (bash) |
 | --- | --- | --- |
 | the command you typed | yes, when you press Enter | yes, as it starts |
-| what it printed | yes: read off the console screen when it finishes, and every second while it runs | not yet: only whether it worked (`exit 0`, `exit 2`) |
+| what it printed | yes: read off the console screen when it finishes, and every second while it runs | yes, when it finishes: the feed reads it off the WSL window's screen (see below); while it runs, not yet |
 | commands left out | lines PowerShell can't run yet (unfinished input) | whatever bash leaves out of its history: a leading space (`HISTCONTROL=ignorespace`), a repeat (`ignoredups`) |
 
 **Where it goes.** Each shell window appends to its own file, `~/.glitchwall/shell/<process id>.jsonl` (WSL:
 `wsl-<process id>.jsonl`), on this machine. Nothing is sent anywhere: the hooks only write that file, and the feed
 reads it the same way it reads Claude Code's logs. A file is cut back when it passes 256 KB, and the feed deletes a
 shell's file a day after it was last written.
+
+**How WSL output is read.** bash can't see its own screen, so when the hook says a command is done, the feed starts a
+short-lived helper (`python -I -m glitchwall.wslscreen`) that attaches to each open `wsl.exe` window's console in turn,
+copies the text on screen (read-only, nothing is typed or changed), and exits. The feed keeps only the lines between
+your command and the next prompt. Windows only lets it read windows running as you; an administrator window refuses.
+
+**Who could misuse it.** The hooks, their files and your profiles are writable only by your own account (and
+administrators): another user on the PC can't change them. The hooks never run anything they record; the recorded
+text is only ever shown, as plain text (never as HTML), after masking. A program already running as you could write
+fake lines into the hook files and so put made-up cards on your wallpaper, but nothing more: it could do far worse to
+your account directly.
 
 **Before it shows.** The feed reads these files only in `live` mode, only while the `terminal` setting is on
 (the tray's *Show* menu, or the settings window), and never while paused. Every line goes through the same

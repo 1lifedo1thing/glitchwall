@@ -138,6 +138,8 @@ class ShellTailer:
         self.root = root or shell_dir()
         self.offsets: dict[Path, int] = {}
         self.started = time.time()
+        self.cmds: dict[str, str] = {}   # WSL commands waiting for their output, by ref
+        self.screen_output = None        # tests: (cmd, prompt) -> output, in place of reading the screens
 
     def scan(self) -> None:
         if not self.root.is_dir():
@@ -183,9 +185,19 @@ class ShellTailer:
         bash = d.get("sh") == "bash"   # WSL's bash hook (shell-hook.bash); the PowerShell hook says nothing
         base = {"ts": str(d.get("ts", "")), "proj": "wsl" if bash else "terminal", "session": "you", "side": False, "ref": ref}
         if d.get("t") == "cmd":
+            if bash:
+                self.cmds[ref] = str(d.get("text", ""))
+                while len(self.cmds) > 50:
+                    self.cmds.pop(next(iter(self.cmds)))
             self.emit({**base, "kind": "$" if bash else "PS>", "text": str(d.get("text", ""))})
         elif d.get("t") == "out":
             from .claude_logs import _output_text   # trimmed like Claude's: 14 lines, 900 characters
+            if bash and ref in self.cmds and self.enabled():   # what it printed, read off its WSL window's screen
+                from . import wslscreen
+                read = self.screen_output or wslscreen.output_of
+                got = read(self.cmds.pop(ref), str(d.get("prompt", "")))
+                if got is not None:
+                    d = {**d, "text": got}
             # live: the newest output of a command still running, to replace what its card showed before
             self.emit({**base, "kind": "out" if d.get("ok", True) is not False else "err", "live": bool(d.get("live")),
                        "text": _last_lines(str(d.get("text", ""))) if d.get("live") else _output_text(str(d.get("text", "")))})
