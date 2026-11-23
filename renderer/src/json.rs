@@ -8,7 +8,7 @@ static NULL: Json = Json::Null;
 
 impl Json {
     pub fn parse(s: &str) -> Result<Json, String> {
-        let mut p = P { b: s.as_bytes(), i: 0 };
+        let mut p = P { b: s.as_bytes(), i: 0, depth: 0 };
         let v = p.value()?;
         p.ws();
         if p.i != p.b.len() { return Err(format!("trailing text at {}", p.i)); }
@@ -30,7 +30,11 @@ impl Json {
     pub fn map(&self) -> BTreeMap<String, Json> { self.entries().iter().cloned().collect() }
 }
 
-struct P<'a> { b: &'a [u8], i: usize }
+/// MAX_DEPTH: how deep arrays and objects may nest. Logs and the hooks' files are read with this, and a line of
+/// endless brackets would otherwise run the stack out and end the process; Python's json gives up near 1000.
+const MAX_DEPTH: usize = 500;
+
+struct P<'a> { b: &'a [u8], i: usize, depth: usize }
 
 impl P<'_> {
     fn ws(&mut self) { while self.i < self.b.len() && matches!(self.b[self.i], b' ' | b'\t' | b'\n' | b'\r') { self.i += 1; } }
@@ -40,6 +44,17 @@ impl P<'_> {
     }
     fn value(&mut self) -> Result<Json, String> {
         self.ws();
+        if matches!(self.b.get(self.i), Some(b'{' | b'[')) {
+            if self.depth >= MAX_DEPTH { return Err(format!("nested too deep at {}", self.i)); }
+            self.depth += 1;
+            let v = self.nested();
+            self.depth -= 1;
+            return v;
+        }
+        self.scalar()
+    }
+
+    fn nested(&mut self) -> Result<Json, String> {
         match self.b.get(self.i) {
             Some(b'{') => {
                 self.i += 1;
@@ -68,6 +83,12 @@ impl P<'_> {
                                                _ => return Err(format!("bad array at {}", self.i)) }
                 }
             }
+            _ => self.scalar(),
+        }
+    }
+
+    fn scalar(&mut self) -> Result<Json, String> {
+        match self.b.get(self.i) {
             Some(b'"') => Ok(Json::Str(self.string()?)),
             Some(b't') if self.b[self.i..].starts_with(b"true") => { self.i += 4; Ok(Json::Bool(true)) }
             Some(b'f') if self.b[self.i..].starts_with(b"false") => { self.i += 5; Ok(Json::Bool(false)) }
@@ -118,6 +139,12 @@ fn flush(raw: &mut Vec<u8>, out: &mut Vec<u16>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn deep_nesting_is_refused_not_a_crash() {
+        assert!(Json::parse(&"[".repeat(200_000)).is_err());
+        assert!(Json::parse(&format!("{}{}", "[".repeat(400), "]".repeat(400))).is_ok());
+    }
+
     #[test]
     fn parses() {
         let j = Json::parse(r#"{"a": [1, -2.5e1, true, null], "b": "x\"yé\n", "c": {}}"#).unwrap();

@@ -1,8 +1,9 @@
-"""Commands you type in PowerShell, and what they print, as wallpaper events.
+"""Commands you type in PowerShell or WSL's bash, and what they print, as wallpaper events.
 
 glitchwall's terminal hook (shell-hook.ps1, loaded from your PowerShell profile by `glitchwall terminal on`) writes
 one JSON line per command when you press Enter, and one with its output when the command is done, to
-<state dir>/shell/<process id>.jsonl. This follows those files the way claude_logs follows Claude Code's:
+<state dir>/shell/<process id>.jsonl. WSL's bash hook (shell-hook.bash, sourced from ~/.bashrc) writes the commands
+and how they ended to wsl-<process id>.jsonl there; what they print is not read yet. This follows those files the way claude_logs follows Claude Code's:
 read-only, only what is appended, and nothing older than the feed (a file that was there before it started is
 read from its end). Everything shown goes through the redaction like Claude's calls do.
 """
@@ -10,6 +11,8 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
 import time
 from pathlib import Path
 from typing import Callable
@@ -17,6 +20,7 @@ from typing import Callable
 from . import settings as cfg
 
 HOOK_FILE = Path(__file__).resolve().parent / "shell-hook.ps1"
+BASH_HOOK = Path(__file__).resolve().parent / "shell-hook.bash"
 MARK = "# glitchwall terminal"   # ends the line `glitchwall terminal on` adds to a profile
 STALE = 24 * 3600                # a shell's file this long untouched is cleared out
 
@@ -80,6 +84,43 @@ def remove_hook() -> list[Path]:
     return changed
 
 
+# ---------------------------------------------------------------- WSL: a line in the default distro's ~/.bashrc
+# $1: the hook, $2: the folder it writes to, both as Windows paths; wslpath makes them /mnt/... ones
+_WSL_ON = r"""h=$(wslpath -a "$1") && d=$(wslpath -a "$2") || exit 1
+grep -qF "$3" ~/.bashrc 2>/dev/null && exit 3
+[ -s ~/.bashrc ] && [ -n "$(tail -c1 ~/.bashrc)" ] && echo >> ~/.bashrc
+printf '[ -f %q ] && . %q %q  %s (`glitchwall terminal off` removes this)\n' "$h" "$h" "$d" "$3" >> ~/.bashrc"""
+_WSL_OFF = r"""grep -qF "$1" ~/.bashrc 2>/dev/null || exit 3
+sed -i "\|$1|d" ~/.bashrc"""
+
+
+def _wsl(script: str, *args: str) -> int | None:
+    """Runs a bash script in the default WSL distro; its exit code, or None when there is no WSL to run it in."""
+    wsl = shutil.which("wsl.exe") if os.name == "nt" else None
+    if not wsl:
+        return None
+    try:
+        r = subprocess.run([wsl, "-e", "bash", "-c", script, "bash", *args],  # noqa: S603 (our own script, as arguments)
+                           capture_output=True, timeout=120)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return r.returncode
+
+
+def install_wsl_hook() -> bool:
+    """Copy the bash hook next to glitchwall's state and source it from WSL's ~/.bashrc. True if a line was added."""
+    target = cfg.state_dir() / "shell-hook.bash"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(BASH_HOOK.read_bytes().replace(b"\r\n", b"\n"))   # bash wants LF
+    return _wsl(_WSL_ON, str(target), str(shell_dir()), MARK) == 0
+
+
+def remove_wsl_hook() -> bool:
+    """Take the hook's line out of WSL's ~/.bashrc again. True if one was there."""
+    (cfg.state_dir() / "shell-hook.bash").unlink(missing_ok=True)
+    return _wsl(_WSL_OFF, MARK) == 0
+
+
 def _last_lines(text: str, n: int = 14) -> str:
     """A running command's output as the wall shows it: its newest lines (where the first ones suit a finished one)."""
     from .claude_logs import clip
@@ -134,14 +175,15 @@ class ShellTailer:
     def parse(self, line: bytes, shell: str) -> None:
         try:
             d = json.loads(line.decode("utf-8", "replace").lstrip("﻿"))
-        except ValueError:
+        except (ValueError, RecursionError):   # RecursionError: a line nested absurdly deep
             return
         if not isinstance(d, dict) or not str(d.get("text", "")).strip() and d.get("t") == "cmd":
             return
         ref = f"sh{shell}-{d.get('id')}"
-        base = {"ts": str(d.get("ts", "")), "proj": "terminal", "session": "you", "side": False, "ref": ref}
+        bash = d.get("sh") == "bash"   # WSL's bash hook (shell-hook.bash); the PowerShell hook says nothing
+        base = {"ts": str(d.get("ts", "")), "proj": "wsl" if bash else "terminal", "session": "you", "side": False, "ref": ref}
         if d.get("t") == "cmd":
-            self.emit({**base, "kind": "PS>", "text": str(d.get("text", ""))})
+            self.emit({**base, "kind": "$" if bash else "PS>", "text": str(d.get("text", ""))})
         elif d.get("t") == "out":
             from .claude_logs import _output_text   # trimmed like Claude's: 14 lines, 900 characters
             # live: the newest output of a command still running, to replace what its card showed before

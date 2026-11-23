@@ -249,6 +249,10 @@ def cmd_uninstall(a) -> int:
         removed.append("removed the Start menu shortcut")
     if plat.remove_context_menu():
         removed.append("removed glitchwall settings from the desktop right-click menu")
+    from . import shell_history as sh   # the terminal hooks, if `glitchwall terminal on` added them
+    removed += [f"took glitchwall's line out of {p}" for p in sh.remove_hook()]
+    if sh.remove_wsl_hook():
+        removed.append("took glitchwall's line out of WSL's ~/.bashrc")
     sd = cfg.state_dir()
     if sd.exists():
         shutil.rmtree(sd, ignore_errors=True)
@@ -323,7 +327,8 @@ def cmd_settings(a) -> int:
 
 
 def cmd_terminal(a) -> int:
-    """Your own PowerShell commands, and what they print, on the wallpaper: a hook in your PowerShell profile."""
+    """Your own terminal commands on the wallpaper: a hook in your PowerShell profile (commands and what they print)
+    and in WSL's ~/.bashrc (commands and how they ended)."""
     from . import shell_history as sh
     if a.what == "on":
         changed = sh.install_hook()
@@ -332,12 +337,16 @@ def cmd_terminal(a) -> int:
         cfg.save_settings(s)
         for p in changed:
             say(f"added a line to {p}")
-        say("terminal on: open a new PowerShell window and what you type there shows on the wallpaper, output too "
-            "(masked like Claude's calls)")
+        if sh.install_wsl_hook():
+            say("added a line to WSL's ~/.bashrc")
+        say("terminal on: open a new PowerShell or WSL window and what you type there shows on the wallpaper "
+            "(masked like Claude's calls; PowerShell shows the output too)")
     elif a.what == "off":
         for p in sh.remove_hook():
             say(f"took glitchwall's line out of {p}")
-        say("terminal off: PowerShell windows opened from now on are left alone")
+        if sh.remove_wsl_hook():
+            say("took glitchwall's line out of WSL's ~/.bashrc")
+        say("terminal off: PowerShell and WSL windows opened from now on are left alone")
     else:
         s = cfg.load_settings()
         say(f"terminal hook {'installed' if sh.hook_installed() else 'not installed'}; "

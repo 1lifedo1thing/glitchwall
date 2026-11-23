@@ -422,6 +422,7 @@ Full-size shots (click one to open it). They come from ambient mode, so every se
 | `glitchwall start` / `stop` | start or stop the background feed |
 | `glitchwall pause` / `resume` | stream-safe switch: serve nothing / back to live |
 | `glitchwall config --commands-only on` | show calls, hide all output |
+| `glitchwall terminal on\|off\|status` | opt-in: show the commands you type in PowerShell and WSL too ([what it records](#your-terminal-commands-opt-in)) |
 | `glitchwall config --label "TEXT"` | the text in the bottom-right corner |
 | `glitchwall themes` | list themes, backgrounds and fonts |
 | `glitchwall config --theme X --rain Y --font Z` | change the look, live |
@@ -441,6 +442,8 @@ In `ambient` and `art` mode it reads no logs at all, only its own settings. In `
   opened **read-only**, only logs touched in the last 30 minutes, only the newly appended part.
   From each line it takes tool calls and their results.
 - **Its own files:** a random key, `settings.json`, a pid file.
+- **Your own terminal commands, only if you turn that on** with `glitchwall terminal on`. Off until you do;
+  see [Your terminal commands](#your-terminal-commands-opt-in).
 
 ### 🚫 It never
 
@@ -448,7 +451,8 @@ In `ambient` and `art` mode it reads no logs at all, only its own settings. In `
   No telemetry, no analytics, no update checks. The page loads nothing remote (the fonts are bundled).
   The one part glitchwall doesn't control: WebView2 is Microsoft's Edge engine, and it may talk to
   Microsoft for its own updates and safety checks the way Edge does. The page itself only ever asks `127.0.0.1`.
-- **Writes to your logs**, or anywhere outside the files listed below.
+- **Writes to your logs**, or anywhere outside the files listed below. (The terminal hooks, if you turn them on,
+  add one line to your shell profiles; that line is listed below too, and `terminal off` or `uninstall` takes it out.)
 - **Shows unmasked secrets.** Text is redacted *before* it's stored in memory, so there's nothing unredacted to leak. See [Redaction](#redaction).
 - **Serves anyone but the wallpaper.** Every request needs:
   - the per-install random key, which only the wallpaper has (in its `config.js`, or after the `#` in the
@@ -471,6 +475,42 @@ In `ambient` and `art` mode it reads no logs at all, only its own settings. In `
 | `HKCU\...\CurrentVersion\Run\glitchwall` / `~/.config/autostart/glitchwall.desktop` / `~/Library/LaunchAgents/io.github.glitchwall.plist` | start at logon |
 | `%APPDATA%\Microsoft\Windows\Start Menu\Programs\glitchwall settings.lnk` | Windows: the settings window in the Start menu |
 | `HKCU\Software\Classes\DesktopBackground\Shell\glitchwall` | Windows: *glitchwall settings* in the desktop's right-click menu |
+| one line at the end of `Documents\PowerShell\profile.ps1`, `Documents\WindowsPowerShell\profile.ps1` and WSL's `~/.bashrc` | only after `glitchwall terminal on`: loads the terminal hook. Marked `# glitchwall terminal`; `terminal off` removes it too |
+
+### Your terminal commands (opt-in)
+
+Off by default. `glitchwall terminal on` turns it on, `glitchwall terminal off` turns it off again, and
+`glitchwall uninstall` removes it along with everything else. While it is on, the commands you type yourself show
+on the wallpaper next to your agent's, as cards.
+
+**What it adds.** One line at the end of your PowerShell profiles (PowerShell 7 and Windows PowerShell) and of
+`~/.bashrc` in your default WSL distro. The line loads a short hook script from `~/.glitchwall/`
+(`shell-hook.ps1` or `shell-hook.bash`); both are plain text, in this repo under `src/glitchwall/`, and worth
+reading before you turn this on. Nothing else in your profiles is touched.
+
+**What the hooks record.**
+
+| | PowerShell | WSL (bash) |
+| --- | --- | --- |
+| the command you typed | yes, when you press Enter | yes, as it starts |
+| what it printed | yes: read off the console screen when it finishes, and every second while it runs | not yet: only whether it worked (`exit 0`, `exit 2`) |
+| commands left out | lines PowerShell can't run yet (unfinished input) | whatever bash leaves out of its history: a leading space (`HISTCONTROL=ignorespace`), a repeat (`ignoredups`) |
+
+**Where it goes.** Each shell window appends to its own file, `~/.glitchwall/shell/<process id>.jsonl` (WSL:
+`wsl-<process id>.jsonl`), on this machine. Nothing is sent anywhere: the hooks only write that file, and the feed
+reads it the same way it reads Claude Code's logs. A file is cut back when it passes 256 KB, and the feed deletes a
+shell's file a day after it was last written.
+
+**Before it shows.** The feed reads these files only in `live` mode, only while the `terminal` setting is on
+(the tray's *Show* menu, or the settings window), and never while paused. Every line goes through the same
+[redaction](#redaction) as your agent's calls before it is kept or shown, so tokens, keys, passwords, your user name
+and email addresses are masked. Commands typed into a terminal running as administrator are recorded too, like any
+other window's.
+
+**Keeping one command out.** In WSL, start it with a space: the hook never writes it down. Pausing glitchwall
+(`glitchwall pause`, or the tray menu) keeps everything off the wallpaper, but the hooks still write to their local
+files while paused (the feed skips what was written during the pause and never shows it later). To stop the
+recording itself, `glitchwall terminal off` and open a new window.
 
 **Why the home folder on Windows, not `%LOCALAPPDATA%`?** Packaged (MSIX) apps such as Claude Desktop
 or Store terminals get new AppData folders redirected into a private copy. `install` run from one of

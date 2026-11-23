@@ -72,11 +72,12 @@ pub fn parse(line: &[u8], shell: &str, emit: &mut impl FnMut(Ev)) {
     let t = get("t").and_then(Json::str);
     if t == Some("cmd") && py_strip(&s("text")).is_empty() { return; }
     let id = get("id").map(py_str).unwrap_or_else(|| "None".into());
-    let mut ev: Ev = vec![("ts".into(), Json::Str(s("ts"))), ("proj".into(), Json::Str("terminal".into())),
+    let bash = get("sh").and_then(Json::str) == Some("bash");   // WSL's bash hook (shell-hook.bash)
+    let mut ev: Ev = vec![("ts".into(), Json::Str(s("ts"))), ("proj".into(), Json::Str(if bash { "wsl" } else { "terminal" }.into())),
         ("session".into(), Json::Str("you".into())), ("side".into(), Json::Bool(false)), ("ref".into(), Json::Str(format!("sh{shell}-{id}")))];
     match t {
         Some("cmd") => {
-            ev.push(("kind".into(), Json::Str("PS>".into())));
+            ev.push(("kind".into(), Json::Str(if bash { "$" } else { "PS>" }.into())));
             ev.push(("text".into(), Json::Str(s("text"))));
         }
         Some("out") => {
@@ -129,6 +130,17 @@ mod tests {
         assert_eq!(t.field("text"), ["ping -n 1 x", "Reply from x", "bad", "not found"]);
         assert_eq!(t.field("ref"), ["sh100-1", "sh100-1", "sh100-2", "sh100-2"]);
         assert!(t.field("proj").iter().all(|p| p == "terminal"));
+    }
+
+    #[test]
+    fn wsl_commands() {
+        let mut t = T::new("g");
+        t.add("wsl-12.jsonl", &[r#"{"sh": "bash", "t": "cmd", "id": 4, "text": "ls /x"}"#, r#"{"sh": "bash", "t": "out", "id": 4, "ok": false, "text": "exit 2"}"#]);
+        t.scan(true);
+        assert_eq!(t.field("kind"), ["$", "err"]);
+        assert_eq!(t.field("proj"), ["wsl", "wsl"]);
+        assert_eq!(t.field("text"), ["ls /x", "exit 2"]);
+        assert_eq!(t.field("ref"), ["shwsl-12-4", "shwsl-12-4"]);
     }
 
     #[test]

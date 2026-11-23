@@ -97,7 +97,7 @@ class ClaudeLogTailer:
     def parse_line(self, line: bytes, f: Path, newer_than: float | None = None) -> None:
         try:
             d = json.loads(line)
-        except ValueError:
+        except (ValueError, RecursionError):   # RecursionError: a line nested absurdly deep
             return
         if not isinstance(d, dict):
             return

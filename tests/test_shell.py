@@ -32,6 +32,13 @@ class TestShellTailer(unittest.TestCase):
                           ("PS>", "bad", "sh100-2"), ("err", "not found", "sh100-2")])
         self.assertEqual({e["proj"] for e in self.events}, {"terminal"})
 
+    def test_wsl_commands(self):   # shell-hook.bash marks its records "sh": "bash"
+        self.add("wsl-12.jsonl", {"sh": "bash", "t": "cmd", "id": 4, "text": "ls /x"},
+                 {"sh": "bash", "t": "out", "id": 4, "ok": False, "text": "exit 2"})
+        self.t.scan()
+        self.assertEqual([(e["kind"], e["proj"], e["text"], e["ref"]) for e in self.events],
+                         [("$", "wsl", "ls /x", "shwsl-12-4"), ("err", "wsl", "exit 2", "shwsl-12-4")])
+
     def test_empty_output_says_so(self):
         self.add("1.jsonl", {"t": "cmd", "id": 1, "text": "cls"}, {"t": "out", "id": 1, "ok": True, "text": ""})
         self.t.scan()
@@ -55,6 +62,12 @@ class TestShellTailer(unittest.TestCase):
         self.add("2.jsonl", {"t": "cmd", "id": 2, "text": "shown"})
         self.t.scan()
         self.assertEqual([e["text"] for e in self.events], ["shown"])
+
+    def test_absurdly_nested_line_is_skipped(self):   # json.loads raises RecursionError, not ValueError
+        with open(self.dir / "4.jsonl", "a", encoding="utf-8") as f:
+            f.write("[" * 200_000 + '\n{"t": "cmd", "id": 1, "text": "after"}\n')
+        self.t.scan()
+        self.assertEqual([e["text"] for e in self.events], ["after"])
 
     def test_partial_line_and_garbage(self):
         with open(self.dir / "3.jsonl", "a", encoding="utf-8") as f:
@@ -91,6 +104,27 @@ class TestHookInstall(unittest.TestCase):
             self.assertFalse(sh.hook_installed())
             self.assertEqual(p7.read_text(encoding="utf-8-sig"), "Set-Alias ll ls\n")
             self.assertFalse((home / "state" / "shell-hook.ps1").exists())
+
+
+class TestWslHook(unittest.TestCase):
+    def test_on_then_off(self):
+        home = Path(tempfile.mkdtemp())
+        calls = []
+        with mock.patch.dict(os.environ, {"GLITCHWALL_HOME": str(home)}), \
+             mock.patch.object(sh, "_wsl", side_effect=lambda script, *a: calls.append(a) or 0):
+            self.assertTrue(sh.install_wsl_hook())
+            hook = home / "shell-hook.bash"
+            self.assertNotIn(b"\r", hook.read_bytes())   # bash wants LF
+            self.assertEqual(calls[-1], (str(hook), str(home / "shell"), sh.MARK))
+            self.assertTrue(sh.remove_wsl_hook())
+            self.assertFalse(hook.exists())
+            self.assertEqual(calls[-1], (sh.MARK,))
+
+    def test_no_wsl(self):
+        with mock.patch.object(sh, "_wsl", return_value=None), \
+             mock.patch.dict(os.environ, {"GLITCHWALL_HOME": tempfile.mkdtemp()}):
+            self.assertFalse(sh.install_wsl_hook())
+            self.assertFalse(sh.remove_wsl_hook())
 
 
 if __name__ == "__main__":
