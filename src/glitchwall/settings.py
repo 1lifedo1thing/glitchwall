@@ -46,13 +46,13 @@ DEFAULTS = {
     "grain": 5,              # film grain: 0 none, 5 the theme's own, 10 double
     "corner": "top-left",    # rest the mouse in this screen corner to open the settings; see CORNERS
     "screens": "all",        # all | primary
-    "renderer": "web",       # Windows: who draws glitchwall's own windows, see RENDERERS
+    "renderer": "native",    # Windows: who draws glitchwall's own windows, see RENDERERS (the page if the exe is missing)
 }
 from . import themes as _themes   # noqa: E402  (themes needs nothing from here)
 DEFAULTS.update({k: next(iter(choices)) for k, choices in _themes.OPTIONS.items()})   # orb_spin, orb_dir, ...
 RENDERERS = {
-    "web": "the wallpaper page in WebView2 (every theme and background)",
-    "native": "glitchwall-render, drawn with Direct2D: far lighter; backgrounds not ported yet show plain",
+    "native": "glitchwall-render, drawn with Direct2D: far lighter (the default)",
+    "web": "the wallpaper page in WebView2",
 }
 
 TUNE = {   # setting -> (page slider name, lowest, highest)
