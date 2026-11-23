@@ -410,16 +410,18 @@ const STYLES = {
   },
   // a drawing grid with construction lines, circles and boxes drafting themselves, dimensioned, then fading
   draft: {
-    scale: 1, G: 24,
+    scale: 1, G: 24, reinit: true,   // the grid and title block are drawn at init
     init() {
-      const G = this.G, o = this.grid = document.createElement('canvas'), g = o.getContext('2d');
+      const G = this.G, o = this.grid = document.createElement('canvas'), g = o.getContext('2d'), op = OPTS.draft || {};
       o.width = W; o.height = H; g.fillStyle = T.bg; g.fillRect(0, 0, W, H); g.strokeStyle = T.dim;
-      for (const [step, a] of [[G, .1], [G * 5, .22]]) {
+      for (const [step, a] of { coarse: [[G * 5, .22]], off: [] }[op.grid] || [[G, .1], [G * 5, .22]]) {
         g.globalAlpha = a; g.beginPath();
         for (let x = .5; x < W; x += step) { g.moveTo(x, 0); g.lineTo(x, H); }
         for (let y = .5; y < H; y += step) { g.moveTo(0, y); g.lineTo(W, y); }
         g.stroke();
       }
+      this.shapes = []; this.wait = 0;
+      if (op.title === 'off') return;
       // the title block, bottom right
       const bw = Math.min(W * .3, 330), bh = 88, bx = W - bw - G, by = H - bh - G, fs = 11;
       g.globalAlpha = 1; g.fillStyle = T.bg; g.fillRect(bx, by, bw, bh);
@@ -436,14 +438,14 @@ const STYLES = {
       this.shapes = []; this.wait = 0;
     },
     spawn() {
-      const G = this.G, snap = v => Math.round(v / G) * G, k = Math.random();
+      const G = this.G, snap = v => Math.round(v / G) * G, k = { lines: .1, circles: .5, boxes: .9 }[(OPTS.draft || {}).shapes] ?? Math.random();
       const s = { x: snap(rnd(W * .05, W * .9)), y: snap(rnd(H * .1, H * .9)), t: 0, dur: rnd(1.6, 3.2), hold: rnd(4, 8), fade: 1.6 };
       if (k < .4) Object.assign(s, { type: 'line', len: snap(rnd(G * 4, G * 16)), vert: Math.random() < .4 });
       else if (k < .7) Object.assign(s, { type: 'circle', r: snap(rnd(G * 1.5, G * 6)) });
       else Object.assign(s, { type: 'rect', w: snap(rnd(G * 3, G * 10)), h: snap(rnd(G * 2, G * 7)), hatch: Math.random() < .4 });
       this.shapes.push(s);
     },
-    label(text, x, y) { cx.fillText(text, x, y); },
+    label(text, x, y) { if ((OPTS.draft || {}).dimensions !== 'off') cx.fillText(text, x, y); },
     frame(dt) {
       if (!(dt = every(this, 30, dt))) return;
       cx.globalAlpha = 1; cx.drawImage(this.grid, 0, 0);
@@ -459,7 +461,7 @@ const STYLES = {
         if (s.type === 'line') {
           const dx = s.vert ? 0 : s.len * p, dy = s.vert ? s.len * p : 0;
           cx.moveTo(s.x, s.y); cx.lineTo(s.x + dx, s.y + dy); cx.stroke();
-          if (p === 1) {   // dimension line beside it, with end ticks and the length
+          if (p === 1 && (OPTS.draft || {}).dimensions !== 'off') {   // dimension line beside it, with end ticks and the length
             const o = 14, ox = s.vert ? o : 0, oy = s.vert ? 0 : -o;
             cx.globalAlpha = .35 * a; cx.beginPath();
             cx.moveTo(s.x + ox, s.y + oy); cx.lineTo(s.x + ox + (s.vert ? 0 : s.len), s.y + oy + (s.vert ? s.len : 0));
@@ -499,12 +501,12 @@ const STYLES = {
     scale: 1, SP: 18, init() { this.t = rnd(0, 100); },
     frame(dt) {
       if (!(dt = every(this, 12, dt))) return;
-      this.t += dt * (.15 + RAIN * .35);
+      if ((OPTS.halftone || {}).drift !== 'still') this.t += dt * (.15 + RAIN * .35);
       cx.globalCompositeOperation = 'source-over'; cx.globalAlpha = 1; cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H);
       if (RAIN <= 0) return;
-      const SP = this.SP, t = this.t, max = SP * .48;
+      const o = OPTS.halftone || {}, SP = o.dots === 'coarse' ? 30 : this.SP, t = this.t, max = SP * .48, off = o.misprint === 'off' ? 0 : 1;
       cx.globalCompositeOperation = T.mode === 'light' ? 'multiply' : 'screen';
-      for (const [col, ph, ox, oy] of [[T.dim, 0, 0, 0], [T.hi, 2.1, 3, 2]]) {
+      for (const [col, ph, ox, oy] of [[T.dim, 0, 0, 0], [T.hi, 2.1, 3 * off, 2 * off]].slice(0, o.inks === 'one' ? 1 : 2)) {
         cx.fillStyle = col; cx.globalAlpha = .16 + RAIN * .12; cx.beginPath();
         for (let y = SP / 2; y < H; y += SP) for (let x = SP / 2; x < W; x += SP) {
           const v = (Math.sin(x * .004 + t + ph) + Math.sin(y * .005 - t * .8 + ph) + Math.sin((x + y) * .0025 + t * .5)) / 3;
@@ -537,7 +539,9 @@ const STYLES = {
     },
     frame(dt) {
       if (!(dt = every(this, 30, dt))) return;
-      this.a += dt * RAIN * .9;
+      const o = OPTS.record || {}, fast = o.speed === '45';
+      if (o.spin !== 'off') this.a += dt * RAIN * .9 * (fast ? 1.35 : 1) * (o.direction === 'anticlockwise' ? -1 : 1);
+      this.cxp = o.place === 'centre' ? W / 2 : W * .12;
       const R = this.R, d = this.disc.width;
       cx.globalAlpha = 1; cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H);
       cx.globalAlpha = .92; cx.drawImage(this.disc, this.cxp - d / 2, this.cyp - d / 2);
@@ -547,7 +551,7 @@ const STYLES = {
       cx.strokeStyle = rgba(T.ink, .35); cx.lineWidth = 1; cx.beginPath(); cx.arc(0, 0, lr * .82, 0, TAU); cx.stroke();
       cx.fillStyle = T.ink; cx.textAlign = 'center'; cx.textBaseline = 'middle';
       cx.font = `${Math.round(lr * .2)}px ${FONTS.serif[0]}`; cx.fillText('glitchwall', 0, -lr * .45);
-      cx.font = `${Math.round(lr * .085)}px ${MONO}`; cx.fillText('SIDE A  ·  33⅓ RPM', 0, lr * .42);
+      cx.font = `${Math.round(lr * .085)}px ${MONO}`; cx.fillText(fast ? 'SIDE A  ·  45 RPM' : 'SIDE A  ·  33⅓ RPM', 0, lr * .42);
       cx.fillText(FEED_MODE === 'live' ? 'LIVE TOOL FEED' : FEED_MODE.toUpperCase(), 0, lr * .58);
       cx.fillStyle = T.bg; cx.beginPath(); cx.arc(0, 0, lr * .07, 0, TAU); cx.fill();
       cx.restore(); cx.textAlign = 'start';
@@ -1820,9 +1824,10 @@ const STYLES = {
   // a field map: contour lines of made-up ground (every fifth one heavier), a lettered grid, a north arrow and a
   // scale bar; a route draws itself from waypoint to waypoint to an objective, which pulses; then a new route
   topo: {
-    scale: 1, still: true,
+    scale: 1, still: true, reinit: true,   // the map is drawn at init
     init() {
-      const u = this.u = Math.min(W, H), light = T.mode === 'light';
+      const u = this.u = Math.min(W, H), light = T.mode === 'light', op = OPTS.topo || {};
+      const NC = { sparse: 14, dense: 40 }[op.contours] || 26;
       const [b, g] = (() => { const o = document.createElement('canvas'); o.width = W; o.height = H; return [o, o.getContext('2d')]; })();
       this.back = b;
       g.fillStyle = T.bg; g.fillRect(0, 0, W, H);
@@ -1832,9 +1837,9 @@ const STYLES = {
       const c = Math.max(8, Math.round(u / 90)), nx = Math.ceil(W / c) + 1, ny = Math.ceil(H / c) + 1, F = new Float32Array(nx * ny);
       let lo = 1e9, hi = -1e9;
       for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const v = F[j * nx + i] = ht(i * c, j * c); lo = Math.min(lo, v); hi = Math.max(hi, v); }
-      const step = (hi - lo) / 26;
+      const step = (hi - lo) / NC;
       g.strokeStyle = T.ink; g.lineJoin = 'round';
-      for (let k = 1; k < 26; k++) {
+      for (let k = 1; k < NC; k++) {
         const lv = lo + k * step, heavy = k % 5 === 0;
         g.globalAlpha = heavy ? (light ? .22 : .2) : (light ? .1 : .09); g.lineWidth = heavy ? 1.4 : 1; g.beginPath();
         for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
@@ -1850,6 +1855,7 @@ const STYLES = {
       }
       // the grid with its references
       const gs = this.gs = Math.round(u / 5), fs = this.fs = Math.max(10, Math.round(u / 70));
+      if (op.refs !== 'off') {
       g.globalAlpha = light ? .16 : .14; g.lineWidth = 1; g.beginPath();
       for (let x = gs; x < W; x += gs) { g.moveTo(Math.round(x) + .5, 0); g.lineTo(Math.round(x) + .5, H); }
       for (let y = gs; y < H; y += gs) { g.moveTo(0, Math.round(y) + .5); g.lineTo(W, Math.round(y) + .5); }
@@ -1857,6 +1863,9 @@ const STYLES = {
       g.globalAlpha = .45; g.fillStyle = T.ink; g.font = `${fs}px ${MONO}`; g.textBaseline = 'top';
       for (let x = 0, n = 0; x < W; x += gs, n++) g.fillText(String.fromCharCode(65 + n % 26), x + fs * .4, fs * .4);
       for (let y = gs, n = 1; y < H; y += gs, n++) g.fillText(String(n).padStart(2, '0'), fs * .4, y + fs * .4);
+      }
+      g.fillStyle = T.ink; g.font = `${fs}px ${MONO}`; g.textBaseline = 'top';
+      if (op.markers !== 'off') {
       // north arrow and scale bar, bottom right
       const nx0 = W - u * .07, ny0 = H - u * .16;
       g.globalAlpha = .5; g.beginPath(); g.moveTo(nx0, ny0 - u * .05); g.lineTo(nx0 + u * .015, ny0); g.lineTo(nx0, ny0 - u * .012); g.lineTo(nx0 - u * .015, ny0); g.closePath(); g.fill();
@@ -1864,6 +1873,7 @@ const STYLES = {
       const sx = W - u * .3, sy = H - u * .05;
       for (let i = 0; i < 4; i++) { g.globalAlpha = i % 2 ? .2 : .5; g.fillRect(sx + i * u * .05, sy, u * .05, fs * .4); }
       g.globalAlpha = .45; g.textAlign = 'left'; g.fillText('0', sx, sy + fs * .8); g.textAlign = 'right'; g.fillText('2 KM', sx + u * .2, sy + fs * .8);
+      }
       g.globalAlpha = 1; g.textAlign = 'start';
       this.route(); this.acc = 0;
       this.p = this.L;       // the first route is already drawn; later ones draw themselves
@@ -1881,6 +1891,7 @@ const STYLES = {
       if (!W || !H) return;
       const fs = this.fs, pts = this.pts, light = T.mode === 'light';
       cx.globalAlpha = 1; cx.drawImage(this.back, 0, 0);
+      if ((OPTS.topo || {}).route === 'off') return;
       cx.globalAlpha = .85 * this.fade; cx.strokeStyle = cx.fillStyle = T.acc; cx.lineWidth = Math.max(1.5, this.u / 400);
       cx.setLineDash([this.u / 90, this.u / 140]); cx.beginPath(); cx.moveTo(pts[0][0], pts[0][1]);
       let left = this.p, reached = 0;
@@ -1908,6 +1919,8 @@ const STYLES = {
     },
     frame(dt) {
       if (RAIN <= 0 || !(dt = every(this, 24, dt))) return;
+      if ((OPTS.topo || {}).route === 'off') { if (!this.bare) this.paint(); this.bare = true; return; }
+      this.bare = false;
       const sp = .4 + RAIN * 1.6;
       if (this.p < this.L) this.p += dt * sp * this.u * .06;
       else if ((this.hold += dt * sp) > 14) { if ((this.fade -= dt * .5) <= 0) this.route(); }

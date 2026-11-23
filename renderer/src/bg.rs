@@ -26,7 +26,7 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result
         "pixel" => Box::new(Pixel::new(g)?),
         "cascade" => Box::new(Cascade::new(g, fonts, &look.mono.family, o)?),
         "broadsheet" => Box::new(Broadsheet::new(g, fonts, look)?),
-        "halftone" => Box::new(Halftone::new(g)?),
+        "halftone" => Box::new(Halftone::new(g, o)?),
         "stop" => Box::new(Stop::new(g, fonts, look)?),
         "grid" => Box::new(Grid { ph: 0.0, still: false, sun: true, stripes: true, scroll: true, hz: 0.6 }),
         "record" => Box::new(Record::new(g, fonts, look)?),
@@ -34,7 +34,7 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result
         "textmode" => Box::new(Textmode::new(g, fonts, look)?),
         "sunprint" => Box::new(Sunprint::new(g)?),
         "draft" => Box::new(Draft::new(g, fonts, look)?),
-        "topo" => Box::new(Topo::new(g, fonts, look)?),
+        "topo" => Box::new(Topo::new(g, fonts, look, o)?),
         "radar" => Box::new(Radar::new(g, fonts, look, o)?),
         "orb" => Box::new(Orb::new(g, look)?),
         _ => Box::new(Plain),
@@ -498,14 +498,14 @@ impl Background for Broadsheet {
 /// multiply (light themes) or screen (dark); over its flat background that equals plain drawing in the blended
 /// color, worked out here once per drum.
 pub struct Halftone { dot: ID2D1Bitmap1, batch: ID2D1SpriteBatch, dc3: ID2D1DeviceContext3, t: f32, w: f32, h: f32,
-                      still: bool, dest: Vec<D2D_RECT_F>, tint: Vec<D2D1_COLOR_F> }
-
-const HT_SP: f32 = 18.0;
-const HT_MAX: f32 = HT_SP * 0.48;
+                      still: bool, dest: Vec<D2D_RECT_F>, tint: Vec<D2D1_COLOR_F>,
+                      sp: f32, inks: usize, drift: bool, off: f32 }   // options: dot spacing (the dot is made for it), one or two inks, breathing, misprint
 
 impl Halftone {
-    fn new(g: &Gfx) -> Result<Halftone> {
-        let d = HT_MAX * 2.0 + 2.0;
+    fn new(g: &Gfx, o: &Json) -> Result<Halftone> {
+        let sp = Self::spacing(o);
+        let max = sp * 0.48;
+        let d = max * 2.0 + 2.0;
         let dot = g.surface(d, d)?;
         unsafe {
             let dc = &g.dc;
@@ -513,7 +513,7 @@ impl Halftone {
             dc.SetTarget(&dot);
             dc.BeginDraw();
             dc.Clear(Some(&D2D1_COLOR_F::default()));
-            dc.FillEllipse(&D2D1_ELLIPSE { point: D2D_POINT_2F { x: d / 2.0, y: d / 2.0 }, radiusX: HT_MAX, radiusY: HT_MAX },
+            dc.FillEllipse(&D2D1_ELLIPSE { point: D2D_POINT_2F { x: d / 2.0, y: d / 2.0 }, radiusX: max, radiusY: max },
                            &g.brush([1.0, 1.0, 1.0, 1.0])?);
             dc.EndDraw(None, None)?;
             dc.SetTarget(&old);
@@ -521,39 +521,48 @@ impl Halftone {
         let dc3: ID2D1DeviceContext3 = g.dc.cast()?;
         let batch = unsafe { dc3.CreateSpriteBatch()? };
         let mut rng = Rng(0x7a11_7012_0b5e_ed00);
-        Ok(Halftone { dot, batch, dc3, t: rng.range(0.0, 100.0), w: g.w as f32, h: g.h as f32, still: false, dest: Vec::new(), tint: Vec::new() })
+        Ok(Halftone { dot, batch, dc3, t: rng.range(0.0, 100.0), w: g.w as f32, h: g.h as f32, still: false, dest: Vec::new(), tint: Vec::new(),
+                      sp, inks: 2, drift: true, off: 1.0 })
     }
+    fn spacing(o: &Json) -> f32 { if o.get("dots").str() == Some("coarse") { 30.0 } else { 18.0 } }
 }
 
 impl Background for Halftone {
-    fn fps(&self) -> f32 { if self.still { 0.0 } else { 12.0 } }
+    fn fps(&self) -> f32 { if self.still || !self.drift { 0.0 } else { 12.0 } }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.inks = if o.get("inks").str() == Some("one") { 1 } else { 2 };
+        self.drift = o.get("drift").str() != Some("still");
+        self.off = if o.get("misprint").str() == Some("off") { 0.0 } else { 1.0 };
+        Self::spacing(o) != self.sp
+    }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
-        self.t += dt * (0.15 + level * 0.35);
+        if self.drift { self.t += dt * (0.15 + level * 0.35); }
         self.still = level <= 0.0;
         unsafe { g.dc.Clear(Some(&rgba(look.bg))); }
         if self.still { return Ok(()); }
         let (t, bg) = (self.t, look.bg);
         let a = 0.16 + level * 0.12;
-        let half = (HT_MAX + 1.0) / HT_MAX;   // the sprite's half-size per unit of radius (it has a pixel of margin)
+        let (sp, max) = (self.sp, self.sp * 0.48);
+        let half = (max + 1.0) / max;   // the sprite's half-size per unit of radius (it has a pixel of margin)
         self.dest.clear(); self.tint.clear();
-        for (col, ph, ox, oy) in [(look.dim, 0.0f32, 0.0f32, 0.0f32), (look.hi, 2.1, 3.0, 2.0)] {
+        for &(col, ph, ox, oy) in &[(look.dim, 0.0f32, 0.0f32, 0.0f32), (look.hi, 2.1, 3.0 * self.off, 2.0 * self.off)][..self.inks] {
             // multiply / screen over the flat background, then premultiplied at the drum's alpha
             let mix = |i: usize| if look.light { bg[i] * col[i] } else { bg[i] + col[i] - bg[i] * col[i] };
             let c = D2D1_COLOR_F { r: mix(0) * a, g: mix(1) * a, b: mix(2) * a, a };
-            let mut y = HT_SP / 2.0;
+            let mut y = sp / 2.0;
             while y < self.h {
-                let mut x = HT_SP / 2.0;
+                let mut x = sp / 2.0;
                 while x < self.w {
                     let v = ((x * 0.004 + t + ph).sin() + (y * 0.005 - t * 0.8 + ph).sin() + ((x + y) * 0.0025 + t * 0.5).sin()) / 3.0;
-                    let r = v.max(0.0).powf(1.4) * HT_MAX;
+                    let r = v.max(0.0).powf(1.4) * max;
                     if r >= 0.6 {
                         let s = r * half;
                         self.dest.push(rect(x + ox - s, y + oy - s, s * 2.0, s * 2.0));
                         self.tint.push(c);
                     }
-                    x += HT_SP;
+                    x += sp;
                 }
-                y += HT_SP;
+                y += sp;
             }
         }
         if self.dest.is_empty() { return Ok(()); }
@@ -685,7 +694,8 @@ impl Background for Grid {
 /// a record turning slowly in the corner of the sleeve; the light on the grooves stays put. The disc (grooves, two
 /// dark bands, two lamp highlights) is drawn once; each frame draws it, then the label turned. 30 fps; still at 0.
 pub struct Record { disc: ID2D1Bitmap1, d: f32, r: f32, a: f32, still: bool, at: (f32, f32),
-                    texts: [(IDWriteTextLayout, f32); 3], lh: f32 }
+                    texts: [(IDWriteTextLayout, f32); 4], lh: f32,
+                    spin: f32, fast: bool, centre: bool, mid: f32 }   // options: turns per unit (0 resting, - anticlockwise), 45 rpm, bottom middle
 
 impl Record {
     fn new(g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Record> {
@@ -755,17 +765,25 @@ impl Record {
         };
         let texts = [(lay("glitchwall", "Instrument Serif", lr * 0.2)?, -lr * 0.45),
                      (lay("SIDE A  ·  33⅓ RPM", &look.mono.family, lr * 0.085)?, lr * 0.42),
-                     (lay("LIVE TOOL FEED", &look.mono.family, lr * 0.085)?, lr * 0.58)];
-        Ok(Record { disc, d, r, a: 0.0, still: false, at: (w * 0.12, h * 0.84), texts, lh })
+                     (lay("LIVE TOOL FEED", &look.mono.family, lr * 0.085)?, lr * 0.58),
+                     (lay("SIDE A  ·  45 RPM", &look.mono.family, lr * 0.085)?, lr * 0.42)];
+        Ok(Record { disc, d, r, a: 0.0, still: false, at: (w * 0.12, h * 0.84), texts, lh, spin: 1.0, fast: false, centre: false, mid: w / 2.0 })
     }
 }
 
 impl Background for Record {
     fn fps(&self) -> f32 { if self.still { 0.0 } else { 30.0 } }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.fast = o.get("speed").str() == Some("45");
+        let dir = if o.get("direction").str() == Some("anticlockwise") { -1.0 } else { 1.0 };
+        self.spin = if o.get("spin").str() == Some("off") { 0.0 } else if self.fast { 1.35 * dir } else { dir };
+        self.centre = o.get("place").str() == Some("centre");
+        false
+    }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
-        self.a += dt * level * 0.9;
-        self.still = level <= 0.0;   // a still record: drawn once where it stopped
-        let (cx, cy) = self.at;
+        self.a += dt * level * 0.9 * self.spin;
+        self.still = level <= 0.0 || self.spin == 0.0;   // a still record: drawn once where it stopped
+        let (cx, cy) = (if self.centre { self.mid } else { self.at.0 }, self.at.1);
         let lr = self.r * 0.32;
         unsafe {
             let dc = &g.dc;
@@ -779,7 +797,7 @@ impl Background for Record {
             dc.FillEllipse(&e(lr), &g.brush(look.acc)?);
             dc.DrawEllipse(&e(lr * 0.82), &g.brush([look.ink[0], look.ink[1], look.ink[2], 0.35])?, 1.0, None);
             let ink = g.brush(look.ink)?;
-            for (t, y) in &self.texts {
+            for (t, y) in [&self.texts[0], &self.texts[if self.fast { 3 } else { 1 }], &self.texts[2]] {
                 dc.DrawTextLayout(D2D_POINT_2F { x: -lr, y: y - self.lh / 2.0 }, t, &ink, D2D1_DRAW_TEXT_OPTIONS_NONE);
             }
             dc.FillEllipse(&e(lr * 0.07), &g.brush(look.bg)?);
@@ -1193,7 +1211,8 @@ impl Background for Sunprint {
 /// a drawing grid with a title block; lines, circles and boxes draft themselves, get dimensioned, then fade. The grid
 /// is a few hundred hairlines, drawn each frame (a palette change shows at once). 30 fps (it always has a shape or two).
 pub struct Draft { shapes: Vec<Part>, wait: f32, rng: Rng, factory: ID2D1Factory, dashdot: ID2D1StrokeStyle,
-                   mono: IDWriteTextFormat, mid: IDWriteTextFormat, big: IDWriteTextFormat }
+                   mono: IDWriteTextFormat, mid: IDWriteTextFormat, big: IDWriteTextFormat,
+                   only: Option<f32>, dims: bool, grid: u8, title: bool }   // options: one kind of shape, dimensions, grid fine/coarse/off, title block
 
 enum Kind { Line(f32, bool), Circle(f32), Box(f32, f32, bool) }
 struct Part { kind: Kind, x: f32, y: f32, t: f32, dur: f32, hold: f32 }
@@ -1215,7 +1234,7 @@ impl Draft {
         };
         Ok(Draft { shapes: Vec::new(), wait: 0.0, rng: Rng(0xd2af_7000_0000_0001), factory, dashdot,
                    mono: fmt(&look.mono.family, 11.0, false)?, mid: fmt(&look.mono.family, 11.0, true)?,
-                   big: fmt(&look.display.family, 17.6, false)? })
+                   big: fmt(&look.display.family, 17.6, false)?, only: None, dims: true, grid: 0, title: true })
     }
 
     fn spawn(&mut self, w: f32, h: f32) {
@@ -1223,7 +1242,7 @@ impl Draft {
         let snap = |v: f32| (v / DG).round() * DG;
         let (x, y) = (snap(r.range(w * 0.05, w * 0.9)), snap(r.range(h * 0.1, h * 0.9)));
         let (dur, hold) = (r.range(1.6, 3.2), r.range(4.0, 8.0));
-        let k = r.f();
+        let k = self.only.unwrap_or_else(|| r.f());
         let kind = if k < 0.4 { Kind::Line(snap(r.range(DG * 4.0, DG * 16.0)), r.f() < 0.4) }
                    else if k < 0.7 { Kind::Circle(snap(r.range(DG * 1.5, DG * 6.0))) }
                    else { Kind::Box(snap(r.range(DG * 3.0, DG * 10.0)), snap(r.range(DG * 2.0, DG * 7.0)), r.f() < 0.4) };
@@ -1239,6 +1258,13 @@ impl Draft {
 
 impl Background for Draft {
     fn fps(&self) -> f32 { 30.0 }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.only = match o.get("shapes").str() { Some("lines") => Some(0.1), Some("circles") => Some(0.5), Some("boxes") => Some(0.9), _ => None };
+        self.dims = o.get("dimensions").str() != Some("off");
+        self.grid = match o.get("grid").str() { Some("coarse") => 1, Some("off") => 2, _ => 0 };
+        self.title = o.get("title").str() != Some("off");
+        false
+    }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
         let (w, h) = (g.w as f32, g.h as f32);
         let pt = |x: f32, y: f32| D2D_POINT_2F { x, y };
@@ -1247,11 +1273,14 @@ impl Background for Draft {
             dc.Clear(Some(&rgba(look.bg)));
             // the grid: fine every 24, heavier every 120
             let dim = g.brush(look.dim)?;
-            for (step, a) in [(DG, 0.1), (DG * 5.0, 0.22)] {
+            for &(step, a) in &[(DG, 0.1), (DG * 5.0, 0.22)][[0, 1, 2][self.grid as usize]..] {
                 dim.SetOpacity(a);
                 let mut x = 0.5; while x < w { dc.DrawLine(pt(x, 0.0), pt(x, h), &dim, 1.0, None); x += step; }
                 let mut y = 0.5; while y < h { dc.DrawLine(pt(0.0, y), pt(w, y), &dim, 1.0, None); y += step; }
             }
+        }
+        if self.title { unsafe {
+            let dc = &g.dc;
             // the title block, bottom right
             let (bw, bh) = ((w * 0.3).min(330.0), 88.0);
             let (bx, by) = (w - bw - DG, h - bh - DG);
@@ -1267,7 +1296,7 @@ impl Background for Draft {
                               ("SCALE  1:1", 0.0, 0.9), ("SHEET  1 OF 1", 1.0, 0.9)] {
                 Self::text(g, &self.mono, s, bx + 10.0 + x * bw * 0.55, by + bh * y, false, &hi);
             }
-        }
+        } }
         // a new shape every .4-1.6 s, up to 2 + level x 12 at once
         self.wait -= dt;
         if self.wait <= 0.0 && self.shapes.len() < (2.0 + level * 12.0).round() as usize {
@@ -1290,7 +1319,7 @@ impl Background for Draft {
                     Kind::Line(len, vert) => {
                         let (dx, dy) = if vert { (0.0, len * p) } else { (len * p, 0.0) };
                         dc.DrawLine(pt(s.x, s.y), pt(s.x + dx, s.y + dy), &ink, 1.0, None);
-                        if done {   // a dimension line beside it, with end ticks and the length
+                        if done && self.dims {   // a dimension line beside it, with end ticks and the length
                             let (ox, oy) = if vert { (14.0, 0.0) } else { (0.0, -14.0) };
                             ink.SetOpacity(0.35 * a);
                             let (ex, ey) = if vert { (0.0, len) } else { (len, 0.0) };
@@ -1329,7 +1358,7 @@ impl Background for Draft {
                         if done {
                             dc.DrawLine(pt(s.x, s.y), pt(s.x + r * 0.707, s.y - r * 0.707), &ink, 1.0, None);
                             ink.SetOpacity(0.6 * a);
-                            Self::text(g, &self.mid, &format!("R{}", r as i32), s.x + r * 0.707 + 18.0, s.y - r * 0.707 - 8.0, true, &ink);
+                            if self.dims { Self::text(g, &self.mid, &format!("R{}", r as i32), s.x + r * 0.707 + 18.0, s.y - r * 0.707 - 8.0, true, &ink); }
                         }
                     }
                     Kind::Box(bw, bh, hatch) => {
@@ -1352,7 +1381,7 @@ impl Background for Draft {
                                 dc.PopAxisAlignedClip();
                             }
                             ink.SetOpacity(0.6 * a);
-                            Self::text(g, &self.mid, &format!("{} × {}", bw as i32, bh as i32), s.x + bw / 2.0, s.y + bh + 12.0, true, &ink);
+                            if self.dims { Self::text(g, &self.mid, &format!("{} × {}", bw as i32, bh as i32), s.x + bw / 2.0, s.y + bh + 12.0, true, &ink); }
                         }
                     }
                 }
@@ -1369,10 +1398,17 @@ impl Background for Draft {
 /// all one ink at different strengths, so it is drawn once as a mask and tinted each frame. 24 fps; still at 0.
 pub struct Topo { mask: ID2D1Bitmap1, factory: ID2D1Factory, dash: ID2D1StrokeStyle, fmt: IDWriteTextFormat,
                   rng: Rng, u: f32, w: f32, h: f32, gs: f32, fs: f32,
-                  pts: Vec<(f32, f32)>, refs: Vec<String>, len: f32, p: f32, hold: f32, fade: f32, still: bool }
+                  pts: Vec<(f32, f32)>, refs: Vec<String>, len: f32, p: f32, hold: f32, fade: f32, still: bool,
+                  route: bool, built: (usize, bool, bool) }   // options: the route; drawn into the map: contours, grid refs, markers
 
 impl Topo {
-    fn new(g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Topo> {
+    fn built(o: &Json) -> (usize, bool, bool) {
+        (match o.get("contours").str() { Some("sparse") => 14, Some("dense") => 40, _ => 26 },
+         o.get("refs").str() != Some("off"), o.get("markers").str() != Some("off"))
+    }
+    fn new(g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result<Topo> {
+        let built = Self::built(o);
+        let nc = built.0;
         let (w, h) = (g.w as f32, g.h as f32);
         let u = w.min(h);
         let light = look.light;
@@ -1398,8 +1434,8 @@ impl Topo {
             let mut f = vec![0.0f32; nx * ny];
             let (mut lo, mut hi) = (f32::MAX, f32::MIN);
             for j in 0..ny { for i in 0..nx { let v = ht(i as f32 * c, j as f32 * c); f[j * nx + i] = v; lo = lo.min(v); hi = hi.max(v); } }
-            let step = (hi - lo) / 26.0;
-            for k in 1..26 {
+            let step = (hi - lo) / nc as f32;
+            for k in 1..nc {
                 let lv = lo + k as f32 * step;
                 let heavy = k % 5 == 0;
                 let path = factory.CreatePathGeometry()?;
@@ -1428,8 +1464,9 @@ impl Topo {
             }
             // the grid with its references
             white.SetOpacity(if light { 0.16 } else { 0.14 });
-            let mut x = gs; while x < w { let xx = x.round() + 0.5; dc.DrawLine(p2(xx, 0.0), p2(xx, h), &white, 1.0, None); x += gs; }
-            let mut y = gs; while y < h { let yy = y.round() + 0.5; dc.DrawLine(p2(0.0, yy), p2(w, yy), &white, 1.0, None); y += gs; }
+            let (gw, gh) = if built.1 { (w, h) } else { (0.0, 0.0) };   // without the grid: none of it
+            let mut x = gs; while x < gw { let xx = x.round() + 0.5; dc.DrawLine(p2(xx, 0.0), p2(xx, h), &white, 1.0, None); x += gs; }
+            let mut y = gs; while y < gh { let yy = y.round() + 0.5; dc.DrawLine(p2(0.0, yy), p2(w, yy), &white, 1.0, None); y += gs; }
             white.SetOpacity(0.45);
             let text = |s: &str, x: f32, y: f32, al: f32| {   // al: 0 left, .5 centre, 1 right of x; y is the top
                 let t: Vec<u16> = s.encode_utf16().collect();
@@ -1439,9 +1476,10 @@ impl Topo {
                     dc.DrawTextLayout(p2(x - wd * al, y), &l, &white, D2D1_DRAW_TEXT_OPTIONS_NONE);
                 }
             };
-            let (mut x, mut n) = (0.0, 0u8); while x < w { text(&((b'A' + n % 26) as char).to_string(), x + fs * 0.4, fs * 0.4, 0.0); x += gs; n += 1; }
-            let (mut y, mut n) = (gs, 1); while y < h { text(&format!("{n:02}"), fs * 0.4, y + fs * 0.4, 0.0); y += gs; n += 1; }
+            let (mut x, mut n) = (0.0, 0u8); while x < gw { text(&((b'A' + n % 26) as char).to_string(), x + fs * 0.4, fs * 0.4, 0.0); x += gs; n += 1; }
+            let (mut y, mut n) = (gs, 1); while y < gh { text(&format!("{n:02}"), fs * 0.4, y + fs * 0.4, 0.0); y += gs; n += 1; }
             // north arrow and scale bar, bottom right
+            if built.2 {
             let (ax, ay) = (w - u * 0.07, h - u * 0.16);
             white.SetOpacity(0.5);
             let arrow = factory.CreatePathGeometry()?;
@@ -1457,6 +1495,7 @@ impl Topo {
             white.SetOpacity(0.45);
             text("0", sx, sy + fs * 0.8, 0.0);
             text("2 KM", sx + u * 0.2, sy + fs * 0.8, 1.0);
+            }
             dc.EndDraw(None, None)?;
             dc.SetTarget(&old);
         }
@@ -1464,7 +1503,7 @@ impl Topo {
         let props = D2D1_STROKE_STYLE_PROPERTIES { dashStyle: D2D1_DASH_STYLE_CUSTOM, ..Default::default() };
         let dash = unsafe { factory.CreateStrokeStyle(&props, Some(&[u / 90.0 / lw, u / 140.0 / lw]))? };
         let mut t = Topo { mask, factory, dash, fmt, rng, u, w, h, gs, fs, pts: Vec::new(), refs: Vec::new(), len: 0.0,
-                           p: 0.0, hold: 0.0, fade: 1.0, still: false };
+                           p: 0.0, hold: 0.0, fade: 1.0, still: false, route: true, built };
         t.route();
         t.p = t.len;   // the first route is already drawn; later ones draw themselves
         Ok(t)
@@ -1491,8 +1530,12 @@ impl Topo {
 
 impl Background for Topo {
     fn fps(&self) -> f32 { if self.still { 0.0 } else { 24.0 } }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.route = o.get("route").str() != Some("off");
+        Self::built(o) != self.built
+    }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
-        self.still = level <= 0.0;
+        self.still = level <= 0.0 || !self.route;   // just the map: drawn once
         if !self.still {
             let sp = 0.4 + level * 1.6;
             if self.p < self.len { self.p += dt * sp * self.u * 0.06; }
@@ -1506,6 +1549,7 @@ impl Background for Topo {
             dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);   // FillOpacityMask needs it
             dc.FillOpacityMask(&self.mask, &ink, Some(&rect(0.0, 0.0, self.w, self.h)), None);
             dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+            if !self.route { return Ok(()); }
             // the route so far, dashed
             let acc = g.brush(look.acc)?;
             acc.SetOpacity(0.85 * self.fade);

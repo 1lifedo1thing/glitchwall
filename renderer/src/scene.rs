@@ -213,8 +213,8 @@ impl Scene {
             if self.bg.opts(o) {   // an option drawn in once: make the background again, with it
                 self.bg = bg::make(&self.look.rain, &self.g, &self.fonts, &self.look, o)?;
                 self.bg.opts(o);
-                self.bg_drawn = false;
             }
+            self.bg_drawn = false;   // a still background shows the change too
         }
         let tune = data.get("tune");
         if let Some(v) = tune.get("typeSpeed").num() { self.tune.cps = 60.0 + v * 40.0; }
