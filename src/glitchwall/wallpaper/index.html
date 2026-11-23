@@ -303,16 +303,18 @@ const STYLES = {
     scale: 1, FS: 16, GL: 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789:=+*<>',
     // trails are redrawn from scratch each frame (30 fps): a translucent "fade" fill never
     // fully clears in 8-bit color and leaves ghost glyphs, worst on light themes
-    g() { return this.GL[Math.random() * this.GL.length | 0]; },
-    col(y) { return { y, v: rnd(5, 14), len: rnd(8, 22) | 0, trail: [], row: -1e9, on: Math.random() < RAIN * 1.6 }; },
+    g() { const [a, b] = { katakana: [0, 45], digits: [45, 55] }[(OPTS.code || {}).glyphs] || [0, this.GL.length];
+          return this.GL[a + (Math.random() * (b - a) | 0)]; },
+    col(y) { const k = { sparse: .5, dense: 1.6 }[(OPTS.code || {}).density] || 1;
+             return { y, v: rnd(5, 14), len: rnd(8, 22) | 0, trail: [], row: -1e9, on: Math.random() < RAIN * 1.6 * k }; },
     init() { this.cols = Array.from({ length: Math.ceil(W / this.FS) }, () => this.col(rnd(-H, H))); },
     frame(dt) {
       if (!(dt = every(this, 30, dt))) return;
-      const FS = this.FS;
+      const FS = this.FS, o = OPTS.code || {}, sp = { slow: .5, fast: 1.7 }[o.speed] || 1, head = o.heads === 'accent' ? T.acc : T.hi;
       cx.globalAlpha = 1; cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H);
       cx.font = `${FS - 2}px ${KANA}, ${MONO}`; cx.textBaseline = 'top';
       this.cols.forEach((c, i) => {
-        c.y += c.v * dt * FS;
+        c.y += c.v * dt * FS * sp;
         const row = Math.floor(c.y / FS);
         if (row !== c.row) { c.row = row; c.trail.unshift(this.g()); c.trail.length = Math.min(c.trail.length, c.len); }
         if ((row - c.len) * FS > H) { this.cols[i] = this.col(rnd(-H / 2, 0)); return; }
@@ -321,7 +323,7 @@ const STYLES = {
         const x = i * FS;
         c.trail.forEach((ch, k) => {
           if (!ch) return;
-          cx.globalAlpha = k ? 1 - k / c.len : 1; cx.fillStyle = k ? T.dim : T.hi;
+          cx.globalAlpha = k ? 1 - k / c.len : 1; cx.fillStyle = k ? T.dim : head;
           cx.fillText(ch, x, (row - k) * FS);
         });
       });
@@ -330,17 +332,19 @@ const STYLES = {
   },
   // flying through a starfield
   stars: {
-    scale: 1, init() { this.s = Array.from({ length: 700 }, () => this.star(rnd(.05, 1))); },
+    scale: 1, init() { this.s = Array.from({ length: 1100 }, () => this.star(rnd(.05, 1))); },
     star(z) { return { x: rnd(-1, 1), y: rnd(-1, 1), z }; },
     frame(dt) {
-      cx.fillStyle = rgba(T.bg, .45); cx.fillRect(0, 0, W, H);
-      const n = Math.round(this.s.length * RAIN), f = Math.max(W, H) / 2;
+      const o = OPTS.stars || {}, out = o.direction === 'out';
+      const k = { sparse: .3, dense: 1 }[o.density] || .64, sp = { drift: .4, warp: 2.5 }[o.speed] || 1;
+      cx.fillStyle = o.streaks === 'off' ? T.bg : rgba(T.bg, .45); cx.fillRect(0, 0, W, H);
+      const n = Math.round(this.s.length * k * RAIN), f = Math.max(W, H) / 2;
       for (let i = 0; i < n; i++) {
         const p = this.s[i];
-        p.z -= dt * (.06 + RAIN * .14);
-        if (p.z <= .02) { this.s[i] = this.star(1); continue; }
+        p.z += (out ? 1 : -1) * dt * (.06 + RAIN * .14) * sp;
+        if (p.z <= .02 || p.z > 1) { this.s[i] = this.star(out ? rnd(.03, .2) : 1); continue; }
         const x = W / 2 + p.x / p.z * f * .5, y = H / 2 + p.y / p.z * f * .5;
-        if (x < 0 || x > W || y < 0 || y > H) { this.s[i] = this.star(1); continue; }
+        if (x < 0 || x > W || y < 0 || y > H) { this.s[i] = out ? this.star(rnd(.03, 1)) : this.star(1); continue; }
         const sz = (1 - p.z) * 2.6 + .4;
         cx.fillStyle = p.z < .3 ? T.hi : T.dim; cx.fillRect(x, y, sz, sz);
       }
@@ -350,14 +354,20 @@ const STYLES = {
   static: {
     scale: 4, init() { this.img = cx.createImageData(W, H); this.band = 0; },
     frame(dt) {
+      const o = OPTS.static || {}, blk = o.grain === 'coarse' ? 2 : 1;
       this.band = (this.band + dt * H * .12) % (H + 40);
-      if (!every(this, 15, dt)) return;
-      const d = this.img.data, [br, bg, bb] = rgb(T.bg), [r, g, b] = rgb(T.dim), p = .02 + RAIN * .16;
-      for (let y = 0, i = 0; y < H; y++) {
-        const boost = Math.abs(y - this.band) < 14 ? 1.8 : 1;
-        for (let x = 0; x < W; x++, i += 4) {
-          const k = Math.random() < p * boost ? Math.random() * boost : 0, m = Math.min(1, k);
-          d[i] = br + (r - br) * m; d[i + 1] = bg + (g - bg) * m; d[i + 2] = bb + (b - bb) * m; d[i + 3] = 255;
+      if (!every(this, o.flicker === 'slow' ? 6 : 15, dt)) return;
+      const d = this.img.data, [br, bg, bb] = rgb(T.bg), [r, g, b] = rgb(T.dim), [ar, ag, ab] = rgb(T.acc), p = .02 + RAIN * .16;
+      const tint = o.tint === 'tinted', band = o.band !== 'off';
+      for (let y = 0; y < H; y += blk) {
+        const boost = band && Math.abs(y - this.band) < 14 ? 1.8 : 1;
+        for (let x = 0; x < W; x += blk) {
+          const k = Math.random() < p * boost ? Math.random() * boost : 0, m = Math.min(1, k), acc = tint && k && Math.random() < .25;
+          const [cr, cg, cb] = acc ? [ar, ag, ab] : [r, g, b];
+          for (let yy = y; yy < Math.min(H, y + blk); yy++) for (let xx = x; xx < Math.min(W, x + blk); xx++) {
+            const i = (yy * W + xx) * 4;
+            d[i] = br + (cr - br) * m; d[i + 1] = bg + (cg - bg) * m; d[i + 2] = bb + (cb - bb) * m; d[i + 3] = 255;
+          }
         }
       }
       cx.putImageData(this.img, 0, 0);
@@ -365,18 +375,34 @@ const STYLES = {
   },
   // drifting snow
   snow: {
-    scale: 1, init() { this.f = Array.from({ length: 500 }, () => this.flake(rnd(0, H))); this.t = 0; },
-    flake(y) { const r = rnd(1, 3.4); return { x: rnd(0, W), y, r, v: 12 + r * 14, ph: rnd(0, 7) }; },
+    scale: 1, init() { this.f = Array.from({ length: 1000 }, () => this.flake(rnd(0, H))); this.t = 0; this.pile = new Float32Array(Math.ceil(W / 4)); },
+    flake(y) {
+      const [a, b] = { fine: [.8, 1.8], big: [2.2, 4.5] }[(OPTS.snow || {}).flakes] || [1, 3.4], r = rnd(a, b);
+      return { x: rnd(0, W), y, r, v: 12 + r * 14, ph: rnd(0, 7) };
+    },
     frame(dt) {
       this.t += dt;
+      const o = OPTS.snow || {}, k = { light: .22, blizzard: 1 }[o.amount] || .5;
+      const wind = { left: -38, right: 38 }[o.wind] || 0, sway = wind ? 5 : 12, big = { fine: 1.6, big: 3.6 }[o.flakes] || 2.6;
       cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H);
-      const n = Math.round(this.f.length * RAIN);
+      const n = Math.round(this.f.length * k * RAIN), pile = this.pile, settle = o.settle === 'on';
       for (let i = 0; i < n; i++) {
         const p = this.f[i];
-        p.y += p.v * dt; p.x += Math.sin(this.t * .7 + p.ph) * 12 * dt;
+        p.y += p.v * dt; p.x += (Math.sin(this.t * .7 + p.ph) * sway + wind) * dt;
+        if (p.x < -6) p.x += W + 12; else if (p.x > W + 6) p.x -= W + 12;
+        const c = Math.min(pile.length - 1, Math.max(0, p.x / 4 | 0));
+        if (settle && p.y > H - pile[c]) { pile[c] = Math.min(H * .06, pile[c] + p.r * .35); this.f[i] = this.flake(-4); continue; }
         if (p.y > H + 4) this.f[i] = this.flake(-4);
-        cx.fillStyle = p.r > 2.6 ? T.hi : T.dim; cx.fillRect(p.x, p.y, p.r, p.r);
+        cx.fillStyle = p.r > big ? T.hi : T.dim; cx.fillRect(p.x, p.y, p.r, p.r);
       }
+      if (settle) {   // the drift along the bottom, slowly melting
+        cx.fillStyle = T.dim;
+        for (let c = 0; c < pile.length; c++) {
+          pile[c] = Math.max(0, pile[c] - dt * .6);
+          const h = (pile[Math.max(0, c - 1)] + pile[c] * 2 + pile[Math.min(pile.length - 1, c + 1)]) / 4;
+          if (h > .5) cx.fillRect(c * 4, H - h, 4, h);
+        }
+      } else pile.fill(0);
     },
   },
   // synthwave: striped sun over a perspective grid rolling toward you
@@ -559,10 +585,10 @@ const STYLES = {
   },
   // a 50s jukebox arch in the corner: light bands drifting between the two accents, bubbles rising in the side tubes
   jukebox: {
-    scale: 1,
+    scale: 1, reinit: true,   // its place is set at init
     init() {
       const w = this.w = Math.min(W, H) * .46, h = this.h = w * 1.55;
-      this.x = W * .05; this.y = H - h * .9; this.t = 0;
+      this.x = (OPTS.jukebox || {}).place === 'centre' ? (W - w) / 2 : W * .05; this.y = H - h * .9; this.t = 0;
       this.bub = Array.from({ length: 28 }, (_, i) => this.bubble(i % 2, rnd(0, 1)));
     },
     bubble(side, f) { return { side, f, r: rnd(1.5, 4.5), v: rnd(.05, .14) }; },
@@ -572,11 +598,12 @@ const STYLES = {
     },
     frame(dt) {
       if (!(dt = every(this, 30, dt))) return;
-      this.t += dt * (.15 + RAIN * .9);
+      const o = OPTS.jukebox || {};
+      if (o.bands !== 'still') this.t += dt * (.15 + RAIN * .9);
       cx.globalAlpha = 1; cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H);
       const band = this.w * .07, A = rgb(T.acc), B = rgb(T.acc2);
       for (let i = 0; i < 3; i++) {
-        const k = (Math.sin(this.t + i * 1.3) + 1) / 2, c = A.map((a, j) => Math.round(a + (B[j] - a) * k));
+        const k = o.bands === 'still' ? i / 2 : (Math.sin(this.t + i * 1.3) + 1) / 2, c = A.map((a, j) => Math.round(a + (B[j] - a) * k));
         cx.strokeStyle = `rgb(${c.join(',')})`; cx.lineWidth = band * .75; cx.globalAlpha = .5;
         cx.shadowColor = cx.strokeStyle; cx.shadowBlur = 16;
         this.arch(band * (i + .5)); cx.stroke();
@@ -585,11 +612,11 @@ const STYLES = {
       // grille
       cx.strokeStyle = T.ink; cx.lineWidth = 1; cx.globalAlpha = .18;
       const gx = this.x + band * 3.4, gw = this.w - band * 6.8, gy = this.y + this.w * .55;
-      cx.beginPath(); for (let y = gy; y < H; y += 9) { cx.moveTo(gx, y); cx.lineTo(gx + gw, y); } cx.stroke();
+      if (o.grille !== 'off') { cx.beginPath(); for (let y = gy; y < H; y += 9) { cx.moveTo(gx, y); cx.lineTo(gx + gw, y); } cx.stroke(); }
       // bubble tubes on both sides
       const top = this.y + this.w * .45, bot = Math.min(H, this.y + this.h);
       cx.globalAlpha = .45; cx.strokeStyle = T.ink;
-      this.bub.forEach((b, i) => {
+      if (o.bubbles !== 'off') this.bub.forEach((b, i) => {
         b.f += b.v * dt * (RAIN > 0 ? 1 : 0); if (b.f > 1) this.bub[i] = this.bubble(b.side, 0);
         const y = bot - (bot - top) * b.f;
         cx.beginPath(); cx.arc(b.side ? this.x + this.w - band * 1.1 : this.x + band * 1.1, y, b.r, 0, TAU); cx.stroke();
@@ -602,7 +629,7 @@ const STYLES = {
     scale: 1,
     init() {
       const cols = [T.acc, T.acc2, T.ink, T.muted];
-      this.items = Array.from({ length: 34 }, () => ({
+      this.items = Array.from({ length: 64 }, () => ({
         x: rnd(0, W), y: rnd(0, H), s: rnd(14, 46), a: rnd(0, TAU), spin: rnd(-.25, .25),
         kind: ['burst', 'burst', 'boomerang', 'atom'][Math.random() * 4 | 0], n: 8 + (Math.random() * 6 | 0) * 2,
         c: cols[Math.random() * cols.length | 0] }));
@@ -610,21 +637,23 @@ const STYLES = {
     frame(dt) {
       if (!(dt = every(this, 30, dt))) return;
       cx.globalAlpha = 1; cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H);
-      const n = Math.round(this.items.length * Math.min(1, RAIN * 1.6));
+      const o = OPTS.starburst || {}, cnt = { few: 16, many: 64 }[o.count] || 34;
+      const kind = { bursts: 'burst', boomerangs: 'boomerang', atoms: 'atom' }[o.shapes], spin = { still: 0, lively: 3 }[o.spin] ?? 1;
+      const n = Math.round(cnt * Math.min(1, RAIN * 1.6));
       cx.lineWidth = 1.4;
       for (let i = 0; i < n; i++) {
-        const it = this.items[i];
-        it.a += it.spin * dt;
+        const it = this.items[i], kd = kind || it.kind;
+        it.a += it.spin * spin * dt;
         cx.save(); cx.translate(it.x, it.y); cx.rotate(it.a);
-        cx.globalAlpha = .45; cx.strokeStyle = cx.fillStyle = it.c;
-        if (it.kind === 'burst') {
+        cx.globalAlpha = .45; cx.strokeStyle = cx.fillStyle = o.colors === 'one' ? T.acc : it.c;
+        if (kd === 'burst') {
           cx.beginPath();
           for (let k = 0; k < it.n; k++) { const ang = k / it.n * TAU, L = it.s * (k % 2 ? .55 : 1);
             cx.moveTo(0, 0); cx.lineTo(Math.cos(ang) * L, Math.sin(ang) * L); }
           cx.stroke();
           for (let k = 0; k < it.n; k += 2) { const ang = k / it.n * TAU;
             cx.beginPath(); cx.arc(Math.cos(ang) * it.s, Math.sin(ang) * it.s, 2.4, 0, TAU); cx.fill(); }
-        } else if (it.kind === 'boomerang') {
+        } else if (kd === 'boomerang') {
           const L = it.s * 1.3;
           cx.beginPath(); cx.moveTo(-L, 0); cx.quadraticCurveTo(0, -L * .95, L, 0); cx.quadraticCurveTo(0, -L * .4, -L, 0); cx.fill();
         } else {
@@ -638,8 +667,9 @@ const STYLES = {
   },
   // an old broadcast test card, faded, with a slow roll and a little snow
   testcard: {
-    scale: 1,
+    scale: 1, reinit: true,   // the plate and border are drawn into the card once
     init() {
+      const opt = OPTS.testcard || {};
       const o = this.card = document.createElement('canvas'), g = o.getContext('2d');
       o.width = W; o.height = H; this.roll = 0;
       g.fillStyle = T.bg; g.fillRect(0, 0, W, H);
@@ -647,8 +677,11 @@ const STYLES = {
       g.globalAlpha = .32; g.strokeStyle = g.fillStyle = T.ink; g.lineWidth = 2;
       // checker border
       const sq = Math.round(Math.min(W, H) / 18);
-      for (let x = 0, k = 0; x < W; x += sq, k++) { if (k % 2) { g.fillRect(x, 0, sq, sq); g.fillRect(x, H - sq, sq, sq); } }
-      for (let y = 0, k = 0; y < H; y += sq, k++) { if (k % 2) { g.fillRect(0, y, sq, sq); g.fillRect(W - sq, y, sq, sq); } }
+      if (opt.border === 'plain') g.strokeRect(sq / 2, sq / 2, W - sq, H - sq);
+      else {
+        for (let x = 0, k = 0; x < W; x += sq, k++) { if (k % 2) { g.fillRect(x, 0, sq, sq); g.fillRect(x, H - sq, sq, sq); } }
+        for (let y = 0, k = 0; y < H; y += sq, k++) { if (k % 2) { g.fillRect(0, y, sq, sq); g.fillRect(W - sq, y, sq, sq); } }
+      }
       // grey-scale bars inside the circle
       g.save(); g.beginPath(); g.arc(cxm, cym, R, 0, TAU); g.clip();
       const shades = [T.ink, T.muted, T.faint, T.acc, T.acc2, T.faint];
@@ -663,6 +696,7 @@ const STYLES = {
         g.beginPath(); g.moveTo(cxm + s * R * .78, cym + k * 3); g.lineTo(cxm + s * R * 1.12, cym + k * 9); g.stroke();
         g.beginPath(); g.moveTo(cxm + k * 3, cym + s * R * .78); g.lineTo(cxm + k * 9, cym + s * R * 1.05); g.stroke();
       }
+      if (opt.plate === 'off') return;
       // name plate
       g.globalAlpha = .75; g.fillStyle = T.bg; g.fillRect(cxm - R * .42, cym - R * .13, R * .84, R * .26);
       g.globalAlpha = .55; g.strokeStyle = g.fillStyle = T.ink; g.strokeRect(cxm - R * .42, cym - R * .13, R * .84, R * .26);
@@ -672,34 +706,46 @@ const STYLES = {
     },
     frame(dt) {
       if (!(dt = every(this, 15, dt))) return;
+      const o = OPTS.testcard || {};
       this.roll = (this.roll + dt * H * .04 * (RAIN > 0 ? 1 : 0)) % (H + 80);
       cx.globalAlpha = 1; cx.drawImage(this.card, 0, 0);
-      cx.fillStyle = T.bg; cx.globalAlpha = .18; cx.fillRect(0, this.roll - 40, W, 40);      // the slow roll bar
+      if (o.roll !== 'off') { cx.fillStyle = T.bg; cx.globalAlpha = .18; cx.fillRect(0, this.roll - 40, W, 40); }      // the slow roll bar
       cx.globalAlpha = .35; cx.fillStyle = T.ink;
-      for (let i = 0, n = RAIN * 900; i < n; i++) cx.fillRect(Math.random() * W, Math.random() * H, 1.5, 1.5);   // snow
+      for (let i = 0, n = RAIN * 900 * ({ off: 0, heavy: 2.5 }[o.snow] ?? 1); i < n; i++) cx.fillRect(Math.random() * W, Math.random() * H, 1.5, 1.5);   // snow
       cx.globalAlpha = 1;
     },
   },
   // mid-century wallpaper: diamonds, dots and little stars, drifting slowly
   print: {
-    scale: 1, TILE: 96,
+    scale: 1, reinit: true,   // the tile is drawn once, from the options
     init() {
-      const S2 = this.TILE, o = document.createElement('canvas'), g = o.getContext('2d');
+      const opt = OPTS.print || {}, S2 = this.TILE = { small: 64, large: 140 }[opt.scale] || 96, k = S2 / 96;
+      const pat = opt.pattern || 'diamonds', ink = opt.ink === 'accent' ? T.acc : T.dim;
+      const o = document.createElement('canvas'), g = o.getContext('2d');
       o.width = o.height = S2; const c = S2 / 2;
-      g.strokeStyle = T.dim; g.fillStyle = T.dim; g.lineWidth = 1.2; g.globalAlpha = .5;
-      g.beginPath(); g.moveTo(c, c - 18); g.lineTo(c + 12, c); g.lineTo(c, c + 18); g.lineTo(c - 12, c); g.closePath(); g.stroke();
-      g.beginPath(); g.arc(c, c, 2.2, 0, TAU); g.fill();
-      for (const [x, y] of [[0, 0], [S2, 0], [0, S2], [S2, S2]]) {          // four-point stars on the corners
-        g.beginPath(); g.moveTo(x, y - 9); g.lineTo(x + 2, y - 2); g.lineTo(x + 9, y); g.lineTo(x + 2, y + 2);
-        g.lineTo(x, y + 9); g.lineTo(x - 2, y + 2); g.lineTo(x - 9, y); g.lineTo(x - 2, y - 2); g.closePath(); g.fill();
+      g.strokeStyle = ink; g.fillStyle = ink; g.lineWidth = 1.2; g.globalAlpha = .5;
+      if (pat === 'diamonds') {
+        g.beginPath(); g.moveTo(c, c - 18 * k); g.lineTo(c + 12 * k, c); g.lineTo(c, c + 18 * k); g.lineTo(c - 12 * k, c); g.closePath(); g.stroke();
+        g.beginPath(); g.arc(c, c, 2.2 * k, 0, TAU); g.fill();
+      }
+      if (pat !== 'dots') {
+        const r = (pat === 'stars' ? 13 : 9) * k, q = 2 * k;
+        for (const [x, y] of [[0, 0], [S2, 0], [0, S2], [S2, S2]]) {          // four-point stars on the corners
+          g.beginPath(); g.moveTo(x, y - r); g.lineTo(x + q, y - q); g.lineTo(x + r, y); g.lineTo(x + q, y + q);
+          g.lineTo(x, y + r); g.lineTo(x - q, y + q); g.lineTo(x - r, y); g.lineTo(x - q, y - q); g.closePath(); g.fill();
+        }
+        if (pat === 'stars') { g.beginPath(); g.arc(c, c, 2 * k, 0, TAU); g.fill(); }
+      } else {
+        g.beginPath(); g.arc(c, c, 5 * k, 0, TAU); g.fill();
+        for (const [x, y] of [[0, 0], [S2, 0], [0, S2], [S2, S2]]) { g.beginPath(); g.arc(x, y, 3 * k, 0, TAU); g.fill(); }
       }
       g.globalAlpha = .35;
-      for (const [x, y] of [[c, 8], [c, S2 - 8], [8, c], [S2 - 8, c]]) { g.beginPath(); g.arc(x, y, 1.6, 0, TAU); g.fill(); }
+      for (const [x, y] of [[c, 8 * k], [c, S2 - 8 * k], [8 * k, c], [S2 - 8 * k, c]]) { g.beginPath(); g.arc(x, y, 1.6 * k, 0, TAU); g.fill(); }
       this.pat = cx.createPattern(o, 'repeat'); this.off = 0;
     },
     frame(dt) {
       if (!(dt = every(this, 30, dt))) return;
-      this.off = (this.off + dt * 6 * RAIN) % this.TILE;
+      if ((OPTS.print || {}).drift !== 'still') this.off = (this.off + dt * 6 * RAIN) % this.TILE;
       cx.globalAlpha = 1; cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H);
       if (RAIN <= 0) return;
       cx.save(); cx.translate(this.off, this.off * .5); cx.globalAlpha = .4 + RAIN * .4;
