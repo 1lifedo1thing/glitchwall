@@ -271,11 +271,14 @@ impl Redactor {
     }
 
     /// With this machine's home folder and user name.
-    pub fn for_machine() -> Redactor {
+    pub fn for_machine() -> Redactor { Redactor::for_machine_with(true, true) }
+
+    /// The same, with the user name and email masking as the settings have them.
+    pub fn for_machine_with(mask_user: bool, mask_email: bool) -> Redactor {
         let home = std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME")).unwrap_or_default();
         let user = std::env::var("USERNAME").or_else(|_| std::env::var("USER"))
             .unwrap_or_else(|_| home.rsplit(['\\', '/']).next().unwrap_or("").to_string());
-        Redactor::new(&home, &user, true, true, true)
+        Redactor::new(&home, &user, mask_user, mask_email, true)
     }
 
     pub fn redact(&self, text: &str) -> String {

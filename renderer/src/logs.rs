@@ -94,7 +94,7 @@ fn py_repr(v: &Json) -> String {
 }
 
 /// str() of a parsed JSON value.
-fn py_str(v: &Json) -> String {
+pub(crate) fn py_str(v: &Json) -> String {
     match v {
         Json::Null => "None".into(),
         Json::Bool(b) => if *b { "True" } else { "False" }.into(),
@@ -105,7 +105,7 @@ fn py_str(v: &Json) -> String {
 }
 
 /// Python's json.dumps(v, ensure_ascii=False).
-fn dumps(v: &Json) -> String {
+pub(crate) fn dumps(v: &Json) -> String {
     let mut o = String::new();
     dump(v, &mut o);
     o
