@@ -402,10 +402,10 @@ def start_source(mode: str, store: EventStore) -> threading.Event:
 def follow_mode(store: EventStore, live: LiveSettings, poll: float = 1.0, quit: threading.Event | None = None) -> None:
     mode, stop = None, None
     if os.name == "nt":   # your own PowerShell commands, alongside Claude's: live mode with the terminal setting on
-        from .shell_history import ShellHistoryTailer
+        from .shell_history import ShellTailer
         on = lambda: cfg.mode(live.get()) == "live" and bool(live.get().get("terminal", True))   # noqa: E731
         shell_stop = quit or threading.Event()
-        threading.Thread(target=ShellHistoryTailer(store.add, on).run, args=(shell_stop,), daemon=True).start()
+        threading.Thread(target=ShellTailer(store.add, on).run, args=(shell_stop,), daemon=True).start()
     while not (quit and quit.is_set()):
         m = cfg.mode(live.get())
         if m != mode:

@@ -385,9 +385,22 @@ impl Scene {
             let (text, masks) = self.unmask(ev.get("text").str().unwrap_or(""));
             let r = ev.get("ref").str().unwrap_or("").to_string();
             if kind == "out" || kind == "err" {
-                let card = if r.is_empty() { self.current } else { self.by_ref.remove(&r) };
+                // live: a command still running (your terminal), more output to come, so the card stays its target
+                let live = ev.get("live").truthy();
+                let card = if r.is_empty() { self.current } else if live { self.by_ref.get(&r).copied() } else { self.by_ref.remove(&r) };
                 let Some(card) = card.filter(|id| self.cards.iter().any(|c| c.id == *id && c.dying.is_none())) else { continue };
+                let linger = self.tune.linger;
                 let c = self.cards.iter_mut().find(|c| c.id == card).unwrap();
+                if let Some(p) = c.parts.iter_mut().rev().find(|p| p.kind != Kind::Cmd) {
+                    // more output for the same command: its newest lines in place of what was there, at once
+                    p.kind = if kind == "err" { Kind::Err } else { Kind::Out };
+                    p.shown = text.len();
+                    (p.text, p.masks) = (text, masks);
+                    c.dirty = true;
+                    c.kill_at = now + if live { linger.max(15.0) } else { linger };
+                    self.changed = true;
+                    continue;
+                }
                 c.parts.push(Part { kind: if kind == "err" { Kind::Err } else { Kind::Out }, prefix: String::new(), text, masks, shown: 0 });
                 let part = c.parts.len() - 1;
                 self.typing = Some(Typing { card, part, t0: now + 0.26, cps: self.tune.cps * 5.0, after: 0.12, out: true, busy });

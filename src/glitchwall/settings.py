@@ -30,7 +30,7 @@ DEFAULTS = {
     "paused": False,         # serve nothing at all (stream-safe)
     "mask_user": True,       # replace your user name with "user"
     "mask_email": True,      # replace email local parts with ••••
-    "terminal": True,        # Windows: commands you type in PowerShell show too (from PowerShell's own history)
+    "terminal": True,        # Windows: what you type in PowerShell shows too (needs `glitchwall terminal on`)
     "masked": "dots",        # how a masked secret shows on the wall, see MASKED
     "label": "CLAUDE :: live tool feed",
     "mode": "live",          # live | ambient | art, see MODES

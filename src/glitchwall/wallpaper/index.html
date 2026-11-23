@@ -2415,7 +2415,7 @@ function newCard(ev) {
 // ---------- typing queue ----------
 let since = 0, queue = [], typing = false, lastEvent = 0, current = null;
 const byRef = new Map();        // tool call id -> its card
-function typeInto(el, text, cps, done) {
+function typeInto(el, text, cps, done, instant) {
   // the text in pieces, each masked secret its own colored span; typed across them in order
   const parts = text.split('••••').flatMap((t, k) => k ? [{ t: maskShown(), m: 1 }, { t }] : [{ t }]).filter(p => p.t);
   const nodes = parts.map(p => {
@@ -2427,7 +2427,7 @@ function typeInto(el, text, cps, done) {
   const node = { set data(v) { let at = 0; parts.forEach((p, k) => { nodes[k].data = v.slice(at, at + p.t.length); at += p.t.length; }); } };
   el.classList.add('cur');
   let i = 0;
-  if (STILL) { node.data = text; el.classList.remove('cur'); el.scrollTop = el.scrollHeight; return setTimeout(done, 0); }
+  if (STILL || instant) { node.data = text; el.classList.remove('cur'); el.scrollTop = el.scrollHeight; return setTimeout(done, 0); }
   let t0 = 0;
   const step = () => {
     if (SLEEP) return setTimeout(step, 1000);
@@ -2446,9 +2446,14 @@ function next() {
   const ev = queue.shift(), busy = queue.length > 6;
   if (ev.kind === 'out' || ev.kind === 'err') {
     const card = byRef.get(ev.ref) || (ev.ref ? null : current);   // output goes under the command it belongs to
-    byRef.delete(ev.ref);
+    if (!ev.live) byRef.delete(ev.ref);   // live: a command still running (your terminal), more output to come
     if (!card || card._dead) return next();
-    const el = document.createElement('div'); el.className = ev.kind;
+    if (card._out) {   // more output for the same command: its newest lines in place of what was there, at once
+      card._out.className = ev.kind; card._out.textContent = '';
+      clearTimeout(card._timer); card._timer = setTimeout(() => kill(card), ev.live ? Math.max(LINGER, 15000) : LINGER);
+      return typeInto(card._out, ev.text, 0, () => setTimeout(next, 0), true);
+    }
+    const el = document.createElement('div'); el.className = ev.kind; card._out = el;
     card.querySelector('.body').appendChild(el);
     typeInto(el, ev.text, TYPE_CPS * 5, () => {
       clearTimeout(card._timer); card._timer = setTimeout(() => kill(card), busy ? 1500 : LINGER);

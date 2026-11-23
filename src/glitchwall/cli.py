@@ -322,6 +322,29 @@ def cmd_settings(a) -> int:
     return 0
 
 
+def cmd_terminal(a) -> int:
+    """Your own PowerShell commands, and what they print, on the wallpaper: a hook in your PowerShell profile."""
+    from . import shell_history as sh
+    if a.what == "on":
+        changed = sh.install_hook()
+        s = cfg.load_settings()
+        s["terminal"] = True
+        cfg.save_settings(s)
+        for p in changed:
+            say(f"added a line to {p}")
+        say("terminal on: open a new PowerShell window and what you type there shows on the wallpaper, output too "
+            "(masked like Claude's calls)")
+    elif a.what == "off":
+        for p in sh.remove_hook():
+            say(f"took glitchwall's line out of {p}")
+        say("terminal off: PowerShell windows opened from now on are left alone")
+    else:
+        s = cfg.load_settings()
+        say(f"terminal hook {'installed' if sh.hook_installed() else 'not installed'}; "
+            f"showing on the wallpaper {'on' if s.get('terminal', True) else 'off'}")
+    return 0
+
+
 def cmd_pause(a, paused: bool) -> int:
     s = cfg.load_settings()
     s["paused"] = paused
@@ -464,6 +487,9 @@ def parser() -> argparse.ArgumentParser:
                    ).set_defaults(fn=cmd_reset)
     sub.add_parser("pause", help="stream-safe: serve nothing until resume").set_defaults(fn=lambda a: cmd_pause(a, True))
     sub.add_parser("resume", help="undo pause").set_defaults(fn=lambda a: cmd_pause(a, False))
+    t = sub.add_parser("terminal", help="show what you type in PowerShell (and its output) on the wallpaper: on, off or status")
+    t.add_argument("what", nargs="?", choices=["on", "off", "status"], default="status")
+    t.set_defaults(fn=cmd_terminal)
 
     r = sub.add_parser("run", help="run the feed in the foreground")
     r.add_argument("--port", type=int)
