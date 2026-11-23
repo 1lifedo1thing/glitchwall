@@ -1,0 +1,1289 @@
+[
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "git status -sb\n## main...origin/main [ahead 2]\n M src/api/routes.py\n M tests/test_routes.py\n?? notes/todo.md\n~/code/orbit/src/api/routes.py\n\n~/code/orbit/src/api/routes.py\n- return jsonify(items)\n+ return jsonify(items=items, total=len(items))\n\npytest -q tests/test_routes.py\n....F.\nFAILED tests/test_routes.py::test_list_empty - KeyError: 'total'\n1 failed, 5 passed in 0.41s\n~/code/orbit/tests/test_routes.py\n- assert r.json == []\n+ assert r.json == {'items': [], 'total': 0}\n\npytest -q\n..............................\n30 passed in 1.92s\nTODO|FIXME  in src/\nsrc/api/auth.py:41: # TODO rotate session keys\nsrc/jobs/sync.py:12: # FIXME retry on 429\nexport STRIPE_KEY=sk_live_51HdemoNotARealKey00000000 && ./deploy.sh staging\nbuilding image orbit:7f3a1c2 ...\npushing to registry.internal:5000\nrolling out 3/3 pods\ndeploy ok in 38s\nGet-Service | Where-Object Status -eq Running | Select-Object -First 5\nStatus   Name               DisplayName\n------   ----               -----------\nRunning  Appinfo            Application Information\nRunning  AudioSrv           Windows Audio\nRunning  BFE                Base Filtering Engine\nhttps://docs.python.org/3/library/http.server.html\n\ncurl -s -H \"Authorization: Bearer ghp_demoDemoDemoDemoDemoDemoDemo1234\" https://api.example.test/v1/me\n{\"login\": \"octo-demo\", \"plan\": \"free\"}\n~/code/orbit/notes/todo.md\n- [x] totals in list endpoint\n- [ ] retry on 429\n- [ ] rotate session keys\n\ndocker compose ps\nNAME        STATUS         PORTS\norbit-api   Up 3 minutes   0.0.0.0:8080->8080/tcp\norbit-db    Up 3 minutes   5432/tcp\nSurvey retry logic across jobs/\n\npsql postgres://orbit:hunter2@localhost:5432/orbit -c 'select count(*) from orders'\n count\n-------\n  1284\n(1 row)\ngit commit -am \"list endpoint returns totals\"\n[main 9c1e4b7] list endpoint returns totals\n 2 files changed, 6 insertions(+), 3 deletions(-)\ncargo build --release\n   Compiling orbit-cli v0.4.1\n    Finished `release` profile [optimized] target(s) in 12.84s\nls -la ~/code/orbit\ndrwxr-xr-x  src\ndrwxr-xr-x  tests\n-rw-r--r--  pyproject.toml\n-rw-r--r--  README.md",
+  "output": "git status -sb\n## main...origin/main [ahead 2]\n M src/api/routes.py\n M tests/test_routes.py\n?? notes/todo.md\n~/code/orbit/src/api/routes.py\n\n~/code/orbit/src/api/routes.py\n- return jsonify(items)\n+ return jsonify(items=items, total=len(items))\n\npytest -q tests/test_routes.py\n....F.\nFAILED tests/test_routes.py::test_list_empty - KeyError: 'total'\n1 failed, 5 passed in 0.41s\n~/code/orbit/tests/test_routes.py\n- assert r.json == []\n+ assert r.json == {'items': [], 'total': 0}\n\npytest -q\n..............................\n30 passed in 1.92s\nTODO|FIXME  in src/\nsrc/api/auth.py:41: # TODO rotate session keys\nsrc/jobs/sync.py:12: # FIXME retry on 429\nexport STRIPE_KEY=•••• && ./deploy.sh staging\nbuilding image orbit:7f3a1c2 ...\npushing to registry.internal:5000\nrolling out 3/3 pods\ndeploy ok in 38s\nGet-Service | Where-Object Status -eq Running | Select-Object -First 5\nStatus   Name               DisplayName\n------   ----               -----------\nRunning  Appinfo            Application Information\nRunning  AudioSrv           Windows Audio\nRunning  BFE                Base Filtering Engine\nhttps://docs.python.org/3/library/http.server.html\n\ncurl -s -H \"Authorization: ••••\" https://api.example.test/v1/me\n{\"login\": \"octo-demo\", \"plan\": \"free\"}\n~/code/orbit/notes/todo.md\n- [x] totals in list endpoint\n- [ ] retry on 429\n- [ ] rotate session keys\n\ndocker compose ps\nNAME        STATUS         PORTS\norbit-api   Up 3 minutes   0.0.0.0:8080->8080/tcp\norbit-db    Up 3 minutes   5432/tcp\nSurvey retry logic across jobs/\n\npsql postgres://orbit:••••@localhost:5432/orbit -c 'select count(*) from orders'\n count\n-------\n  1284\n(1 row)\ngit commit -am \"list endpoint returns totals\"\n[main 9c1e4b7] list endpoint returns totals\n 2 files changed, 6 insertions(+), 3 deletions(-)\ncargo build --release\n   Compiling orbit-cli v0.4.1\n    Finished `release` profile [optimized] target(s) in 12.84s\nls -la ~/code/orbit\ndrwxr-xr-x  src\ndrwxr-xr-x  tests\n-rw-r--r--  pyproject.toml\n-rw-r--r--  README.md"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "a\nx x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x …",
+  "output": "a\nx x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x …"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "a\n- y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y …\n+ ",
+  "output": "a\n- y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y …\n+ "
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "y {\"q\": \"z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z …",
+  "output": "y {\"q\": \"z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z …"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w …",
+  "output": "w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w …"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "format  in src/",
+  "output": "format  in src/"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "ferrous",
+  "output": "ferrous"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "src/lib/format.ts:12: export function format(\nsrc/app.tsx:44:   <format />",
+  "output": "src/lib/format.ts:12: export function format(\nsrc/app.tsx:44:   <format />"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "~/code/ferrous/src/lib/format.ts",
+  "output": "~/code/ferrous/src/lib/format.ts"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "~/code/ferrous/src/lib/format.ts\n- const res = await fetch(url)\n+ const res = await fetch(url, { signal: ctrl.signal })\n+ if (!res.ok) throw new HttpError(res.status)",
+  "output": "~/code/ferrous/src/lib/format.ts\n- const res = await fetch(url)\n+ const res = await fetch(url, { signal: ctrl.signal })\n+ if (!res.ok) throw new HttpError(res.status)"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "npm run lint",
+  "output": "npm run lint"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "> ferrous@1.17.0 lint\n> eslint src --ext .ts,.tsx\n\n✔ no problems",
+  "output": "> ferrous@1.17.0 lint\n> eslint src --ext .ts,.tsx\n\n✔ no problems"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "npm test -- --run",
+  "output": "npm test -- --run"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": " ✓ src/lib/format.test.ts (5 tests) 86ms\n\n Test Files  17 passed\n      Tests  156 passed",
+  "output": " ✓ src/lib/format.test.ts (5 tests) 86ms\n\n Test Files  17 passed\n      Tests  156 passed"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "npm run build",
+  "output": "npm run build"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "vite v5.4.2 building for production...\n✓ 479 modules transformed.\ndist/assets/index-d7721f77.js   329.22 kB │ gzip: 60.60 kB\n✓ built in 0.42s",
+  "output": "vite v5.4.2 building for production...\n✓ 479 modules transformed.\ndist/assets/index-d7721f77.js   329.22 kB │ gzip: 60.60 kB\n✓ built in 0.42s"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "uptime",
+  "output": "uptime"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "tidepool",
+  "output": "tidepool"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": " 21:28  up 5 days,  load average: 1.81, 0.79, 0.12",
+  "output": " 21:28  up 5 days,  load average: 1.81, 0.79, 0.12"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "df -h /",
+  "output": "df -h /"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "Filesystem      Size  Used Avail Use% Mounted on\n/dev/nvme0n1p2  468G  322G  78G  31% /",
+  "output": "Filesystem      Size  Used Avail Use% Mounted on\n/dev/nvme0n1p2  468G  322G  78G  31% /"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "journalctl -u tidepool -n 4 --no-pager",
+  "output": "journalctl -u tidepool -n 4 --no-pager"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "Dec 24 23:19:59 host tidepool[6627]: cache hit ratio 0.94\nDec 11 13:54:22 host tidepool[5090]: worker: batch flushed (128)\nNov 2 13:37:18 host tidepool[6692]: worker: batch flushed (128)\nDec 11 13:36:29 host tidepool[7664]: GET /v1/items 200 12ms",
+  "output": "Dec 24 23:19:59 host tidepool[6627]: cache hit ratio 0.94\nDec 11 13:54:22 host tidepool[5090]: worker: batch flushed (128)\nNov 2 13:37:18 host tidepool[6692]: worker: batch flushed (128)\nDec 11 13:36:29 host tidepool[7664]: GET /v1/items 200 12ms"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "Get-Process | Sort-Object CPU -Descending | Select-Object -First 4 Name, CPU",
+  "output": "Get-Process | Sort-Object CPU -Descending | Select-Object -First 4 Name, CPU"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "Name        CPU\n----        ---\nnode        234.78\ncode        20.36\npython      190.80\npwsh        186.27",
+  "output": "Name        CPU\n----        ---\nnode        234.78\ncode        20.36\npython      190.80\npwsh        186.27"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "ping -c 3 status.example.test",
+  "output": "ping -c 3 status.example.test"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "Author: Octo <octo.cat@example.com>",
+  "output": "Author: Octo <••••@example.com>"
+ },
+ {
+  "home": "/home/octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "cd /home/octocat/code && ls",
+  "output": "cd ~/code && ls"
+ },
+ {
+  "home": "/home/octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "/home/octocatx/y",
+  "output": "/home/octocatx/y"
+ },
+ {
+  "home": "/home/al",
+  "user": "al",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "al is in alpha",
+  "output": "al is in alpha"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "file=C%3A%5CUsers%5Coctocat%5Cx",
+  "output": "file=C%3A%5CUsers%5Cuser%5Cx"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "whoami\ndesk\\octocat",
+  "output": "whoami\ndesk\\user"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "type C:\\Users\\octocat\\notes.txt",
+  "output": "type ~\\notes.txt"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "cat C:/Users/octocat/notes.txt",
+  "output": "cat ~/notes.txt"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "ls /c/Users/octocat/code",
+  "output": "ls ~/code"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "{\"p\": \"C:\\\\Users\\\\octocat\\\\x\"}",
+  "output": "{\"p\": \"~\\\\x\"}"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "c:\\users\\OCTOCAT\\x",
+  "output": "~\\x"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "C:\\Users\\OCTOCA~1\\AppData\\Local\\Temp\\x",
+  "output": "~\\AppData\\Local\\Temp\\x"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "C:/Users/OCTOCA~1/x",
+  "output": "~/x"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "desk\\OCTOCA~1",
+  "output": "desk\\user"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "AKIAQX7Z5T3NBM4WPL2R",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "export AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+  "output": "export AWS_SECRET_ACCESS_KEY=••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "AIzaSyD4-xq9Lm2Rk7Pz0Wv3Ny8Bt6Hc1Jf5Ge0",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "ghp_a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "github_pat_11ABCDEFG0aaaaaaaaaaaaaaaaaaaa_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbZ9",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "glpat-xY7k2Lm9Qw3Ez5Rt8Uv1",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "xoxb-123456789012-1234567890123-AbCdEfGhIjKlMnOpQrStUvWx",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "https://hooks.slack.com/services/T0ABC1234/B0DEF5678/xYz123AbC456dEf789GhI012",
+  "output": "https://••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "https://discord.com/api/webhooks/123456789012345678/AbCdEf_GhIjKl-MnOpQrStUvWxYz0123456789",
+  "output": "https://••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "sk_live_51HxQ2bKz8Lm3Np4Qr5St6Uv7Wx8Yz9",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "rk_test_51HxQ2bKz8Lm3Np4Qr5St6Uv7Wx8Yz9",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "whsec_Ab12Cd34Ef56Gh78Ij90Kl12Mn34Op56",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "sk-ant-api03-Zx9Yw8Vu7Ts6Rq5Po4Nm3Lk2Ji1Hg0Fe9Dc8Ba7",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "sk-proj-Ab1Cd2Ef3Gh4Ij5Kl6Mn7Op8Qr9St0Uv1Wx2",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "hf_AbCdEfGhIjKlMnOpQrStUvWxYz12345678",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "npm_Ab1Cd2Ef3Gh4Ij5Kl6Mn7Op8Qr9St0Uv1Wx2Y",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "pypi-AgEIcHlwaS5vcmcCJGZmY2E3ZTk0LTIzOTgtNDk5ZS1iZDAxLWNkNmVhYjU0ZmM0YQ",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "dop_v1_9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "hvs.CAESIJx9Y8wV7uT6sR5qP4oN3mL2kJ1iH0gF",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "tskey-auth-kAbCdE1CNTRL-aBcDeFgHiJkLmNoPqRsTuVwXyZ123456",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "SG.Ab1Cd2Ef3Gh4Ij5Kl6Mn7O.Pq8Rs9Tu0Vw1Xy2Za3Bc4De5Fg6Hi7Jk8Lm9No0Pq1Rs",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4ifQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0Z3VS5JJcds3xfn/ygWyF8PbnGy\nabc\n-----END RSA PRIVATE KEY-----",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQ\n-----END OPENSSH PRIVATE KEY-----",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASC\n…",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "AGE-SECRET-KEY-1QQPZ5LN8Y0A3VQKV5YSJ3MRSMFXXWDR7C3HU6K4TJ2CX8Z0YNFQ9S8LA4ME",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "postgres://app:S3cr3tPass!@db.internal:5432/app",
+  "output": "postgres://app:••••@db.internal:5432/app"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "mongodb+srv://admin:hunter2xyz@cluster0.abcde.mongodb.net/test",
+  "output": "mongodb+srv://admin:••••@cluster0.abcde.mongodb.net/test"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "rediss://default:pAsSw0rd99@cache.example.test:6380",
+  "output": "rediss://default:••••@cache.example.test:6380"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "git clone https://octo:tokenvalue123@git.example.test/x.git",
+  "output": "git clone https://octo:••••@git.example.test/x.git"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "Server=db;Database=app;User Id=sa;Password=Pa55w0rd!x;",
+  "output": "Server=db;Database=app;User Id=sa;Password=••••;"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "DefaultEndpointsProtocol=https;AccountName=acct;AccountKey=Zm9vYmFyYmF6cXV4cXV1eGNvcmdlZ3JhdWx0==;",
+  "output": "DefaultEndpointsProtocol=https;AccountName=acct;AccountKey=••••;"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "https://acct.blob.core.windows.net/c/f?sv=2022-11-02&sig=aBcD1234%2BeFgH5678%3D",
+  "output": "https://acct.blob.core.windows.net/c/f?sv=2022-11-02&sig=••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "DB_PASSWORD=correct-horse-battery",
+  "output": "DB_PASSWORD=••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "password = 'my secret phrase'",
+  "output": "password •••• ••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "{\"client_secret\": \"s3cr3t-v4lue-xyz\"}",
+  "output": "{\"client_secret\": ••••}"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "api_token: tok_9f8e7d6c5b4a",
+  "output": "api_token: ••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "export GITHUB_TOKEN=plainvalue123",
+  "output": "export GITHUB_TOKEN=••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "$env:OPENAI_API_KEY = 'valuevalue'",
+  "output": "$env:OPENAI_API_KEY = ••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "setx SERVICE_TOKEN valuevalue2",
+  "output": "setx SERVICE_TOKEN ••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "mytool login --password hunter2hunter2",
+  "output": "mytool login --password ••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "deploy --api-key=abc123def456",
+  "output": "deploy --api-key=••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "mysql -u root -pSup3rS3cret db",
+  "output": "mysql -u root -p•••• db"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "curl -u admin:adminpass1 https://x.test",
+  "output": "curl -u admin:•••• https://x.test"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "curl -H 'Authorization: Bearer abc.def.ghi123456' https://x.test",
+  "output": "curl -H 'Authorization: ••••' https://x.test"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "Authorization: Basic YWRtaW46cGFzc3dvcmQ=",
+  "output": "Authorization: ••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "-H 'X-Api-Key: k3yk3yk3y'",
+  "output": "-H 'X-Api-Key: ••••'"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "Cookie: session=abcd1234; theme=dark",
+  "output": "Cookie: ••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "machine example.test login octo password netrcpass9",
+  "output": "machine example.test login octo password ••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "the value is q8ZpT3vN7wXb2LmR9sKd4FhJ6yUcE1aG ok",
+  "output": "the value is •••• ok"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "digest 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+  "output": "digest ••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "ansible_become_pass=becomeme123",
+  "output": "ansible_become_pass=••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "sshpass -p 'Tr0ub4dor&3' ssh admin@box",
+  "output": "sshpass -p •••• ssh admin@box"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "sshpass -e -psshp4ssword scp a b:",
+  "output": "sshpass -e -p•••• scp a b:"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "docker login -u bob -p D0ckerPw registry.example.test",
+  "output": "docker login -u bob -p •••• registry.example.test"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "htpasswd -cb .htpasswd bob htpassw0rd",
+  "output": "htpasswd -cb .htpasswd bob ••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "htpasswd -nb bob htnopass1 | tee x",
+  "output": "htpasswd -nb bob •••• | tee x"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "net user bob N3tUserPw /add",
+  "output": "net user bob •••• /add"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "ConvertTo-SecureString 'Plain!Pass1' -AsPlainText -Force",
+  "output": "ConvertTo-SecureString •••• -AsPlainText -Force"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+  "output": "••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "AKIAQX7Z5T3NBM4WPL2R,wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+  "output": "••••,••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "cmdkey /add:srv /user:bob /pass:Cmdk3yPass",
+  "output": "cmdkey /add:srv /user:bob /pass:••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "net use Z: \\\\srv\\share N3tUsePass /user:bob",
+  "output": "net use Z: \\\\srv\\share •••• /user:bob"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "7z a -pSev3nZipPw out.7z src",
+  "output": "7z a -p•••• out.7z src"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "zip -r -P Z1pPassw0 out.zip src",
+  "output": "zip -r -P •••• out.zip src"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "    Key Content            : W1fiPassphrase",
+  "output": "    Key Content            : ••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "git status -sb",
+  "output": "git status -sb"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "pytest -q tests/test_routes.py",
+  "output": "pytest -q tests/test_routes.py"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "Get-ChildItem -Recurse src | Select-Object -First 5",
+  "output": "Get-ChildItem -Recurse src | Select-Object -First 5"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "docker compose up -d --build",
+  "output": "docker compose up -d --build"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "src/glitchwall/redact.py",
+  "output": "src/glitchwall/redact.py"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "ThreadingHTTPServer(('127.0.0.1', 47833), Handler)",
+  "output": "ThreadingHTTPServer(('127.0.0.1', 47833), Handler)"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "[main 9c1e4b7] list endpoint returns totals",
+  "output": "[main 9c1e4b7] list endpoint returns totals"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}",
+  "output": "{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "550e8400-e29b-41d4-a716-446655440000",
+  "output": "550e8400-e29b-41d4-a716-446655440000"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "cpython-3.14-windows-x86_64-none",
+  "output": "cpython-3.14-windows-x86_64-none"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "30 passed in 1.92s",
+  "output": "30 passed in 1.92s"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "Author: Octo Cat",
+  "output": "Author: Octo Cat"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "https://docs.python.org/3/library/http.server.html",
+  "output": "https://docs.python.org/3/library/http.server.html"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "src/api/auth.py:41: # TODO rotate session keys",
+  "output": "src/api/auth.py:41: # TODO rotate session keys"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "tokenizer.py:12:def split(text):",
+  "output": "tokenizer.py:12:def split(text):"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "C:/Program Files/Some App/App.exe",
+  "output": "C:/Program Files/Some App/App.exe"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "-     if not session_id:\n+     if session_id is None:",
+  "output": "-     if not session_id:\n+     if session_id is None:"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "docker login registry.example.test",
+  "output": "docker login registry.example.test"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "htpasswd -c .htpasswd bob",
+  "output": "htpasswd -c .htpasswd bob"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "net user bob /delete",
+  "output": "net user bob /delete"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "sshpass -f pwfile ssh admin@box",
+  "output": "sshpass -f pwfile ssh admin@box"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "src/Components/Button2/Index3/Helpers999",
+  "output": "src/Components/Button2/Index3/Helpers999"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "net use Z: \\\\srv\\share /user:bob",
+  "output": "net use Z: \\\\srv\\share /user:bob"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "net use Z: \\\\srv\\share * /user:bob",
+  "output": "net use Z: \\\\srv\\share * /user:bob"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "cmdkey /list",
+  "output": "cmdkey /list"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "7z x archive.7z -ooutdir",
+  "output": "7z x archive.7z -ooutdir"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "https://example.test/api/token/refresh",
+  "output": "https://example.test/api/token/refresh"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "line 0: AKIAQX7Z5T3NBM4WPL2R\nline 1: export AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY\nline 2: AIzaSyD4-xq9Lm2Rk7Pz0Wv3Ny8Bt6Hc1Jf5Ge0\nline 3: ghp_a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8\nline 4: github_pat_11ABCDEFG0aaaaaaaaaaaaaaaaaaaa_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbZ9\nline 5: glpat-xY7k2Lm9Qw3Ez5Rt8Uv1\nline 6: xoxb-123456789012-1234567890123-AbCdEfGhIjKlMnOpQrStUvWx\nline 7: https://hooks.slack.com/services/T0ABC1234/B0DEF5678/xYz123AbC456dEf789GhI012\nline 8: https://discord.com/api/webhooks/123456789012345678/AbCdEf_GhIjKl-MnOpQrStUvWxYz0123456789\nline 9: sk_live_51HxQ2bKz8Lm3Np4Qr5St6Uv7Wx8Yz9\nline 10: rk_test_51HxQ2bKz8Lm3Np4Qr5St6Uv7Wx8Yz9\nline 11: whsec_Ab12Cd34Ef56Gh78Ij90Kl12Mn34Op56\nline 12: sk-ant-api03-Zx9Yw8Vu7Ts6Rq5Po4Nm3Lk2Ji1Hg0Fe9Dc8Ba7\nline 13: sk-proj-Ab1Cd2Ef3Gh4Ij5Kl6Mn7Op8Qr9St0Uv1Wx2\nline 14: hf_AbCdEfGhIjKlMnOpQrStUvWxYz12345678\nline 15: npm_Ab1Cd2Ef3Gh4Ij5Kl6Mn7Op8Qr9St0Uv1Wx2Y\nline 16: pypi-AgEIcHlwaS5vcmcCJGZmY2E3ZTk0LTIzOTgtNDk5ZS1iZDAxLWNkNmVhYjU0ZmM0YQ\nline 17: dop_v1_9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\nline 18: hvs.CAESIJx9Y8wV7uT6sR5qP4oN3mL2kJ1iH0gF\nline 19: tskey-auth-kAbCdE1CNTRL-aBcDeFgHiJkLmNoPqRsTuVwXyZ123456\nline 20: SG.Ab1Cd2Ef3Gh4Ij5Kl6Mn7O.Pq8Rs9Tu0Vw1Xy2Za3Bc4De5Fg6Hi7Jk8Lm9No0Pq1Rs\nline 21: 123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw\nline 22: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4ifQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c\nline 23: -----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0Z3VS5JJcds3xfn/ygWyF8PbnGy\nabc\n-----END RSA PRIVATE KEY-----\nline 24: -----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQ\n-----END OPENSSH PRIVATE KEY-----\nline 25: -----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASC\n…\nline 26: AGE-SECRET-KEY-1QQPZ5LN8Y0A3VQKV5YSJ3MRSMFXXWDR7C3HU6K4TJ2CX8Z0YNFQ9S8LA4ME\nline 27: postgres://app:S3cr3tPass!@db.internal:5432/app\nline 28: mongodb+srv://admin:hunter2xyz@cluster0.abcde.mongodb.net/test\nline 29: rediss://default:pAsSw0rd99@cache.example.test:6380\nline 30: git clone https://octo:tokenvalue123@git.example.test/x.git\nline 31: Server=db;Database=app;User Id=sa;Password=Pa55w0rd!x;\nline 32: DefaultEndpointsProtocol=https;AccountName=acct;AccountKey=Zm9vYmFyYmF6cXV4cXV1eGNvcmdlZ3JhdWx0==;\nline 33: https://acct.blob.core.windows.net/c/f?sv=2022-11-02&sig=aBcD1234%2BeFgH5678%3D\nline 34: DB_PASSWORD=correct-horse-battery\nline 35: password = 'my secret phrase'\nline 36: {\"client_secret\": \"s3cr3t-v4lue-xyz\"}\nline 37: api_token: tok_9f8e7d6c5b4a\nline 38: export GITHUB_TOKEN=plainvalue123\nline 39: $env:OPENAI_API_KEY = 'valuevalue'\nline 40: setx SERVICE_TOKEN valuevalue2\nline 41: mytool login --password hunter2hunter2\nline 42: deploy --api-key=abc123def456\nline 43: mysql -u root -pSup3rS3cret db\nline 44: curl -u admin:adminpass1 https://x.test\nline 45: curl -H 'Authorization: Bearer abc.def.ghi123456' https://x.test\nline 46: Authorization: Basic YWRtaW46cGFzc3dvcmQ=\nline 47: -H 'X-Api-Key: k3yk3yk3y'\nline 48: Cookie: session=abcd1234; theme=dark\nline 49: machine example.test login octo password netrcpass9\nline 50: the value is q8ZpT3vN7wXb2LmR9sKd4FhJ6yUcE1aG ok\nline 51: digest 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\nline 52: ansible_become_pass=becomeme123\nline 53: sshpass -p 'Tr0ub4dor&3' ssh admin@box\nline 54: sshpass -e -psshp4ssword scp a b:\nline 55: docker login -u bob -p D0ckerPw registry.example.test\nline 56: htpasswd -cb .htpasswd bob htpassw0rd\nline 57: htpasswd -nb bob htnopass1 | tee x\nline 58: net user bob N3tUserPw /add\nline 59: ConvertTo-SecureString 'Plain!Pass1' -AsPlainText -Force\nline 60: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY\nline 61: AKIAQX7Z5T3NBM4WPL2R,wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY\nline 62: cmdkey /add:srv /user:bob /pass:Cmdk3yPass\nline 63: net use Z: \\\\srv\\share N3tUsePass /user:bob\nline 64: 7z a -pSev3nZipPw out.7z src\nline 65: zip -r -P Z1pPassw0 out.zip src\nline 66:     Key Content            : W1fiPassphrase",
+  "output": "line 0: ••••\nline 1: export AWS_SECRET_ACCESS_KEY=••••\nline 2: ••••\nline 3: ••••\nline 4: ••••\nline 5: ••••\nline 6: ••••\nline 7: https://••••\nline 8: https://••••\nline 9: ••••\nline 10: ••••\nline 11: ••••\nline 12: ••••\nline 13: ••••\nline 14: ••••\nline 15: ••••\nline 16: ••••\nline 17: ••••\nline 18: ••••\nline 19: ••••\nline 20: ••••\nline 21: ••••\nline 22: ••••\nline 23: ••••\nline 24: ••••\nline 25: ••••"
+ },
+ {
+  "home": "/home/octo",
+  "user": "octo",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "export API_TOKEN=abc123secretvalue",
+  "output": "export API_TOKEN=••••"
+ },
+ {
+  "home": "/home/octo",
+  "user": "octo",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "p",
+  "output": "p"
+ },
+ {
+  "home": "/home/octo",
+  "user": "octo",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "ok",
+  "output": "ok"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "seen before the pause",
+  "output": "seen before the pause"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "",
+  "output": ""
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "queued, not yet shown",
+  "output": "queued, not yet shown"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "after resume",
+  "output": "after resume"
+ },
+ {
+  "home": "",
+  "user": "",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "during art",
+  "output": "during art"
+ }
+]
