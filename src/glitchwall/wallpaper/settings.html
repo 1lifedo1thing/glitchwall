@@ -507,6 +507,9 @@ function wear() {
   st.setProperty('--bg', t.bg); st.setProperty('--glass', t.surface || t.bg);
   st.setProperty('--ph', t.ink); st.setProperty('--ph-hi', t.hi || t.ink); st.setProperty('--ph-dim', t.muted || t.ink);
   st.setProperty('--ph-rgb', hex(t.ink) || '93,255,122'); st.setProperty('--amber', t.acc || '#ffb000');
+  // the orb's window is lit by its red lights (white would make it oracle's twin): red type, white for anything paused
+  if (name === 'orb') { st.setProperty('--ph', t.acc); st.setProperty('--ph-hi', '#ff9d94'); st.setProperty('--ph-dim', '#a8302a');
+                        st.setProperty('--ph-rgb', hex(t.acc)); st.setProperty('--amber', t.ink); }
   // on paper: solid paper panels, no glow, barely-there scan lines
   if (t.mode === 'light') { st.setProperty('--mod', t.surface || t.bg); st.setProperty('--glow', 'none'); st.setProperty('--scan', 'rgba(0,0,0,.04)'); }
   else ['--mod', '--glow', '--scan'].forEach(k => st.removeProperty(k));
