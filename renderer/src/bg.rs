@@ -1,5 +1,5 @@
 //! Backgrounds: each one draws into the full-screen scene bitmap that the cards' glass blurs.
-//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record", "notebook", "textmode" and "sunprint"; every other background falls back to a plain fill until it is.
+//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record", "notebook", "textmode", "sunprint" and "draft"; every other background falls back to a plain fill until it is.
 use crate::fonts::Fonts;
 use crate::gfx::{Gfx, rect, rgba};
 use crate::looks::{Color, Look};
@@ -28,6 +28,7 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Box<dyn B
         "notebook" => Box::new(Notebook::new(g)?),
         "textmode" => Box::new(Textmode::new(g, fonts, look)?),
         "sunprint" => Box::new(Sunprint::new(g)?),
+        "draft" => Box::new(Draft::new(g, fonts, look)?),
         _ => Box::new(Plain),
     })
 }
@@ -1146,6 +1147,180 @@ impl Background for Sunprint {
             dc.FillOpacityMask(&self.mask, &ink, Some(&rect(0.0, 0.0, self.w, self.h)), None);
             dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
         }
+        Ok(())
+    }
+}
+
+/// a drawing grid with a title block; lines, circles and boxes draft themselves, get dimensioned, then fade. The grid
+/// is a few hundred hairlines, drawn each frame (a palette change shows at once). 30 fps (it always has a shape or two).
+pub struct Draft { shapes: Vec<Part>, wait: f32, rng: Rng, factory: ID2D1Factory, dashdot: ID2D1StrokeStyle,
+                   mono: IDWriteTextFormat, mid: IDWriteTextFormat, big: IDWriteTextFormat }
+
+enum Kind { Line(f32, bool), Circle(f32), Box(f32, f32, bool) }
+struct Part { kind: Kind, x: f32, y: f32, t: f32, dur: f32, hold: f32 }
+
+const DG: f32 = 24.0;
+
+impl Draft {
+    fn new(g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Draft> {
+        let factory = unsafe { g.dc.GetFactory()? };
+        let props = D2D1_STROKE_STYLE_PROPERTIES { dashStyle: D2D1_DASH_STYLE_CUSTOM, ..Default::default() };
+        let dashdot = unsafe { factory.CreateStrokeStyle(&props, Some(&[10.0, 3.0, 2.0, 3.0]))? };
+        let fmt = |fam: &str, size: f32, centred: bool| -> Result<IDWriteTextFormat> {
+            let f = fonts.format(fam, size, 400)?;
+            unsafe {
+                f.SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER)?;
+                if centred { f.SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER)?; }
+            }
+            Ok(f)
+        };
+        Ok(Draft { shapes: Vec::new(), wait: 0.0, rng: Rng(0xd2af_7000_0000_0001), factory, dashdot,
+                   mono: fmt(&look.mono.family, 11.0, false)?, mid: fmt(&look.mono.family, 11.0, true)?,
+                   big: fmt(&look.display.family, 17.6, false)? })
+    }
+
+    fn spawn(&mut self, w: f32, h: f32) {
+        let r = &mut self.rng;
+        let snap = |v: f32| (v / DG).round() * DG;
+        let (x, y) = (snap(r.range(w * 0.05, w * 0.9)), snap(r.range(h * 0.1, h * 0.9)));
+        let (dur, hold) = (r.range(1.6, 3.2), r.range(4.0, 8.0));
+        let k = r.f();
+        let kind = if k < 0.4 { Kind::Line(snap(r.range(DG * 4.0, DG * 16.0)), r.f() < 0.4) }
+                   else if k < 0.7 { Kind::Circle(snap(r.range(DG * 1.5, DG * 6.0))) }
+                   else { Kind::Box(snap(r.range(DG * 3.0, DG * 10.0)), snap(r.range(DG * 2.0, DG * 7.0)), r.f() < 0.4) };
+        self.shapes.push(Part { kind, x, y, t: 0.0, dur, hold });
+    }
+
+    fn text(g: &Gfx, f: &IDWriteTextFormat, s: &str, x: f32, y: f32, centred: bool, b: &ID2D1SolidColorBrush) {
+        let t: Vec<u16> = s.encode_utf16().collect();
+        let r = if centred { rect(x - 150.0, y - 12.0, 300.0, 24.0) } else { rect(x, y - 12.0, 400.0, 24.0) };
+        unsafe { g.dc.DrawText(&t, f, &r, b, D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL); }
+    }
+}
+
+impl Background for Draft {
+    fn fps(&self) -> f32 { 30.0 }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        let (w, h) = (g.w as f32, g.h as f32);
+        let pt = |x: f32, y: f32| D2D_POINT_2F { x, y };
+        unsafe {
+            let dc = &g.dc;
+            dc.Clear(Some(&rgba(look.bg)));
+            // the grid: fine every 24, heavier every 120
+            let dim = g.brush(look.dim)?;
+            for (step, a) in [(DG, 0.1), (DG * 5.0, 0.22)] {
+                dim.SetOpacity(a);
+                let mut x = 0.5; while x < w { dc.DrawLine(pt(x, 0.0), pt(x, h), &dim, 1.0, None); x += step; }
+                let mut y = 0.5; while y < h { dc.DrawLine(pt(0.0, y), pt(w, y), &dim, 1.0, None); y += step; }
+            }
+            // the title block, bottom right
+            let (bw, bh) = ((w * 0.3).min(330.0), 88.0);
+            let (bx, by) = (w - bw - DG, h - bh - DG);
+            dc.FillRectangle(&rect(bx, by, bw, bh), &g.brush(look.bg)?);
+            let hi = g.brush(look.hi)?;
+            hi.SetOpacity(0.4);
+            dc.DrawRectangle(&rect(bx + 0.5, by + 0.5, bw, bh), &hi, 1.0, None);
+            for f in [0.36, 0.58, 0.8] { dc.DrawLine(pt(bx, by + bh * f + 0.5), pt(bx + bw, by + bh * f + 0.5), &hi, 1.0, None); }
+            dc.DrawLine(pt(bx + bw * 0.55 + 0.5, by + bh * 0.58), pt(bx + bw * 0.55 + 0.5, by + bh), &hi, 1.0, None);
+            hi.SetOpacity(0.6);
+            Self::text(g, &self.big, "GLITCHWALL", bx + 10.0, by + bh * 0.18, false, &hi);
+            for (s, x, y) in [("TITLE  LIVE TOOL FEED", 0.0, 0.47), ("DWG NO  GW-0047", 0.0, 0.69), ("REV  C", 1.0, 0.69),
+                              ("SCALE  1:1", 0.0, 0.9), ("SHEET  1 OF 1", 1.0, 0.9)] {
+                Self::text(g, &self.mono, s, bx + 10.0 + x * bw * 0.55, by + bh * y, false, &hi);
+            }
+        }
+        // a new shape every .4-1.6 s, up to 2 + level x 12 at once
+        self.wait -= dt;
+        if self.wait <= 0.0 && self.shapes.len() < (2.0 + level * 12.0).round() as usize {
+            self.spawn(w, h);
+            self.wait = self.rng.range(0.4, 1.6);
+        }
+        let ink = g.brush(look.hi)?;
+        let mut keep = Vec::new();
+        for mut s in std::mem::take(&mut self.shapes) {
+            s.t += dt;
+            let p = (s.t / s.dur).min(1.0);
+            let end = s.dur + s.hold;
+            let a = if s.t < end { 1.0 } else { 1.0 - (s.t - end) / 1.6 };
+            if a <= 0.0 { continue; }
+            let done = p >= 1.0;
+            unsafe {
+                let dc = &g.dc;
+                ink.SetOpacity(0.5 * a);
+                match s.kind {
+                    Kind::Line(len, vert) => {
+                        let (dx, dy) = if vert { (0.0, len * p) } else { (len * p, 0.0) };
+                        dc.DrawLine(pt(s.x, s.y), pt(s.x + dx, s.y + dy), &ink, 1.0, None);
+                        if done {   // a dimension line beside it, with end ticks and the length
+                            let (ox, oy) = if vert { (14.0, 0.0) } else { (0.0, -14.0) };
+                            ink.SetOpacity(0.35 * a);
+                            let (ex, ey) = if vert { (0.0, len) } else { (len, 0.0) };
+                            dc.DrawLine(pt(s.x + ox, s.y + oy), pt(s.x + ox + ex, s.y + oy + ey), &ink, 1.0, None);
+                            for e in [0.0, len] {
+                                let (qx, qy) = if vert { (s.x, s.y + e) } else { (s.x + e, s.y) };
+                                let (sx, sy) = if vert { (4.0, 0.0) } else { (0.0, -4.0) };
+                                dc.DrawLine(pt(qx + sx, qy + sy), pt(qx + ox * 1.4, qy + oy * 1.4), &ink, 1.0, None);
+                            }
+                            ink.SetOpacity(0.6 * a);
+                            let (lx, ly) = (s.x + ox * 2.0 + if vert { 8.0 } else { len / 2.0 }, s.y + oy * 1.9 + if vert { len / 2.0 } else { 0.0 });
+                            Self::text(g, &self.mid, &format!("{}", len as i32), lx, ly, true, &ink);
+                        }
+                    }
+                    Kind::Circle(r) => {
+                        // the rim, drawn clockwise from the top
+                        if done { dc.DrawEllipse(&D2D1_ELLIPSE { point: pt(s.x, s.y), radiusX: r, radiusY: r }, &ink, 1.0, None); }
+                        else if p > 0.0 {
+                            let at = |f: f32| { let an = -std::f32::consts::FRAC_PI_2 + std::f32::consts::TAU * f; pt(s.x + r * an.cos(), s.y + r * an.sin()) };
+                            let path = self.factory.CreatePathGeometry()?;
+                            let sink = path.Open()?;
+                            sink.BeginFigure(at(0.0), D2D1_FIGURE_BEGIN_HOLLOW);
+                            let arc = |to: D2D_POINT_2F| D2D1_ARC_SEGMENT { point: to, size: D2D_SIZE_F { width: r, height: r }, rotationAngle: 0.0,
+                                                                           sweepDirection: D2D1_SWEEP_DIRECTION_CLOCKWISE, arcSize: D2D1_ARC_SIZE_SMALL };
+                            if p > 0.5 { sink.AddArc(&arc(at(0.5))); }
+                            sink.AddArc(&arc(at(p)));
+                            sink.EndFigure(D2D1_FIGURE_END_OPEN);
+                            sink.Close()?;
+                            dc.DrawGeometry(&path, &ink, 1.0, None);
+                        }
+                        // centre lines, dash-dot, past the rim
+                        ink.SetOpacity(0.35 * a);
+                        let c = r * 1.2 * p;
+                        dc.DrawLine(pt(s.x - c, s.y), pt(s.x + c, s.y), &ink, 1.0, &self.dashdot);
+                        dc.DrawLine(pt(s.x, s.y - c), pt(s.x, s.y + c), &ink, 1.0, &self.dashdot);
+                        if done {
+                            dc.DrawLine(pt(s.x, s.y), pt(s.x + r * 0.707, s.y - r * 0.707), &ink, 1.0, None);
+                            ink.SetOpacity(0.6 * a);
+                            Self::text(g, &self.mid, &format!("R{}", r as i32), s.x + r * 0.707 + 18.0, s.y - r * 0.707 - 8.0, true, &ink);
+                        }
+                    }
+                    Kind::Box(bw, bh, hatch) => {
+                        // the outline, drawn round from the top left
+                        let mut left = 2.0 * (bw + bh) * p;
+                        let (mut x, mut y) = (s.x, s.y);
+                        for (vx, vy) in [(bw, 0.0), (0.0, bh), (-bw, 0.0), (0.0, -bh)] {
+                            if left <= 0.0 { break; }
+                            let u = (vx + vy as f32).abs().min(left);
+                            let (nx, ny) = (x + vx.signum() * u * (vx != 0.0) as i32 as f32, y + vy.signum() * u * (vy != 0.0) as i32 as f32);
+                            dc.DrawLine(pt(x, y), pt(nx, ny), &ink, 1.0, None);
+                            x = nx; y = ny; left -= u;
+                        }
+                        if done {
+                            if hatch {   // section hatching at 45 degrees, inside the outline
+                                dc.PushAxisAlignedClip(&rect(s.x, s.y, bw, bh), D2D1_ANTIALIAS_MODE_ALIASED);
+                                ink.SetOpacity(0.22 * a);
+                                let mut d = 0.0;
+                                while d < bw + bh { dc.DrawLine(pt(s.x + d, s.y), pt(s.x + d - bh, s.y + bh), &ink, 1.0, None); d += 8.0; }
+                                dc.PopAxisAlignedClip();
+                            }
+                            ink.SetOpacity(0.6 * a);
+                            Self::text(g, &self.mid, &format!("{} × {}", bw as i32, bh as i32), s.x + bw / 2.0, s.y + bh + 12.0, true, &ink);
+                        }
+                    }
+                }
+            }
+            keep.push(s);
+        }
+        self.shapes = keep;
         Ok(())
     }
 }
