@@ -709,7 +709,7 @@ const STYLES = {
   },
   // the old stop screen, faint, behind the cards; only the cursor moves
   stop: {
-    scale: 1,
+    scale: 1, reinit: true,   // so an option change shows at once
     init() { this.t = 0; this.on = true; this.draw(); },
     lines: ['*** STOP: 0x00000ACE (0xC0FFEE00, 0x00000047, 0x00000833, 0x00000000)', 'LIVE_TOOL_FEED_STILL_RUNNING', '',
             'Nothing has crashed. The agent is working and its tool calls appear on this screen',
@@ -718,31 +718,35 @@ const STYLES = {
             'Beginning dump of physical memory . . . not really.', ''],
     draw() {
       cx.globalAlpha = 1; cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H);
-      const fs = Math.max(14, Math.round(H / 46)), x = W * .06; let y = H * .12;
+      const o = OPTS.stop || {}, lines = o.message === 'short' ? this.lines.slice(0, 2).concat(['']) : this.lines;
+      const fs = Math.max(14, Math.round(H / 46)), x = W * .06;
+      let y = o.place === 'centre' ? (H - fs * (2.4 + (lines.length + 1) * 1.35)) / 2 : H * .12;
       cx.font = `${fs}px ${MONO}`; cx.textBaseline = 'top';
       // the grey title chip, centred
       const title = ' glitchwall ', tw = cx.measureText(title).width;
       cx.globalAlpha = .55; cx.fillStyle = T.muted; cx.fillRect(W / 2 - tw / 2 - 4, y - 4, tw + 8, fs + 8);
       cx.fillStyle = T.bg; cx.fillText(title, W / 2 - tw / 2, y);
-      y += fs * 2.4; cx.fillStyle = T.ink; cx.globalAlpha = .17;   // faint, so cards on top stay readable
-      for (const l of this.lines) { cx.fillText(l, x, y); y += fs * 1.35; }
-      cx.fillText('Press any key to continue ' + (this.on ? '_' : ' '), x, y);
+      y += fs * 2.4; cx.fillStyle = T.ink; cx.globalAlpha = o.text === 'bright' ? .32 : .17;   // faint, so cards on top stay readable
+      for (const l of lines) { cx.fillText(l, x, y); y += fs * 1.35; }
+      cx.fillText('Press any key to continue ' + ((o.cursor === 'steady' || (this.on && o.cursor !== 'off')) ? '_' : ' '), x, y);
       cx.globalAlpha = 1;
     },
-    frame(dt) { this.t += dt; if (this.t > .55) { this.t = 0; this.on = !this.on; this.draw(); } },
+    frame(dt) { this.t += dt; if (this.t > .55) { this.t = 0; this.on = !this.on; if (!(OPTS.stop || {}).cursor || OPTS.stop.cursor === 'blink') this.draw(); } },
   },
   // ruled notebook paper, red margin, punched holes; pencil doodles sketch themselves, then fade
   notebook: {
-    scale: 1, LINE: 30,
+    scale: 1, LINE: 30, reinit: true,   // the paper is drawn at init
     init() {
-      const o = this.paper = document.createElement('canvas'), g = o.getContext('2d'), L = this.LINE;
+      const o = this.paper = document.createElement('canvas'), g = o.getContext('2d'), L = this.LINE, op = OPTS.notebook || {};
       o.width = W; o.height = H; g.fillStyle = T.bg; g.fillRect(0, 0, W, H);
       g.strokeStyle = T.dim; g.lineWidth = 1; g.globalAlpha = .75; g.beginPath();
-      for (let y = L * 3 + .5; y < H; y += L) { g.moveTo(0, y); g.lineTo(W, y); } g.stroke();
+      if (op.paper !== 'blank') for (let y = (op.paper === 'grid' ? 0 : L * 3) + .5; y < H; y += L) { g.moveTo(0, y); g.lineTo(W, y); }
+      if (op.paper === 'grid') for (let x = .5; x < W; x += L) { g.moveTo(x, 0); g.lineTo(x, H); }
+      g.stroke();
       const mx = Math.round(W * .08) + .5;
-      g.strokeStyle = T.acc; g.globalAlpha = .55; g.beginPath(); g.moveTo(mx, 0); g.lineTo(mx, H); g.moveTo(mx + 3, 0); g.lineTo(mx + 3, H); g.stroke();
+      g.strokeStyle = T.acc; g.globalAlpha = .55; g.beginPath(); g.moveTo(mx, 0); g.lineTo(mx, H); g.moveTo(mx + 3, 0); g.lineTo(mx + 3, H); if (op.margin !== 'off') g.stroke();
       g.globalAlpha = 1; g.fillStyle = 'rgba(0,0,0,.07)';
-      for (const f of [.18, .5, .82]) { g.beginPath(); g.arc(W * .03, H * f, Math.min(W, H) * .016, 0, TAU); g.fill(); }
+      if (op.holes !== 'off') for (const f of [.18, .5, .82]) { g.beginPath(); g.arc(W * .03, H * f, Math.min(W, H) * .016, 0, TAU); g.fill(); }
       this.doodles = []; this.wait = 1;
     },
     shape() {
@@ -763,8 +767,9 @@ const STYLES = {
       if (!(dt = every(this, 30, dt))) return;
       cx.globalAlpha = 1; cx.drawImage(this.paper, 0, 0);
       this.wait -= dt;
-      if (this.wait <= 0 && this.doodles.length < Math.round(RAIN * 8)) { this.doodles.push(this.shape()); this.wait = rnd(1.5, 4); }
-      cx.strokeStyle = T.hi; cx.lineWidth = 1.5; cx.lineCap = cx.lineJoin = 'round';
+      const pen = (OPTS.notebook || {}).doodles;
+      if (this.wait <= 0 && pen !== 'off' && this.doodles.length < Math.round(RAIN * 8)) { this.doodles.push(this.shape()); this.wait = rnd(1.5, 4); }
+      cx.strokeStyle = pen === 'ballpoint' ? T.ink : T.hi; cx.lineWidth = 1.5; cx.lineCap = cx.lineJoin = 'round';
       this.doodles = this.doodles.filter(d => {
         d.t += dt;
         const end = d.dur + d.hold, a = d.t < end ? 1 : 1 - (d.t - end) / d.fade;
@@ -1567,7 +1572,7 @@ const STYLES = {
   // a text-mode desktop: a shaded backdrop in character cells, a grey menu bar with a clock, a status bar of
   // function keys, and the block of a text-mode mouse cursor drifting from place to place
   textmode: {
-    scale: 1,
+    scale: 1, reinit: true,   // so an option change shows at once
     MENU: ['File', 'Edit', 'Search', 'Run', 'Options', 'Window', 'Help'],
     KEYS: [['F1', 'Help'], ['F2', 'Save'], ['F3', 'Open'], ['F5', 'Zoom'], ['F6', 'Next'], ['F10', 'Menu']],
     init() {
@@ -1585,8 +1590,10 @@ const STYLES = {
       if (!W || !H) return;
       const { cw, ch, fs, cols, rows } = this;
       cx.globalAlpha = 1; cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H);
-      cx.globalAlpha = .5; cx.fillStyle = this.shade; cx.fillRect(0, ch, W, H - ch * 2);
+      const o = OPTS.textmode || {};
+      cx.globalAlpha = { medium: .8, dark: 1 }[o.shade] || .5; cx.fillStyle = this.shade; cx.fillRect(0, ch, W, H - ch * 2);
       cx.globalAlpha = 1; cx.font = `${fs}px ${MONO}`; cx.textBaseline = 'top';
+      if (o.bars !== 'off') {
       const bar = T.bar && T.bar[0] === '#' ? T.bar : T.ink, on = T.barb && T.barb[0] === '#' ? T.barb : T.bg;
       // the menu bar: first letters picked out, a clock at the right
       cx.fillStyle = bar; cx.fillRect(0, 0, W, ch);
@@ -1594,14 +1601,16 @@ const STYLES = {
       for (const m of this.MENU) {
         cx.fillStyle = T.err; cx.fillText(m[0], x * cw, 0); cx.fillStyle = on; cx.fillText(m.slice(1), (x + 1) * cw, 0); x += m.length + 3;
       }
-      const d = new Date(), clock = [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':');
-      cx.fillStyle = on; cx.fillText(clock, (cols - clock.length - 2) * cw, 0);
+      const d = new Date(), h12 = o.clock === '12h', hr = h12 ? (d.getHours() + 11) % 12 + 1 : d.getHours();
+      const clock = [hr, d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':') + (h12 ? (d.getHours() < 12 ? ' AM' : ' PM') : '');
+      cx.fillStyle = on; if (o.clock !== 'off') cx.fillText(clock, (cols - clock.length - 2) * cw, 0);
       // the status bar
       const y = (rows - 1) * ch; cx.fillStyle = bar; cx.fillRect(0, y, W, H - y);
       x = 1;
       for (const [k, l] of this.KEYS) { cx.fillStyle = T.err; cx.fillText(k, x * cw, y); cx.fillStyle = on; cx.fillText(l, (x + k.length + 1) * cw, y); x += k.length + l.length + 3; }
+      }
       // the mouse: an inverted cell
-      cx.globalAlpha = .85; cx.fillStyle = T.hi; cx.fillRect(this.mx * cw, this.my * ch, cw, ch);
+      cx.globalAlpha = .85; cx.fillStyle = T.hi; if (o.cursor !== 'off') cx.fillRect(this.mx * cw, this.my * ch, cw, ch);
       cx.globalAlpha = 1;
     },
     frame(dt) {
@@ -1624,7 +1633,7 @@ const STYLES = {
   // a broadsheet page ghosted under the cards: a masthead between rules, columns of greeked type with headlines,
   // a halftone photo or two. It sets itself line by line, holds, then fades for the next edition
   broadsheet: {
-    scale: 1,
+    scale: 1, reinit: true,   // its options go into the layout
     init() {
       const [o, g] = [document.createElement('canvas'), null]; o.width = W; o.height = H; this.page = o; this.g = o.getContext('2d');
       this.layout(); this.t = 0; this.phase = 'set'; this.fade = 1;
@@ -1633,12 +1642,13 @@ const STYLES = {
       this.paint();
     },
     layout() {
-      const m = Math.round(Math.min(W, H) * .05), cols = W > H ? 6 : 3, gut = Math.round(W * .012), top = Math.round(H * .17);
+      const op = OPTS.broadsheet || {}, nc = { four: 4, three: 3 }[op.columns] || 6;
+      const m = Math.round(Math.min(W, H) * .05), cols = W > H ? nc : Math.min(nc, 3), gut = Math.round(W * .012), top = Math.round(H * .17);
       const cw = (W - m * 2 - gut * (cols - 1)) / cols, lh = Math.max(7, Math.round(H / 95)), items = [];
       this.m = m; this.top = top;
       // the photos: one or two blocks spanning columns
       const photos = [];
-      for (let k = 0; k < (Math.random() < .5 ? 1 : 2); k++) {
+      for (let k = 0; k < (op.photos === 'off' ? 0 : Math.random() < .5 ? 1 : 2); k++) {
         const c0 = Math.random() * (cols - 1) | 0, span = Math.min(cols - c0, 2 + (Math.random() * 2 | 0)), y0 = top + rnd(.05, .45) * (H - top);
         if (photos.some(p => c0 < p.c1 && c0 + span > p.c0)) continue;
         photos.push({ c0, c1: c0 + span, x: m + c0 * (cw + gut), y: y0, w: span * cw + (span - 1) * gut, h: Math.min(H - m - y0, rnd(.22, .34) * H) });
@@ -1677,7 +1687,7 @@ const STYLES = {
       g.textAlign = 'center'; g.font = `${fs * 2.6}px ${FONTS[T.display] ? FONTS[T.display][0] : MONO}`;
       g.fillText('The Live Feed', W / 2, (Math.round(top * .3) + top) / 2);
       g.globalAlpha = .5;
-      for (let c = 1; c < cols; c++) { const x = Math.round(m + c * (cw + gut) - gut / 2) + .5; g.fillRect(x, top + lh, 1, H - m - top - lh); }
+      if (op.rules !== 'off') for (let c = 1; c < cols; c++) { const x = Math.round(m + c * (cw + gut) - gut / 2) + .5; g.fillRect(x, top + lh, 1, H - m - top - lh); }
       g.globalAlpha = 1; g.textAlign = 'start';
     },
     put(it) {
@@ -1702,7 +1712,8 @@ const STYLES = {
     paint() {
       if (!W || !H) return;
       cx.globalAlpha = 1; cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H);
-      cx.globalAlpha = (T.mode === 'light' ? .13 : .11) * this.fade; cx.drawImage(this.page, 0, 0); cx.globalAlpha = 1;
+      cx.globalAlpha = Math.min(1, (T.mode === 'light' ? .13 : .11) * this.fade * ({ faint: .6, bold: 1.8 }[(OPTS.broadsheet || {}).ink] || 1));
+      cx.drawImage(this.page, 0, 0); cx.globalAlpha = 1;
     },
     frame(dt) {
       if (RAIN <= 0 || !(dt = every(this, 15, dt))) return;

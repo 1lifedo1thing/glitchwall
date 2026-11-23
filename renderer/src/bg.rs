@@ -25,7 +25,7 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result
     Ok(match name {
         "pixel" => Box::new(Pixel::new(g)?),
         "cascade" => Box::new(Cascade::new(g, fonts, &look.mono.family, o)?),
-        "broadsheet" => Box::new(Broadsheet::new(g, fonts, look)?),
+        "broadsheet" => Box::new(Broadsheet::new(g, fonts, look, o)?),
         "halftone" => Box::new(Halftone::new(g, o)?),
         "stop" => Box::new(Stop::new(g, fonts, look)?),
         "grid" => Box::new(Grid { ph: 0.0, still: false, sun: true, stripes: true, scroll: true, hz: 0.6 }),
@@ -298,6 +298,7 @@ pub struct Broadsheet {
     mono: String, display: (String, u32), dw: IDWriteFactory5, fonts_coll: Option<IDWriteFontCollection>, display_coll: Option<IDWriteFontCollection>,
     items: Vec<Sheet>, n: usize, phase: u8, t: f32, fade: f32, w: f32, h: f32, rng: Rng, still: bool,
     clock: std::time::Instant, last: f32,
+    ink: f32, built: (bool, usize, bool),   // options: the ink's strength; in the layout: photos, columns, rules
 }
 
 enum Sheet { Photo(f32, f32, f32, f32), Bar(f32, f32, f32, f32, f32) }   // x, y, w, h (and alpha)
@@ -307,7 +308,11 @@ const HOLD: u8 = 1;
 const OUT: u8 = 2;
 
 impl Broadsheet {
-    fn new(g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Broadsheet> {
+    fn built(o: &Json) -> (bool, usize, bool) {
+        (o.get("photos").str() != Some("off"), match o.get("columns").str() { Some("four") => 4, Some("three") => 3, _ => 6 },
+         o.get("rules").str() != Some("off"))
+    }
+    fn new(g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result<Broadsheet> {
         let page = g.surface(g.w as f32, g.h as f32)?;
         let pdc = unsafe { g.dc.GetDevice()?.CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE)? };
         unsafe { pdc.SetDpi(96.0 * g.scale, 96.0 * g.scale); pdc.SetTarget(&page); }
@@ -318,6 +323,7 @@ impl Broadsheet {
             page, pdc, white, mono: look.mono.family.clone(), display: (look.display.family.clone(), look.display.weight),
             dw: fonts.dw.clone(), items: Vec::new(), n: 0, phase: SET, t: 0.0, fade: 1.0, w: g.w as f32, h: g.h as f32,
             rng: Rng(0x5eed_0f_b0a2_d5ee), still: false, clock: std::time::Instant::now(), last: 0.0,
+            ink: 1.0, built: Self::built(o),
         };
         b.layout()?;
         b.put_upto(usize::MAX)?;   // up at once; later editions set line by line
@@ -337,7 +343,7 @@ impl Broadsheet {
     fn layout(&mut self) -> Result<()> {
         let (w, h) = (self.w, self.h);
         let m = (w.min(h) * 0.05).round();
-        let cols = if w > h { 6 } else { 3 };
+        let cols = if w > h { self.built.1 } else { self.built.1.min(3) };
         let gut = (w * 0.012).round();
         let top = (h * 0.17).round();
         let cw = (w - m * 2.0 - gut * (cols as f32 - 1.0)) / cols as f32;
@@ -354,6 +360,7 @@ impl Broadsheet {
             let ph = (h - m - y0).min(r.range(0.22, 0.34) * h);
             photos.push((c0, c0 + span, m + c0 as f32 * (cw + gut), y0, span as f32 * cw + (span as f32 - 1.0) * gut, ph));
         }
+        if !self.built.0 { photos.clear(); }
         for p in &photos { items.push(Sheet::Photo(p.2, p.3, p.4, p.5)); }
         for c in 0..cols {   // each column: a headline now and then, then lines of type
             let x = m + c as f32 * (cw + gut);
@@ -411,7 +418,7 @@ impl Broadsheet {
                 dc.DrawText(&s, fmt, &rect(m, mid - 100.0, w - m * 2.0, 200.0), b, D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL);
             }
             b.SetOpacity(0.5);
-            for c in 1..cols {
+            for c in 1..if self.built.2 { cols } else { 1 } {
                 let x = (m + c as f32 * (cw + gut) - gut / 2.0).round();
                 dc.FillRectangle(&rect(x, top + lh, 1.0, h - m - top - lh), b);
             }
@@ -461,6 +468,10 @@ impl Broadsheet {
 
 impl Background for Broadsheet {
     fn fps(&self) -> f32 { if self.still { 0.0 } else if self.phase == HOLD { 1.0 } else { 15.0 } }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.ink = match o.get("ink").str() { Some("faint") => 0.6, Some("bold") => 1.8, _ => 1.0 };
+        Self::built(o) != self.built
+    }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, _: f32) -> Result<()> {
         // its own clock: while holding it is called once a second, and the scene caps the dt it passes
         let now = self.clock.elapsed().as_secs_f32();
@@ -483,7 +494,7 @@ impl Background for Broadsheet {
         }
         unsafe {
             g.dc.Clear(Some(&rgba(look.bg)));
-            let a = if look.light { 0.13 } else { 0.11 } * self.fade;
+            let a = (if look.light { 0.13 } else { 0.11 } * self.fade * self.ink).min(1.0);
             let ink = g.brush([look.ink[0], look.ink[1], look.ink[2], a])?;
             g.dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);   // FillOpacityMask needs it
             g.dc.FillOpacityMask(&self.page, &ink, Some(&rect(0.0, 0.0, self.w, self.h)), None);
@@ -582,7 +593,8 @@ impl Background for Halftone {
 /// the old stop screen, faint, behind the cards; only the cursor moves. The text is laid out once; each blink
 /// (every .55 s, its own clock) redraws it.
 pub struct Stop { title: IDWriteTextLayout, tw: f32, lines: Vec<IDWriteTextLayout>, cursor: [IDWriteTextLayout; 2],
-                  fs: f32, w: f32, h: f32, clock: std::time::Instant }
+                  fs: f32, w: f32, h: f32, clock: std::time::Instant,
+                  bright: bool, caret: u8, short: bool, centre: bool }   // options: brighter text, cursor blink/steady/off, two lines, centred
 
 const STOP_LINES: [&str; 12] = ["*** STOP: 0x00000ACE (0xC0FFEE00, 0x00000047, 0x00000833, 0x00000000)", "LIVE_TOOL_FEED_STILL_RUNNING", "",
     "Nothing has crashed. The agent is working and its tool calls appear on this screen",
@@ -604,16 +616,25 @@ impl Stop {
         unsafe { title.GetMetrics(&mut m)?; }
         let lines = STOP_LINES.iter().map(|s| lay(s)).collect::<Result<Vec<_>>>()?;
         let cursor = [lay("Press any key to continue _")?, lay("Press any key to continue  ")?];
-        Ok(Stop { title, tw: m.widthIncludingTrailingWhitespace, lines, cursor, fs, w, h, clock: std::time::Instant::now() })
+        Ok(Stop { title, tw: m.widthIncludingTrailingWhitespace, lines, cursor, fs, w, h, clock: std::time::Instant::now(),
+                  bright: false, caret: 0, short: false, centre: false })
     }
 }
 
 impl Background for Stop {
-    fn fps(&self) -> f32 { 1.0 / 0.55 }
+    fn fps(&self) -> f32 { if self.caret == 0 { 1.0 / 0.55 } else { 0.0 } }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.bright = o.get("text").str() == Some("bright");
+        self.caret = match o.get("cursor").str() { Some("steady") => 1, Some("off") => 2, _ => 0 };
+        self.short = o.get("message").str() == Some("short");
+        self.centre = o.get("place").str() == Some("centre");
+        false
+    }
     fn draw(&mut self, g: &Gfx, look: &Look, _: f32, _: f32) -> Result<()> {
-        let on = (self.clock.elapsed().as_secs_f32() / 0.55) as u64 % 2 == 0;
+        let on = match self.caret { 1 => true, 2 => false, _ => (self.clock.elapsed().as_secs_f32() / 0.55) as u64 % 2 == 0 };
         let (fs, x) = (self.fs, self.w * 0.06);
-        let mut y = self.h * 0.12;
+        let lines = &self.lines[..if self.short { 3 } else { self.lines.len() }];   // short: the first two and a blank
+        let mut y = if self.centre { (self.h - fs * (2.4 + (lines.len() + 1) as f32 * 1.35)) / 2.0 } else { self.h * 0.12 };
         let a = |c: Color, a: f32| [c[0], c[1], c[2], a];
         unsafe {
             let dc = &g.dc;
@@ -624,8 +645,8 @@ impl Background for Stop {
             let o = D2D1_DRAW_TEXT_OPTIONS_NONE;
             dc.DrawTextLayout(D2D_POINT_2F { x: tx, y }, &self.title, &g.brush(a(look.bg, 0.55))?, o);
             y += fs * 2.4;
-            let ink = g.brush(a(look.ink, 0.17))?;   // faint, so cards on top stay readable
-            for l in &self.lines { dc.DrawTextLayout(D2D_POINT_2F { x, y }, l, &ink, o); y += fs * 1.35; }
+            let ink = g.brush(a(look.ink, if self.bright { 0.32 } else { 0.17 }))?;   // faint, so cards on top stay readable
+            for l in lines { dc.DrawTextLayout(D2D_POINT_2F { x, y }, l, &ink, o); y += fs * 1.35; }
             dc.DrawTextLayout(D2D_POINT_2F { x, y }, &self.cursor[if on { 0 } else { 1 }], &ink, o);
         }
         Ok(())
@@ -810,7 +831,8 @@ impl Background for Record {
 /// ruled notebook paper, red margin, punched holes; pencil doodles sketch themselves, hold, then fade. The paper is a
 /// few dozen lines, cheap enough to draw each frame (so a palette change shows at once); 30 fps, still at 0 once
 /// the last doodle has faded.
-pub struct Notebook { doodles: Vec<Doodle>, wait: f32, rng: Rng, round: ID2D1StrokeStyle, factory: ID2D1Factory }
+pub struct Notebook { doodles: Vec<Doodle>, wait: f32, rng: Rng, round: ID2D1StrokeStyle, factory: ID2D1Factory,
+                     paper: u8, margin: bool, pen: u8, holes: bool }   // options: ruled/grid/blank, margin, pencil/ballpoint/none, holes
 
 struct Doodle { strokes: Vec<Vec<(f32, f32)>>, n: usize, x: f32, y: f32, rot: f32, t: f32, dur: f32, hold: f32 }
 
@@ -822,7 +844,7 @@ impl Notebook {
         let props = D2D1_STROKE_STYLE_PROPERTIES { startCap: D2D1_CAP_STYLE_ROUND, endCap: D2D1_CAP_STYLE_ROUND,
                                                    dashCap: D2D1_CAP_STYLE_ROUND, lineJoin: D2D1_LINE_JOIN_ROUND, ..Default::default() };
         let round = unsafe { factory.CreateStrokeStyle(&props, None)? };
-        Ok(Notebook { doodles: Vec::new(), wait: 1.0, rng: Rng(0x0b00c_5ce7c4_0001), round, factory })
+        Ok(Notebook { doodles: Vec::new(), wait: 1.0, rng: Rng(0x0b00c_5ce7c4_0001), round, factory, paper: 0, margin: true, pen: 0, holes: true })
     }
 
     /// the page's six doodles: spiral, star, arrow, wave, ticked box, cube
@@ -865,21 +887,31 @@ impl Notebook {
 
 impl Background for Notebook {
     fn fps(&self) -> f32 { if self.doodles.is_empty() && self.wait <= -1.0e6 { 0.0 } else { 30.0 } }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.paper = match o.get("paper").str() { Some("grid") => 1, Some("blank") => 2, _ => 0 };
+        self.margin = o.get("margin").str() != Some("off");
+        self.pen = match o.get("doodles").str() { Some("ballpoint") => 1, Some("off") => 2, _ => 0 };
+        self.holes = o.get("holes").str() != Some("off");
+        false
+    }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        let level = if self.pen == 2 { 0.0 } else { level };   // no doodles: as if the rain were off
         let (w, h) = (g.w as f32, g.h as f32);
         let with = |c: Color, a: f32| [c[0], c[1], c[2], a];
         unsafe {
             let dc = &g.dc;
             dc.Clear(Some(&rgba(look.bg)));
             let rule = g.brush(with(look.dim, 0.75))?;
-            let mut y = NB_LINE * 3.0 + 0.5;
+            let mut y = if self.paper == 1 { 0.5 } else if self.paper == 2 { h } else { NB_LINE * 3.0 + 0.5 };
             while y < h { dc.DrawLine(D2D_POINT_2F { x: 0.0, y }, D2D_POINT_2F { x: w, y }, &rule, 1.0, None); y += NB_LINE; }
+            let mut x = if self.paper == 1 { 0.5 } else { w };   // squared paper
+            while x < w { dc.DrawLine(D2D_POINT_2F { x, y: 0.0 }, D2D_POINT_2F { x, y: h }, &rule, 1.0, None); x += NB_LINE; }
             let margin = g.brush(with(look.acc, 0.55))?;
             let mx = (w * 0.08).round() + 0.5;
-            for x in [mx, mx + 3.0] { dc.DrawLine(D2D_POINT_2F { x, y: 0.0 }, D2D_POINT_2F { x, y: h }, &margin, 1.0, None); }
+            if self.margin { for x in [mx, mx + 3.0] { dc.DrawLine(D2D_POINT_2F { x, y: 0.0 }, D2D_POINT_2F { x, y: h }, &margin, 1.0, None); } }
             let hole = g.brush([0.0, 0.0, 0.0, 0.07])?;
             let hr = w.min(h) * 0.016;
-            for f in [0.18, 0.5, 0.82] {
+            for f in if self.holes { &[0.18, 0.5, 0.82][..] } else { &[][..] } {
                 dc.FillEllipse(&D2D1_ELLIPSE { point: D2D_POINT_2F { x: w * 0.03, y: h * f }, radiusX: hr, radiusY: hr }, &hole);
             }
         }
@@ -892,7 +924,7 @@ impl Background for Notebook {
             self.doodles.push(d);
             self.wait = self.rng.range(1.5, 4.0);
         }
-        let pencil = g.brush(look.hi)?;
+        let pencil = g.brush(if self.pen == 1 { look.ink } else { look.hi })?;
         let mut keep = Vec::new();
         for mut d in std::mem::take(&mut self.doodles) {
             d.t += dt;
@@ -929,7 +961,8 @@ impl Background for Notebook {
 /// keys, and the block of a text-mode mouse cursor drifting from place to place. The dither is drawn once as a
 /// full-screen mask; each frame tints it. 12 fps while the mouse moves, otherwise 1 (the clock).
 pub struct Textmode { mask: ID2D1Bitmap1, fmt: IDWriteTextFormat, fs: f32, cw: f32, cols: i32, rows: i32,
-                      mx: i32, my: i32, goal: Option<(i32, i32)>, wait: f32, rng: Rng, w: f32, h: f32 }
+                      mx: i32, my: i32, goal: Option<(i32, i32)>, wait: f32, rng: Rng, w: f32, h: f32,
+                      clock: u8, bars: bool, shade: f32, cursor: bool }   // options: 24h/12h/off, the bars, the shade's strength, the mouse
 
 const TM_MENU: [&str; 7] = ["File", "Edit", "Search", "Run", "Options", "Window", "Help"];
 const TM_KEYS: [(&str, &str); 6] = [("F1", "Help"), ("F2", "Save"), ("F3", "Open"), ("F5", "Zoom"), ("F6", "Next"), ("F10", "Menu")];
@@ -970,12 +1003,19 @@ impl Textmode {
         let fmt = fonts.format(&look.mono.family, fs, 400)?;
         let (cols, rows) = ((w / cw) as i32, (h / ch) as i32);
         Ok(Textmode { mask, fmt, fs, cw, cols, rows, mx: (cols as f32 * 0.6) as i32, my: rows / 2, goal: None, wait: 2.0,
-                      rng: Rng(0x7e47_30de_0000_0001), w, h })
+                      rng: Rng(0x7e47_30de_0000_0001), w, h, clock: 0, bars: true, shade: 0.5, cursor: true })
     }
 }
 
 impl Background for Textmode {
     fn fps(&self) -> f32 { if self.goal.is_some() { 12.0 } else { 1.0 } }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.clock = match o.get("clock").str() { Some("12h") => 1, Some("off") => 2, _ => 0 };
+        self.bars = o.get("bars").str() != Some("off");
+        self.shade = match o.get("shade").str() { Some("medium") => 0.8, Some("dark") => 1.0, _ => 0.5 };
+        self.cursor = o.get("cursor").str() != Some("off");
+        false
+    }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
         if level > 0.0 {
             self.wait -= dt;
@@ -997,7 +1037,7 @@ impl Background for Textmode {
         unsafe {
             let dc = &g.dc;
             dc.Clear(Some(&rgba(look.bg)));
-            let shade = g.brush([look.dim[0], look.dim[1], look.dim[2], 0.5])?;
+            let shade = g.brush([look.dim[0], look.dim[1], look.dim[2], self.shade])?;
             dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);   // FillOpacityMask needs it
             dc.FillOpacityMask(&self.mask, &shade, Some(&rect(0.0, 0.0, w, h)), None);
             dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
@@ -1007,19 +1047,22 @@ impl Background for Textmode {
                 dc.DrawText(&t, &self.fmt, &rect(col * cw, y, cw * (t.len() as f32 + 1.0), fs * 1.5), b, D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL);
             };
             // the menu bar: first letters picked out, a clock at the right
+            if self.bars {
             dc.FillRectangle(&rect(0.0, 0.0, w, fs), &bar_b);
             let mut x = 2.0;
             for m in TM_MENU { text(&m[..1], x, 0.0, &key_b); text(&m[1..], x + 1.0, 0.0, &on_b); x += m.len() as f32 + 3.0; }
             let t = windows::Win32::System::SystemInformation::GetLocalTime();
-            let clock = format!("{:02}:{:02}:{:02}", t.wHour, t.wMinute, t.wSecond);
-            text(&clock, (self.cols - clock.len() as i32 - 2) as f32, 0.0, &on_b);
+            let clock = if self.clock == 1 { format!("{:02}:{:02}:{:02} {}", (t.wHour + 11) % 12 + 1, t.wMinute, t.wSecond, if t.wHour < 12 { "AM" } else { "PM" }) }
+                        else { format!("{:02}:{:02}:{:02}", t.wHour, t.wMinute, t.wSecond) };
+            if self.clock != 2 { text(&clock, (self.cols - clock.len() as i32 - 2) as f32, 0.0, &on_b); }
             // the status bar
             let y = (self.rows - 1) as f32 * fs;
             dc.FillRectangle(&rect(0.0, y, w, h - y), &bar_b);
             let mut x = 1.0;
             for (k, l) in TM_KEYS { text(k, x, y, &key_b); text(l, x + k.len() as f32 + 1.0, y, &on_b); x += (k.len() + l.len() + 3) as f32; }
+            }
             // the mouse: an inverted cell
-            dc.FillRectangle(&rect(self.mx as f32 * cw, self.my as f32 * fs, cw, fs), &g.brush([look.hi[0], look.hi[1], look.hi[2], 0.85])?);
+            if self.cursor { dc.FillRectangle(&rect(self.mx as f32 * cw, self.my as f32 * fs, cw, fs), &g.brush([look.hi[0], look.hi[1], look.hi[2], 0.85])?); }
         }
         Ok(())
     }
