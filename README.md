@@ -165,7 +165,8 @@ One small Python process that checks for new log lines once a second, and one we
 at most 30 frames a second, whatever your monitor's refresh rate. A screen covered by a maximized or
 fullscreen window (a game, a video, your editor) goes to sleep until it's uncovered, and so does every screen
 while the PC is locked: about 17% of one core awake, 2.4% asleep. MOTION at 0 stills the background entirely.
-In Task Manager it shows up as **glitchwall**, not as an anonymous Python.
+In Task Manager it shows up as **glitchwall**, not as an anonymous Python. How that stacks up against other
+live wallpapers: [How it compares](#how-it-compares-with-other-live-wallpapers).
 
 ## Quick start
 
@@ -453,6 +454,41 @@ Applied to every command, file path and output before it's kept:
 
 It errs toward masking. The tests in [`tests/test_redact.py`](tests/test_redact.py) feed 50+ realistic fake
 secrets through it, plus ordinary text that must survive untouched.
+
+## How it compares with other live wallpapers
+
+Nobody publishes like-for-like benchmarks of live wallpapers, so take this as a rough guide. Our numbers
+are measured; most of the others are one person's test or a forum post, on different hardware, drawing
+different things.
+
+| | What it draws | CPU | Memory | Open source | Where the number comes from |
+|---|---|---|---|---|---|
+| **glitchwall** (default, WebView2) | animated web page | 34% of one core (2.2% of a 16-core CPU) | 699 MB | yes | our test, below |
+| **glitchwall** (native, opt-in) | Direct2D, no browser | 5% of one core (0.3%) | 171 MB | yes | our test, below |
+| [Lively Wallpaper](https://github.com/rocksdanister/lively) | simple web wallpaper (rain) | under 0.3% of the whole CPU | about 245 MB | yes | [one reviewer](https://www.windowscentral.com/software-apps/i-finally-tried-lively-wallpaper-to-animate-my-desktop-its-a-dream-for-customization) |
+| Lively Wallpaper | a YouTube page as wallpaper | about 4.5% of the whole CPU | about 800 MB | yes | same reviewer |
+| Wallpaper Engine | 60 fps video, hardware decoding | 1-2% of the whole CPU, ~40% GPU | not given | no | [forum post](https://steamcommunity.com/app/431960/discussions/2/1696045708644625403) |
+| [anipaper](https://github.com/Theldus/anipaper) (Linux) | 1080p 30 fps video, hardware decoding | 10.8% of a 4-core CPU (about 43% of one core) | not given | yes | author's benchmark |
+| [Hidamari](https://github.com/jeffshee/hidamari) (Linux) | video, Intel integrated GPU | about 1% CPU, 4% GPU | not given | yes | [article author](https://ubuntuhandbook.org/index.php/2024/10/video-animated-wallpaper-ubuntu/) |
+| macOS aerial wallpapers | built-in video | 20-100% CPU when it misbehaves | up to GBs | no | [bug reports](https://discussions.apple.com/thread/255180158) |
+
+Our test: a 16-core Windows 11 desktop, matrix theme, ambient mode, every glitchwall process counted, all
+screens awake, 30 seconds (2026-11-22). Matrix is one of the busier themes; an earlier test of the default phosphor
+theme, measured a little differently, came out at about half as much.
+
+**Why the default is heavier than a video wallpaper.** A video wallpaper hands its work to the graphics
+card's video decoder, so the CPU barely notices. glitchwall draws every frame live (falling glyphs, cards,
+text) in WebView2, which is a full copy of the Edge browser: a browser process, a GPU process and a
+renderer for each page. That's where most of the memory goes. Lively's web wallpapers use the same engine and
+land in the same range of memory. In return, glitchwall caps frame rates per background (10-30 fps, 60 only
+while a card slides in), and sleeps entirely while a screen is covered, fullscreen or locked, like Lively and
+Wallpaper Engine do.
+
+**What the native renderer changes.** It draws the same backgrounds with Direct2D straight from a small Rust
+program, with no browser in between: about a seventh of the CPU and a quarter of the memory in the test
+above. It's opt-in (`glitchwall config --renderer native`) and still on a development branch, not in a
+release yet. Windows only; the web page stays the way to run glitchwall on macOS, Linux, OBS and Wallpaper
+Engine.
 
 ## ⚠️ Disclaimers (please read)
 
