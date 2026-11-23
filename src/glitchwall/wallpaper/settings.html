@@ -58,7 +58,6 @@
   .drum.still .item { transition:none; }   /* the first placement: straight into position, no pile-up */
   footer { gap:4px 14px !important; padding:6px 14px !important; }
   main > *, .side > * { flex-shrink:0; }   /* never squash a module: scroll instead */
-  #motion { flex:1; min-height:0; display:flex; flex-direction:column; }
   .mod { position:relative; min-width:0; border:1px solid var(--ph-line); border-radius:4px; padding:24px 12px 12px; background:rgba(3,16,8,.55); }
   .mod > h2 { position:absolute; top:7px; left:11px; margin:0; font-weight:400; }
   /* a module's DEFAULT key, top right; lit only when something in it differs from the default */
@@ -112,9 +111,9 @@
   .drum::after { content:''; position:absolute; inset:0; pointer-events:none; background:linear-gradient(90deg, var(--glass), transparent 32%, transparent 68%, var(--glass)); }
   .drumfoot { display:flex; justify-content:space-between; margin-top:6px; font:16px/1 'VT323', monospace; }
 
-  /* faders, lying flat, spread over the module's height */
-  .faders { flex:1; display:flex; flex-direction:column; justify-content:space-evenly; gap:4px; }
-  .fader { display:grid; grid-template-columns:64px minmax(0,1fr) 34px; align-items:center; gap:10px; padding:1px 3px; border-radius:3px; }
+  /* faders, lying flat, two to a row, so the module stays short */
+  .faders { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:6px 16px; }
+  .fader { display:grid; grid-template-columns:50px minmax(0,1fr) 30px; align-items:center; gap:7px; padding:1px 3px; border-radius:3px; }
   .fader .name { font-size:9px; letter-spacing:.12em; }
   .fader .val { text-align:center; font:18px/1.15 'VT323', monospace; color:var(--ph); text-shadow:var(--glow); border:1px solid var(--ph-line); border-radius:2px; }
   .track { position:relative; height:20px; touch-action:none; cursor:ew-resize; }
