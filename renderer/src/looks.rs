@@ -35,6 +35,7 @@ fn filter(s: &str) -> Filter {
 }
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)]   // name, misreg, rules, place: read from the theme like the page does, not drawn natively yet
 pub struct Look {
     pub name: String,
     pub light: bool,

@@ -6,6 +6,7 @@
 //!   2. "name = value" style assignments, env exports, CLI flags and HTTP headers whose name says the value is
 //!      secret (password, token, api_key, ...)
 //!   3. a high-entropy catch for anything token-shaped that slipped through
+//!
 //! Plus: the home directory becomes "~", the user name and email local parts are masked.
 //!
 //! The goal is "never show a secret", not "never show anything odd", so this errs toward masking; a pattern that

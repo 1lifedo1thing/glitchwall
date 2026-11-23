@@ -334,7 +334,7 @@ impl Broadsheet {
             fonts_coll: coll(&look.mono.family), display_coll: coll(&look.display.family),
             page, pdc, white, mono: look.mono.family.clone(), display: (look.display.family.clone(), look.display.weight),
             dw: fonts.dw.clone(), items: Vec::new(), n: 0, phase: SET, t: 0.0, fade: 1.0, w: g.w as f32, h: g.h as f32,
-            rng: Rng(0x5eed_0f_b0a2_d5ee), still: false, clock: std::time::Instant::now(), last: 0.0,
+            rng: Rng(0x005e_ed0f_b0a2_d5ee), still: false, clock: std::time::Instant::now(), last: 0.0,
             ink: 1.0, built: Self::built(o),
         };
         b.layout()?;
@@ -643,7 +643,7 @@ impl Background for Stop {
         false
     }
     fn draw(&mut self, g: &Gfx, look: &Look, _: f32, _: f32) -> Result<()> {
-        let on = match self.caret { 1 => true, 2 => false, _ => (self.clock.elapsed().as_secs_f32() / 0.55) as u64 % 2 == 0 };
+        let on = match self.caret { 1 => true, 2 => false, _ => ((self.clock.elapsed().as_secs_f32() / 0.55) as u64).is_multiple_of(2) };
         let (fs, x) = (self.fs, self.w * 0.06);
         let lines = &self.lines[..if self.short { 3 } else { self.lines.len() }];   // short: the first two and a blank
         let mut y = if self.centre { (self.h - fs * (2.4 + (lines.len() + 1) as f32 * 1.35)) / 2.0 } else { self.h * 0.12 };
@@ -747,7 +747,7 @@ impl Record {
             dc.Clear(Some(&D2D1_COLOR_F::default()));
             dc.FillEllipse(&circle(r), &g.brush([0x16 as f32 / 255.0, 0x10 as f32 / 255.0, 0x0b as f32 / 255.0, 1.0])?);
             let groove = g.brush([1.0, 240.0 / 255.0, 220.0 / 255.0, 1.0])?;
-            let mut rng = Rng(0x5eed_0f_d15c_0001);
+            let mut rng = Rng(0x005e_ed0f_d15c_0001);
             let mut rr = r * 0.36;
             while rr < r * 0.985 {
                 groove.SetOpacity(0.025 + rng.f() * 0.03);
@@ -856,7 +856,7 @@ impl Notebook {
         let props = D2D1_STROKE_STYLE_PROPERTIES { startCap: D2D1_CAP_STYLE_ROUND, endCap: D2D1_CAP_STYLE_ROUND,
                                                    dashCap: D2D1_CAP_STYLE_ROUND, lineJoin: D2D1_LINE_JOIN_ROUND, ..Default::default() };
         let round = unsafe { factory.CreateStrokeStyle(&props, None)? };
-        Ok(Notebook { doodles: Vec::new(), wait: 1.0, rng: Rng(0x0b00c_5ce7c4_0001), round, factory, paper: 0, margin: true, pen: 0, holes: true })
+        Ok(Notebook { doodles: Vec::new(), wait: 1.0, rng: Rng(0x00b0_0c5c_e7c4_0001), round, factory, paper: 0, margin: true, pen: 0, holes: true })
     }
 
     /// the page's six doodles: spiral, star, arrow, wave, ticked box, cube
@@ -1435,7 +1435,7 @@ impl Background for Draft {
                         let (mut x, mut y) = (s.x, s.y);
                         for (vx, vy) in [(bw, 0.0), (0.0, bh), (-bw, 0.0), (0.0, -bh)] {
                             if left <= 0.0 { break; }
-                            let u = (vx + vy as f32).abs().min(left);
+                            let u = (vx + vy).abs().min(left);
                             let (nx, ny) = (x + vx.signum() * u * (vx != 0.0) as i32 as f32, y + vy.signum() * u * (vy != 0.0) as i32 as f32);
                             dc.DrawLine(pt(x, y), pt(nx, ny), &ink, 1.0, None);
                             x = nx; y = ny; left -= u;
@@ -1929,8 +1929,8 @@ pub struct Orb { back: ID2D1Bitmap1, front: ID2D1Bitmap1, glow: ID2D1Bitmap1, do
                  dc3: ID2D1DeviceContext3, factory: ID2D1Factory, sphere: [ID2D1Brush; 3], rim: ID2D1Brush,
                  leds: Vec<Led>, ribs: Vec<Rib>, packets: Vec<(usize, f32, f32, usize)>, rng: Rng,
                  s: f32, ox: f32, oy: f32, w: f32, h: f32, t: f32, spin: f32, still: bool,
-                 dest: Vec<D2D_RECT_F>, tint: Vec<D2D1_COLOR_F>, net: Vec<[f32; 3]>, tris: Vec<[u16; 3]>, mesh: ID2D1Bitmap1, mdc: ID2D1DeviceContext, mdc3: ID2D1DeviceContext3,
-                 mbatch: ID2D1SpriteBatch, hole: ID2D1Bitmap1, holes: ID2D1Bitmap1, edge: ID2D1Bitmap1, cage: f32,
+                 dest: Vec<D2D_RECT_F>, tint: Vec<D2D1_COLOR_F>, net: Vec<[f32; 3]>, tris: Vec<[u16; 3]>, mesh: ID2D1Bitmap1, mdc: ID2D1DeviceContext,
+                 holes: ID2D1Bitmap1, cage: f32,
                  turns: (f32, f32), caged: bool, lightv: [f32; 3], shine: f32,
                  fmt: IDWriteTextFormat, fs: f32, cy: f32, calls: Vec<OrbCall> }   // the readouts pointing at parts of the sphere   // how fast the sphere and the cage turn, from the options: 1 right, -1 left, 0 still
 
@@ -1959,7 +1959,6 @@ const ORB_N: usize = 110;
 const ORB_NET: f32 = 58.0;   // the cage's cells: joints round its equator
 const CAGE_R: f32 = 1.04;
 const CAGE_RIM: f32 = 1.0;   // how strongly the holes' rims catch the light: 1 full, 0 none   // the cage stands a little off the sphere, so it slides over what's under it as it turns
-const HOLE_IN: f32 = 0.06;   // the hole texture's triangle: (a, a), (c, a), (a, c), a = HOLE_IN, c = 1 - 2.5a
 
 /// the cage's net on the unit sphere, laid in bands that line up with the shell's slats: a ring of joints on each
 /// line between two slats (l slats over phi -1.4 to 1.4), so each slat runs down the middle of its own row of
@@ -2256,33 +2255,10 @@ impl Orb {
         let mesh = g.surface(c * 2.0, c * 2.0)?;
         let mdc = unsafe { g.dc.GetDevice()?.CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE)? };
         unsafe { mdc.SetDpi(96.0 * g.scale, 96.0 * g.scale); }
-        let mdc3: ID2D1DeviceContext3 = mdc.cast()?;
-        let mbatch = unsafe { mdc3.CreateSpriteBatch()? };
-        // a hole: a white triangle, mapped onto each cell; the holes are drawn as these on their own layer, which is
-        // then cut out of the skin
-        let hole = g.surface(64.0, 64.0)?;
-        let edge = g.surface(64.0, 64.0)?;
         let holes = g.surface(c * 2.0, c * 2.0)?;
-        unsafe {
-            let dc = &g.dc;
-            let old = dc.GetTarget()?;
-            dc.SetTarget(&hole);
-            dc.BeginDraw();
-            dc.Clear(Some(&D2D1_COLOR_F::default()));
-            let (a, c) = (HOLE_IN * 64.0, (1.0 - 2.5 * HOLE_IN) * 64.0);
-            dc.FillGeometry(&quad([p2(a, a), p2(c, a), p2(a, c), p2(a, a)])?, &g.brush([1.0, 1.0, 1.0, 1.0])?, None);
-            dc.EndDraw(None, None)?;
-            // a hole's rim: the same triangle's outline, which the light catches
-            dc.SetTarget(&edge);
-            dc.BeginDraw();
-            dc.Clear(Some(&D2D1_COLOR_F::default()));
-            dc.DrawGeometry(&quad([p2(a, a), p2(c, a), p2(a, c), p2(a, a)])?, &g.brush([1.0, 1.0, 1.0, 1.0])?, 2.2, None);
-            dc.EndDraw(None, None)?;
-            dc.SetTarget(&old);
-        }
         let fs = (s * 0.045).round().max(10.0);
         let mut o = Orb { fmt: fonts.format(&look.mono.family, fs, 400)?, fs, cy, calls: Vec::new(), back, front, glow, dot, batch, dc3, factory, sphere, rim, leds, ribs, packets: Vec::new(), rng,
-                          s, ox, oy, w, h, t: 0.0, spin: 0.0, still: false, dest: Vec::new(), tint: Vec::new(), net, tris, mesh, mdc, mdc3, mbatch, hole, holes, edge, cage: 0.0, turns: (1.0, 1.0), caged: true, lightv: [-0.62, 0.68, 0.39], shine: 1.0 };
+                          s, ox, oy, w, h, t: 0.0, spin: 0.0, still: false, dest: Vec::new(), tint: Vec::new(), net, tris, mesh, mdc, holes, cage: 0.0, turns: (1.0, 1.0), caged: true, lightv: [-0.62, 0.68, 0.39], shine: 1.0 };
         for i in 0..3 { let a = o.rng.range(0.15, 0.5); let c = o.callout(i, a); o.calls.push(c); }
         o.burn();
         o.t = o.rng.range(0.0, 300.0);
@@ -2516,8 +2492,8 @@ impl Background for Orb {
                     let mut prev: Option<(f32, f32, f32, f32)> = None;
                     for i in 0..=ORB_N {
                         let p = self.pt(rb.phi + dphi, (i % ORB_N) as f32 / ORB_N as f32 * TAU);
-                        if let Some(q) = prev {
-                            if p.2 > 0.0 && q.2 > 0.0 {
+                        if let Some(q) = prev
+                            && p.2 > 0.0 && q.2 > 0.0 {
                                 let b = p.2.min(q.2).powf(0.7) * (0.25 + 0.75 * p.3) * if dim { 0.45 } else { 1.0 };
                                 if b > 0.04 {
                                     let st = &sinks[if b < 0.18 { 0 } else if b < 0.36 { 1 } else if b < 0.6 { 2 } else { 3 }];
@@ -2526,7 +2502,6 @@ impl Background for Orb {
                                     st.EndFigure(D2D1_FIGURE_END_OPEN);
                                 }
                             }
-                        }
                         prev = Some(p);
                     }
                 }
@@ -2687,7 +2662,7 @@ impl Scope {
     fn piece(&mut self, u0: f32, u1: f32) -> Result<()> {
         let n = ((u1 - u0) * self.gw / 1.5).ceil().max(2.0) as usize;
         let mut pts = Vec::with_capacity(n + 2);
-        if u0 > 0.0 { if let Some(l) = self.last { pts.push(l); } }
+        if u0 > 0.0 && let Some(l) = self.last { pts.push(l); }
         for i in pts.len()..=n { let p = self.at(u0 + (u1 - u0) * i as f32 / n as f32); pts.push(p); }
         self.last = pts.last().copied();
         unsafe {
@@ -2859,7 +2834,7 @@ pub struct Oracle { factory: ID2D1Factory, fmt: IDWriteTextFormat, r: f32, ox: f
                     tr: Vec<OrTr>, anom: Option<OrAnom>, wait: f32, rng: Rng, still: bool,
                     wild: f32, dir: f32, red: bool, scales: bool }   // options: stroke amplitude, turning, divergences, scales
 
-struct OrTr { k: usize, off: f32, amp: f32, v: Vec<f32>, head: f32, sp: f32, a: f32, w: f32 }
+struct OrTr { off: f32, amp: f32, v: Vec<f32>, head: f32, sp: f32, a: f32, w: f32 }
 struct OrAnom { c: usize, w: i32, k: usize, n: usize, pull: f32, age: f32, life: f32, val: f32, id: String }
 
 const OR_M: usize = 480;
@@ -2875,7 +2850,7 @@ impl Oracle {
         let sin = (0..OR_M).map(|i| (i as f32 / OR_M as f32 * TAU).sin()).collect();
         let tr = (0..OR_K).map(|k| {
             let u = k as f32 / (OR_K - 1) as f32;
-            OrTr { k, off: (u - 0.5) * 0.36 + rng.range(-0.02, 0.02), amp: rng.range(0.025, 0.075), v: vec![0.0; OR_M], head: rng.range(0.0, OR_M as f32),
+            OrTr { off: (u - 0.5) * 0.36 + rng.range(-0.02, 0.02), amp: rng.range(0.025, 0.075), v: vec![0.0; OR_M], head: rng.range(0.0, OR_M as f32),
                    sp: rng.range(0.04, 0.12) * OR_M as f32 * if rng.f() < 0.35 { -1.0 } else { 1.0 }, a: rng.range(0.1, 0.38),
                    w: if rng.f() < 0.18 { 1.25 } else { 0.7 } }
         }).collect();
@@ -2967,9 +2942,9 @@ impl Background for Oracle {
             if ended { self.anom = None; self.wait = self.rng.range(1.5, 4.0); }
         }
         let (r, ox, oy, w, h, t) = (self.r, self.ox, self.oy, self.w, self.h, self.t);
-        for i in 0..OR_M {   // the band's thickness: swells and pinches around the ring, drifting slowly
+        for (i, e) in self.env.iter_mut().enumerate() {   // the band's thickness: swells and pinches around the ring, drifting slowly
             let a = i as f32 / OR_M as f32 * TAU;
-            self.env[i] = 0.14 + 0.86 * (0.5 + 0.5 * (2.0 * a + t * 0.06).sin()).powf(2.2) * (0.7 + 0.3 * (5.0 * a - t * 0.11).sin());
+            *e = 0.14 + 0.86 * (0.5 + 0.5 * (2.0 * a + t * 0.06).sin()).powf(2.2) * (0.7 + 0.3 * (5.0 * a - t * 0.11).sin());
         }
         let ink = look.ink;
         let ic = |a: f32| D2D1_COLOR_F { r: ink[0], g: ink[1], b: ink[2], a };
@@ -3149,7 +3124,7 @@ impl Signs {
         // the signs: words and a shape, each in its own colour, laid out so they don't overlap
         let cols = [look.acc, look.ink, look.acc2];
         let mut words: Vec<&str> = SIGN_WORDS.to_vec();
-        let mut spots = vec![(0.2f32, 0.22f32), (0.74, 0.3), (0.46, 0.56), (0.18, 0.62), (0.8, 0.66)];
+        let mut spots = [(0.2f32, 0.22f32), (0.74, 0.3), (0.46, 0.56), (0.18, 0.62), (0.8, 0.66)];
         for i in (1..words.len()).rev() { let j = (rng.f() * (i + 1) as f32) as usize % (i + 1); words.swap(i, j); }
         for i in (1..spots.len()).rev() { let j = (rng.f() * (i + 1) as f32) as usize % (i + 1); spots.swap(i, j); }
         let disp = [("Instrument Serif", true), ("Chakra Petch", false), ("Saira Stencil One", false)];
@@ -3346,7 +3321,7 @@ impl Background for Signs {
 /// little flowchart get written up a stroke at a time; when the board is full, an eraser wipes it in bands (or it
 /// clears at once), and the writing starts again. The board is drawn once; the chalk lives in its own layer, kept
 /// by a second device context, drawn into as the writing goes. 20 fps while writing or wiping; still at 0.
-pub struct Chalk { back: ID2D1Bitmap1, layer: ID2D1Bitmap1, pdc: ID2D1DeviceContext, factory: ID2D1Factory, round: ID2D1StrokeStyle,
+pub struct Chalk { back: ID2D1Bitmap1, layer: ID2D1Bitmap1, pdc: ID2D1DeviceContext, round: ID2D1StrokeStyle,
                    dw: IDWriteFactory5, coll: Option<IDWriteFontCollection>, rng: Rng, u: f32, w: f32, h: f32, hb: f32,
                    used: Vec<(f32, f32, f32, f32)>, on: Vec<String>, job: Option<ChalkJob>, wipe: Option<(f32, f32, f32, f32)>, wait: f32,
                    still: bool, look: Look, scale: f32,
@@ -3376,7 +3351,7 @@ impl Chalk {
         unsafe { pdc.SetDpi(96.0 * g.scale, 96.0 * g.scale); }
         let coll: Option<IDWriteFontCollection> = if fonts.has("Caveat") { fonts.set.cast().ok() } else { None };
         let _ = light;
-        let mut c = Chalk { back, layer, pdc, factory, round, dw: fonts.dw.clone(), coll, rng: Rng(0), u, w, h, hb, used: Vec::new(), on: Vec::new(),
+        let mut c = Chalk { back, layer, pdc, round, dw: fonts.dw.clone(), coll, rng: Rng(0), u, w, h, hb, used: Vec::new(), on: Vec::new(),
                             job: None, wipe: None, wait: 0.0, still: false, look: look.clone(), scale: g.scale,
                             content: 0, clean: false, white: false, ghosts };
         c.opts(o);
@@ -3511,7 +3486,7 @@ impl Chalk {
         let lw = (u / 300.0).max(2.0);
         let (ink, acc, acc2) = (self.look.ink, self.look.acc, self.look.acc2);
         let mut strokes = Vec::new();
-        let mut wob = |r: &mut Rng, st: &mut Vec<Chalked>, x0: f32, y0: f32, x1: f32, y1: f32, c: Color| {
+        let wob = |r: &mut Rng, st: &mut Vec<Chalked>, x0: f32, y0: f32, x1: f32, y1: f32, c: Color| {
             let m = (r.range(-2.0, 2.0), r.range(-2.0, 2.0));
             st.push(Chalked::Pts(vec![(x0, y0), ((x0 + x1) / 2.0 + m.0, (y0 + y1) / 2.0 + m.1), (x1, y1)], c));
         };
@@ -3557,10 +3532,10 @@ impl Chalk {
             let (bw, bh, gap) = (u * 0.1, u * 0.046, u * 0.05);
             let Some((x, y)) = self.room(bw * 3.0 + gap * 2.0, bh * 1.6) else { return Ok(None) };
             self.on.push(words.join(","));
-            for i in 0..3 {
+            for (i, word) in words.iter().enumerate().take(3) {
                 let (bx, by) = (x + i as f32 * (bw + gap), y + bh * 0.3);
                 for (a, b, c2, d) in [(bx, by, bx + bw, by), (bx + bw, by, bx + bw, by + bh), (bx + bw, by + bh, bx, by + bh), (bx, by + bh, bx, by)] { wob(&mut self.rng, &mut strokes, a, b, c2, d, ink); }
-                let t = self.text(words[i], bx + bw * 0.18, by + bh / 2.0, (bh * 0.55).round(), ink)?;
+                let t = self.text(word, bx + bw * 0.18, by + bh / 2.0, (bh * 0.55).round(), ink)?;
                 strokes.push(t);
                 if i < 2 {
                     let (ax, ay) = (bx + bw + 6.0, by + bh / 2.0);
@@ -3980,7 +3955,7 @@ struct Item { x: f32, y: f32, s: f32, a: f32, spin: f32, kind: u8, n: usize, c: 
 
 impl Starburst {
     fn new(g: &Gfx) -> Result<Starburst> {
-        let mut rng = Rng(0xa70e_1c_a9e5_0050);
+        let mut rng = Rng(0x00a7_0e1c_a9e5_0050);
         let (w, h) = (g.w as f32, g.h as f32);
         let items = (0..64).map(|_| Item { x: rng.range(0.0, w), y: rng.range(0.0, h), s: rng.range(14.0, 46.0), a: rng.range(0.0, TAU),
             spin: rng.range(-0.25, 0.25), kind: [0u8, 0, 1, 2][(rng.f() * 4.0) as usize % 4], n: 8 + ((rng.f() * 6.0) as usize % 6) * 2,

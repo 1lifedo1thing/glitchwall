@@ -99,9 +99,6 @@ impl Gfx {
 pub fn set_f32(e: &ID2D1Effect, i: u32, v: f32) -> Result<()> {
     unsafe { e.SetValue(i, D2D1_PROPERTY_TYPE_FLOAT, &v.to_le_bytes()) }
 }
-pub fn set_u32(e: &ID2D1Effect, i: u32, v: u32) -> Result<()> {
-    unsafe { e.SetValue(i, D2D1_PROPERTY_TYPE_ENUM, &v.to_le_bytes()) }
-}
 pub fn set_bool(e: &ID2D1Effect, i: u32, v: bool) -> Result<()> {
     unsafe { e.SetValue(i, D2D1_PROPERTY_TYPE_BOOL, &(v as u32).to_le_bytes()) }
 }

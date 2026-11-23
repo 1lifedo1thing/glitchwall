@@ -3,7 +3,7 @@
 use crate::anim::{self, Anim, Ctx, Ease, Pose};
 use crate::bg::{self, Background, Rng};
 use crate::fonts::Fonts;
-use crate::gfx::{self, Gfx, rect, rgba};
+use crate::gfx::{self, Gfx, rect};
 use crate::json::Json;
 use crate::looks::{Color, Look, Looks, with_alpha};
 use std::collections::{HashMap, VecDeque};
@@ -53,7 +53,7 @@ pub struct Scene {
     anim_in: Option<Anim>, anim_out: Option<Anim>, place_mode: String,
     mono: IDWriteTextFormat, bar: IDWriteTextFormat, status_fmt: IDWriteTextFormat, line_h: f32, bar_h: f32,
     fx: Effects,
-    cards: Vec<Card>, queue: VecDeque<Json>, typing: Option<Typing>, wait_until: Option<f64>, busy_queue: bool,
+    cards: Vec<Card>, queue: VecDeque<Json>, typing: Option<Typing>, wait_until: Option<f64>,
     by_ref: HashMap<String, u64>, current: Option<u64>, next_id: u64,
     tune: Tune, rng: Rng, masked: String,
     pub asleep: bool, pub ignore_sleep: bool, slept_at: Option<f64>, hidden: bool, art: bool,
@@ -106,7 +106,7 @@ impl Scene {
             bg: bg::make(&look.rain, &g, &fonts, &look, &Json::Null)?, opts: Json::Null, scene, overlay: None, anim_in: None, anim_out: None, place_mode: "any".into(),
             bar: mono.clone(), status_fmt: mono.clone(), mono, line_h: 18.4, bar_h: 24.0,
             g, fonts, css, look, look_key: String::new(), fx,
-            cards: Vec::new(), queue: VecDeque::new(), typing: None, wait_until: None, busy_queue: false,
+            cards: Vec::new(), queue: VecDeque::new(), typing: None, wait_until: None,
             by_ref: HashMap::new(), current: None, next_id: 1,
             tune: Tune { cps: 240.0, rain: 0.5, linger: 7.0, cards: 4, glass: 0.58, grain: 1.0 }, rng: Rng(0x2545_f491_4f6c_dd1d), masked: "dots".into(),
             asleep: false, ignore_sleep: false, slept_at: None, hidden: false, art: false, label: "live tool feed".into(), live_until: 0.0, blink: false,
@@ -145,7 +145,7 @@ impl Scene {
         self.anim_out = t.get("out").str().and_then(|s| anim::parse(&self.css, s));
         self.place_mode = t.get("place").str().unwrap_or("any").to_string();   // dock | stack | any, as the page's PLACE
         if l.rain != old_rain || l.mono.family != old_mono || !self.bg_drawn {
-            self.bg = bg::make(&l.rain, &self.g, &self.fonts, &l, self.opts.get(&l.rain))?;
+            self.bg = bg::make(&l.rain, &self.g, &self.fonts, l, self.opts.get(&l.rain))?;
             self.bg.opts(self.opts.get(&l.rain));
         }
         self.overlay = Some(self.make_overlay()?);
@@ -260,6 +260,7 @@ impl Scene {
     /// stack: a pile in the bottom-right corner, held by its bottom edge. dock: beside the newest card there is room
     /// next to (below, right, above, left), coming out from under it. Otherwise pop-up-ad placement: random size,
     /// best of 80 random tries so the new card covers the live ones least.
+    #[allow(clippy::type_complexity)]
     fn place(&mut self) -> (f32, f32, f32, f32, Ctx, Option<(f32, f32, f64)>) {
         let (sw, sh) = (self.g.w as f32, self.g.h as f32);
         if self.place_mode == "stack" {
@@ -321,9 +322,8 @@ impl Scene {
             let h = self.cards[i].h.max(48.0);
             if b + h > sh - 64.0 && k < live.len() - 1 { drop.push(self.cards[i].id); continue; }
             let c = &mut self.cards[i];
-            if let Some((_, to, _)) = c.bottom {
-                if (to - b).abs() > 0.5 { c.bottom = Some((stack_bottom(c.bottom, now), b, now)); }
-            }
+            if let Some((_, to, _)) = c.bottom
+                && (to - b).abs() > 0.5 { c.bottom = Some((stack_bottom(c.bottom, now), b, now)); }
             b += h + 14.0;
         }
         for id in drop { self.kill(id, now); }
@@ -410,7 +410,7 @@ impl Scene {
             self.current = Some(card);
             if !r.is_empty() {
                 self.by_ref.insert(r, card);
-                if self.by_ref.len() > 50 { if let Some(k) = self.by_ref.keys().next().cloned() { self.by_ref.remove(&k); } }
+                if self.by_ref.len() > 50 && let Some(k) = self.by_ref.keys().next().cloned() { self.by_ref.remove(&k); }
             }
             let prompt = match kind.as_str() {
                 "$" => "$", "PS>" => "PS>", "read" => "cat", "write" => "write", "edit" => "edit", "find" => "grep",
@@ -427,8 +427,8 @@ impl Scene {
     /// move time on: typing, lingering, leaving. True if something visible changed.
     fn update(&mut self, now: f64) -> Result<bool> {
         let mut changed = false;
-        if let Some(t) = &self.typing {
-            if now >= t.t0 {
+        if let Some(t) = &self.typing
+            && now >= t.t0 {
                 let (id, part, t0, cps, after, out, busy) = (t.card, t.part, t.t0, t.cps, t.after, t.out, t.busy);
                 let linger = self.tune.linger;
                 match self.cards.iter_mut().find(|c| c.id == id && c.dying.is_none()) {
@@ -446,8 +446,7 @@ impl Scene {
                     }
                 }
             }
-        }
-        if let Some(w) = self.wait_until { if now >= w { self.wait_until = None; self.next(now)?; } }
+        if let Some(w) = self.wait_until && now >= w { self.wait_until = None; self.next(now)?; }
         let expired: Vec<u64> = self.cards.iter().filter(|c| c.dying.is_none() && now >= c.kill_at).map(|c| c.id).collect();
         for id in expired { self.kill(id, now); changed = true; }
         if self.place_mode == "stack" { changed |= self.restack(now); }
@@ -600,7 +599,7 @@ impl Scene {
             dc.PushAxisAlignedClip(&body, D2D1_ANTIALIAS_MODE_ALIASED);
             let mut y = 1.0 + bar_h + 8.0;
             let mut cut = overflow;
-            let rule_brushes: Vec<Option<ID2D1SolidColorBrush>> = blocks.iter().map(|b| b.3.map(|c| self.g.brush(c).ok()).flatten()).collect();
+            let rule_brushes: Vec<Option<ID2D1SolidColorBrush>> = blocks.iter().map(|b| b.3.and_then(|c| self.g.brush(c).ok())).collect();
             for (k, (lay, indent, hgt, _)) in blocks.iter().enumerate() {
                 if k > 0 { y += 6.0; }
                 let (mut top, mut hh) = (y, *hgt);
