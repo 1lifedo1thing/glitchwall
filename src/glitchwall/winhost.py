@@ -350,6 +350,16 @@ def quiet_webview() -> None:
                           "--disable-background-networking --disable-component-update --disable-sync --no-pings")
 
 
+def on_ui(native, fn: Callable[[], None]) -> None:
+    """Run `fn` on the thread that owns the WinForms window `native` (and waits for it). WebView2 throws if it
+    is moved or resized from any other thread, and .NET shows that as a crash dialog."""
+    if native.InvokeRequired:
+        from System import Action
+        native.Invoke(Action(fn))
+    else:
+        fn()
+
+
 class Host:
     """One page window per screen. `url(n)` is the page address for screen n."""
 
@@ -391,14 +401,16 @@ class Host:
         for n, rect in mons.items():
             w = self.windows.get(n) or self.new_window(n)
             native = getattr(w, "native", None)
-            if native is None:
-                continue                                         # not created yet: next tick
+            # not created yet: next tick. Reading .Handle before the window has one would create it on *this*
+            # thread; WebView2 then refuses every later resize ("only from the UI thread") and the feed dies
+            if native is None or not native.IsHandleCreated:
+                continue
             h = int(str(native.Handle))
             parent = desktop_layer()[0]
             # (re)attach when new, after Explorer restarted (new desktop layer), when the screen moved or
             # resized, or when the window itself drifted from its screen for any reason
             if self.attached.get(n) != (parent, rect) or u32.GetParent(h) != parent or _rect(h) != rect:
-                attach(h, rect)
+                on_ui(native, lambda h=h, rect=rect: attach(h, rect))   # resizing it resizes WebView2: its thread
                 self.attached[n] = (parent, rect)
 
     def check_asleep(self) -> None:
