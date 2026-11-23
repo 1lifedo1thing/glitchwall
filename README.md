@@ -493,7 +493,7 @@ reading before you turn this on. Nothing else in your profiles is touched.
 | | PowerShell | WSL (bash) |
 | --- | --- | --- |
 | the command you typed | yes, when you press Enter | yes, as it starts |
-| what it printed | yes: read off the console screen when it finishes, and every second while it runs | yes, when it finishes: the feed reads it off the WSL window's screen (see below); while it runs, not yet |
+| what it printed | yes: read off the console screen when it finishes, and every second while it runs | yes: the feed reads it off the WSL window's screen (see below) when it finishes, and every 2 seconds while it runs (for 10 minutes at most) |
 | commands left out | lines PowerShell can't run yet (unfinished input) | whatever bash leaves out of its history: a leading space (`HISTCONTROL=ignorespace`), a repeat (`ignoredups`) |
 
 **Where it goes.** Each shell window appends to its own file, `~/.glitchwall/shell/<process id>.jsonl` (WSL:

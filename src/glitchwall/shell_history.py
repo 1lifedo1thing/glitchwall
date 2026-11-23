@@ -23,6 +23,7 @@ HOOK_FILE = Path(__file__).resolve().parent / "shell-hook.ps1"
 BASH_HOOK = Path(__file__).resolve().parent / "shell-hook.bash"
 MARK = "# glitchwall terminal"   # ends the line `glitchwall terminal on` adds to a profile
 STALE = 24 * 3600                # a shell's file this long untouched is cleared out
+LIVE_EVERY, LIVE_FOR = 2.0, 600.0   # a running WSL command's screen: read this often, for this long at most
 
 
 def shell_dir() -> Path:
@@ -140,6 +141,7 @@ class ShellTailer:
         self.started = time.time()
         self.cmds: dict[str, str] = {}   # WSL commands waiting for their output, by ref
         self.screen_output = None        # tests: (cmd, prompt) -> output, in place of reading the screens
+        self.running: dict[str, dict] = {}   # WSL commands still running: their card, polled for live output
 
     def scan(self) -> None:
         if not self.root.is_dir():
@@ -187,10 +189,13 @@ class ShellTailer:
         if d.get("t") == "cmd":
             if bash:
                 self.cmds[ref] = str(d.get("text", ""))
+                now = time.time()
+                self.running[ref] = {"base": base, "cmd": self.cmds[ref], "until": now + LIVE_FOR, "next": now + LIVE_EVERY, "last": None}
                 while len(self.cmds) > 50:
                     self.cmds.pop(next(iter(self.cmds)))
             self.emit({**base, "kind": "$" if bash else "PS>", "text": str(d.get("text", ""))})
         elif d.get("t") == "out":
+            self.running.pop(ref, None)
             from .claude_logs import _output_text   # trimmed like Claude's: 14 lines, 900 characters
             if bash and ref in self.cmds and self.enabled():   # what it printed, read off its WSL window's screen
                 from . import wslscreen
@@ -202,10 +207,28 @@ class ShellTailer:
             self.emit({**base, "kind": "out" if d.get("ok", True) is not False else "err", "live": bool(d.get("live")),
                        "text": _last_lines(str(d.get("text", ""))) if d.get("live") else _output_text(str(d.get("text", "")))})
 
+    def poll_live(self) -> None:
+        """WSL commands still running: every LIVE_EVERY seconds, what they have printed so far (ping never finishes),
+        read off their window's screen, as live output that replaces what the card showed. For LIVE_FOR at most."""
+        now = time.time()
+        for ref, r in list(self.running.items()):
+            if now > r["until"] or not self.enabled():
+                self.running.pop(ref, None)
+                continue
+            if now < r["next"]:
+                continue
+            r["next"] = now + LIVE_EVERY
+            from . import wslscreen
+            got = (self.screen_output or wslscreen.output_of)(r["cmd"], "")
+            if got and got != r["last"]:
+                r["last"] = got
+                self.emit({**r["base"], "kind": "out", "live": True, "text": _last_lines(got)})
+
     def run(self, stop=None) -> None:
         while not (stop and stop.is_set()):
             try:
                 self.scan()
+                self.poll_live()
             except Exception:
                 pass
             time.sleep(0.5)

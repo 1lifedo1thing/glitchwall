@@ -153,3 +153,26 @@ class TestWslScreen(unittest.TestCase):
             f.write(json.dumps({"sh": "bash", "t": "out", "id": 9, "ok": False, "text": "exit 1", "prompt": "p$"}) + "\n")
         t.scan()
         self.assertEqual([e["text"] for e in events], ["ls", "printed by ls before p$", "exit 1"])
+
+
+class TestWslLive(unittest.TestCase):
+    def test_running_command_polled_until_done(self):
+        events, screen = [], {"text": "Reply 1"}
+        d = Path(tempfile.mkdtemp())
+        t = sh.ShellTailer(events.append, root=d)
+        t.screen_output = lambda cmd, prompt: screen["text"]
+        with mock.patch.object(sh, "LIVE_EVERY", 0):
+            with open(d / "wsl-2.jsonl", "w", encoding="utf-8") as f:
+                f.write(json.dumps({"sh": "bash", "t": "cmd", "id": 1, "text": "ping x"}) + "\n")
+            t.scan()
+            t.poll_live()
+            t.poll_live()                      # unchanged: nothing new
+            screen["text"] = "Reply 1\nReply 2"
+            t.poll_live()
+            with open(d / "wsl-2.jsonl", "a", encoding="utf-8") as f:
+                f.write(json.dumps({"sh": "bash", "t": "out", "id": 1, "ok": True, "text": "exit 0", "prompt": "p$"}) + "\n")
+            t.scan()
+            t.poll_live()                      # done: no more polling
+        self.assertEqual([(e["kind"], e.get("live"), e["text"]) for e in events],
+                         [("$", None, "ping x"), ("out", True, "Reply 1"), ("out", True, "Reply 1\nReply 2"),
+                          ("out", False, "Reply 1\nReply 2")])
