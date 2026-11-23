@@ -32,7 +32,7 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result
         "record" => Box::new(Record::new(g, fonts, look)?),
         "notebook" => Box::new(Notebook::new(g)?),
         "textmode" => Box::new(Textmode::new(g, fonts, look)?),
-        "sunprint" => Box::new(Sunprint::new(g)?),
+        "sunprint" => Box::new(Sunprint::new(g, o)?),
         "draft" => Box::new(Draft::new(g, fonts, look)?),
         "topo" => Box::new(Topo::new(g, fonts, look, o)?),
         "radar" => Box::new(Radar::new(g, fonts, look, o)?),
@@ -1074,7 +1074,8 @@ impl Background for Textmode {
 pub struct Sunprint { mask: ID2D1Bitmap1, pdc: ID2D1DeviceContext, blur: ID2D1Effect,
                       white: ID2D1SolidColorBrush, clear: ID2D1SolidColorBrush, round: ID2D1StrokeStyle, factory: ID2D1Factory,
                       streaks: Vec<(D2D_POINT_2F, D2D_POINT_2F, f32, f32)>, rng: Rng, u: f32, w: f32, h: f32,
-                      k: f32, phase: u8, t: f32, still: bool }
+                      k: f32, phase: u8, t: f32, still: bool,
+                      made: (u8, u8, bool), pace: f32 }   // options: in the print, plants (mixed/ferns/leaves), count (normal/few/many), crisp edges; how fast it develops
 
 fn turn(a: f32, x: f32, y: f32) -> windows::Foundation::Numerics::Matrix3x2 {
     let (s, c) = a.sin_cos();
@@ -1083,7 +1084,11 @@ fn turn(a: f32, x: f32, y: f32) -> windows::Foundation::Numerics::Matrix3x2 {
 fn p2(x: f32, y: f32) -> D2D_POINT_2F { D2D_POINT_2F { x, y } }
 
 impl Sunprint {
-    fn new(g: &Gfx) -> Result<Sunprint> {
+    fn made(o: &Json) -> (u8, u8, bool) {
+        (match o.get("plants").str() { Some("ferns") => 1, Some("leaves") => 2, _ => 0 },
+         match o.get("count").str() { Some("few") => 1, Some("many") => 2, _ => 0 }, o.get("edges").str() == Some("crisp"))
+    }
+    fn new(g: &Gfx, o: &Json) -> Result<Sunprint> {
         let (w, h) = (g.w as f32, g.h as f32);
         let u = w.min(h);
         let mask = g.surface(w, h)?;
@@ -1115,7 +1120,7 @@ impl Sunprint {
             streaks.push((p, q, sw, a));
         }
         let mut s = Sunprint { mask, pdc, blur, white, clear, round, factory, streaks, rng, u, w, h,
-                               k: 1.0, phase: HOLD, t: 0.0, still: false };   // the first print is already developed
+                               k: 1.0, phase: HOLD, t: 0.0, still: false, made: Self::made(o), pace: 1.0 };   // the first print is already developed
         s.arrange()?;
         Ok(s)
     }
@@ -1134,12 +1139,16 @@ impl Sunprint {
             self.pdc.SetTarget(&sharp);
             self.pdc.BeginDraw();
             self.pdc.Clear(Some(&D2D1_COLOR_F::default()));
-            for _ in 0..2 + (self.rng.f() * 2.0) as usize {
+            let (plants, count, crisp) = self.made;
+            let r = self.rng.f();
+            let nf = if plants == 2 { 0 } else { [2 + (r * 2.0) as usize, 1, 4 + (r * 2.0) as usize][count as usize] };
+            let nl = if plants == 1 { 0 } else { [4 + (r * 4.0) as usize, 2, 10 + (r * 4.0) as usize][count as usize] };
+            for _ in 0..nf {
                 let (x, y) = (self.rng.range(0.1, 0.9) * w, self.rng.range(0.15, 0.95) * h);
                 let (a, l) = (self.rng.range(-pi, 0.0) - 0.3, self.rng.range(0.35, 0.6) * u);
                 self.frond(x, y, a, l)?;
             }
-            for _ in 0..4 + (self.rng.f() * 4.0) as usize {
+            for _ in 0..nl {
                 let (x, y) = (self.rng.range(0.0, w), self.rng.range(0.0, h));
                 let (a, s) = (self.rng.range(0.0, pi * 2.0), self.rng.range(0.05, 0.11) * u);
                 self.leaf(x, y, a, s)?;
@@ -1150,7 +1159,7 @@ impl Sunprint {
             self.pdc.BeginDraw();
             self.pdc.Clear(Some(&D2D1_COLOR_F::default()));
             self.blur.SetInput(0, &sharp, true);
-            self.pdc.DrawImage(&self.blur.GetOutput()?, None, None, D2D1_INTERPOLATION_MODE_LINEAR, D2D1_COMPOSITE_MODE_SOURCE_OVER);
+            if !crisp { self.pdc.DrawImage(&self.blur.GetOutput()?, None, None, D2D1_INTERPOLATION_MODE_LINEAR, D2D1_COMPOSITE_MODE_SOURCE_OVER); }
             self.pdc.DrawBitmap(&sharp, Some(&rect(0.0, 0.0, w, h)), 1.0, D2D1_INTERPOLATION_MODE_LINEAR, None, None);
             self.pdc.EndDraw(None, None)?;
             self.blur.SetInput(0, None, true);   // let the sharp layer go
@@ -1224,10 +1233,14 @@ impl Sunprint {
 
 impl Background for Sunprint {
     fn fps(&self) -> f32 { if self.still { 0.0 } else { 15.0 } }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.pace = match o.get("develop").str() { Some("slow") => 0.5, Some("fast") => 2.0, _ => 1.0 };
+        Self::made(o) != self.made
+    }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
         self.still = level <= 0.0;   // 0 stills it: the print as it is stays up
         if !self.still {
-            let sp = 0.4 + level * 1.6;
+            let sp = (0.4 + level * 1.6) * self.pace;
             match self.phase {
                 SET => { self.k += dt * sp * 0.12; if self.k >= 1.0 { self.k = 1.0; self.phase = HOLD; self.t = 0.0; } }
                 HOLD => { self.t += dt * sp; if self.t > 30.0 { self.phase = OUT; } }

@@ -792,11 +792,14 @@ const STYLES = {
   // Every stroke has its own write head running round it, rewriting the data as it passes (the bright stretch
   // just behind it), so the ring is always redrawing itself; now and then one stretch diverges in the accent.
   oracle: {
-    scale: 1, still: true, M: 480, K: 34,
+    scale: 1, still: true, reinit: true, M: 480, K: 34,
     init() {
       const M = this.M, R = this.R = Math.min(W, H) * .32, ox = this.ox = W / 2, oy = this.oy = H / 2;
       this.cos = new Float32Array(M); this.sin = new Float32Array(M); this.env = new Float32Array(M);
       for (let i = 0; i < M; i++) { this.cos[i] = Math.cos(i / M * TAU); this.sin[i] = Math.sin(i / M * TAU); }
+      const op = OPTS.oracle || {};
+      this.wild = { calm: .45, wild: 2.2 }[op.strokes] || 1; this.dir = op.direction === 'anticlockwise' ? -1 : 1;
+      this.red = op.red !== 'off'; this.scales = op.scales !== 'off';
       this.t = rnd(0, 500); this.rot = rnd(0, TAU); this.read = .99 + rnd(0, .009);
       // the parts that never move: the field, a faint halo where the band sits, guide circles, a centre mark
       const o = this.back = document.createElement('canvas'), g = o.getContext('2d');
@@ -817,7 +820,7 @@ const STYLES = {
                  sp: rnd(.04, .12) * M * (Math.random() < .35 ? -1 : 1), a: rnd(.1, .38), w: Math.random() < .18 ? 1.25 : .7 };
       });
       this.tr.forEach(tr => { for (let i = 0; i < M; i++) tr.v[i] = this.field(tr.k, i); });
-      this.diverge(rnd(.12, .3)); this.acc = 0;      // one already showing, so even a stilled ring has its red
+      this.anom = null; if (this.red) this.diverge(rnd(.12, .3)); this.acc = 0;      // one already showing, so even a stilled ring has its red
       this.paint();          // a first frame even when stilled
     },
     // the data: a few slow waves around the ring (shared by neighbouring strokes, so the band flows), plus jag and spikes
@@ -828,7 +831,7 @@ const STYLES = {
       if (Math.random() < .03) v += (Math.random() < .5 ? -1 : 1) * rnd(.8, 2);
       return v;
     },
-    rad(tr, i) { const e = this.env[i]; return this.R * (1 + tr.off * e + tr.amp * e * tr.v[i]); },
+    rad(tr, i) { const e = this.env[i]; return this.R * (1 + tr.off * e + tr.amp * this.wild * e * tr.v[i]); },
     trace(tr, from, n, dir) {    // a polyline along the stroke, n samples from `from`, in ring coordinates
       const M = this.M; cx.beginPath();
       for (let j = 0; j <= n; j++) {
@@ -848,7 +851,7 @@ const STYLES = {
       cx.save(); cx.translate(this.ox, this.oy);
       // scales: fine ticks outside turning against the ring, coarse ones inside turning with it, faster
       cx.strokeStyle = T.ink; cx.lineWidth = 1;
-      for (const [r0, n, L, rot, al] of [[R * 1.4, 180, 5, -this.rot * .6, .22], [R * .62, 60, -6, this.rot * 1.7, .2]]) {
+      for (const [r0, n, L, rot, al] of !this.scales ? [] : [[R * 1.4, 180, 5, -this.rot * .6, .22], [R * .62, 60, -6, this.rot * 1.7, .2]]) {
         cx.globalAlpha = al; cx.beginPath();
         for (let k = 0; k < n; k++) {
           const a = rot + k / n * TAU, l = k % 15 ? L : L * 2.4, c = Math.cos(a), s = Math.sin(a);
@@ -906,7 +909,7 @@ const STYLES = {
     frame(dt) {
       if (RAIN <= 0 || !(dt = every(this, 20, dt))) return;     // 0 stills it: the frame from init() stays up
       const M = this.M, sp = .4 + RAIN * 1.6;
-      this.t += dt * sp; this.rot += dt * .016 * sp;
+      this.t += dt * sp; this.rot += dt * .016 * sp * this.dir;
       for (const tr of this.tr) {         // each head rewrites the samples it passes
         const from = Math.floor(tr.head), dir = Math.sign(tr.sp);
         tr.head += tr.sp * dt * sp;
@@ -915,7 +918,7 @@ const STYLES = {
         tr.head = (tr.head % M + M) % M;
       }
       if (this.anom) { if ((this.anom.age += dt * sp) > this.anom.life) { this.anom = null; this.wait = rnd(1.5, 4); } }
-      else if ((this.wait -= dt * sp) <= 0) this.diverge(0);
+      else if (this.red && (this.wait -= dt * sp) <= 0) this.diverge(0);
       this.paint();
     },
     diverge(age) {           // a few neighbouring strokes pulled out of true for a while, with a reading
@@ -1307,7 +1310,7 @@ const STYLES = {
   // and fading out. Every few sweeps the signal changes: a clean sine, a ringing step, a square wave, a burst. On a
   // wide screen an FFT of the signal and a second channel in roll mode fill the sides. The readouts follow the signal.
   scope: {
-    scale: 1, still: true,
+    scale: 1, still: true, reinit: true,   // its options go into the glass and the panels
     MODES: [
       { ch: '0.50 V', tb: '2.00 ms', f: '1.502 kHz', pk: [[3, 1], [9, .3]], y: (u, t) => 2.3 * Math.sin(TAU * 3 * u + t * .12) + .55 * Math.sin(TAU * 9 * u + t * .5) },
       { ch: '1.00 V', tb: '500 µs', f: '12.48 kHz', pk: [[12, .45], [13, .8], [14, .45]], y: (u) => u < .14 ? 0 : 3.1 * Math.exp(-(u - .14) * 6) * Math.sin(TAU * 13 * (u - .14)) },
@@ -1315,6 +1318,8 @@ const STYLES = {
       { ch: '2.00 V', tb: '5.00 µs', f: '6.250 MHz', pk: [[29, .5], [30, .8], [31, 1]], y: (u, t) => 3 * Math.sin(TAU * 31 * u + t * .7) * Math.exp(-(((u - .5) / .17) ** 2)) },
     ],
     init() {
+      const op = OPTS.scope || {};
+      this.FADE = { short: 2.6, long: .45 }[op.afterglow] || 1.1;
       const div = this.div = Math.floor(Math.min(W / 10.8, H / 8.8)), gw = div * 10, gh = div * 8;
       const gx = this.gx = Math.round((W - gw) / 2), gy = this.gy = Math.round((H - gh) / 2), light = T.mode === 'light';
       this.gw = gw; this.gh = gh; this.cy0 = gy + gh / 2;
@@ -1327,8 +1332,8 @@ const STYLES = {
       g.strokeStyle = T.ink; g.fillStyle = T.ink; g.lineWidth = 1;
       g.globalAlpha = light ? .3 : .22; g.strokeRect(gx + .5, gy + .5, gw, gh);
       g.globalAlpha = light ? .26 : .2;
-      for (let i = 1; i < 10; i++) for (let y = gy; y <= gy + gh; y += div / 5) g.fillRect(gx + i * div, Math.round(y), 1, 1);
-      for (let j = 1; j < 8; j++) for (let x = gx; x <= gx + gw; x += div / 5) g.fillRect(Math.round(x), gy + j * div, 1, 1);
+      if (op.graticule !== 'off') for (let i = 1; i < 10; i++) for (let y = gy; y <= gy + gh; y += div / 5) g.fillRect(gx + i * div, Math.round(y), 1, 1);
+      if (op.graticule !== 'off') for (let j = 1; j < 8; j++) for (let x = gx; x <= gx + gw; x += div / 5) g.fillRect(Math.round(x), gy + j * div, 1, 1);
       g.globalAlpha = light ? .32 : .26; g.beginPath();
       const mx = gx + 5 * div + .5, my = gy + 4 * div + .5, tk = Math.max(3, div * .07);
       for (let x = gx; x <= gx + gw + .1; x += div / 5) { g.moveTo(Math.round(x) + .5, my - tk); g.lineTo(Math.round(x) + .5, my + tk); }
@@ -1339,9 +1344,9 @@ const STYLES = {
       this.trail = []; this.clk = 0;
       // the instruments either side, where a wide screen leaves room: an FFT of the signal, and a second channel rolling
       const side = gx - div * .6, pw = Math.min(side * .7, div * 2.6);
-      this.panels = side > div * 1.2 ? { w: pw, lx: Math.round(gx - div * .6 - pw), rx: Math.round(gx + gw + div * .6) } : null;
+      this.panels = side > div * 1.2 && op.sides !== 'off' ? { w: pw, lx: Math.round(gx - div * .6 - pw), rx: Math.round(gx + gw + div * .6) } : null;
       this.bars = new Float32Array(32); this.roll = []; this.ch2 = rnd(0, 100);
-      this.t = rnd(0, 100); this.u = 0; this.m = 0; this.sweeps = 0; this.acc = 0;
+      this.t = rnd(0, 100); this.u = 0; this.m = { square: 2, burst: 3 }[op.signal] || 0; this.sweeps = 0; this.acc = 0;
       if (RAIN <= 0) {             // stilled: one whole trace, as if the beam had just passed
         this.draw(0, 1);
         this.u = 1;
@@ -1457,7 +1462,7 @@ const STYLES = {
       this.draw(this.u, u1); this.u = u1;
       if (this.u >= 1) {                                        // retrace, and every few sweeps a new signal
         this.u = 0; this.last = null;
-        if (++this.sweeps >= 4 + (Math.random() * 3 | 0)) { this.sweeps = 0; this.m = (this.m + 1 + (Math.random() * (this.MODES.length - 1) | 0)) % this.MODES.length; }
+        if (((OPTS.scope || {}).signal || 'cycle') === 'cycle' && ++this.sweeps >= 4 + (Math.random() * 3 | 0)) { this.sweeps = 0; this.m = (this.m + 1 + (Math.random() * (this.MODES.length - 1) | 0)) % this.MODES.length; }
       }
       this.paint();
     },
@@ -1729,17 +1734,17 @@ const STYLES = {
   // neon signs on a dark brick wall at night, in the rain: tubes buzzing, a letter that won't stay lit, now and
   // then a whole sign stuttering; their light caught on the wet ground below and in the falling rain
   signs: {
-    scale: 1, still: true,
+    scale: 1, still: true, reinit: true,   // its options go into the wall and the signs
     WORDS: ['OPEN', 'LIVE', 'ALL NIGHT', 'NO VACANCY', 'ON AIR', 'COFFEE', 'TATTOO', 'ARCADE'],
     init() {
-      const u = this.u = Math.min(W, H), fy = this.fy = Math.round(H * .8), light = T.mode === 'light';
+      const u = this.u = Math.min(W, H), fy = this.fy = Math.round(H * .8), light = T.mode === 'light', op = this.op = OPTS.signs || {};
       const mk = (w, h) => { const o = document.createElement('canvas'); o.width = Math.max(1, Math.ceil(w)); o.height = Math.max(1, Math.ceil(h)); return [o, o.getContext('2d')]; };
       // the wall: courses of brick, barely there; the wet ground below
       const [b, g] = mk(W, H); this.back = b;
       g.fillStyle = T.bg; g.fillRect(0, 0, W, H);
       const bh = Math.max(10, Math.round(u / 40)), bw = bh * 3.2;
       g.strokeStyle = T.ink; g.globalAlpha = light ? .06 : .035; g.lineWidth = 1; g.beginPath();
-      for (let y = 0, r = 0; y < fy; y += bh, r++) {
+      for (let y = 0, r = 0; y < (op.wall === 'plain' ? 0 : fy); y += bh, r++) {
         g.moveTo(0, y + .5); g.lineTo(W, y + .5);
         for (let x = (r % 2) * bw / 2; x < W; x += bw) { g.moveTo(Math.round(x) + .5, y); g.lineTo(Math.round(x) + .5, Math.min(fy, y + bh)); }
       }
@@ -1754,7 +1759,7 @@ const STYLES = {
       if (!this.fonts) {            // the sign fonts may not be loaded yet: draw again once they are
         this.fonts = Promise.all(disp.map(f => document.fonts.load(`40px ${f}`))).then(() => { if (R === this) this.init(); });
       }
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0, n = { two: 2, five: 5 }[op.signs] || 4; i < n; i++) {
         const [sx, sy] = spots[i], col = cols[i % 3], tube = Math.max(2, u / 260);
         if (i === 3) { this.signs.push(this.shape(sx * W, sy * fy, u * .09, col, tube, mk)); continue; }
         const word = words[i], fam = disp[i % 3], size = u * (word.length > 6 ? .07 : .1), italic = fam.includes('Serif') ? 'italic ' : '';
@@ -1772,9 +1777,9 @@ const STYLES = {
           letters.push({ img: o, x: x - pad, y: sy * fy - o.height / 2, on: 1 });
           x += w;
         }
-        this.signs.push({ letters, col, x: sx * W, y: sy * fy, buzz: 0, bad: Math.random() < .6 ? 1 + (Math.random() * (letters.length - 1) | 0) : -1 });
+        this.signs.push({ letters, col, x: sx * W, y: sy * fy, buzz: 0, bad: Math.random() < ({ rare: .2, often: 1 }[op.flicker] || .6) ? 1 + (Math.random() * (letters.length - 1) | 0) : -1 });
       }
-      this.drops = Array.from({ length: Math.round(W / 9) }, () => ({ x: rnd(0, W), y: rnd(-H, H), v: rnd(.8, 1.2), l: rnd(.5, 1.2) }));
+      this.drops = Array.from({ length: op.rain === 'off' ? 0 : Math.round(W / (op.rain === 'heavy' ? 3.5 : 9)) }, () => ({ x: rnd(0, W), y: rnd(-H, H), v: rnd(.8, 1.2), l: rnd(.5, 1.2) }));
       this.acc = 0; this.paint();
     },
     // an outline shape in tube: an arrow, a star, a ring with a bolt, a cocktail glass
@@ -1822,7 +1827,7 @@ const STYLES = {
       for (const sg of this.signs) {
         if (sg.buzz > 0) {                                  // a stutter: the whole sign flickers, then comes back
           sg.buzz -= dt; const on = sg.buzz <= 0 || Math.random() < .45 ? 1 : 0; sg.letters.forEach(l => l.on = on);
-        } else if (Math.random() < dt * .025 * sp) sg.buzz = rnd(.2, 1.1);
+        } else if (Math.random() < dt * .025 * sp * ({ rare: .25, often: 4 }[this.op.flicker] || 1)) sg.buzz = rnd(.2, 1.1);
         if (sg.bad >= 0 && sg.buzz <= 0) {                  // the letter that won't stay lit
           const l = sg.letters[sg.bad]; l.on = Math.random() < (l.on ? .93 : .3) ? (l.on ? 1 : 0) : 1 - l.on;
           if (!l.on && Math.random() < .02) l.on = .35;
@@ -1941,7 +1946,7 @@ const STYLES = {
   // a botanical sun print: fern fronds and leaves laid on the coated sheet leave pale silhouettes in the blue, soft
   // at the edges; the print slowly develops, holds, and clears for the next arrangement. Brushed edges to the coating
   sunprint: {
-    scale: 1,
+    scale: 1, reinit: true,   // a new print with its options
     init() {
       const u = this.u = Math.min(W, H);
       const mk = () => { const o = document.createElement('canvas'); o.width = W; o.height = H; return [o, o.getContext('2d')]; };
@@ -1964,10 +1969,12 @@ const STYLES = {
     arrange() {
       const p = this.p, u = this.u; p.clearRect(0, 0, W, H);
       p.fillStyle = p.strokeStyle = T.ink; p.lineCap = p.lineJoin = 'round';
-      p.shadowColor = T.ink; p.shadowBlur = u * .006;
-      const n = 2 + (Math.random() * 2 | 0);
+      const op = OPTS.sunprint || {}, few = op.count === 'few', many = op.count === 'many';
+      p.shadowColor = T.ink; p.shadowBlur = op.edges === 'crisp' ? 0 : u * .006;
+      const n = op.plants === 'leaves' ? 0 : few ? 1 : many ? 4 + (Math.random() * 2 | 0) : 2 + (Math.random() * 2 | 0);
+      const nl = op.plants === 'ferns' ? 0 : few ? 2 : many ? 10 + (Math.random() * 4 | 0) : 4 + (Math.random() * 4 | 0);
       for (let i = 0; i < n; i++) this.frond(rnd(.1, .9) * W, rnd(.15, .95) * H, rnd(-Math.PI, 0) - .3, rnd(.35, .6) * u);
-      for (let i = 0; i < 4 + (Math.random() * 4 | 0); i++) this.leaf(rnd(0, W), rnd(0, H), rnd(0, TAU), rnd(.05, .11) * u);
+      for (let i = 0; i < nl; i++) this.leaf(rnd(0, W), rnd(0, H), rnd(0, TAU), rnd(.05, .11) * u);
       p.shadowBlur = 0;
     },
     frond(x, y, ang, len) {
@@ -2006,7 +2013,7 @@ const STYLES = {
     },
     frame(dt) {
       if (RAIN <= 0 || !(dt = every(this, 15, dt))) return;
-      const sp = .4 + RAIN * 1.6;
+      const sp = (.4 + RAIN * 1.6) * ({ slow: .5, fast: 2 }[(OPTS.sunprint || {}).develop] || 1);
       if (this.phase === 'dev') { if ((this.k += dt * sp * .12) >= 1) { this.k = 1; this.phase = 'hold'; this.t = 0; } }
       else if (this.phase === 'hold') { if ((this.t += dt * sp) > 30) this.phase = 'clear'; }
       else if ((this.k -= dt * sp * .2) <= 0) { this.k = 0; this.arrange(); this.phase = 'dev'; }
@@ -2017,7 +2024,7 @@ const STYLES = {
   // flowchart get written up a stroke at a time in chalk; when the board is full, an eraser wipes it in bands,
   // leaving smudges behind, and the writing starts again
   chalk: {
-    scale: 1,
+    scale: 1, reinit: true,   // a fresh board with its options
     // what gets written up: each at most once on the board at a time
     LINES: ['f(x) = x² - 3x + 2', 'a² + b² = c²', 'O(n log n)', 'lim sin(x)/x = 1', 'P(A|B) = P(B|A) P(A) / P(B)',
             'if (tests pass) ship()', 'TODO: write the tests!', 'y = mx + b', 'E = mc²', '2 + 2 = 4', 'n! = n (n-1)!',
@@ -2050,7 +2057,7 @@ const STYLES = {
       }
       g.fillStyle = T.ink; g.font = `${Math.round(u * .05)}px ${FONTS.hand[0]}`;
       g.font = `${Math.round(u * .035)}px ${FONTS.hand[0]}`;
-      for (const t of this.GHOSTS) { g.globalAlpha = rnd(.02, .04); g.fillText(t, rnd(0, .9) * W, rnd(.08, .92) * this.HB); }
+      for (const t of (OPTS.chalk || {}).ghosts === 'off' ? [] : this.GHOSTS) { g.globalAlpha = rnd(.02, .04); g.fillText(t, rnd(0, .9) * W, rnd(.08, .92) * this.HB); }
       const dust = g.createLinearGradient(0, this.HB - u * .08, 0, this.HB);
       dust.addColorStop(0, rgba(T.ink, 0)); dust.addColorStop(1, rgba(T.ink, .045));
       g.globalAlpha = 1; g.fillStyle = dust; g.fillRect(0, this.HB - u * .08, W, u * .08);
@@ -2074,7 +2081,7 @@ const STYLES = {
     // chalk on the board: a slightly broken line, a little dust
     seg(x0, y0, x1, y1, col, w) {
       const d = this.bd, n = Math.max(1, Math.hypot(x1 - x0, y1 - y0) / 4);
-      d.strokeStyle = d.fillStyle = col; d.lineCap = 'round';
+      d.strokeStyle = d.fillStyle = (OPTS.chalk || {}).colors === 'white' ? T.ink : col; d.lineCap = 'round';
       d.globalAlpha = .05; d.lineWidth = w * 3.5; d.beginPath(); d.moveTo(x0, y0); d.lineTo(x1, y1); d.stroke();   // powder
       for (let i = 0; i < n; i++) {
         const a = i / n, b = (i + 1) / n;
@@ -2095,13 +2102,13 @@ const STYLES = {
     },
     // the next thing to write: a line of working, a plot, or a little flowchart; as strokes to draw in order
     next() {
-      const u = this.u, k = Math.random(), w = Math.max(2, u / 300), strokes = [];
+      const u = this.u, k = { equations: .3, plots: .7, flowcharts: .9 }[(OPTS.chalk || {}).content] ?? Math.random(), w = Math.max(2, u / 300), strokes = [];
       const col = () => Math.random() < .7 ? T.ink : Math.random() < .5 ? T.acc : T.acc2;
       const wob = (x0, y0, x1, y1, c) => { const m = [rnd(-2, 2), rnd(-2, 2)]; strokes.push({ pts: [[x0, y0], [(x0 + x1) / 2 + m[0], (y0 + y1) / 2 + m[1]], [x1, y1]], c }); };
       const text = (s, x, y, fs, c) => {
         const t = document.createElement('canvas'), g = t.getContext('2d'), f = `${fs}px ${FONTS.hand[0]}`;
         g.font = f; t.width = Math.ceil(g.measureText(s).width + fs); t.height = Math.ceil(fs * 1.5);
-        g.font = f; g.textBaseline = 'middle'; g.fillStyle = c;
+        g.font = f; g.textBaseline = 'middle'; g.fillStyle = (OPTS.chalk || {}).colors === 'white' ? T.ink : c;
         g.filter = `blur(${Math.max(1, fs * .05)}px)`; g.globalAlpha = .3; g.fillText(s, fs * .2, t.height / 2);   // powder round the strokes
         g.filter = 'none'; g.globalAlpha = 1; g.fillText(s, fs * .2, t.height / 2);
         for (let i = 0; i < t.width / 5; i++) { g.globalAlpha = rnd(.1, .3); g.fillRect(rnd(0, t.width), rnd(0, t.height), 1, 1); }   // dust
@@ -2202,7 +2209,9 @@ const STYLES = {
       } else if (this.job && !this.job.done) this.step(this.job, this.u * 1.1 * dt * sp);
       else if ((this.wait -= dt * sp) <= 0) {
         this.job = this.next(); this.wait = rnd(1.5, 4);
-        if (!this.job) this.wipe = { x: -this.u * .06, y: 0, h: this.u * .11, dir: 1 };     // full: wipe the board
+        if (this.job) {}
+        else if ((OPTS.chalk || {}).wipe === 'clean') { d.clearRect(0, 0, W, H); this.used = []; this.on.clear(); this.wait = 1.5; dirty = [0, 0, W, H]; }   // full: clear it at once
+        else this.wipe = { x: -this.u * .06, y: 0, h: this.u * .11, dir: 1 };     // full: wipe the board
       }
       if (dirty) this.paint(dirty);
     },
