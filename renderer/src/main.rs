@@ -1,6 +1,6 @@
 //! glitchwall-render: glitchwall's wallpaper drawn natively (Direct2D), one window per screen behind the desktop icons,
 //! fed by glitchwall's own feed. glitchwall starts it (renderer = native); it can also run by hand:
-//!   GLITCHWALL_KEY=<feed key> glitchwall-render --port 47833 [--which all|primary] [--wallpaper DIR] [--parent PID] [--peek]
+//!   GLITCHWALL_KEY=<feed key> glitchwall-render --port 47833 [--which all|primary] [--wallpaper DIR] [--parent PID] [--scale X] [--peek]
 //! --wallpaper is the folder with looks.js, index.html and the fonts (default: the one next to this exe).
 #![windows_subsystem = "windows"]
 
@@ -19,7 +19,7 @@ use std::rc::Rc;
 use std::time::Instant;
 use windows::core::*;
 
-struct Screen { rect: desk::Rect, hwnd: windows::Win32::Foundation::HWND, scene: scene::Scene, feed: Option<std::sync::mpsc::Receiver<feed::Msg>> }
+struct Screen { rect: desk::Rect, scale: f32, hwnd: windows::Win32::Foundation::HWND, scene: scene::Scene, feed: Option<std::sync::mpsc::Receiver<feed::Msg>> }
 
 fn arg(args: &[String], name: &str) -> Option<String> { args.iter().position(|a| a == name).and_then(|i| args.get(i + 1).cloned()) }
 
@@ -41,6 +41,7 @@ fn run() -> Result<()> {
     let which = arg(&args, "--which").unwrap_or_else(|| "all".into());
     let key = std::env::var("GLITCHWALL_KEY").unwrap_or_default();
     let parent: Option<u32> = arg(&args, "--parent").and_then(|p| p.parse().ok());
+    let force_scale: Option<f32> = arg(&args, "--scale").and_then(|s| s.parse().ok()).filter(|s: &f32| (0.5..=4.0).contains(s));
     let wp = arg(&args, "--wallpaper").map(PathBuf::from).unwrap_or_else(|| {
         std::env::current_exe().ok().and_then(|e| e.parent().map(|d| d.join("wallpaper"))).unwrap_or_default()
     });
@@ -56,11 +57,12 @@ fn run() -> Result<()> {
     for (n, r) in mons {
         let hwnd = desk::window(r, peek)?;
         let (w, h) = if peek { (960, 560) } else { (r.w as u32, r.h as u32) };
-        let g = gfx::Gfx::new(hwnd, w, h)?;
+        let scale = force_scale.unwrap_or_else(|| desk::scale(r));   // --scale: try another display scaling
+        let g = gfx::Gfx::new(hwnd, w, h, scale)?;
         let mut scene = scene::Scene::new(g, fonts.clone(), css.clone(), &looks)?;
         scene.ignore_sleep = peek;   // the peek window is the thing being looked at, whatever covers the desktop
         let feed = port.map(|p| feed::start(p, key.clone(), n, peek));
-        screens.push(Screen { rect: r, hwnd, scene, feed });
+        screens.push(Screen { rect: r, scale, hwnd, scene, feed });
     }
 
     let clock = Instant::now();
@@ -81,6 +83,7 @@ fn run() -> Result<()> {
             let mut m = desk::monitors();
             if which == "primary" { m.truncate(1); }
             if m != layout { return Ok(()); }   // screens changed: glitchwall starts a fresh renderer for the new layout
+            if force_scale.is_none() && screens.iter().any(|s| (desk::scale(s.rect) - s.scale).abs() > 0.01) { return Ok(()); }   // scaling too
             if parent.is_some_and(|p| !desk::alive(p)) { return Ok(()); }   // glitchwall's feed is gone: so are we
             for s in &screens { desk::keep_behind_icons(s.hwnd, s.rect); }
         }

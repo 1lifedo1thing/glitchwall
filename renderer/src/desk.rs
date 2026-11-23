@@ -130,3 +130,14 @@ pub fn alive(pid: u32) -> bool {
         !gone
     }
 }
+
+/// the display scaling of the screen at `r` (1.0 at 100%, 1.5 at 150%), as Windows sets it for that monitor
+pub fn scale(r: Rect) -> f32 {
+    use windows::Win32::Graphics::Gdi::*;
+    unsafe {
+        let m = MonitorFromRect(&RECT { left: r.x, top: r.y, right: r.x + r.w, bottom: r.y + r.h }, MONITOR_DEFAULTTONEAREST);
+        let (mut x, mut y) = (96u32, 96u32);
+        if GetDpiForMonitor(m, MDT_EFFECTIVE_DPI, &mut x, &mut y).is_err() { return 1.0; }
+        (x as f32 / 96.0).clamp(1.0, 4.0)
+    }
+}

@@ -101,7 +101,8 @@ impl Background for Pixel {
 /// sprite batch, each sprite tinted and faded by its own color. (The page draws each glyph as text, every frame.)
 pub struct Cascade {
     atlas: ID2D1Bitmap1, batch: ID2D1SpriteBatch, dc3: ID2D1DeviceContext3, cols: Vec<Col>, rng: Rng, n: usize,
-    w: f32, h: f32, rows: [u32; 3], dest: Vec<D2D_RECT_F>, src: Vec<D2D_RECT_U>, tint: Vec<D2D1_COLOR_F>,
+    w: f32, h: f32, rows: [u32; 3], cell: [u32; 3], scale: f32,
+    dest: Vec<D2D_RECT_F>, src: Vec<D2D_RECT_U>, tint: Vec<D2D1_COLOR_F>,
 }
 
 struct Col { d: usize, x: f32, y: f32, v: f32, len: usize, trail: Vec<(u16, bool)>, row: i64, on: bool }
@@ -113,11 +114,13 @@ const KANA: &str = "DotGothic16";   // the bundled cut holding just the rain's k
 impl Cascade {
     fn new(g: &Gfx, fonts: &Fonts, mono: &str) -> Result<Cascade> {
         let glyphs: Vec<char> = GL.chars().collect();
-        // atlas rows: for each depth, plain then mirrored, each as tall as that depth's cell
+        // atlas rows (device pixels): for each depth, plain then mirrored, each as tall as that depth's cell
+        let s = g.scale;
+        let cell = DEPTH.map(|(fs, _, _)| (fs * s).ceil() as u32);
         let mut rows = [0u32; 3];
         let mut top = 0u32;
-        for (d, (fs, _, _)) in DEPTH.iter().enumerate() { rows[d] = top; top += 2 * *fs as u32; }
-        let atlas = g.bitmap(glyphs.len() as u32 * DEPTH[2].0 as u32, top, None, true)?;
+        for d in 0..3 { rows[d] = top; top += 2 * cell[d]; }
+        let atlas = g.surface((glyphs.len() as u32 * cell[2]) as f32 / s, top as f32 / s)?;
         unsafe {
             let dc = &g.dc;
             let old = dc.GetTarget()?;
@@ -135,14 +138,15 @@ impl Cascade {
                 }
                 for (i, ch) in glyphs.iter().enumerate() {
                     let fmt = if fonts.has_char(KANA, *ch) { &kana } else { &alt };
-                    let s: Vec<u16> = ch.to_string().encode_utf16().collect();
+                    let txt: Vec<u16> = ch.to_string().encode_utf16().collect();
+                    let cs = cell[d] as f32 / s;   // the cell in DIPs
                     for flip in [false, true] {
-                        let (x, y) = (i as f32 * fs, (rows[d] + if flip { fs as u32 } else { 0 }) as f32);
+                        let (x, y) = (i as f32 * cs, (rows[d] + if flip { cell[d] } else { 0 }) as f32 / s);
                         // mirrored about the cell's middle, as the page's setTransform(-1, 0, 0, 1, x, y)
-                        let (m11, m31) = if flip { (-1.0, 2.0 * x + fs) } else { (1.0, 0.0) };
-                        dc.PushAxisAlignedClip(&rect(x, y, fs, fs), D2D1_ANTIALIAS_MODE_ALIASED);
+                        let (m11, m31) = if flip { (-1.0, 2.0 * x + cs) } else { (1.0, 0.0) };
+                        dc.PushAxisAlignedClip(&rect(x, y, cs, cs), D2D1_ANTIALIAS_MODE_ALIASED);
                         dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2 { M11: m11, M12: 0.0, M21: 0.0, M22: 1.0, M31: m31, M32: 0.0 });
-                        dc.DrawText(&s, fmt, &rect(x, y, fs, fs + 4.0), &white, D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL);
+                        dc.DrawText(&txt, fmt, &rect(x, y, cs, cs + 4.0), &white, D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL);
                         dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2::identity());
                         dc.PopAxisAlignedClip();
                     }
@@ -155,7 +159,7 @@ impl Cascade {
         let dc3: ID2D1DeviceContext3 = g.dc.cast()?;
         let batch = unsafe { dc3.CreateSpriteBatch()? };
         let mut c = Cascade { atlas, batch, dc3, cols: Vec::new(), rng: Rng(0x2545_f491_4f6c_dd1d), n: glyphs.len(),
-                              w: g.w as f32, h: g.h as f32, rows, dest: Vec::new(), src: Vec::new(), tint: Vec::new() };
+                              w: g.w as f32, h: g.h as f32, rows, cell, scale: s, dest: Vec::new(), src: Vec::new(), tint: Vec::new() };
         for (d, &(fs, _, _)) in DEPTH.iter().enumerate() {
             for _ in 0..(c.w / fs * [1.0, 0.6, 0.28][d]).ceil() as usize {
                 let y = c.rng.range(-c.h * 0.3, c.h * 1.2);
@@ -218,9 +222,11 @@ impl Background for Cascade {
                     if y < -fs || y > self.h { continue; }
                     let a = br * if k > 0 { (1.0 - k as f32 / c.len as f32).max(0.0).powf(1.4) } else { 1.0 };
                     let color = if k == 0 { look.acc } else if k < 3 { look.hi } else { look.ink };
-                    let (sx, sy) = (gi as u32 * fs as u32, self.rows[d] + if flip { fs as u32 } else { 0 });
-                    self.dest.push(rect(c.x, y, fs, fs));
-                    self.src.push(D2D_RECT_U { left: sx, top: sy, right: sx + fs as u32, bottom: sy + fs as u32 });
+                    let cp = self.cell[d];
+                    let (sx, sy) = (gi as u32 * cp, self.rows[d] + if flip { cp } else { 0 });
+                    let cs = cp as f32 / self.scale;
+                    self.dest.push(rect(c.x, y, cs, cs));
+                    self.src.push(D2D_RECT_U { left: sx, top: sy, right: sx + cp, bottom: sy + cp });
                     self.tint.push(pm(color, a));
                 }
             }

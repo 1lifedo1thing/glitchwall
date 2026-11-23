@@ -75,7 +75,7 @@ fn translate(x: f32, y: f32) -> Matrix3x2 { Matrix3x2 { M31: x, M32: y, ..IDENTI
 impl Scene {
     pub fn new(g: Gfx, fonts: std::rc::Rc<Fonts>, css: std::rc::Rc<String>, looks: &Looks) -> Result<Scene> {
         let look = looks.resolve(&Json::Null);
-        let scene = g.bitmap(g.w, g.h, None, true)?;
+        let scene = g.surface(g.w as f32, g.h as f32)?;
         let fx = Effects {
             crop: g.effect(&CLSID_D2D1Crop)?, blur: g.effect(&CLSID_D2D1GaussianBlur)?, sat: g.effect(&CLSID_D2D1Saturation)?,
             matrix: g.effect(&CLSID_D2D1ColorMatrix)?, shadow1: g.effect(&CLSID_D2D1Shadow)?, shadow2: g.effect(&CLSID_D2D1Shadow)?,
@@ -383,7 +383,8 @@ impl Scene {
             self.status(now)?;
             if let Some(o) = &self.overlay {
                 let flick = (now % 6.0) < 0.06 && self.look.texture != "none";
-                dc.DrawBitmap(o, None, if flick { 0.86 } else { 1.0 }, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, None, None);
+                dc.DrawBitmap(o, Some(&gfx::rect(0.0, 0.0, self.g.w as f32, self.g.h as f32)), if flick { 0.86 } else { 1.0 },
+                              D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, None, None);   // made in CSS pixels, stretched like the page's
             }
             dc.EndDraw(None, None)?;
         }
@@ -436,11 +437,11 @@ impl Scene {
         let card = &mut self.cards[i];
         card.h = h;
         if card.size != (wi, hi) || card.content.is_none() {
-            card.content = Some(self.g.bitmap(wi, hi, None, true)?);
-            card.comp = Some(self.g.bitmap(wi, hi, None, true)?);
+            card.content = Some(self.g.surface(wi as f32, hi as f32)?);
+            card.comp = Some(self.g.surface(wi as f32, hi as f32)?);
             card.size = (wi, hi);
         }
-        let text_bmp = self.g.bitmap(wi, hi, None, true)?;
+        let text_bmp = self.g.surface(wi as f32, hi as f32)?;
         let dc = &self.g.dc;
         unsafe {
             // the text alone first: the glow is a shadow of it
