@@ -28,7 +28,7 @@ fn stack_bottom(b: Option<(f32, f32, f64)>, now: f64) -> f32 {
 #[derive(Clone, Copy, PartialEq)]
 enum Kind { Cmd, Out, Err }
 
-struct Part { kind: Kind, prefix: String, text: Vec<u16>, shown: usize }
+struct Part { kind: Kind, prefix: String, text: Vec<u16>, masks: Vec<(usize, usize)>, shown: usize }   // masks: (start, length) in text
 
 struct Card {
     id: u64, x: f32, y: f32, w: f32, maxh: f32, h: f32,
@@ -55,7 +55,7 @@ pub struct Scene {
     fx: Effects,
     cards: Vec<Card>, queue: VecDeque<Json>, typing: Option<Typing>, wait_until: Option<f64>, busy_queue: bool,
     by_ref: HashMap<String, u64>, current: Option<u64>, next_id: u64,
-    tune: Tune, rng: Rng,
+    tune: Tune, rng: Rng, masked: String,
     pub asleep: bool, pub ignore_sleep: bool, slept_at: Option<f64>, hidden: bool, art: bool,
     label: String, live_until: f64, blink: bool,
     last_frame: f64, last_bg: f64, bg_drawn: bool, changed: bool,
@@ -108,7 +108,7 @@ impl Scene {
             g, fonts, css, look, look_key: String::new(), fx,
             cards: Vec::new(), queue: VecDeque::new(), typing: None, wait_until: None, busy_queue: false,
             by_ref: HashMap::new(), current: None, next_id: 1,
-            tune: Tune { cps: 240.0, rain: 0.5, linger: 7.0, cards: 4, glass: 0.58, grain: 1.0 }, rng: Rng(0x2545_f491_4f6c_dd1d),
+            tune: Tune { cps: 240.0, rain: 0.5, linger: 7.0, cards: 4, glass: 0.58, grain: 1.0 }, rng: Rng(0x2545_f491_4f6c_dd1d), masked: "dots".into(),
             asleep: false, ignore_sleep: false, slept_at: None, hidden: false, art: false, label: "live tool feed".into(), live_until: 0.0, blink: false,
             last_frame: 0.0, last_bg: 0.0, bg_drawn: false, changed: true,
         };
@@ -216,6 +216,7 @@ impl Scene {
             }
             self.bg_drawn = false;   // a still background shows the change too
         }
+        if let Some(m) = data.get("masked").str() { self.masked = m.to_string(); }   // how masked secrets show
         let tune = data.get("tune");
         if let Some(v) = tune.get("typeSpeed").num() { self.tune.cps = 60.0 + v * 40.0; }
         if let Some(v) = tune.get("rain").num() { self.tune.rain = v as f32 / 10.0; }
@@ -335,6 +336,31 @@ impl Scene {
         moved
     }
 
+    /// A feed text as the wall shows it: each •••• the redaction wrote swapped for the masked setting's look (made
+    /// up fresh, never from the hidden text, always the same length), and where each one sits.
+    fn unmask(&mut self, text: &str) -> (Vec<u16>, Vec<(usize, usize)>) {
+        const WORDS: [&str; 14] = ["REDACTED", "REMOVED", "HIDDEN", "CENSORED", "DELETED", "ERASED", "EXPUNGED", "EXPURGATED",
+                                   "BLACKED OUT", "OBSCURED", "SUPPRESSED", "WITHHELD", "CONCEALED", "OMITTED"];
+        const NOISE: &[u8] = b"abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789#%&@$?!*+=~^";
+        let (mut out, mut masks) = (Vec::new(), Vec::new());
+        for (k, piece) in text.split(crate::redact::MASK).enumerate() {
+            if k > 0 {
+                let shown = match self.masked.as_str() {
+                    "words" => format!("[{}]", WORDS[(self.rng.f() * WORDS.len() as f32) as usize % WORDS.len()]),
+                    "blocks" => "██████".into(),
+                    "stars" => "********".into(),
+                    "noise" => (0..8).map(|_| NOISE[(self.rng.f() * NOISE.len() as f32) as usize % NOISE.len()] as char).collect(),
+                    _ => crate::redact::MASK.into(),
+                };
+                let w = wide(&shown);
+                masks.push((out.len(), w.len()));
+                out.extend(w);
+            }
+            out.extend(wide(piece));
+        }
+        (out, masks)
+    }
+
     fn new_card(&mut self, ev: &Json, now: f64) -> u64 {
         while self.cards.iter().filter(|c| c.dying.is_none()).count() >= self.tune.cards {
             let oldest = self.cards.iter().find(|c| c.dying.is_none()).map(|c| c.id).unwrap();
@@ -356,13 +382,13 @@ impl Scene {
             let Some(ev) = self.queue.pop_front() else { self.typing = None; return Ok(()); };
             let busy = self.queue.len() > 6;
             let kind = ev.get("kind").str().unwrap_or("tool").to_string();
-            let text: Vec<u16> = wide(ev.get("text").str().unwrap_or(""));
+            let (text, masks) = self.unmask(ev.get("text").str().unwrap_or(""));
             let r = ev.get("ref").str().unwrap_or("").to_string();
             if kind == "out" || kind == "err" {
                 let card = if r.is_empty() { self.current } else { self.by_ref.remove(&r) };
                 let Some(card) = card.filter(|id| self.cards.iter().any(|c| c.id == *id && c.dying.is_none())) else { continue };
                 let c = self.cards.iter_mut().find(|c| c.id == card).unwrap();
-                c.parts.push(Part { kind: if kind == "err" { Kind::Err } else { Kind::Out }, prefix: String::new(), text, shown: 0 });
+                c.parts.push(Part { kind: if kind == "err" { Kind::Err } else { Kind::Out }, prefix: String::new(), text, masks, shown: 0 });
                 let part = c.parts.len() - 1;
                 self.typing = Some(Typing { card, part, t0: now + 0.26, cps: self.tune.cps * 5.0, after: 0.12, out: true, busy });
                 return Ok(());
@@ -378,7 +404,7 @@ impl Scene {
                 "web" => "curl", "agent" => "spawn", "mouse" => "click", _ => ">",
             };
             let c = self.cards.iter_mut().find(|c| c.id == card).unwrap();
-            c.parts.push(Part { kind: Kind::Cmd, prefix: format!("{prompt} "), text, shown: 0 });
+            c.parts.push(Part { kind: Kind::Cmd, prefix: format!("{prompt} "), text, masks, shown: 0 });
             self.typing = Some(Typing { card, part: 0, t0: now + 0.26, cps: self.tune.cps * if busy { 4.0 } else { 1.0 },
                                         after: 0.2, out: false, busy });
             return Ok(());
@@ -498,6 +524,7 @@ impl Scene {
         let ink_b = self.g.brush(l.ink)?;
         let acc_b = self.g.brush(l.acc)?;
         let err_b = self.g.brush(l.err)?;
+        let mask_b = self.g.brush(l.mask)?;
         let out_b = self.g.brush(with_alpha(l.ink, 0.82))?;
         for (k, p) in c.parts.iter().enumerate() {
             let mut t: Vec<u16> = wide(&p.prefix);
@@ -512,6 +539,9 @@ impl Scene {
                 let main: &ID2D1SolidColorBrush = match p.kind { Kind::Cmd => &ink_b, Kind::Out => &out_b, Kind::Err => &err_b };
                 lay.SetDrawingEffect(main, range(0, t.len() as u32))?;
                 if pre > 0 { lay.SetDrawingEffect(&acc_b, range(0, pre))?; }
+                for &(s, n) in &p.masks {   // masked secrets, in their own color
+                    if s < p.shown { lay.SetDrawingEffect(&mask_b, range(pre + s as u32, n.min(p.shown - s) as u32))?; }
+                }
                 if cursor { lay.SetDrawingEffect(&acc_b, range(t.len() as u32 - 1, 1))?; }
             }
             let mut m = DWRITE_TEXT_METRICS::default();

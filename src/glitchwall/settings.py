@@ -30,6 +30,7 @@ DEFAULTS = {
     "paused": False,         # serve nothing at all (stream-safe)
     "mask_user": True,       # replace your user name with "user"
     "mask_email": True,      # replace email local parts with ••••
+    "masked": "dots",        # how a masked secret shows on the wall, see MASKED
     "label": "CLAUDE :: live tool feed",
     "mode": "live",          # live | ambient | art, see MODES
     "theme": "phosphor",     # see `glitchwall themes`
@@ -92,6 +93,8 @@ def apply_changes(s: dict, changes: dict) -> tuple[dict, list[str]]:
             ok = isinstance(v, str) and v in themes.OPTIONS[k]
         elif k == "corner":
             ok = v in CORNERS
+        elif k == "masked":
+            ok = v in MASKED
         elif k == "label":
             ok = isinstance(v, str) and len(v) <= 80 and "\n" not in v
         if ok:
@@ -119,6 +122,20 @@ CORNERS = {
     "bottom-left": "rest the mouse in the bottom-left corner of a screen to open the settings",
     "bottom-right": "rest the mouse in the bottom-right corner of a screen to open the settings",
 }
+
+
+MASKED = {   # the redaction always writes •••• in the feed; the wall swaps in one of these as it draws
+    "dots": "a row of dots",
+    "words": "a word in brackets, a different one each time: [REDACTED], [EXPUNGED], [WITHHELD] and so on",
+    "blocks": "solid blocks, like a censor's marker",
+    "stars": "asterisks, like a password box",
+    "noise": "random gibberish, made up fresh, never from the hidden text",
+}
+
+
+def masked(s: dict) -> str:
+    m = str(s.get("masked", ""))
+    return m if m in MASKED else DEFAULTS["masked"]
 
 
 def corner(s: dict) -> str:

@@ -166,7 +166,7 @@ fn parse_iso(s: &str) -> Option<f64> {
     let dim = [31, if (y % 4 == 0 && y % 100 != 0) || y % 400 == 0 { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
     if !(1..=12).contains(&mo) || d < 1 || d > dim[mo as usize - 1] { return None; }
     let (mut h, mut mi, mut sec, mut frac, mut off) = (0, 0, 0, 0.0, 0i64);
-    let mut i = 10;
+    let mut i;
     if b.len() > 10 {
         if !s.is_char_boundary(11) { return None; }
         i = 11;   // any one character between the date and the time

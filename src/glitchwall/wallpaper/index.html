@@ -45,6 +45,7 @@
   .body { padding:8px 12px 10px; font-size:calc(16px * var(--mscale)); line-height:1.15; overflow:hidden; display:flex; flex-direction:column; justify-content:flex-end;
           background-image:var(--rules); background-position:0 8px; }
   .cmd, .out, .err { white-space:pre-wrap; word-break:break-word; }
+  .mask { color:var(--mask); text-shadow:var(--maskglow); }
   /* a tall card keeps its command; long output shrinks and shows its newest lines (typeInto scrolls it) */
   .cmd { flex-shrink:0; max-height:calc(16px * var(--mscale) * 1.15 * 9); overflow:hidden; }
   .out, .err { min-height:calc(16px * var(--mscale) * 1.15 * 2); overflow:hidden; }
@@ -225,6 +226,7 @@ function applyLook() {
   set('bg', t.bg); set('g', t.ink); set('s', t.muted); set('l', t.acc); set('acc', t.acc);
   set('d', t.line || rgba(t.ink, light ? .22 : .3));
   set('err', t.err); set('errd', rgba(t.err, .45));
+  set('mask', t.mask || t.acc2 || t.acc); set('maskglow', t.glow ? `0 0 4px ${rgba(t.mask || t.acc2 || t.acc, .6)}` : 'none');
   set('card', rgb(t.surface).join(','));
   set('bar', t.bar || rgba(t.ink, light ? .05 : .07));
   set('barfg', t.barfg || t.muted); set('barb', t.barb || t.ink);
@@ -2321,6 +2323,19 @@ document.fonts && document.fonts.ready.then(() => R && R.init());
 requestAnimationFrame(loop);
 
 // ---------- cards ----------
+// a masked secret: the redaction writes •••• in the feed, and the wall shows it as the masked setting says
+let MASKED = 'dots';
+const MASK_WORDS = ['REDACTED', 'REMOVED', 'HIDDEN', 'CENSORED', 'DELETED', 'ERASED', 'EXPUNGED', 'EXPURGATED',
+                    'BLACKED OUT', 'OBSCURED', 'SUPPRESSED', 'WITHHELD', 'CONCEALED', 'OMITTED'];
+const NOISE = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789#%&@$?!*+=~^';
+const anyOf = s => s[Math.random() * s.length | 0];
+function maskShown() {   // made up fresh each time, never from the hidden text, always the same length
+  if (MASKED === 'words') return '[' + anyOf(MASK_WORDS) + ']';
+  if (MASKED === 'blocks') return '██████';
+  if (MASKED === 'stars') return '********';
+  if (MASKED === 'noise') return Array.from({ length: 8 }, () => anyOf(NOISE)).join('');
+  return '••••';
+}
 const PROMPT = { '$': '$', 'PS>': 'PS>', read: 'cat', write: 'write', edit: 'edit', find: 'grep', web: 'curl', agent: 'spawn', mouse: 'click', tool: '>' };
 const open = [];                // cards on screen, oldest first
 var PLACE;                      // where new cards go, set by applyLook() above from the transition: 'any', 'dock' or 'stack'
@@ -2401,7 +2416,16 @@ function newCard(ev) {
 let since = 0, queue = [], typing = false, lastEvent = 0, current = null;
 const byRef = new Map();        // tool call id -> its card
 function typeInto(el, text, cps, done) {
-  const node = document.createTextNode(''); el.appendChild(node); el.classList.add('cur');
+  // the text in pieces, each masked secret its own colored span; typed across them in order
+  const parts = text.split('••••').flatMap((t, k) => k ? [{ t: maskShown(), m: 1 }, { t }] : [{ t }]).filter(p => p.t);
+  const nodes = parts.map(p => {
+    const n = document.createTextNode('');
+    if (p.m) { const s = document.createElement('span'); s.className = 'mask'; s.appendChild(n); el.appendChild(s); } else el.appendChild(n);
+    return n;
+  });
+  text = parts.map(p => p.t).join('');
+  const node = { set data(v) { let at = 0; parts.forEach((p, k) => { nodes[k].data = v.slice(at, at + p.t.length); at += p.t.length; }); } };
+  el.classList.add('cur');
   let i = 0;
   if (STILL) { node.data = text; el.classList.remove('cur'); el.scrollTop = el.scrollHeight; return setTimeout(done, 0); }
   let t0 = 0;
@@ -2506,6 +2530,7 @@ async function poll() {
       if (!typing) next();
     }
     markCorner(data.paused ? 'off' : data.corner);
+    if (data.masked) MASKED = data.masked;
     live.classList.toggle('on', Date.now() - lastEvent < 60000);
   } catch { live.classList.remove('on'); }
   setTimeout(poll, 1000);

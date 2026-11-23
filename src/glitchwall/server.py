@@ -159,6 +159,7 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
                                "look": look or themes.look(s), "mode": m,
                                "label": cfg.display_label(s) if label is None else label, "tune": cfg.tune(s), "opts": cfg.opts(s),
                                "corner": cfg.corner(s),   # where the hot-corner icon sits
+                               "masked": cfg.masked(s),   # how masked secrets show
                                # the built-in host: nobody can see this screen (covered, locked), so stop animating
                                "sleep": bool(sleeping and sleeping(q.get("screen", [""])[0]))}).encode()
             self.send_response(200)
@@ -209,7 +210,7 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
             body_out = json.dumps({
                 "settings": {k: s.get(k, v) for k, v in cfg.DEFAULTS.items()}, "refused": refused,
                 "defaults": {k: v for k, v in cfg.DEFAULTS.items() if k not in ("port", "host", "screens", "renderer")},
-                "choices": {**themes.KINDS, **themes.OPTIONS, "mode": cfg.MODES, "corner": cfg.CORNERS},
+                "choices": {**themes.KINDS, **themes.OPTIONS, "mode": cfg.MODES, "corner": cfg.CORNERS, "masked": cfg.MASKED},
                 "options": themes.OPTIONS_OF, "theme_rain": themes.THEME_RAIN,
                 "ranges": {k: [lo, hi] for k, (_, lo, hi) in cfg.TUNE.items()},
                 "running": True, "restarting": bool(reset and on_reset),

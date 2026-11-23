@@ -95,7 +95,7 @@
   #readout .err { color:var(--red); }
 
   /* switches: a slide toggle that lights when on */
-  .feedrow { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:5px 8px; align-items:end; }
+  .feedrow { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:5px 8px; align-items:end; }
   .switches { grid-column:span 2; display:flex; gap:4px; padding-bottom:2px; }
   .sw { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:6px; padding:3px 2px; border-radius:3px; cursor:pointer; background:none; border:0; }
   .sw .slot { position:relative; width:40px; height:20px; border-radius:10px; border:1px solid var(--ph-dim); }
@@ -199,7 +199,7 @@ const KEY = decodeURIComponent(location.hash.startsWith('#key=') ? location.hash
 const API = `/settings?key=${encodeURIComponent(KEY)}`;
 const $ = id => document.getElementById(id);
 const KNOBS = [['palette', 'COLORS'], ['rain', 'BACKDROP'], ['font', 'FONT'], ['transition', 'ARRIVAL']];
-const FEED_KNOBS = [['mode', 'MODE'], ['corner', 'CORNER']];
+const FEED_KNOBS = [['mode', 'MODE'], ['corner', 'CORNER'], ['masked', 'MASKED']];
 const FADERS = {
   type_speed: ['TYPING', 'How fast each call types itself out: 1 is a slow crawl, 20 is nearly instant.'],
   linger: ['LINGER', 'Seconds a card stays on screen after it finishes.'],
@@ -213,29 +213,32 @@ const SWITCHES = {
   mask_user: ['MASK USER', 'Your user name shows as "user" everywhere.'],
   mask_email: ['MASK EMAIL', 'Email addresses lose everything before the @.'],
 };
-const KNOB_HELP = { mode: 'MODE', palette: 'COLORS', rain: 'BACKGROUND', font: 'FONT', transition: 'TRANSITION (how cards arrive and leave)', corner: 'HOT CORNER' };
+const KNOB_HELP = { mode: 'MODE', palette: 'COLORS', rain: 'BACKGROUND', font: 'FONT', transition: 'TRANSITION (how cards arrive and leave)', corner: 'HOT CORNER', masked: 'MASKED (how hidden secrets show)' };
 const MODE_SHORT = { live: 'LIVE', ambient: 'AMBIENT', art: 'ART' };
 let S = {}, C = {}, D = {}, focusHelp = null, pending = {}, timer = null, busy = false, cleared = false;
 // what each DEFAULT key puts back. Mode stays as it is: switching to live would start showing real tool calls
 const GROUPS = { look: ['palette', 'rain', 'font', 'transition'], motion: Object.keys(FADERS),
-                 feed: ['corner', ...Object.keys(SWITCHES), 'label'], options: [] };
+                 feed: ['corner', 'masked', ...Object.keys(SWITCHES), 'label'], options: [] };
 const THEME_OWNS = [...GROUPS.look, ...GROUPS.motion];   // a new theme starts clean: no tweaks carried over
 const GROUP_HELP = {
   look: ['COLORS · BACKDROP · FONT · ARRIVAL', 'back to what the theme comes with.'],
   motion: ['TYPING · LINGER · CARDS · MOTION · GLASS · GRAIN', 'back to the standard values.'],
   options: ['OPTIONS', 'back to how the background comes.'],
-  feed: ['CORNER · CALLS ONLY · MASKS · LABEL', 'back to the safe defaults: user name and emails masked, the stock label. Mode stays as it is.'],
+  feed: ['CORNER · MASKED · CALLS ONLY · MASKS · LABEL', 'back to the safe defaults: user name and emails masked, the stock label. Mode stays as it is.'],
 };
 const differs = k => D[k] !== undefined && S[k] !== D[k];
 
 // ---------- words: what each option is, said once, plainly
 const clean = t => String(t || '').replace(/^extra: /, '');
+const MASKED_SHORT = { dots: '••••', words: '[WORD]', blocks: '████', stars: '****', noise: '#?%&' };
 const CORNER_SHORT = { off: 'OFF', 'top-left': 'TOP-L', 'top-right': 'TOP-R', 'bottom-left': 'BOT-L', 'bottom-right': 'BOT-R' };
 function optName(kind, v) { if (kind === 'font' && v !== 'theme' && C.font[v]) return C.font[v].replace(/ \(.*/, '').toUpperCase();
+  if (kind === 'masked') return MASKED_SHORT[v] || v;
   return kind === 'corner' ? CORNER_SHORT[v] || v : v === 'theme' ? 'AUTO' : kind === 'mode' ? MODE_SHORT[v] || v : v.toUpperCase(); }
 function optText(kind, v) {
   if (kind === 'theme') return clean(C.theme[v]).replace(/([^.!?])$/, '$1.');
   if (kind === 'mode') return C.mode[v][0].toUpperCase() + C.mode[v].slice(1) + '.';
+  if (kind === 'masked') return 'Masked secrets show as ' + C.masked[v] + ', in a color of their own.';
   if (kind === 'corner') return C.corner[v][0].toUpperCase() + C.corner[v].slice(1) + '. The glitchwall icon marks it on the wallpaper.';
   if (v === 'theme') {
     const t = S.theme;
