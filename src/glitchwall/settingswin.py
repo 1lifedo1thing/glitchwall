@@ -217,9 +217,9 @@ class Settings:
         webview.start(private_mode=True, storage_path=str(cfg.state_dir() / "webview-settings"), icon=self.icon)
 
 
-# the one page the settings window may open outside itself: the theme request form
+# the one page the settings window may open outside itself: the feedback forms (bug, feature, theme, security)
 WIN_W, WIN_H = 560, 1050   # the settings window with its frame, in logical px (the page, about 1000 tall, fits at zoom 1)
-THEME_REQUEST_URL = "https://github.com/marklesterb28/glitchwall/issues/new?template=theme-request.yml"
+FEEDBACK_URL = "https://github.com/marklesterb28/glitchwall/issues/new/choose"
 
 
 class Api:
@@ -234,6 +234,6 @@ class Api:
     def keep(self, on: bool) -> None:
         self._s.keep(on)
 
-    def request_theme(self) -> bool:
-        """Open the theme request form in the default browser. Fixed address: the page cannot pick another."""
-        return webbrowser.open(THEME_REQUEST_URL)
+    def feedback(self) -> bool:
+        """Open the feedback forms in the default browser. Fixed address: the page cannot pick another."""
+        return webbrowser.open(FEEDBACK_URL)

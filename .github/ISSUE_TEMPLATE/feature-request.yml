@@ -1,0 +1,17 @@
+name: Feature request
+description: An idea for something glitchwall could do
+title: "Idea: "
+labels: ["feature request"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What you'd like glitchwall to do, and what it would help with.
+    validations:
+      required: true
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: How you'd picture it working, or what you do today instead.
