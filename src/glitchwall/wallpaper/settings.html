@@ -27,12 +27,16 @@
     --glow:0 0 5px rgba(var(--ph-rgb),.6); --ph-rgb:93,255,122; --amber:#ffb000; --red:#ff5a4a;
   }
   * { box-sizing:border-box; }
-  html, body { margin:0; height:100%; background:var(--bg); color:var(--ph-dim); font:var(--fmw, 400) calc(12px * var(--fms, 1))/1.4 var(--fm, 'Departure Mono', Consolas, monospace); }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--ph-dim); font:var(--fmw, 400) 12px/1.4 var(--fm, 'Departure Mono', Consolas, monospace); }
   body { display:grid; grid-template-rows:auto minmax(0,1fr) auto; height:calc(100vh / var(--z, 1)); overflow:hidden;
          background:radial-gradient(120% 100% at 50% 35%, var(--glass), var(--bg) 75%); }
   body::after { content:''; position:fixed; inset:0; pointer-events:none; z-index:50;   /* scanlines over the whole tube */
                 background:repeating-linear-gradient(transparent 0 2px, var(--scan, rgba(0,0,0,.18)) 2px 3px); }
   button { font:inherit; color:inherit; }
+  /* every theme's faces draw with the default faces' capital height, so sizes mean the same in every theme */
+  html, body, .brand, kbd { font-size-adjust:cap-height .73; }
+  #readout .l1, .win .val, .drum .item, .drumfoot, .fader .val { font-size-adjust:cap-height .56; }   /* capitals: their height */
+  #readout .l2, #label { font-size-adjust:ex-height .4; }   /* running text: its lowercase height */
   .tag { font-size:10px; letter-spacing:.22em; color:var(--ph); text-shadow:var(--glow); }
   .tag::before { content:'> '; color:var(--ph-dim); text-shadow:none; }
 
@@ -63,15 +67,14 @@
   #pause.on .t { color:var(--amber); text-shadow:0 0 5px rgba(255,176,0,.6); }
 
   /* one compact column: the wallpaper itself is the preview, so this window only needs the controls */
-  main { display:flex; flex-direction:column; gap:10px; padding:10px 12px; min-height:0; overflow:hidden; }   /* never scrolls: fit() shrinks everything instead */
-  .side { display:flex; flex-direction:column; gap:10px; min-width:0; }
+  main { display:flex; flex-direction:column; gap:8px; padding:8px 12px; min-height:0; overflow:hidden; }   /* never scrolls: fit() shrinks everything instead */
   /* the readout keeps one height whatever it says, so nothing below it ever jumps */
-  #readout { order:-1; height:112px; }
+  #readout { height:114px; padding:9px 12px; }
   #readout .l2 { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; }
   #pause { min-width:178px; }
   .drum.still .item { transition:none; }   /* the first placement: straight into position, no pile-up */
   footer { gap:4px 14px !important; padding:6px 14px !important; }
-  main > *, .side > * { flex-shrink:0; }   /* never squash a module: scroll instead */
+  main > * { flex-shrink:0; }   /* never squash a module: scroll instead */
   .mod { position:relative; min-width:0; border:1px solid var(--ph-line); border-radius:4px; padding:24px 12px 12px; background:var(--mod, rgba(3,16,8,.55)); }
   .mod > h2 { position:absolute; top:7px; left:11px; margin:0; font-weight:400; }
   /* a module's DEFAULT key, top right; lit only when something in it differs from the default */
@@ -86,14 +89,14 @@
 
   /* the readout: what the control under the mouse or keyboard does */
   #readout { min-width:0; min-height:0; overflow:hidden; color:var(--ph); text-shadow:var(--glow); }
-  #readout .l1 { font:var(--fdw, 400) calc(22px * var(--fds, 1))/1 var(--fd, 'VT323', monospace); letter-spacing:.08em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #readout .l1 { font:var(--fdw, 400) 21px/1.3 var(--fd, 'VT323', monospace); letter-spacing:.08em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   #readout .l1::before { content:'$ '; color:var(--ph-dim); }
-  #readout .l2 { font:var(--fdw, 400) calc(18px * var(--fds, 1))/1.15 var(--fd, 'VT323', monospace); margin-top:7px; color:var(--ph-dim); text-shadow:none; overflow-wrap:anywhere; }
+  #readout .l2 { font:var(--fdw, 400) var(--ls, 17px)/1.22 var(--fd, 'VT323', monospace); margin-top:3px; color:var(--ph-dim); text-shadow:none; overflow-wrap:anywhere; }
   #readout .err { color:var(--red); }
 
   /* switches: a slide toggle that lights when on */
-  #priv { grid-area:priv; }
-  .switches { display:flex; gap:8px; }
+  .feedrow { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:5px 8px; align-items:end; }
+  .switches { grid-column:span 2; display:flex; gap:4px; padding-bottom:2px; }
   .sw { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:6px; padding:3px 2px; border-radius:3px; cursor:pointer; background:none; border:0; }
   .sw .slot { position:relative; width:40px; height:20px; border-radius:10px; border:1px solid var(--ph-dim); }
   .sw .lever { position:absolute; top:3px; left:3px; width:12px; height:12px; border-radius:50%; background:var(--ph-dim); transition:left .12s, background .12s, box-shadow .12s; }
@@ -103,17 +106,17 @@
   .sw.on .name { color:var(--ph); text-shadow:var(--glow); }
   .labelrow { display:flex; gap:10px; align-items:center; margin-top:10px; }
   .labelrow label { font-size:9px; letter-spacing:.15em; }
-  #label { flex:1; min-width:0; height:27px; padding:3px 8px; font:var(--fdw, 400) calc(19px * var(--fds, 1)) var(--fd, 'VT323', monospace); color:var(--ph); background:transparent; border:1px solid var(--ph-line); border-radius:2px; outline:none; text-shadow:var(--glow); }
+  #label { flex:1; min-width:0; height:27px; padding:3px 8px; font:var(--fdw, 400) 19px var(--fd, 'VT323', monospace); color:var(--ph); background:transparent; border:1px solid var(--ph-line); border-radius:2px; outline:none; text-shadow:var(--glow); }
   #label:focus { border-color:var(--ph); box-shadow:var(--glow); }
 
   /* selectors: the setting in a window, ridges beside it that roll as it turns */
-  .knobs { display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:5px; }
-  #optknobs { grid-template-columns:repeat(4, minmax(0,1fr)); }
+  .knobs { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:5px 8px; }
   #opts[hidden] { display:none; }
   .knob { display:flex; flex-direction:column; align-items:center; gap:6px; background:none; border:0; padding:3px 0; cursor:ns-resize; border-radius:3px; min-width:0; }
   .rotor { display:flex; gap:3px; width:100%; height:44px; }
-  .win { flex:none; height:44px; min-width:0; display:grid; place-items:center; overflow:hidden; padding:0 3px; border:1px solid var(--ph-line); border-radius:2px; background:var(--glass); }
-  .win .val { display:block; max-width:100%; text-align:center; font:var(--fdw, 400) calc(18px * var(--fds, 1)) var(--fd, 'VT323', monospace); color:var(--ph); text-shadow:var(--glow); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .win { flex:1 1 0; height:44px; min-width:0; display:grid; place-items:center; overflow:hidden; padding:0 3px; border:1px solid var(--ph-line); border-radius:2px; background:var(--glass); }
+  .win .val { display:block; max-width:100%; text-align:center; font:var(--fdw, 400) var(--vs, 18px)/1.2 var(--fd, 'VT323', monospace); color:var(--ph); text-shadow:var(--glow); white-space:normal; line-height:1.2; padding:1px .25em; overflow:visible; overflow-wrap:normal; }
+  /* the padding is room for slanted and handwritten faces, whose last letter draws past its box: clipped there, AUTO read AUTC */
   .wheel { width:8px; border:1px solid var(--ph-dim); border-radius:2px; transition:background-position .18s;
            background:repeating-linear-gradient(180deg, var(--ph-dim) 0 1px, transparent 1px 5px); }
   .knob .name { font-size:9px; letter-spacing:.12em; }
@@ -121,17 +124,17 @@
   /* the theme drum, turning left to right */
   .drum { position:relative; height:54px; overflow:hidden; cursor:ew-resize; touch-action:none; border:1px solid var(--ph-line); border-radius:2px; background:var(--glass); }
   .drum .window { position:absolute; left:50%; top:6px; bottom:6px; width:132px; margin-left:-66px; border:1px solid var(--ph); box-shadow:var(--glow); }
-  .drum .item { position:absolute; left:50%; top:0; height:100%; width:124px; margin-left:-62px; display:grid; place-items:center;
-                font:var(--fdw, 400) calc(22px * var(--fds, 1)) var(--fd, 'VT323', monospace); letter-spacing:.06em; color:var(--ph-dim); white-space:nowrap; transition:transform .22s, opacity .22s; }
+  .drum .item { position:absolute; left:50%; top:0; height:100%; width:124px; margin-left:-62px; display:grid; place-items:center; padding:0 .25em;
+                font:var(--fdw, 400) var(--ds, 22px) var(--fd, 'VT323', monospace); letter-spacing:.06em; color:var(--ph-dim); white-space:nowrap; transition:transform .22s, opacity .22s; }
   .drum .item.sel { color:var(--ph); text-shadow:var(--glow); }
   .drum::after { content:''; position:absolute; inset:0; pointer-events:none; background:linear-gradient(90deg, var(--glass), transparent 32%, transparent 68%, var(--glass)); }
-  .drumfoot { display:flex; justify-content:space-between; margin-top:6px; font:var(--fdw, 400) calc(16px * var(--fds, 1))/1 var(--fd, 'VT323', monospace); }
+  .drumfoot { display:flex; justify-content:space-between; margin-top:6px; font:var(--fdw, 400) 16px/1 var(--fd, 'VT323', monospace); }
 
   /* faders, lying flat, two to a row, so the module stays short */
   .faders { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:6px 16px; }
   .fader { display:grid; grid-template-columns:50px minmax(0,1fr) 30px; align-items:center; gap:7px; padding:1px 3px; border-radius:3px; }
   .fader .name { font-size:9px; letter-spacing:.12em; }
-  .fader .val { height:23px; overflow:hidden; display:grid; place-items:center; text-align:center; font:var(--fdw, 400) calc(18px * var(--fds, 1))/1.15 var(--fd, 'VT323', monospace); color:var(--ph); text-shadow:var(--glow); border:1px solid var(--ph-line); border-radius:2px; }
+  .fader .val { height:23px; overflow:visible; display:grid; place-items:center; text-align:center; font:var(--fdw, 400) 18px/1.15 var(--fd, 'VT323', monospace); color:var(--ph); text-shadow:var(--glow); border:1px solid var(--ph-line); border-radius:2px; }
   .track { position:relative; height:20px; touch-action:none; cursor:ew-resize; }
   .track .ticks { position:absolute; inset:0 4px; background:repeating-linear-gradient(90deg, var(--ph-faint) 0 1px, transparent 1px 10%);
                   -webkit-mask:linear-gradient(#000 0 5px, transparent 5px 15px, #000 15px); mask:linear-gradient(#000 0 5px, transparent 5px 15px, #000 15px); }
@@ -165,19 +168,17 @@
 </header>
 
 <main>
-  <div class="side">
-    <div class="mod"><h2 class="tag">SELECT</h2><button class="reset" data-group="select" data-help="reset:select">DEFAULT</button><div class="knobs" id="knobs"></div></div>
-    <div class="mod"><h2 class="tag">THEME</h2>
-      <div class="drum" id="drum" tabindex="0" data-help="theme" role="listbox" aria-label="theme"><div class="window"></div></div>
-      <div class="drumfoot"><span>&lt; TURN &gt;</span><span id="drumpos">--</span></div>
-    </div>
-    <div class="mod" id="motion"><h2 class="tag">MOTION</h2><button class="reset" data-group="motion" data-help="reset:motion">DEFAULT</button><div class="faders" id="faders"></div></div>
-    <div class="mod" id="opts" hidden><h2 class="tag" id="opts-t">OPTIONS</h2><button class="reset" data-group="options" data-help="reset:options">DEFAULT</button><div class="knobs" id="optknobs"></div></div>
-  </div>
-
+  <!-- in the order they're used: the theme, what it brings, its background's options, motion, then the feed itself -->
   <div class="mod" id="readout" aria-live="polite"><div class="l1">CONNECTING…</div><div class="l2"></div></div>
-  <div class="mod" id="priv"><h2 class="tag">PRIVACY</h2><button class="reset" data-group="privacy" data-help="reset:privacy">DEFAULT</button>
-    <div class="switches" id="switches"></div>
+  <div class="mod"><h2 class="tag">THEME</h2>
+    <div class="drum" id="drum" tabindex="0" data-help="theme" role="listbox" aria-label="theme"><div class="window"></div></div>
+    <div class="drumfoot"><span>&lt; TURN &gt;</span><span id="drumpos">--</span></div>
+  </div>
+  <div class="mod"><h2 class="tag">LOOK</h2><button class="reset" data-group="look" data-help="reset:look">DEFAULT</button><div class="knobs" id="knobs"></div></div>
+  <div class="mod" id="opts" hidden><h2 class="tag" id="opts-t">OPTIONS</h2><button class="reset" data-group="options" data-help="reset:options">DEFAULT</button><div class="knobs" id="optknobs"></div></div>
+  <div class="mod" id="motion"><h2 class="tag">MOTION</h2><button class="reset" data-group="motion" data-help="reset:motion">DEFAULT</button><div class="faders" id="faders"></div></div>
+  <div class="mod" id="priv"><h2 class="tag">FEED</h2><button class="reset" data-group="feed" data-help="reset:feed">DEFAULT</button>
+    <div class="feedrow" id="feedrow"><div class="switches" id="switches"></div></div>
     <div class="labelrow"><label for="label">LABEL</label><input id="label" maxlength="80" spellcheck="false" data-help="label"></div>
   </div>
 </main>
@@ -197,7 +198,8 @@
 const KEY = decodeURIComponent(location.hash.startsWith('#key=') ? location.hash.slice(5) : '');
 const API = `/settings?key=${encodeURIComponent(KEY)}`;
 const $ = id => document.getElementById(id);
-const KNOBS = [['mode', 'MODE'], ['palette', 'COLORS'], ['rain', 'BACKDROP'], ['font', 'FONT'], ['transition', 'ARRIVAL'], ['corner', 'CORNER']];
+const KNOBS = [['palette', 'COLORS'], ['rain', 'BACKDROP'], ['font', 'FONT'], ['transition', 'ARRIVAL']];
+const FEED_KNOBS = [['mode', 'MODE'], ['corner', 'CORNER']];
 const FADERS = {
   type_speed: ['TYPING', 'How fast each call types itself out: 1 is a slow crawl, 20 is nearly instant.'],
   linger: ['LINGER', 'Seconds a card stays on screen after it finishes.'],
@@ -215,23 +217,24 @@ const KNOB_HELP = { mode: 'MODE', palette: 'COLORS', rain: 'BACKGROUND', font: '
 const MODE_SHORT = { live: 'LIVE', ambient: 'AMBIENT', art: 'ART' };
 let S = {}, C = {}, D = {}, focusHelp = null, pending = {}, timer = null, busy = false, cleared = false;
 // what each DEFAULT key puts back. Mode stays as it is: switching to live would start showing real tool calls
-const GROUPS = { select: ['palette', 'rain', 'font', 'transition'], motion: Object.keys(FADERS),
-                 privacy: [...Object.keys(SWITCHES), 'label'], options: [] };
-const THEME_OWNS = [...GROUPS.select, ...GROUPS.motion];   // a new theme starts clean: no tweaks carried over
+const GROUPS = { look: ['palette', 'rain', 'font', 'transition'], motion: Object.keys(FADERS),
+                 feed: ['corner', ...Object.keys(SWITCHES), 'label'], options: [] };
+const THEME_OWNS = [...GROUPS.look, ...GROUPS.motion];   // a new theme starts clean: no tweaks carried over
 const GROUP_HELP = {
-  select: ['COLORS · BACKDROP · FONT · ARRIVAL', 'back to what the theme comes with. Mode stays as it is.'],
+  look: ['COLORS · BACKDROP · FONT · ARRIVAL', 'back to what the theme comes with.'],
   motion: ['TYPING · LINGER · CARDS · MOTION · GLASS · GRAIN', 'back to the standard values.'],
   options: ['OPTIONS', 'back to how the background comes.'],
-  privacy: ['CALLS ONLY · MASKS · LABEL', 'back to the safe defaults: user name and emails masked, the stock label.'],
+  feed: ['CORNER · CALLS ONLY · MASKS · LABEL', 'back to the safe defaults: user name and emails masked, the stock label. Mode stays as it is.'],
 };
 const differs = k => D[k] !== undefined && S[k] !== D[k];
 
 // ---------- words: what each option is, said once, plainly
 const clean = t => String(t || '').replace(/^extra: /, '');
 const CORNER_SHORT = { off: 'OFF', 'top-left': 'TOP-L', 'top-right': 'TOP-R', 'bottom-left': 'BOT-L', 'bottom-right': 'BOT-R' };
-function optName(kind, v) { return kind === 'corner' ? CORNER_SHORT[v] || v : v === 'theme' ? 'AUTO' : kind === 'mode' ? MODE_SHORT[v] || v : v.toUpperCase(); }
+function optName(kind, v) { if (kind === 'font' && v !== 'theme' && C.font[v]) return C.font[v].replace(/ \(.*/, '').toUpperCase();
+  return kind === 'corner' ? CORNER_SHORT[v] || v : v === 'theme' ? 'AUTO' : kind === 'mode' ? MODE_SHORT[v] || v : v.toUpperCase(); }
 function optText(kind, v) {
-  if (kind === 'theme') return clean(C.theme[v]);
+  if (kind === 'theme') return clean(C.theme[v]).replace(/([^.!?])$/, '$1.');
   if (kind === 'mode') return C.mode[v][0].toUpperCase() + C.mode[v].slice(1) + '.';
   if (kind === 'corner') return C.corner[v][0].toUpperCase() + C.corner[v].slice(1) + '. The glitchwall icon marks it on the wallpaper.';
   if (v === 'theme') {
@@ -251,6 +254,8 @@ function optText(kind, v) {
 function say(l1, l2, bad) {
   const [a, b] = $('readout').children;
   a.textContent = l1; b.textContent = l2 || ''; b.className = 'l2' + (bad ? ' err' : '');
+  // three lines at most: a long message in a wide font steps down until it fits, rather than being cut
+  for (let px = 17; px >= 12; px--) { b.style.setProperty('--ls', px + 'px'); if (b.scrollHeight <= Math.ceil(px * 1.22 * 3) + 1) break; }
 }
 function help(h) {
   focusHelp = h || focusHelp;
@@ -467,6 +472,7 @@ function resetGroup(g) {
 const winApi = () => { try { return window.pywebview && window.pywebview.api; } catch { return null; } };
 function build() {
   const kn = $('knobs'); KNOBS.forEach(([k, n]) => kn.appendChild(knob(k, n)));
+  const fr = $('feedrow'), swb = $('switches'); FEED_KNOBS.forEach(([k, n]) => fr.insertBefore(knob(k, n), swb));
   const fd = $('faders'); Object.keys(FADERS).forEach(k => fd.appendChild(fader(k)));
   const sws = $('switches'); Object.keys(SWITCHES).forEach(k => sws.appendChild(sw(k)));
   drum();
@@ -515,7 +521,7 @@ function renderOpts() {
 function wear() {
   const L = window.LOOKS && window.LOOKS.themes, name = S.palette && S.palette !== 'theme' ? S.palette : S.theme;
   const t = L && L[name], st = document.documentElement.style;
-  const keys = ['--bg', '--glass', '--ph', '--ph-hi', '--ph-dim', '--ph-rgb', '--amber', '--mod', '--glow', '--scan', '--fd', '--fds', '--fm', '--fms', '--fdw', '--fmw'];
+  const keys = ['--bg', '--glass', '--ph', '--ph-hi', '--ph-dim', '--ph-rgb', '--amber', '--mod', '--glow', '--scan', '--fd', '--fm', '--fdw', '--fmw'];
   if (!t || name === 'phosphor') { keys.forEach(k => st.removeProperty(k)); return; }
   const hex = c => { const m = /^#?([0-9a-f]{6})/i.exec(c || ''); return m ? [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16)).join(',') : null; };
   st.setProperty('--bg', t.bg); st.setProperty('--glass', t.surface || t.bg);
@@ -524,12 +530,12 @@ function wear() {
   // the orb's window is lit by its red lights (white would make it oracle's twin): red type, white for anything paused
   if (name === 'orb') { st.setProperty('--ph', t.acc); st.setProperty('--ph-hi', '#ff9d94'); st.setProperty('--ph-dim', '#a8302a');
                         st.setProperty('--ph-rgb', hex(t.acc)); st.setProperty('--amber', t.ink); }
-  // the theme's own fonts (or the one picked for it): its title face for the readouts, its typing face for the rest,
-  // sized by how big each draws next to the window's own (VT323 draws small: its scale is 1.4)
+  // the theme's own fonts (or the one picked for it): its title face for the readouts, its typing face for the rest
+  // (font-size-adjust in the CSS makes each draw as big as the window's own)
   const F = window.LOOKS.fonts || {}, pick = S.font && S.font !== 'theme' && F[S.font];
   const disp = pick || F[t.display], mono = pick || F[t.mono];
-  if (disp) { st.setProperty('--fd', disp.family); st.setProperty('--fds', String(Math.min(1.1, (disp.scale || 1) / 1.4))); st.setProperty('--fdw', String(disp.weight || 400)); }
-  if (mono) { st.setProperty('--fm', mono.family); st.setProperty('--fms', String(Math.min(1.2, mono.scale || 1))); st.setProperty('--fmw', String(mono.weight || 400)); }
+  if (disp) { st.setProperty('--fd', disp.family); st.setProperty('--fdw', String(disp.weight || 400)); }
+  if (mono) { st.setProperty('--fm', mono.family); st.setProperty('--fmw', String(mono.weight || 400)); }
   // on paper: solid paper panels, no glow, barely-there scan lines
   if (t.mode === 'light') { st.setProperty('--mod', t.surface || t.bg); st.setProperty('--glow', 'none'); st.setProperty('--scan', 'rgba(0,0,0,.04)'); }
   else ['--mod', '--glow', '--scan'].forEach(k => st.removeProperty(k));
@@ -552,16 +558,41 @@ function fit() {
   if (String(z) !== root.style.getPropertyValue('--z')) { root.style.zoom = z; root.style.setProperty('--z', z); }
 }
 addEventListener('resize', () => fit());
+// one text size for all the selector windows, and one for the theme drum: the size at which the longest choice fits.
+// Worked out again only when the font or the knobs change, never while turning one, so nothing jumps
+let evenKey = '';
+function evenText() {
+  const st = document.documentElement.style, key = [st.getPropertyValue('--fd'), optsFor].join('|');
+  if (key === evenKey || !S.theme) return;
+  evenKey = key;
+  const fd = st.getPropertyValue('--fd');   // measured in a font still loading, it would come out wrong: again once it's in
+  if (fd && !document.fonts.check(`18px ${fd}`)) document.fonts.load(`18px ${fd}`).then(() => { evenKey = ''; evenText(); });
+  const wins = [...document.querySelectorAll('.win')];
+  if (!wins.length) return;
+  const room = Math.min(...wins.map(w => w.clientWidth)) - 8;   // they're all one width; less the padding
+  const probe = document.createElement('span'); probe.className = 'val';
+  probe.style.cssText = 'position:absolute;visibility:hidden;max-width:none;white-space:nowrap;--vs:18px';
+  wins[0].appendChild(probe);
+  let widest = 1;
+  document.querySelectorAll('.knob').forEach(b => { for (const v of Object.keys(C[b.dataset.help] || {})) {
+    for (const w of optName(b.dataset.help, v).split(' ')) { probe.textContent = w; widest = Math.max(widest, probe.scrollWidth); } } });   // the longest word: long names wrap
+  probe.remove();
+  st.setProperty('--vs', Math.max(11, Math.min(18, Math.floor(18 * room / widest))) + 'px');
+  const items = [...document.querySelectorAll('.drum .item')];
+  st.setProperty('--ds', '22px');
+  const dw = Math.max(1, ...items.map(it => it.scrollWidth));
+  st.setProperty('--ds', Math.max(12, Math.min(22, Math.floor(22 * 116 / dw))) + 'px');
+}
 if (document.fonts) document.fonts.ready.then(() => fit());
 if (window.ResizeObserver) new ResizeObserver(() => fit()).observe(document.documentElement);
 function render() {
   wear();
   requestAnimationFrame(fit);
   renderOpts();
+  evenText();
   document.querySelectorAll('.knob').forEach(b => {
     const kind = b.dataset.help, o = Object.keys(C[kind]), i = Math.max(0, o.indexOf(S[kind]));
     const val = b.querySelector('.val'); val.textContent = optName(kind, S[kind]);
-    for (let px = 18; px >= 12; px--) { val.style.fontSize = px + 'px'; if (val.scrollWidth <= val.clientWidth) break; }   // long names shrink to fit
     b.querySelector('.wheel').style.backgroundPosition = `0 ${i * 5}px, 0 0`;   // the ridges roll as it turns
     b.setAttribute('aria-label', `${KNOB_HELP[kind]}: ${S[kind]}`);
   });
