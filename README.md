@@ -275,6 +275,57 @@ Fonts are bundled or already on your system; nothing is downloaded at run time. 
 apply within a second. In a browser, URL parameters (`?theme=sleeve&rain=jukebox&transition=stamp`) win over
 your settings, and `?cycle=10` steps through every theme. The background slider sets how busy any background is (0 stills it).
 
+### How the themes are built
+
+A few rules every theme follows:
+
+- **One whole look, not a skin.** Colors, two fonts (one for titles, one for the typing), a background, a
+  texture over everything, film grain, and the way cards arrive and leave are chosen together. You can swap any
+  one part; the bundle is the starting point.
+- **Borrowed from real things, copied from none.** Each look starts from a real object or medium (a blueprint, a
+  risograph, an oscilloscope, a chalkboard) and is drawn from scratch: nothing is a copy of a game, a film or a
+  show. The first eight follow the palettes and personalities of SUB/WAVE's themes (see License & credits).
+- **The cards come first.** The background is a backdrop for the tool calls, so every background stays darker or
+  quieter than the cards, and nothing in it competes with the text you're meant to read.
+- **Motion only where it means something.** A background moves as fast as its subject does and no faster: a
+  record turns, a page sets line by line, a sun print develops slowly. That's why the frame rates below differ.
+- **Fonts ship with glitchwall.** Every font is bundled under the SIL Open Font License, so a theme looks the same
+  on every PC and nothing is downloaded at run time.
+- **Safe to stream.** No real names or accounts in any background, and every number on screen is made up.
+- **Four options per background.** Each background has exactly four settings in the settings window: enough to
+  make it yours, and few enough to fit in one row and stay polished.
+
+#### Theme specs
+
+The frame rate is how often the background redraws. Cards are separate: they redraw at 60 fps only while one
+arrives, leaves or slides (about half a second), and otherwise only when text changes. When nothing moves,
+nothing is drawn at all.
+
+| Theme | Background | Titles / typing fonts | Texture, grain | Background fps | Why that rate |
+| --- | --- | --- | --- | --- | --- |
+| `phosphor` | `pixel` bit-glyph rain | VT323 / IBM Plex Mono | CRT tube, 0.06 | 30 | falling glyphs need smooth motion to read as rain |
+| `drafting` | `draft` drawing grid | Chakra Petch / IBM Plex Mono | none, 0.08 | 30 | there's always a line being ruled; slower looks jerky |
+| `newsprint` · `nightprint` | `broadsheet` | Gelasio / DM Mono | none, 0.4 · 0.25 | 15 while setting, 1 while the page holds | type setting is steady, not fast; a finished page only needs its clock |
+| `neon` | `signs` in the rain | Doto / Fira Code | scan lines, 0.12 | 24 | rain and tube flicker; film rate is enough for both |
+| `fieldops` | `topo` field map | Saira Stencil One / Overpass Mono | none, 0.08 | 24 | the route draws itself slowly |
+| `duplicator` | `halftone` | DM Mono / DM Mono | halftone, 0.08 | 12 (0 when the drift is still) | the field breathes; more frames add nothing |
+| `sleeve` | `record` | Instrument Serif / Courier Prime | none, 0.4 | 30 (0 when the record rests) | a turning label shows every dropped frame |
+| `matrix` | `cascade` katakana at three depths | Departure Mono | scan lines, none | 30 | fast falling columns |
+| `amber` | `radar` | Departure Mono | scan lines, none | 30 | the sweep is the whole point |
+| `synthwave` | `grid` | Departure Mono | scan lines, none | 30 | the grid rolls toward you |
+| `msdos` | `textmode` DOS desktop | VT323 | scan lines, none | 12 while the mouse moves, 1 otherwise | only the pointer and the clock change |
+| `bsod` | `stop` screen | VT323 | scan lines, none | about 2 (the cursor blink), 0 with no blink | a still screen with a blinking cursor |
+| `cyanotype` | `sunprint` ferns and leaves | Instrument Serif / IBM Plex Mono | none, 0.35 | 15 | a print develops slowly |
+| `notebook` | `notebook` ruled paper | Caveat | none, 0.22 | 30 while a doodle is drawn, 0 after | a pencil stroke needs smooth motion; a finished doodle needs none |
+| `oracle` | `oracle` ring of data | Chakra Petch / DM Mono | none, 0.07 | 20 | strokes redraw constantly but slowly |
+| `orb` | `orb` the machine in its hall | Chakra Petch / DM Mono | none, 0.07 | 20 | the busiest scene; lights flicker and the sphere turns slowly |
+| `scope` | `scope` oscilloscope | Overpass Mono / IBM Plex Mono | CRT tube, 0.05 | 30 | a sweeping beam must look continuous |
+| `chalkboard` | `chalk` blackboard | Caveat | none, 0.18 | 20 while writing or wiping | handwriting pace |
+
+Every background drops to 0 fps when the background slider is at 0. The eight extra backgrounds belong to no
+theme, for mixing your own: `code` and `stars` (30 fps), `snow` (30), `jukebox` and `starburst` (20), `static`,
+`testcard` and `print` (15).
+
 ### Up close
 
 Full-size shots (click one to open it). They come from ambient mode, so every session in them is made up.
@@ -463,8 +514,8 @@ different things.
 
 | | What it draws | CPU | Memory | Open source | Where the number comes from |
 |---|---|---|---|---|---|
-| **glitchwall** (default, WebView2) | animated web page | 34% of one core (2.2% of a 16-core CPU) | 699 MB | yes | our test, below |
-| **glitchwall** (native, opt-in) | Direct2D, no browser | 5% of one core (0.3%) | 171 MB | yes | our test, below |
+| **glitchwall** (Windows default: native) | Direct2D, no browser | 6.5% of one core (0.4% of a 16-core CPU) | 153 MB | yes | our test, below |
+| **glitchwall** (web page in WebView2) | animated web page | 34% of one core (2.2%) | 699 MB | yes | our test, below |
 | [Lively Wallpaper](https://github.com/rocksdanister/lively) | simple web wallpaper (rain) | under 0.3% of the whole CPU | about 245 MB | yes | [one reviewer](https://www.windowscentral.com/software-apps/i-finally-tried-lively-wallpaper-to-animate-my-desktop-its-a-dream-for-customization) |
 | Lively Wallpaper | a YouTube page as wallpaper | about 4.5% of the whole CPU | about 800 MB | yes | same reviewer |
 | Wallpaper Engine | 60 fps video, hardware decoding | 1-2% of the whole CPU, ~40% GPU | not given | no | [forum post](https://steamcommunity.com/app/431960/discussions/2/1696045708644625403) |
@@ -472,23 +523,23 @@ different things.
 | [Hidamari](https://github.com/jeffshee/hidamari) (Linux) | video, Intel integrated GPU | about 1% CPU, 4% GPU | not given | yes | [article author](https://ubuntuhandbook.org/index.php/2024/10/video-animated-wallpaper-ubuntu/) |
 | macOS aerial wallpapers | built-in video | 20-100% CPU when it misbehaves | up to GBs | no | [bug reports](https://discussions.apple.com/thread/255180158) |
 
-Our test: a 16-core Windows 11 desktop, matrix theme, ambient mode, every glitchwall process counted, all
-screens awake, 30 seconds (2026-11-22). Matrix is one of the busier themes; an earlier test of the default phosphor
-theme, measured a little differently, came out at about half as much.
+Our test: a 16-core Windows 11 desktop, matrix theme, ambient mode, every glitchwall process counted (the
+feed and the renderer), the desktop showing, 30 seconds. Native: three runs of 6.2-6.7% (2026-11-23); the
+default phosphor theme came out the same, and orb, the busiest background, at 10.3% of one core and 172 MB.
+The web page figure is from 2026-11-22.
 
-**Why the default is heavier than a video wallpaper.** A video wallpaper hands its work to the graphics
+**What the native renderer does.** On Windows, glitchwall draws every background with Direct2D straight from
+a small Rust program, with no browser in between: about a fifth of the CPU and a fifth of the memory of the
+web page. If the renderer is missing, it falls back to the page (`glitchwall config --renderer web` picks the
+page on purpose). On macOS, Linux, OBS and Wallpaper Engine, the web page is the way to run glitchwall.
+
+**Why the web page is heavier than a video wallpaper.** A video wallpaper hands its work to the graphics
 card's video decoder, so the CPU barely notices. glitchwall draws every frame live (falling glyphs, cards,
-text) in WebView2, which is a full copy of the Edge browser: a browser process, a GPU process and a
-renderer for each page. That's where most of the memory goes. Lively's web wallpapers use the same engine and
-land in the same range of memory. In return, glitchwall caps frame rates per background (10-30 fps, 60 only
+text), and the page does it in WebView2, a full copy of the Edge browser: a browser process, a GPU process
+and a renderer for each page. That's where most of its memory goes; Lively's web wallpapers use the same
+engine and land in the same range. Either way, glitchwall caps frame rates per background (10-30 fps, 60 only
 while a card slides in), and sleeps entirely while a screen is covered, fullscreen or locked, like Lively and
 Wallpaper Engine do.
-
-**What the native renderer changes.** It draws the same backgrounds with Direct2D straight from a small Rust
-program, with no browser in between: about a seventh of the CPU and a quarter of the memory in the test
-above. It's opt-in (`glitchwall config --renderer native`) and still on a development branch, not in a
-release yet. Windows only; the web page stays the way to run glitchwall on macOS, Linux, OBS and Wallpaper
-Engine.
 
 ## ⚠️ Disclaimers (please read)
 
@@ -527,6 +578,62 @@ a web page can show it. `glitchwall export DIR` writes the page and its `config.
 wallpaper plugin (Linux), a browser window in kiosk mode, or an OBS **browser source** to put your agent on
 stream as an overlay (`glitchwall pause` still clears it instantly). Only glitchwall's own windows are tested so far;
 reports welcome.
+
+## How glitchwall got here
+
+**The idea (21 November 2026).** It started as `agent-live-wallpaper`: a wallpaper that shows what a coding agent is
+doing, live, as it works. A small local feed follows the agent's logs, pairs each call with its output, masks
+secrets, and serves it to a web page behind the desktop icons. It was renamed glitchwall the same day, got a
+standalone exe, and grew from 8 looks to 15, then the oracle.
+
+**Making it safe.** A wallpaper that shows your terminal is only useful if it never shows a secret. Three review
+passes went after the leaks: user names and passwords in paths and URLs, bursts of old calls on start, a race in
+saving settings, a stale access key. Later a security pass narrowed which pages may talk to the feed and taught
+the redactor more secret shapes. A pause switch blanks everything at once, for going live.
+
+**Owning the desktop.** glitchwall first leaned on Lively Wallpaper to sit behind the icons. It then got a desktop
+host of its own: one window per screen, behind the icons, taking no mouse input, snapping back if Windows moves it,
+and coming back by itself if the browser engine crashes. Lively support was removed.
+
+**The settings window, five times over.** It was a cipher machine, then green phosphor lamps on the same case, then
+a rotary drum of themes, then a green phosphor terminal. One version showed the settings as bars around the edges
+of the screen with the real wallpaper live in the middle. That hit a wall: WebView2 paints over any hole cut in its
+window, so the middle stayed grey. After proving it against a plain Win32 window, that version was dropped for a
+small window that fades away while you hold a slider, so the real wallpaper is the preview.
+
+**The cost problem.** Every theme now had its own animated background, and it showed in Task Manager. The page ran
+in WebView2, a full copy of the Edge browser, and drew at the monitor's refresh rate. Capping frame rates and
+sleeping while the screen is covered helped, but measured honestly it still took about a third of a CPU core and
+700 MB, far more than a wallpaper should.
+
+**Going native.** A prototype drew the phosphor theme with Direct2D, first in C#, then in Rust, and measured
+it against WebView2: about 3.5% CPU and 63 MB against 18% and 330 MB. That settled it. The plan:
+
+1. Put every theme, background, font and transition in one file (`looks.js`) that both the page and the new
+   renderer read, so a theme is defined once.
+2. A small Rust renderer (`glitchwall-render`) that reads the same feed as the page and draws behind the icons.
+3. Port the backgrounds one at a time, each checked against the page side by side.
+4. Make native the default on Windows, and keep the page for OBS, Wallpaper Engine, macOS and Linux.
+
+**The hurdles on the way:**
+
+- **Toolchain.** Newer versions of Rust's `windows` crate need extra build tools: either a large download or tools
+  that aren't free software. glitchwall stays on version 0.58, the last that builds with the stock toolchain.
+- **Neon letters.** The neon signs glow along the shape of each letter, which a browser does with a blurred
+  shadow. Natively, each letter is turned into its outline, drawn into its own small picture, blurred twice for the
+  glow and lit with a bright core.
+- **Chalk.** A chalkboard has to remember everything written on it until it's wiped. Native chalk draws into a
+  second surface that keeps the writing, and wipes it the way an eraser would.
+- **The orb.** The busiest scene: a ribbed sphere, a triangle-net cage, hundreds of red lights and racks fading
+  into haze. It's drawn as layers made once, plus lights drawn in batches each frame.
+- **Display scaling, docked cards, stacked cards**: each had to match the page exactly.
+- **Measuring honestly.** Early numbers came out impossibly low because a window covered the screen and glitchwall
+  had (correctly) gone to sleep. Every number in this README is taken with the desktop showing.
+
+**The payoff (23 November 2026).** All 27 backgrounds run natively, the 18 theme ones with four options each, and native is the
+default on Windows. With the same looks, glitchwall now uses 6.5% of one core and 153 MB, down from 34% and 699 MB:
+about a fifth of the CPU and a fifth of the memory (see [How it compares](#how-it-compares-with-other-live-wallpapers)).
+The web page is still there, unchanged, for streaming through OBS and for every other platform.
 
 ## Development
 

@@ -8,23 +8,37 @@
   /* A green phosphor terminal: glowing green lines and type on black glass, amber for anything paused. All fonts bundled. */
   @font-face { font-family:'Departure Mono'; src:url('DepartureMono-Regular.otf') format('opentype'); font-display:block; }
   @font-face { font-family:'VT323'; src:url('fonts/VT323-Regular.ttf'); font-display:block; }
+  @font-face { font-family:'IBM Plex Mono'; src:url('fonts/IBMPlexMono-Regular.ttf'); font-display:block; }
+  @font-face { font-family:'Chakra Petch'; src:url('fonts/ChakraPetch-Regular.ttf'); font-display:block; }
+  @font-face { font-family:'Doto'; src:url('fonts/Doto.ttf'); font-weight:100 900; font-display:block; }
+  @font-face { font-family:'Saira Stencil One'; src:url('fonts/SairaStencilOne-Regular.ttf'); font-display:block; }
+  @font-face { font-family:'Instrument Serif'; src:url('fonts/InstrumentSerif-Regular.ttf'); font-display:block; }
+  @font-face { font-family:'Courier Prime'; src:url('fonts/CourierPrime-Regular.ttf'); font-display:block; }
+  @font-face { font-family:'DM Mono'; src:url('fonts/DMMono-Regular.ttf'); font-display:block; }
+  @font-face { font-family:'Fira Code'; src:url('fonts/FiraCode.ttf'); font-weight:300 700; font-display:block; }
+  @font-face { font-family:'Overpass Mono'; src:url('fonts/OverpassMono.ttf'); font-weight:300 700; font-display:block; }
+  @font-face { font-family:'Gelasio'; src:url('fonts/Gelasio.ttf'); font-weight:400 700; font-display:block; }
+  @font-face { font-family:'Caveat'; src:url('fonts/Caveat.ttf'); font-weight:400 700; font-display:block; }
+  @font-face { font-family:'Cascadia Mono'; src:url('fonts/CascadiaMono.ttf'); font-weight:200 700; font-display:block; }
+  @font-face { font-family:'Inconsolata'; src:url('fonts/Inconsolata.ttf'); font-weight:200 900; font-display:block; }
+  @font-face { font-family:'DotGothic16'; src:url('fonts/DotGothic16-Rain.ttf'); font-display:block; }
   :root {
-    --bg:#010401; --glass:#031008; --ph:#5dff7a; --ph-hi:#c8ffd0; --ph-dim:#2c8f41; --ph-line:rgba(93,255,122,.3); --ph-faint:rgba(93,255,122,.12);
-    --glow:0 0 5px rgba(93,255,122,.6); --amber:#ffb000; --red:#ff5a4a;
+    --bg:#010401; --glass:#031008; --ph:#5dff7a; --ph-hi:#c8ffd0; --ph-dim:#2c8f41; --ph-line:rgba(var(--ph-rgb),.3); --ph-faint:rgba(var(--ph-rgb),.12);
+    --glow:0 0 5px rgba(var(--ph-rgb),.6); --ph-rgb:93,255,122; --amber:#ffb000; --red:#ff5a4a;
   }
   * { box-sizing:border-box; }
-  html, body { margin:0; height:100%; background:var(--bg); color:var(--ph-dim); font:12px/1.4 'Departure Mono', Consolas, monospace; }
-  body { display:grid; grid-template-rows:auto minmax(0,1fr) auto; height:100vh; overflow:hidden;
-         background:radial-gradient(120% 100% at 50% 35%, #03140a, var(--bg) 75%); }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--ph-dim); font:var(--fmw, 400) calc(12px * var(--fms, 1))/1.4 var(--fm, 'Departure Mono', Consolas, monospace); }
+  body { display:grid; grid-template-rows:auto minmax(0,1fr) auto; height:calc(100vh / var(--z, 1)); overflow:hidden;
+         background:radial-gradient(120% 100% at 50% 35%, var(--glass), var(--bg) 75%); }
   body::after { content:''; position:fixed; inset:0; pointer-events:none; z-index:50;   /* scanlines over the whole tube */
-                background:repeating-linear-gradient(transparent 0 2px, rgba(0,0,0,.18) 2px 3px); }
+                background:repeating-linear-gradient(transparent 0 2px, var(--scan, rgba(0,0,0,.18)) 2px 3px); }
   button { font:inherit; color:inherit; }
   .tag { font-size:10px; letter-spacing:.22em; color:var(--ph); text-shadow:var(--glow); }
   .tag::before { content:'> '; color:var(--ph-dim); text-shadow:none; }
 
   /* ---------- header: name, status lamps, sound, the pause key */
   header { display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; padding:10px 14px; border-bottom:1px solid var(--ph-line); }
-  .brand { font:21px/1 'Departure Mono', monospace; letter-spacing:.4em; color:var(--ph); text-shadow:var(--glow), 0 0 16px rgba(93,255,122,.3); }
+  .brand { font:var(--fmw, 400) calc(21px * var(--fms, 1))/1 var(--fm, 'Departure Mono', Consolas, monospace); letter-spacing:.4em; color:var(--ph); text-shadow:var(--glow), 0 0 16px rgba(var(--ph-rgb),.3); }
   .brand small { display:block; font-size:9px; letter-spacing:.3em; color:var(--ph-dim); margin-top:5px; text-shadow:none; }
   .brand .cur { display:inline-block; width:.55em; height:.9em; margin-left:.1em; vertical-align:-2px; background:var(--ph); box-shadow:var(--glow); }
   .brand .cur.off { opacity:0; }
@@ -35,7 +49,7 @@
   .led.a { background:var(--amber); border-color:var(--amber); box-shadow:0 0 6px var(--amber); }
   .led.r { background:var(--red); border-color:var(--red); box-shadow:0 0 6px var(--red); }
   .grow { flex:1; }
-  #snd { display:flex; align-items:center; gap:7px; background:none; border:1px solid var(--ph-line); cursor:pointer; font-size:10px; letter-spacing:.15em; padding:6px 10px; border-radius:3px; }
+  #snd, #ask { display:flex; align-items:center; gap:7px; background:none; border:1px solid var(--ph-line); cursor:pointer; font-size:10px; letter-spacing:.15em; padding:6px 10px; border-radius:3px; }
   #resetall { display:flex; align-items:center; gap:7px; background:none; border:1px solid var(--ph-line); cursor:pointer; font-size:10px; letter-spacing:.15em; padding:6px 10px; border-radius:3px; }
   #resetall.armed { color:var(--amber); border-color:var(--amber); box-shadow:0 0 8px rgba(255,176,0,.5); text-shadow:0 0 5px rgba(255,176,0,.6); }
   #resetall:focus-visible { outline:1px dashed var(--ph-hi); outline-offset:3px; }
@@ -49,7 +63,7 @@
   #pause.on .t { color:var(--amber); text-shadow:0 0 5px rgba(255,176,0,.6); }
 
   /* one compact column: the wallpaper itself is the preview, so this window only needs the controls */
-  main { display:flex; flex-direction:column; gap:10px; padding:10px 12px; min-height:0; overflow:auto; }
+  main { display:flex; flex-direction:column; gap:10px; padding:10px 12px; min-height:0; overflow:hidden; }   /* never scrolls: fit() shrinks everything instead */
   .side { display:flex; flex-direction:column; gap:10px; min-width:0; }
   /* the readout keeps one height whatever it says, so nothing below it ever jumps */
   #readout { order:-1; height:112px; }
@@ -58,14 +72,13 @@
   .drum.still .item { transition:none; }   /* the first placement: straight into position, no pile-up */
   footer { gap:4px 14px !important; padding:6px 14px !important; }
   main > *, .side > * { flex-shrink:0; }   /* never squash a module: scroll instead */
-  #motion { flex:1; min-height:0; display:flex; flex-direction:column; }
-  .mod { position:relative; min-width:0; border:1px solid var(--ph-line); border-radius:4px; padding:24px 12px 12px; background:rgba(3,16,8,.55); }
+  .mod { position:relative; min-width:0; border:1px solid var(--ph-line); border-radius:4px; padding:24px 12px 12px; background:var(--mod, rgba(3,16,8,.55)); }
   .mod > h2 { position:absolute; top:7px; left:11px; margin:0; font-weight:400; }
   /* a module's DEFAULT key, top right; lit only when something in it differs from the default */
   .reset { position:absolute; top:4px; right:8px; padding:1px 7px; font-size:9px; letter-spacing:.14em; cursor:pointer;
            background:none; border:1px solid var(--ph-line); border-radius:2px; color:var(--ph-dim); opacity:.45; }
   .reset.live { opacity:1; color:var(--ph); border-color:var(--ph); text-shadow:var(--glow); }
-  .reset.live:hover { background:rgba(93,255,122,.12); }
+  .reset.live:hover { background:rgba(var(--ph-rgb),.12); }
   .reset:focus-visible { outline:1px dashed var(--ph-hi); outline-offset:2px; }
   /* a control that differs from its default gets a mark by its name */
   .changed .name::after { content:' *'; color:var(--ph); text-shadow:var(--glow); }
@@ -73,9 +86,9 @@
 
   /* the readout: what the control under the mouse or keyboard does */
   #readout { min-width:0; min-height:0; overflow:hidden; color:var(--ph); text-shadow:var(--glow); }
-  #readout .l1 { font:22px/1 'VT323', monospace; letter-spacing:.08em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #readout .l1 { font:var(--fdw, 400) calc(22px * var(--fds, 1))/1 var(--fd, 'VT323', monospace); letter-spacing:.08em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   #readout .l1::before { content:'$ '; color:var(--ph-dim); }
-  #readout .l2 { font:18px/1.15 'VT323', monospace; margin-top:7px; color:var(--ph-dim); text-shadow:none; overflow-wrap:anywhere; }
+  #readout .l2 { font:var(--fdw, 400) calc(18px * var(--fds, 1))/1.15 var(--fd, 'VT323', monospace); margin-top:7px; color:var(--ph-dim); text-shadow:none; overflow-wrap:anywhere; }
   #readout .err { color:var(--red); }
 
   /* switches: a slide toggle that lights when on */
@@ -90,15 +103,17 @@
   .sw.on .name { color:var(--ph); text-shadow:var(--glow); }
   .labelrow { display:flex; gap:10px; align-items:center; margin-top:10px; }
   .labelrow label { font-size:9px; letter-spacing:.15em; }
-  #label { flex:1; min-width:0; padding:3px 8px; font:19px 'VT323', monospace; color:var(--ph); background:transparent; border:1px solid var(--ph-line); border-radius:2px; outline:none; text-shadow:var(--glow); }
+  #label { flex:1; min-width:0; padding:3px 8px; font:var(--fdw, 400) calc(19px * var(--fds, 1)) var(--fd, 'VT323', monospace); color:var(--ph); background:transparent; border:1px solid var(--ph-line); border-radius:2px; outline:none; text-shadow:var(--glow); }
   #label:focus { border-color:var(--ph); box-shadow:var(--glow); }
 
   /* selectors: the setting in a window, ridges beside it that roll as it turns */
   .knobs { display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:5px; }
+  #optknobs { grid-template-columns:repeat(4, minmax(0,1fr)); }
+  #opts[hidden] { display:none; }
   .knob { display:flex; flex-direction:column; align-items:center; gap:6px; background:none; border:0; padding:3px 0; cursor:ns-resize; border-radius:3px; min-width:0; }
   .rotor { display:flex; gap:3px; width:100%; height:44px; }
   .win { flex:1; min-width:0; display:grid; place-items:center; overflow:hidden; padding:0 3px; border:1px solid var(--ph-line); border-radius:2px; background:var(--glass); }
-  .win .val { display:block; max-width:100%; text-align:center; font:18px 'VT323', monospace; color:var(--ph); text-shadow:var(--glow); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .win .val { display:block; max-width:100%; text-align:center; font:var(--fdw, 400) calc(18px * var(--fds, 1)) var(--fd, 'VT323', monospace); color:var(--ph); text-shadow:var(--glow); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .wheel { width:8px; border:1px solid var(--ph-dim); border-radius:2px; transition:background-position .18s;
            background:repeating-linear-gradient(180deg, var(--ph-dim) 0 1px, transparent 1px 5px); }
   .knob .name { font-size:9px; letter-spacing:.12em; }
@@ -107,32 +122,32 @@
   .drum { position:relative; height:54px; overflow:hidden; cursor:ew-resize; touch-action:none; border:1px solid var(--ph-line); border-radius:2px; background:var(--glass); }
   .drum .window { position:absolute; left:50%; top:6px; bottom:6px; width:132px; margin-left:-66px; border:1px solid var(--ph); box-shadow:var(--glow); }
   .drum .item { position:absolute; left:50%; top:0; height:100%; width:124px; margin-left:-62px; display:grid; place-items:center;
-                font:22px 'VT323', monospace; letter-spacing:.06em; color:var(--ph-dim); white-space:nowrap; transition:transform .22s, opacity .22s; }
+                font:var(--fdw, 400) calc(22px * var(--fds, 1)) var(--fd, 'VT323', monospace); letter-spacing:.06em; color:var(--ph-dim); white-space:nowrap; transition:transform .22s, opacity .22s; }
   .drum .item.sel { color:var(--ph); text-shadow:var(--glow); }
   .drum::after { content:''; position:absolute; inset:0; pointer-events:none; background:linear-gradient(90deg, var(--glass), transparent 32%, transparent 68%, var(--glass)); }
-  .drumfoot { display:flex; justify-content:space-between; margin-top:6px; font:16px/1 'VT323', monospace; }
+  .drumfoot { display:flex; justify-content:space-between; margin-top:6px; font:var(--fdw, 400) calc(16px * var(--fds, 1))/1 var(--fd, 'VT323', monospace); }
 
-  /* faders, lying flat, spread over the module's height */
-  .faders { flex:1; display:flex; flex-direction:column; justify-content:space-evenly; gap:4px; }
-  .fader { display:grid; grid-template-columns:64px minmax(0,1fr) 34px; align-items:center; gap:10px; padding:1px 3px; border-radius:3px; }
+  /* faders, lying flat, two to a row, so the module stays short */
+  .faders { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:6px 16px; }
+  .fader { display:grid; grid-template-columns:50px minmax(0,1fr) 30px; align-items:center; gap:7px; padding:1px 3px; border-radius:3px; }
   .fader .name { font-size:9px; letter-spacing:.12em; }
-  .fader .val { text-align:center; font:18px/1.15 'VT323', monospace; color:var(--ph); text-shadow:var(--glow); border:1px solid var(--ph-line); border-radius:2px; }
+  .fader .val { text-align:center; font:var(--fdw, 400) calc(18px * var(--fds, 1))/1.15 var(--fd, 'VT323', monospace); color:var(--ph); text-shadow:var(--glow); border:1px solid var(--ph-line); border-radius:2px; }
   .track { position:relative; height:20px; touch-action:none; cursor:ew-resize; }
   .track .ticks { position:absolute; inset:0 4px; background:repeating-linear-gradient(90deg, var(--ph-faint) 0 1px, transparent 1px 10%);
                   -webkit-mask:linear-gradient(#000 0 5px, transparent 5px 15px, #000 15px); mask:linear-gradient(#000 0 5px, transparent 5px 15px, #000 15px); }
   .track .slotv { position:absolute; left:4px; right:4px; top:9px; height:2px; background:var(--ph-dim); }
   .track .capf { position:absolute; top:2px; width:10px; height:16px; margin-left:-5px; background:var(--ph); border-radius:1px; box-shadow:0 0 6px var(--ph); }
 
-  .sw:focus-visible, .knob:focus-visible, .fader:focus-visible, #pause:focus-visible, #snd:focus-visible, .drum:focus-visible { outline:1px dashed var(--ph-hi); outline-offset:3px; }
+  .sw:focus-visible, .knob:focus-visible, .fader:focus-visible, #pause:focus-visible, #snd:focus-visible, #ask:focus-visible, .drum:focus-visible { outline:1px dashed var(--ph-hi); outline-offset:3px; }
   .knob:hover .win, .fader:hover .val, .sw:hover .slot { border-color:var(--ph); }
   :focus { outline:none; }
 
   /* the key legend */
   footer { display:flex; flex-wrap:wrap; gap:6px 18px; padding:7px 16px; border-top:1px solid var(--ph-line); font-size:10px; letter-spacing:.05em; }
-  kbd { display:inline-block; min-width:18px; padding:0 4px; margin-right:4px; text-align:center; font:10px/16px 'Departure Mono', monospace; color:var(--ph); border:1px solid var(--ph-dim); border-radius:2px; }
+  kbd { display:inline-block; min-width:18px; padding:0 4px; margin-right:4px; text-align:center; font:var(--fmw, 400) calc(10px * var(--fms, 1))/16px var(--fm, 'Departure Mono', Consolas, monospace); color:var(--ph); border:1px solid var(--ph-dim); border-radius:2px; }
 
 
-  #resetall:hover, #snd:hover { border-color:var(--ph); color:var(--ph); }
+  #resetall:hover, #snd:hover, #ask:hover { border-color:var(--ph); color:var(--ph); }
 </style>
 </head>
 <body>
@@ -144,6 +159,7 @@
   </div>
   <span class="grow"></span>
   <button id="resetall" data-help="resetall"><span class="led" id="led-reset"></span><span id="resetall-t">RESET ALL</span></button>
+  <button id="ask" data-help="ask">+ THEME</button>
   <button id="snd" data-help="sound"><span class="led" id="led-snd"></span>SOUND</button>
   <button id="pause" data-help="pause"><span class="cap">P</span><span class="t"><b id="pause-t">PAUSE</b><small id="pause-s">STREAM-SAFE</small></span></button>
 </header>
@@ -156,6 +172,7 @@
       <div class="drumfoot"><span>&lt; TURN &gt;</span><span id="drumpos">--</span></div>
     </div>
     <div class="mod" id="motion"><h2 class="tag">MOTION</h2><button class="reset" data-group="motion" data-help="reset:motion">DEFAULT</button><div class="faders" id="faders"></div></div>
+    <div class="mod" id="opts" hidden><h2 class="tag" id="opts-t">OPTIONS</h2><button class="reset" data-group="options" data-help="reset:options">DEFAULT</button><div class="knobs" id="optknobs"></div></div>
   </div>
 
   <div class="mod" id="readout" aria-live="polite"><div class="l1">CONNECTING…</div><div class="l2"></div></div>
@@ -175,6 +192,7 @@
   <span><kbd>M</kbd>sound</span>
 </footer>
 
+<script src="looks.js"></script>
 <script>
 const KEY = decodeURIComponent(location.hash.startsWith('#key=') ? location.hash.slice(5) : '');
 const API = `/settings?key=${encodeURIComponent(KEY)}`;
@@ -186,6 +204,7 @@ const FADERS = {
   cards: ['CARDS', 'How many cards share the screen at once.'],
   intensity: ['MOTION', 'How busy the background is: 0 holds it still, 10 is full motion.'],
   glass: ['GLASS', 'Card opacity: low lets the background show through, high is solid.'],
+  grain: ['GRAIN', 'Film grain over everything: 0 is none, 5 is what the theme comes with, 10 is double.'],
 };
 const SWITCHES = {
   commands_only: ['CALLS ONLY', 'Show each call, never its output.'],
@@ -197,11 +216,12 @@ const MODE_SHORT = { live: 'LIVE', ambient: 'AMBIENT', art: 'ART' };
 let S = {}, C = {}, D = {}, focusHelp = null, pending = {}, timer = null, busy = false, cleared = false;
 // what each DEFAULT key puts back. Mode stays as it is: switching to live would start showing real tool calls
 const GROUPS = { select: ['palette', 'rain', 'font', 'transition'], motion: Object.keys(FADERS),
-                 privacy: [...Object.keys(SWITCHES), 'label'] };
+                 privacy: [...Object.keys(SWITCHES), 'label'], options: [] };
 const THEME_OWNS = [...GROUPS.select, ...GROUPS.motion];   // a new theme starts clean: no tweaks carried over
 const GROUP_HELP = {
   select: ['COLORS · BACKDROP · FONT · ARRIVAL', 'back to what the theme comes with. Mode stays as it is.'],
-  motion: ['TYPING · LINGER · CARDS · MOTION · GLASS', 'back to the standard values.'],
+  motion: ['TYPING · LINGER · CARDS · MOTION · GLASS · GRAIN', 'back to the standard values.'],
+  options: ['OPTIONS', 'back to how the background comes.'],
   privacy: ['CALLS ONLY · MASKS · LABEL', 'back to the safe defaults: user name and emails masked, the stock label.'],
 };
 const differs = k => D[k] !== undefined && S[k] !== D[k];
@@ -239,6 +259,7 @@ function help(h) {
   const [kind, extra] = h.split(':');
   if (kind === 'pause') return say(S.paused ? 'PAUSE · ON' : 'PAUSE · OFF', S.paused ? 'The wallpaper shows nothing at all until you resume. Safe to stream.' : 'Press before you stream or share your screen: the wallpaper goes blank at once.');
   if (kind === 'sound') return say(`SOUND · ${muted ? 'OFF' : 'ON'}`, 'Clicks and clacks in this window as you turn and flip things. Never on the wallpaper. M toggles it.');
+  if (kind === 'ask') return say('REQUEST A THEME', 'Opens a short form on GitHub in your browser: describe the look you want. Nothing is sent from here.');
   if (kind === 'label') return say('CORNER LABEL', 'The text in the bottom-right corner of the wallpaper. Enter saves it.');
   if (kind === 'theme') { const v = extra || S.theme; return say(`THEME · ${v.toUpperCase()}${v === S.theme ? '' : '  (CLICK TO PICK)'}`,
                           optText('theme', v) + (cleared && v === S.theme ? ' Earlier tweaks cleared: the theme starts as it comes.' : '')); }
@@ -451,6 +472,8 @@ function build() {
   drum();
   $('pause').addEventListener('click', () => set('paused', !S.paused, true));
   $('snd').addEventListener('click', toggleSound);
+  $('ask').addEventListener('click', () => { const a = winApi(); if (a && a.request_theme) a.request_theme();
+    else window.open('https://github.com/marklesterb28/glitchwall/issues/new?template=theme-request.yml', '_blank', 'noopener'); });
   $('label').addEventListener('focus', () => { const a = winApi(); if (a && a.keep) a.keep(true); });
   $('label').addEventListener('blur', () => { const a = winApi(); if (a && a.keep) a.keep(false); });
   $('resetall').addEventListener('click', resetAll);
@@ -474,7 +497,60 @@ function build() {
   });
 }
 
+// the background's own options (the orb's spin, say): a module of selectors for whichever background is showing
+const activeBg = () => S.rain && S.rain !== 'theme' ? S.rain : (C.themeRain || {})[S.theme];
+let optsFor = null;
+function renderOpts() {
+  const bg = activeBg(), keys = (C.options || {})[bg] || [];
+  if (bg === optsFor) return;
+  optsFor = bg; GROUPS.options = keys;
+  const box = $('optknobs'); box.innerHTML = '';
+  const names = keys.map(k => k.slice(bg.length + 1).toUpperCase());
+  keys.forEach((k, i) => { KNOB_HELP[k] = `${bg.toUpperCase()} · ${names[i]}`; box.appendChild(knob(k, names[i])); });
+  $('opts').hidden = !keys.length;
+  $('opts-t').textContent = `${(bg || '').toUpperCase()} OPTIONS`;
+  GROUP_HELP.options = [names.join(' · '), 'back to how the background comes.'];
+}
+// the window wears the chosen colors: the theme's own, or the palette picked for it (phosphor is the window's own look)
+function wear() {
+  const L = window.LOOKS && window.LOOKS.themes, name = S.palette && S.palette !== 'theme' ? S.palette : S.theme;
+  const t = L && L[name], st = document.documentElement.style;
+  const keys = ['--bg', '--glass', '--ph', '--ph-hi', '--ph-dim', '--ph-rgb', '--amber', '--mod', '--glow', '--scan', '--fd', '--fds', '--fm', '--fms', '--fdw', '--fmw'];
+  if (!t || name === 'phosphor') { keys.forEach(k => st.removeProperty(k)); return; }
+  const hex = c => { const m = /^#?([0-9a-f]{6})/i.exec(c || ''); return m ? [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16)).join(',') : null; };
+  st.setProperty('--bg', t.bg); st.setProperty('--glass', t.surface || t.bg);
+  st.setProperty('--ph', t.ink); st.setProperty('--ph-hi', t.hi || t.ink); st.setProperty('--ph-dim', t.muted || t.ink);
+  st.setProperty('--ph-rgb', hex(t.ink) || '93,255,122'); st.setProperty('--amber', t.acc || '#ffb000');
+  // the orb's window is lit by its red lights (white would make it oracle's twin): red type, white for anything paused
+  if (name === 'orb') { st.setProperty('--ph', t.acc); st.setProperty('--ph-hi', '#ff9d94'); st.setProperty('--ph-dim', '#a8302a');
+                        st.setProperty('--ph-rgb', hex(t.acc)); st.setProperty('--amber', t.ink); }
+  // the theme's own fonts (or the one picked for it): its title face for the readouts, its typing face for the rest,
+  // sized by how big each draws next to the window's own (VT323 draws small: its scale is 1.4)
+  const F = window.LOOKS.fonts || {}, pick = S.font && S.font !== 'theme' && F[S.font];
+  const disp = pick || F[t.display], mono = pick || F[t.mono];
+  if (disp) { st.setProperty('--fd', disp.family); st.setProperty('--fds', String(Math.min(1.1, (disp.scale || 1) / 1.4))); st.setProperty('--fdw', String(disp.weight || 400)); }
+  if (mono) { st.setProperty('--fm', mono.family); st.setProperty('--fms', String(Math.min(1.2, mono.scale || 1))); st.setProperty('--fmw', String(mono.weight || 400)); }
+  // on paper: solid paper panels, no glow, barely-there scan lines
+  if (t.mode === 'light') { st.setProperty('--mod', t.surface || t.bg); st.setProperty('--glow', 'none'); st.setProperty('--scan', 'rgba(0,0,0,.04)'); }
+  else ['--mod', '--glow', '--scan'].forEach(k => st.removeProperty(k));
+}
+// never a scroll bar: when the window is too short for everything, shrink the whole page until it fits
+function fit() {
+  const root = document.documentElement, main = document.querySelector('main'), last = main.lastElementChild;
+  if (!last) return;
+  // what everything needs, in page pixels (the same at any zoom): header, main's content, footer
+  const need = document.querySelector('header').offsetHeight + (last.offsetTop + last.offsetHeight - main.offsetTop + 12)
+             + document.querySelector('footer').offsetHeight;
+  const z = Math.min(1, Math.floor(innerHeight / need * 1000) / 1000);
+  if (String(z) !== root.style.getPropertyValue('--z')) { root.style.zoom = z; root.style.setProperty('--z', z); }
+}
+addEventListener('resize', () => fit());
+if (document.fonts) document.fonts.ready.then(() => fit());
+if (window.ResizeObserver) new ResizeObserver(() => fit()).observe(document.documentElement);
 function render() {
+  wear();
+  requestAnimationFrame(fit);
+  renderOpts();
   document.querySelectorAll('.knob').forEach(b => {
     const kind = b.dataset.help, o = Object.keys(C[kind]), i = Math.max(0, o.indexOf(S[kind]));
     const val = b.querySelector('.val'); val.textContent = optName(kind, S[kind]);
@@ -517,7 +593,7 @@ document.fonts.ready.then(() => { if (S.theme) render(); });
 (async () => {
   if (!KEY) { say('NO KEY', 'Open this with: glitchwall settings', true); return; }
   try {
-    const d = await api(); S = d.settings; C = { ...d.choices, ranges: d.ranges }; D = d.defaults || {};
+    const d = await api(); S = d.settings; C = { ...d.choices, ranges: d.ranges, options: d.options, themeRain: d.theme_rain }; D = d.defaults || {};
     $('drum').classList.add('still'); build(); render(); led('feed', 'g'); help('theme');
     requestAnimationFrame(() => requestAnimationFrame(() => $('drum').classList.remove('still')));
   } catch (e) { led('feed', 'r'); say('FEED NOT REACHABLE', String(e.message || e), true); return; }

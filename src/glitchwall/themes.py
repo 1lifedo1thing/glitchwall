@@ -26,6 +26,10 @@ PALETTE_NOTES = {k: t["palette"] for k, t in LOOKS["themes"].items()}   # for bo
 PALETTES = {"theme": "the theme's own colors", **PALETTE_NOTES}
 TRANSITIONS = {"theme": "whatever the theme uses", **{k: a["about"] for k, a in LOOKS["transitions"].items()}}# a theme is a bundle; every part of it can be swapped on its own
 KINDS = {"theme": THEMES, "palette": PALETTES, "rain": RAINS, "font": FONTS, "transition": TRANSITIONS}
+THEME_RAIN = {k: t["rain"] for k, t in LOOKS["themes"].items()}   # each theme's own background
+# a background's own options (the orb's spin, say), as settings named <background>_<option>; the first choice is the default
+OPTIONS = {f"{bg}_{name}": choices for bg, b in LOOKS["backgrounds"].items() for name, choices in b.get("options", {}).items()}
+OPTIONS_OF = {bg: [f"{bg}_{name}" for name in b["options"]] for bg, b in LOOKS["backgrounds"].items() if b.get("options")}
 
 
 def look(s: dict) -> dict:

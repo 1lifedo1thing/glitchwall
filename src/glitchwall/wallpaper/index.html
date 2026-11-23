@@ -236,7 +236,7 @@ function applyLook() {
   set('glow', t.glow ? glowOf(t.ink) : 'none');
   set('ghost', t.glow ? glowOf(t.ink) : t.misreg ? `1.5px 1px 0 ${rgba(t.acc, .6)}` : 'none');
   set('errglow', t.glow ? `0 0 4px ${rgba(t.err, .6)}` : 'none');
-  set('scan', t.scan ?? .42); set('grain', t.grain || 0); set('dot', rgba(t.ink, .16));
+  set('scan', t.scan ?? .42); BASE_GRAIN = t.grain || 0; set('grain', grainOf()); set('dot', rgba(t.ink, .16));
   const mono = FONTS[f || t.mono], disp = FONTS[f || t.display];
   MONO = mono[0];
   set('font', mono[0]); set('mscale', mono[1]);
@@ -253,7 +253,9 @@ function applyLook() {
 function setAlpha() { document.documentElement.style.setProperty('--alpha', (T.solid ?? GLASS).toFixed(2)); }
 
 // ---------- settings (the sliders) ----------
-let TYPE_CPS = 240, RAIN = .5, LINGER = 7000, MAXCARDS = 4;
+let TYPE_CPS = 240, RAIN = .5, LINGER = 7000, MAXCARDS = 4, OPTS = {}, RNAME = '', BASE_GRAIN = 0, GRAIN_K = 1;
+// film grain: the theme's own times the slider (5 = as it comes); past 5 even a grainless theme gets some
+const grainOf = () => BASE_GRAIN * GRAIN_K + Math.max(0, GRAIN_K - 1) * .08;   // OPTS: each background's own options
 // ?still : for screenshots (headless browsers): no glitch, instant typing, cards stay
 const STILL = Q.has('still');
 if (STILL) { LINGER = 1e9; document.documentElement.classList.add('still'); }
@@ -264,6 +266,7 @@ function setProperty(name, val) {
   if (name === 'linger' && !STILL) LINGER = val * 1000;
   if (name === 'cards') MAXCARDS = val;
   if (name === 'glass') { GLASS = val / 100; setAlpha(); }
+  if (name === 'grain') { GRAIN_K = val / 5; document.documentElement.style.setProperty('--grain', grainOf()); }
 }
 
 // ---------- the background: one canvas, several styles ----------
@@ -280,14 +283,18 @@ const STYLES = {
   pixel: {
     scale: 3, init() { this.cols = Array.from({ length: Math.floor(W / 6) }, () => ({ y: rnd(-H, 0), v: rnd(4, 11) })); },
     frame(dt) {
-      cx.fillStyle = rgba(T.bg, .18); cx.fillRect(0, 0, W, H);
+      const o = OPTS.pixel || {}, k = { sparse: .6, dense: 2.6 }[o.density] || 1.4;
+      cx.fillStyle = rgba(T.bg, { short: .35, long: .08 }[o.trails] || .18); cx.fillRect(0, 0, W, H);
       this.cols.forEach((c, i) => {
         c.y += c.v * dt * 9;
         if (c.y > H + 40) { c.y = rnd(-60, 0); c.v = rnd(4, 11); }
-        if (Math.random() > RAIN * 1.4) return;
-        const x = i * 6, y = Math.floor(c.y / 9) * 9;
+        if (Math.random() > RAIN * k) return;
+        const x = i * 6, y0 = Math.floor(c.y / 9) * 9, y = o.flow === 'up' ? H - y0 - 7 : y0;
         cx.fillStyle = Math.random() < .08 ? T.hi : T.dim;
-        for (let r = 0; r < 7; r++) { const row = Math.random() * 32 | 0; for (let b = 0; b < 5; b++) if (row >> b & 1) cx.fillRect(x + b, y + r, 1, 1); }
+        for (let r = 0; r < 7; r++) {
+          const row = o.glyphs === 'blocks' ? 31 : o.glyphs === 'dots' ? (r % 2 ? 0 : 4) : Math.random() * 32 | 0;
+          for (let b = 0; b < 5; b++) if (row >> b & 1) cx.fillRect(x + b, y + r, 1, 1);
+        }
       });
     },
   },
@@ -377,15 +384,16 @@ const STYLES = {
     scale: 1, init() { this.ph = 0; },
     frame(dt) {
       if (!(dt = every(this, 30, dt))) return;
-      this.ph = (this.ph + dt * (.25 + RAIN * .9)) % 1;
+      const o = OPTS.grid || {};
+      if (o.scroll !== 'off') this.ph = (this.ph + dt * (.25 + RAIN * .9)) % 1;
       cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H);
       if (RAIN <= 0) return;
-      const y0 = H * .6, cxm = W / 2, a = .25 + RAIN * .5;
+      const y0 = H * ({ low: .7, high: .5 }[o.horizon] || .6), cxm = W / 2, a = .25 + RAIN * .5;
       const sr = Math.min(W, H) * .2, sy = y0 - sr * .35, gr = cx.createLinearGradient(0, sy - sr, 0, sy + sr);
       gr.addColorStop(0, T.acc); gr.addColorStop(1, T.ink);
-      cx.globalAlpha = a * .9; cx.fillStyle = gr; cx.beginPath(); cx.arc(cxm, sy, sr, 0, TAU); cx.fill();
+      if (o.sun !== 'off') { cx.globalAlpha = a * .9; cx.fillStyle = gr; cx.beginPath(); cx.arc(cxm, sy, sr, 0, TAU); cx.fill(); }
       cx.globalAlpha = 1; cx.fillStyle = T.bg;
-      for (let k = 0; k < 7; k++) { const yy = sy + sr * (.05 + k * .14), h = 1 + k * 1.6; cx.fillRect(cxm - sr, yy, sr * 2, h); }
+      if (o.sun !== 'off' && o.stripes !== 'off') for (let k = 0; k < 7; k++) { const yy = sy + sr * (.05 + k * .14), h = 1 + k * 1.6; cx.fillRect(cxm - sr, yy, sr * 2, h); }
       cx.fillRect(0, y0, W, H - y0);
       cx.strokeStyle = T.dim; cx.lineWidth = 1.2;
       const C = (H - y0) * .5;
@@ -402,16 +410,18 @@ const STYLES = {
   },
   // a drawing grid with construction lines, circles and boxes drafting themselves, dimensioned, then fading
   draft: {
-    scale: 1, G: 24,
+    scale: 1, G: 24, reinit: true,   // the grid and title block are drawn at init
     init() {
-      const G = this.G, o = this.grid = document.createElement('canvas'), g = o.getContext('2d');
+      const G = this.G, o = this.grid = document.createElement('canvas'), g = o.getContext('2d'), op = OPTS.draft || {};
       o.width = W; o.height = H; g.fillStyle = T.bg; g.fillRect(0, 0, W, H); g.strokeStyle = T.dim;
-      for (const [step, a] of [[G, .1], [G * 5, .22]]) {
+      for (const [step, a] of { coarse: [[G * 5, .22]], off: [] }[op.grid] || [[G, .1], [G * 5, .22]]) {
         g.globalAlpha = a; g.beginPath();
         for (let x = .5; x < W; x += step) { g.moveTo(x, 0); g.lineTo(x, H); }
         for (let y = .5; y < H; y += step) { g.moveTo(0, y); g.lineTo(W, y); }
         g.stroke();
       }
+      this.shapes = []; this.wait = 0;
+      if (op.title === 'off') return;
       // the title block, bottom right
       const bw = Math.min(W * .3, 330), bh = 88, bx = W - bw - G, by = H - bh - G, fs = 11;
       g.globalAlpha = 1; g.fillStyle = T.bg; g.fillRect(bx, by, bw, bh);
@@ -428,14 +438,14 @@ const STYLES = {
       this.shapes = []; this.wait = 0;
     },
     spawn() {
-      const G = this.G, snap = v => Math.round(v / G) * G, k = Math.random();
+      const G = this.G, snap = v => Math.round(v / G) * G, k = { lines: .1, circles: .5, boxes: .9 }[(OPTS.draft || {}).shapes] ?? Math.random();
       const s = { x: snap(rnd(W * .05, W * .9)), y: snap(rnd(H * .1, H * .9)), t: 0, dur: rnd(1.6, 3.2), hold: rnd(4, 8), fade: 1.6 };
       if (k < .4) Object.assign(s, { type: 'line', len: snap(rnd(G * 4, G * 16)), vert: Math.random() < .4 });
       else if (k < .7) Object.assign(s, { type: 'circle', r: snap(rnd(G * 1.5, G * 6)) });
       else Object.assign(s, { type: 'rect', w: snap(rnd(G * 3, G * 10)), h: snap(rnd(G * 2, G * 7)), hatch: Math.random() < .4 });
       this.shapes.push(s);
     },
-    label(text, x, y) { cx.fillText(text, x, y); },
+    label(text, x, y) { if ((OPTS.draft || {}).dimensions !== 'off') cx.fillText(text, x, y); },
     frame(dt) {
       if (!(dt = every(this, 30, dt))) return;
       cx.globalAlpha = 1; cx.drawImage(this.grid, 0, 0);
@@ -451,7 +461,7 @@ const STYLES = {
         if (s.type === 'line') {
           const dx = s.vert ? 0 : s.len * p, dy = s.vert ? s.len * p : 0;
           cx.moveTo(s.x, s.y); cx.lineTo(s.x + dx, s.y + dy); cx.stroke();
-          if (p === 1) {   // dimension line beside it, with end ticks and the length
+          if (p === 1 && (OPTS.draft || {}).dimensions !== 'off') {   // dimension line beside it, with end ticks and the length
             const o = 14, ox = s.vert ? o : 0, oy = s.vert ? 0 : -o;
             cx.globalAlpha = .35 * a; cx.beginPath();
             cx.moveTo(s.x + ox, s.y + oy); cx.lineTo(s.x + ox + (s.vert ? 0 : s.len), s.y + oy + (s.vert ? s.len : 0));
@@ -491,12 +501,12 @@ const STYLES = {
     scale: 1, SP: 18, init() { this.t = rnd(0, 100); },
     frame(dt) {
       if (!(dt = every(this, 12, dt))) return;
-      this.t += dt * (.15 + RAIN * .35);
+      if ((OPTS.halftone || {}).drift !== 'still') this.t += dt * (.15 + RAIN * .35);
       cx.globalCompositeOperation = 'source-over'; cx.globalAlpha = 1; cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H);
       if (RAIN <= 0) return;
-      const SP = this.SP, t = this.t, max = SP * .48;
+      const o = OPTS.halftone || {}, SP = o.dots === 'coarse' ? 30 : this.SP, t = this.t, max = SP * .48, off = o.misprint === 'off' ? 0 : 1;
       cx.globalCompositeOperation = T.mode === 'light' ? 'multiply' : 'screen';
-      for (const [col, ph, ox, oy] of [[T.dim, 0, 0, 0], [T.hi, 2.1, 3, 2]]) {
+      for (const [col, ph, ox, oy] of [[T.dim, 0, 0, 0], [T.hi, 2.1, 3 * off, 2 * off]].slice(0, o.inks === 'one' ? 1 : 2)) {
         cx.fillStyle = col; cx.globalAlpha = .16 + RAIN * .12; cx.beginPath();
         for (let y = SP / 2; y < H; y += SP) for (let x = SP / 2; x < W; x += SP) {
           const v = (Math.sin(x * .004 + t + ph) + Math.sin(y * .005 - t * .8 + ph) + Math.sin((x + y) * .0025 + t * .5)) / 3;
@@ -529,7 +539,9 @@ const STYLES = {
     },
     frame(dt) {
       if (!(dt = every(this, 30, dt))) return;
-      this.a += dt * RAIN * .9;
+      const o = OPTS.record || {}, fast = o.speed === '45';
+      if (o.spin !== 'off') this.a += dt * RAIN * .9 * (fast ? 1.35 : 1) * (o.direction === 'anticlockwise' ? -1 : 1);
+      this.cxp = o.place === 'centre' ? W / 2 : W * .12;
       const R = this.R, d = this.disc.width;
       cx.globalAlpha = 1; cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H);
       cx.globalAlpha = .92; cx.drawImage(this.disc, this.cxp - d / 2, this.cyp - d / 2);
@@ -539,7 +551,7 @@ const STYLES = {
       cx.strokeStyle = rgba(T.ink, .35); cx.lineWidth = 1; cx.beginPath(); cx.arc(0, 0, lr * .82, 0, TAU); cx.stroke();
       cx.fillStyle = T.ink; cx.textAlign = 'center'; cx.textBaseline = 'middle';
       cx.font = `${Math.round(lr * .2)}px ${FONTS.serif[0]}`; cx.fillText('glitchwall', 0, -lr * .45);
-      cx.font = `${Math.round(lr * .085)}px ${MONO}`; cx.fillText('SIDE A  ·  33⅓ RPM', 0, lr * .42);
+      cx.font = `${Math.round(lr * .085)}px ${MONO}`; cx.fillText(fast ? 'SIDE A  ·  45 RPM' : 'SIDE A  ·  33⅓ RPM', 0, lr * .42);
       cx.fillText(FEED_MODE === 'live' ? 'LIVE TOOL FEED' : FEED_MODE.toUpperCase(), 0, lr * .58);
       cx.fillStyle = T.bg; cx.beginPath(); cx.arc(0, 0, lr * .07, 0, TAU); cx.fill();
       cx.restore(); cx.textAlign = 'start';
@@ -697,7 +709,7 @@ const STYLES = {
   },
   // the old stop screen, faint, behind the cards; only the cursor moves
   stop: {
-    scale: 1,
+    scale: 1, reinit: true,   // so an option change shows at once
     init() { this.t = 0; this.on = true; this.draw(); },
     lines: ['*** STOP: 0x00000ACE (0xC0FFEE00, 0x00000047, 0x00000833, 0x00000000)', 'LIVE_TOOL_FEED_STILL_RUNNING', '',
             'Nothing has crashed. The agent is working and its tool calls appear on this screen',
@@ -706,31 +718,35 @@ const STYLES = {
             'Beginning dump of physical memory . . . not really.', ''],
     draw() {
       cx.globalAlpha = 1; cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H);
-      const fs = Math.max(14, Math.round(H / 46)), x = W * .06; let y = H * .12;
+      const o = OPTS.stop || {}, lines = o.message === 'short' ? this.lines.slice(0, 2).concat(['']) : this.lines;
+      const fs = Math.max(14, Math.round(H / 46)), x = W * .06;
+      let y = o.place === 'centre' ? (H - fs * (2.4 + (lines.length + 1) * 1.35)) / 2 : H * .12;
       cx.font = `${fs}px ${MONO}`; cx.textBaseline = 'top';
       // the grey title chip, centred
       const title = ' glitchwall ', tw = cx.measureText(title).width;
       cx.globalAlpha = .55; cx.fillStyle = T.muted; cx.fillRect(W / 2 - tw / 2 - 4, y - 4, tw + 8, fs + 8);
       cx.fillStyle = T.bg; cx.fillText(title, W / 2 - tw / 2, y);
-      y += fs * 2.4; cx.fillStyle = T.ink; cx.globalAlpha = .17;   // faint, so cards on top stay readable
-      for (const l of this.lines) { cx.fillText(l, x, y); y += fs * 1.35; }
-      cx.fillText('Press any key to continue ' + (this.on ? '_' : ' '), x, y);
+      y += fs * 2.4; cx.fillStyle = T.ink; cx.globalAlpha = o.text === 'bright' ? .32 : .17;   // faint, so cards on top stay readable
+      for (const l of lines) { cx.fillText(l, x, y); y += fs * 1.35; }
+      cx.fillText('Press any key to continue ' + ((o.cursor === 'steady' || (this.on && o.cursor !== 'off')) ? '_' : ' '), x, y);
       cx.globalAlpha = 1;
     },
-    frame(dt) { this.t += dt; if (this.t > .55) { this.t = 0; this.on = !this.on; this.draw(); } },
+    frame(dt) { this.t += dt; if (this.t > .55) { this.t = 0; this.on = !this.on; if (!(OPTS.stop || {}).cursor || OPTS.stop.cursor === 'blink') this.draw(); } },
   },
   // ruled notebook paper, red margin, punched holes; pencil doodles sketch themselves, then fade
   notebook: {
-    scale: 1, LINE: 30,
+    scale: 1, LINE: 30, reinit: true,   // the paper is drawn at init
     init() {
-      const o = this.paper = document.createElement('canvas'), g = o.getContext('2d'), L = this.LINE;
+      const o = this.paper = document.createElement('canvas'), g = o.getContext('2d'), L = this.LINE, op = OPTS.notebook || {};
       o.width = W; o.height = H; g.fillStyle = T.bg; g.fillRect(0, 0, W, H);
       g.strokeStyle = T.dim; g.lineWidth = 1; g.globalAlpha = .75; g.beginPath();
-      for (let y = L * 3 + .5; y < H; y += L) { g.moveTo(0, y); g.lineTo(W, y); } g.stroke();
+      if (op.paper !== 'blank') for (let y = (op.paper === 'grid' ? 0 : L * 3) + .5; y < H; y += L) { g.moveTo(0, y); g.lineTo(W, y); }
+      if (op.paper === 'grid') for (let x = .5; x < W; x += L) { g.moveTo(x, 0); g.lineTo(x, H); }
+      g.stroke();
       const mx = Math.round(W * .08) + .5;
-      g.strokeStyle = T.acc; g.globalAlpha = .55; g.beginPath(); g.moveTo(mx, 0); g.lineTo(mx, H); g.moveTo(mx + 3, 0); g.lineTo(mx + 3, H); g.stroke();
+      g.strokeStyle = T.acc; g.globalAlpha = .55; g.beginPath(); g.moveTo(mx, 0); g.lineTo(mx, H); g.moveTo(mx + 3, 0); g.lineTo(mx + 3, H); if (op.margin !== 'off') g.stroke();
       g.globalAlpha = 1; g.fillStyle = 'rgba(0,0,0,.07)';
-      for (const f of [.18, .5, .82]) { g.beginPath(); g.arc(W * .03, H * f, Math.min(W, H) * .016, 0, TAU); g.fill(); }
+      if (op.holes !== 'off') for (const f of [.18, .5, .82]) { g.beginPath(); g.arc(W * .03, H * f, Math.min(W, H) * .016, 0, TAU); g.fill(); }
       this.doodles = []; this.wait = 1;
     },
     shape() {
@@ -751,8 +767,9 @@ const STYLES = {
       if (!(dt = every(this, 30, dt))) return;
       cx.globalAlpha = 1; cx.drawImage(this.paper, 0, 0);
       this.wait -= dt;
-      if (this.wait <= 0 && this.doodles.length < Math.round(RAIN * 8)) { this.doodles.push(this.shape()); this.wait = rnd(1.5, 4); }
-      cx.strokeStyle = T.hi; cx.lineWidth = 1.5; cx.lineCap = cx.lineJoin = 'round';
+      const pen = (OPTS.notebook || {}).doodles;
+      if (this.wait <= 0 && pen !== 'off' && this.doodles.length < Math.round(RAIN * 8)) { this.doodles.push(this.shape()); this.wait = rnd(1.5, 4); }
+      cx.strokeStyle = pen === 'ballpoint' ? T.ink : T.hi; cx.lineWidth = 1.5; cx.lineCap = cx.lineJoin = 'round';
       this.doodles = this.doodles.filter(d => {
         d.t += dt;
         const end = d.dur + d.hold, a = d.t < end ? 1 : 1 - (d.t - end) / d.fade;
@@ -775,11 +792,14 @@ const STYLES = {
   // Every stroke has its own write head running round it, rewriting the data as it passes (the bright stretch
   // just behind it), so the ring is always redrawing itself; now and then one stretch diverges in the accent.
   oracle: {
-    scale: 1, still: true, M: 480, K: 34,
+    scale: 1, still: true, reinit: true, M: 480, K: 34,
     init() {
       const M = this.M, R = this.R = Math.min(W, H) * .32, ox = this.ox = W / 2, oy = this.oy = H / 2;
       this.cos = new Float32Array(M); this.sin = new Float32Array(M); this.env = new Float32Array(M);
       for (let i = 0; i < M; i++) { this.cos[i] = Math.cos(i / M * TAU); this.sin[i] = Math.sin(i / M * TAU); }
+      const op = OPTS.oracle || {};
+      this.wild = { calm: .45, wild: 2.2 }[op.strokes] || 1; this.dir = op.direction === 'anticlockwise' ? -1 : 1;
+      this.red = op.red !== 'off'; this.scales = op.scales !== 'off';
       this.t = rnd(0, 500); this.rot = rnd(0, TAU); this.read = .99 + rnd(0, .009);
       // the parts that never move: the field, a faint halo where the band sits, guide circles, a centre mark
       const o = this.back = document.createElement('canvas'), g = o.getContext('2d');
@@ -800,7 +820,7 @@ const STYLES = {
                  sp: rnd(.04, .12) * M * (Math.random() < .35 ? -1 : 1), a: rnd(.1, .38), w: Math.random() < .18 ? 1.25 : .7 };
       });
       this.tr.forEach(tr => { for (let i = 0; i < M; i++) tr.v[i] = this.field(tr.k, i); });
-      this.diverge(rnd(.12, .3)); this.acc = 0;      // one already showing, so even a stilled ring has its red
+      this.anom = null; if (this.red) this.diverge(rnd(.12, .3)); this.acc = 0;      // one already showing, so even a stilled ring has its red
       this.paint();          // a first frame even when stilled
     },
     // the data: a few slow waves around the ring (shared by neighbouring strokes, so the band flows), plus jag and spikes
@@ -811,7 +831,7 @@ const STYLES = {
       if (Math.random() < .03) v += (Math.random() < .5 ? -1 : 1) * rnd(.8, 2);
       return v;
     },
-    rad(tr, i) { const e = this.env[i]; return this.R * (1 + tr.off * e + tr.amp * e * tr.v[i]); },
+    rad(tr, i) { const e = this.env[i]; return this.R * (1 + tr.off * e + tr.amp * this.wild * e * tr.v[i]); },
     trace(tr, from, n, dir) {    // a polyline along the stroke, n samples from `from`, in ring coordinates
       const M = this.M; cx.beginPath();
       for (let j = 0; j <= n; j++) {
@@ -831,7 +851,7 @@ const STYLES = {
       cx.save(); cx.translate(this.ox, this.oy);
       // scales: fine ticks outside turning against the ring, coarse ones inside turning with it, faster
       cx.strokeStyle = T.ink; cx.lineWidth = 1;
-      for (const [r0, n, L, rot, al] of [[R * 1.4, 180, 5, -this.rot * .6, .22], [R * .62, 60, -6, this.rot * 1.7, .2]]) {
+      for (const [r0, n, L, rot, al] of !this.scales ? [] : [[R * 1.4, 180, 5, -this.rot * .6, .22], [R * .62, 60, -6, this.rot * 1.7, .2]]) {
         cx.globalAlpha = al; cx.beginPath();
         for (let k = 0; k < n; k++) {
           const a = rot + k / n * TAU, l = k % 15 ? L : L * 2.4, c = Math.cos(a), s = Math.sin(a);
@@ -889,7 +909,7 @@ const STYLES = {
     frame(dt) {
       if (RAIN <= 0 || !(dt = every(this, 20, dt))) return;     // 0 stills it: the frame from init() stays up
       const M = this.M, sp = .4 + RAIN * 1.6;
-      this.t += dt * sp; this.rot += dt * .016 * sp;
+      this.t += dt * sp; this.rot += dt * .016 * sp * this.dir;
       for (const tr of this.tr) {         // each head rewrites the samples it passes
         const from = Math.floor(tr.head), dir = Math.sign(tr.sp);
         tr.head += tr.sp * dt * sp;
@@ -898,7 +918,7 @@ const STYLES = {
         tr.head = (tr.head % M + M) % M;
       }
       if (this.anom) { if ((this.anom.age += dt * sp) > this.anom.life) { this.anom = null; this.wait = rnd(1.5, 4); } }
-      else if ((this.wait -= dt * sp) <= 0) this.diverge(0);
+      else if (this.red && (this.wait -= dt * sp) <= 0) this.diverge(0);
       this.paint();
     },
     diverge(age) {           // a few neighbouring strokes pulled out of true for a while, with a reading
@@ -912,21 +932,24 @@ const STYLES = {
   // stacked with slats carrying rows of tiny red lights: some steady, some flickering, packets streaming along them
   // like data on a bus. Readouts point at parts of it as they turn into view, and where one points the lights burn.
   orb: {
-    scale: 1, still: true, L: 30, N: 110,
+    scale: 1, still: true, L: 30, N: 110, NET: 14,
     LABELS: [['DIVERGENCE', v => `Δ ${(v * .09).toFixed(4)}`], ['RECALCULATING', v => `SECTOR ${(v * 96 | 0) + 1}`],
              ['LOAD', v => `${(60 + v * 39).toFixed(1)} %`], ['VARIANCE', v => `σ ${(v * .3).toFixed(3)}`],
              ['THREAD', v => '0x' + (v * 0xffff | 0).toString(16).padStart(4, '0').toUpperCase()], ['CONVERGENCE', v => `${(90 + v * 9.9).toFixed(2)} %`]],
     init() {
-      const S = this.S = Math.min(W, H) * .29, ox = this.ox = W / 2, oy = this.oy = H * .44, light = T.mode === 'light';
+      if (!W || !H) return;     // no size yet: resize() will init again
+      // the hall is laid out from S0; the sphere (radius S) is smaller than that, sitting in a smaller opening
+      const S0 = Math.min(W, H) * .29, S = this.S = S0 * .75, ox = this.ox = W / 2, oy0 = H * .44, light = T.mode === 'light';
       const mk = (w, h) => { const o = document.createElement('canvas'); o.width = w; o.height = h; return [o, o.getContext('2d')]; };
-      this.t = rnd(0, 300); this.spin = rnd(-.5, .1); this.acc = 0;
+      this.t = rnd(0, 300); this.spin = this.cage = rnd(-.5, .1); this.acc = 0;
       this.body = light ? T.ink : '#000000'; this.skin = light ? T.bg : T.dim;    // a dark machine on any palette
+      this.gloss = light ? T.bg : T.ink;
       const ink = T.ink, dark = this.body;
       const mix = (p, q, t) => { const a = rgb(p), z = rgb(q); return '#' + a.map((v, i) => Math.round(v + (z[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
       // the sphere sits sunk in a round opening in the floor of a vast, empty data hall: the opening's centre, half-width, squash
-      const cy = this.cy = oy + S * .45, ca = this.ca = S * .96, ce = .24;
+      const cy = this.cy = oy0 + S0 * .45, oy = this.oy = cy - S * .45, ca = this.ca = S * .96, ce = .24;
       // the hall in perspective: eye 5 units up, the opening 10 units away; racks 2.2 tall, ceiling 8 up
-      const vy = oy - S * .38, HC = 5, F = (cy - vy) * 10 / HC, RH = 2.2, CEIL = 8;
+      const vy = oy0 - S0 * .38, HC = 5, F = (cy - vy) * 10 / HC, RH = 2.2, CEIL = 8;
       const sx = (X, Z) => ox + F * X / Z, sy = (Y, Z) => vy + F * (HC - Y) / Z;
       const [b, g] = mk(W, H); this.back = b;
       g.fillStyle = T.bg; g.fillRect(0, 0, W, H);
@@ -948,14 +971,19 @@ const STYLES = {
       }
       // the floor of the clearing: tiles running toward the racks
       g.globalAlpha = light ? .06 : .045; g.beginPath();
-      for (let X = -40; X <= 40; X += 1.2) { g.moveTo(sx(X, 2.5), sy(0, 2.5)); g.lineTo(sx(X, 15), sy(0, 15)); }
-      for (let Z = 3; Z < 15; Z *= 1.12) { g.moveTo(0, sy(0, Z)); g.lineTo(W, sy(0, Z)); }
+      for (let X = -40; X <= 40; X += 1.2) { g.moveTo(sx(X, 2.5), sy(0, 2.5)); g.lineTo(sx(X, 20), sy(0, 20)); }
+      for (let Z = 3; Z < 20; Z *= 1.12) { g.moveTo(0, sy(0, Z)); g.lineTo(W, sy(0, Z)); }
       g.stroke();
+      // on the floor round the opening: rings, and red light spilling; drawn before the racks, which stand on the floor
+      for (const [r, a] of [[1.14, .2], [1.36, .1], [1.75, .06], [2.4, .04]]) {   // rings in the floor round the opening
+      g.save(); g.translate(ox, cy); g.scale(1, ce);                                 // red light spilling onto the floor
+      gr = g.createRadialGradient(0, 0, ca, 0, 0, ca * 2.6); gr.addColorStop(0, rgba(T.acc, .15)); gr.addColorStop(1, rgba(T.acc, 0));
+      g.globalCompositeOperation = light ? 'source-over' : 'lighter'; g.fillStyle = gr; g.beginPath(); g.arc(0, 0, ca * 2.6, 0, TAU); g.fill(); g.restore();
       // rows of racks from just behind the sphere to the horizon, broken by cross aisles; far ones sink into the haze
       const fog = light ? T.bg : mix(T.bg, ink, .06), near = light ? mix(T.bg, ink, .12) : mix(T.bg, ink, .025), leds = this.leds = [];
       const SEG = 6.6, GAPX = 2.2, half = (Z) => (ox + 40) * Z / F;           // racks .6 wide, eleven to a run
       for (let k = 60; k >= 0; k--) {
-        const Z = 15 + k * 2.6 * (1 + k * .012), D = Z + 1.1, haze = Math.min(1, (Z - 15) / 160) ** .8;
+        const Z = 20 + k * 2.6 * (1 + k * .012), D = Z + 1.1, haze = Math.min(1, (Z - 20) / 160) ** .8;
         const yT = sy(RH, Z), yB = sy(0, Z), yTB = sy(RH, D);
         if (yB - yT < 1.2) continue;
         const face = mix(near, fog, haze), top = mix(mix(near, ink, light ? .06 : .09), fog, haze);
@@ -979,7 +1007,7 @@ const STYLES = {
           }
           // status lights on the rack fronts, only on the part the next row nearer us leaves showing
           if (Z < 70 && rw > 1.5) {
-            const next = 15 + (k - 1) * 2.6 * (1 + (k - 1) * .012), yHide = k ? Math.min(yB, sy(RH, next + 1.1)) : yB;
+            const next = 20 + (k - 1) * 2.6 * (1 + (k - 1) * .012), yHide = k ? Math.min(yB, sy(RH, next + 1.1)) : yB;
             const U = (yB - yT) / 22;                                         // each rack: 22 slots, a light at the left of some
             for (let r = 0; r < SEG / .6 - .5; r++) {
               const x = Math.round(sx(x0 + r * .6 + .1, Z)), x2 = Math.round(sx(x0 + r * .6 + .32, Z));
@@ -995,7 +1023,6 @@ const STYLES = {
         }
       }
       g.globalAlpha = 1;
-      for (const [r, a] of [[1.14, .2], [1.36, .1], [1.75, .06], [2.4, .04]]) {   // rings in the floor round the opening
         g.globalAlpha = a; g.beginPath(); g.ellipse(ox, cy, ca * r, ca * r * ce, 0, 0, TAU); g.stroke();
       }
       g.globalAlpha = 1; g.fillStyle = dark;      // the raised lip of the opening, and the dark well inside it
@@ -1009,9 +1036,6 @@ const STYLES = {
         gr = g.createRadialGradient(ox, vy, S * 1.2, ox, vy, Math.hypot(W, H) * .6);
         gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,.55)'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
       }
-      g.save(); g.translate(ox, cy); g.scale(1, ce);                                 // red light spilling onto the floor
-      gr = g.createRadialGradient(0, 0, ca, 0, 0, ca * 2.6); gr.addColorStop(0, rgba(T.acc, .15)); gr.addColorStop(1, rgba(T.acc, 0));
-      g.globalCompositeOperation = light ? 'source-over' : 'lighter'; g.fillStyle = gr; g.beginPath(); g.arc(0, 0, ca * 2.6, 0, TAU); g.fill(); g.restore();
       // the sphere's body: near black, a faint sheen up and to the left, a fresnel glow and a thin rim of light
       const c = S + 4, [o, s] = mk(c * 2, c * 2), gloss = light ? T.bg : T.ink; this.orbImg = o; this.c = c;
       s.fillStyle = this.body; s.beginPath(); s.arc(c, c, S, 0, TAU); s.fill();
@@ -1038,6 +1062,8 @@ const STYLES = {
         const base = Float32Array.from({ length: n }, () => Math.random() < .17 ? rnd(.3, .65) : 0);
         return { phi, n, o: rnd(0, TAU), base, b: Float32Array.from(base, v => Math.max(v, Math.random() < .12 ? rnd(.3, 1) : 0)) };
       });
+      this.net = this.geodesic(this.NET);     // a cage over the shell: a fine geodesic net, a triangular hole in each cell
+      this.mc = Math.ceil(S * 1.08 + 4); [this.mesh, this.meshG] = mk(this.mc * 2, this.mc * 2);   // the cage stands a little off the sphere
       this.packets = Array.from({ length: 22 }, () => this.packet());
       const [gs, gg] = mk(32, 32); this.glowImg = gs;     // one light's glow, drawn scaled for every light
       gr = gg.createRadialGradient(16, 16, 0, 16, 16, 16);
@@ -1062,6 +1088,33 @@ const STYLES = {
           if (d < .2) rb.b[j] = Math.max(rb.b[j], .75 + .25 * Math.sin(this.t * 4 + j));
         }
       }
+    },
+    // a geodesic net on the unit sphere (an icosahedron, each face cut into n x n triangles): joints x y z, and cells
+    // as three joint numbers each
+    geodesic(n) {
+      const t = (1 + Math.sqrt(5)) / 2;
+      const V = [[-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0], [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t], [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]];
+      const F = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
+                 [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]];
+      const pts = [], seen = new Map();
+      const at = (a, b, c, i, j) => {      // i/n of the way from corner a to b, j/n from a to c, pushed out onto the sphere
+        const v = [0, 1, 2].map(d => (V[a][d] * (n - i - j) + V[b][d] * i + V[c][d] * j) / n), l = Math.hypot(...v);
+        const id = v.map(x => Math.round(x / l * 1e4)).join();
+        if (!seen.has(id)) { seen.set(id, pts.length / 3); pts.push(v[0] / l, v[1] / l, v[2] / l); }
+        return seen.get(id);
+      };
+      const tris = [];
+      for (const [a, b, c] of F) for (let i = 0; i < n; i++) for (let j = 0; i + j < n; j++) {
+        tris.push(at(a, b, c, i, j), at(a, b, c, i + 1, j), at(a, b, c, i, j + 1));
+        if (i + j < n - 1) tris.push(at(a, b, c, i + 1, j), at(a, b, c, i + 1, j + 1), at(a, b, c, i, j + 1));
+      }
+      return { pts: Float32Array.from(pts), tris: Uint16Array.from(tris) };
+    },
+    // a point given in the cage's own frame (x, y, z), turned with it, at radius R; returns [x, y, depth, light]
+    proj(x, y, z, R) {
+      const c = Math.cos(this.cage), s = Math.sin(this.cage), x1 = x * c + z * s, z1 = z * c - x * s;
+      const T1 = .34, y2 = y * Math.cos(T1) - z1 * Math.sin(T1), z2 = y * Math.sin(T1) + z1 * Math.cos(T1);
+      return [this.ox + x1 * R, this.oy - y2 * R, z2, Math.max(0, -.48 * x1 + .58 * y2 + .66 * z2)];
     },
     packet() { const k = Math.random() * this.L | 0; return { k, pos: rnd(0, this.ribs[k].n), v: rnd(3, 11) * (Math.random() < .5 ? -1 : 1), len: 2 + (Math.random() * 6 | 0) }; },
     // a point on the shell: latitude phi, body longitude th; returns [x, y, depth, light]
@@ -1124,6 +1177,40 @@ const STYLES = {
         cx.globalAlpha = Math.min(1, a * 1.2); cx.fillRect(lit[i] - w / 2, lit[i + 1] - u * .5, w, u);
       }
       cx.globalCompositeOperation = 'source-over'; cx.globalAlpha = 1;
+      if ((OPTS.orb || {}).cage !== 'off') {
+        // the cage: the sphere's skin again over all of it, with a triangular hole cut in every cell of a geodesic net, so
+        // what is left is a frame of dark struts and the slats and lights peek through; cells seen side on toward the edge
+        // close up
+        const m = this.meshG, c = this.mc, net = this.net, K = .74, RC = S * 1.04, P = new Float32Array(net.pts.length / 3 * 4);
+        for (let i = 0, k = 0; i < net.pts.length; i += 3, k += 4) {
+          const p = this.proj(net.pts[i], net.pts[i + 1], net.pts[i + 2], RC);
+          P[k] = p[0] - this.ox + c; P[k + 1] = p[1] - this.oy + c; P[k + 2] = p[2]; P[k + 3] = p[3];
+        }
+        const cut = new Path2D(), rims = [new Path2D(), new Path2D(), new Path2D()];
+        for (let t = 0; t < net.tris.length; t += 3) {
+          const a = net.tris[t] * 4, b = net.tris[t + 1] * 4, d = net.tris[t + 2] * 4;
+          if (P[a + 2] + P[b + 2] + P[d + 2] < .15) continue;
+          const mx = (P[a] + P[b] + P[d]) / 3, my = (P[a + 1] + P[b + 1] + P[d + 1]) / 3;
+          const tri = new Path2D();
+          tri.moveTo(mx + (P[a] - mx) * K, my + (P[a + 1] - my) * K);
+          tri.lineTo(mx + (P[b] - mx) * K, my + (P[b + 1] - my) * K);
+          tri.lineTo(mx + (P[d] - mx) * K, my + (P[d + 1] - my) * K); tri.closePath();
+          cut.addPath(tri);
+          // each hole's rim catches the light: brighter where the cell faces us and the light
+          const l = Math.sqrt(Math.max(0, (P[a + 2] + P[b + 2] + P[d + 2]) / 3)) * (.05 + .45 * (P[a + 3] + P[b + 3] + P[d + 3]) / 3);
+          if (l > .03) rims[l < .12 ? 0 : l < .25 ? 1 : 2].addPath(tri);
+        }
+        // the cage's skin: the sphere's own look, a little larger; then the holes, then their rims
+        m.globalCompositeOperation = 'source-over'; m.globalAlpha = 1; m.clearRect(0, 0, c * 2, c * 2);
+        const sz = this.c * 2 * 1.04; m.drawImage(this.orbImg, c - sz / 2, c - sz / 2, sz, sz);
+        m.globalCompositeOperation = 'destination-out'; m.fill(cut);
+        m.globalCompositeOperation = 'source-over'; m.strokeStyle = this.gloss; m.lineWidth = Math.max(.7, u * .4);
+        const RIM = 1;   // how strongly the rims catch the light: 1 full, 0 none
+        if (RIM) rims.forEach((r, j) => { m.globalAlpha = [.04, .1, .19][j] * RIM; m.stroke(r); });
+        m.globalAlpha = 1;
+        cx.drawImage(this.mesh, this.ox - c, this.oy - c);
+      }
+      cx.globalAlpha = 1;
       cx.drawImage(this.front, 0, 0);               // the floor in front of the opening, over the sphere's base
       // the readouts, each pointing at its part of the sphere while that part faces us
       const fs = Math.max(10, Math.round(S * .045));
@@ -1146,14 +1233,17 @@ const STYLES = {
     frame(dt) {
       if (RAIN <= 0 || !(dt = every(this, 20, dt))) return;     // 0 stills it: the frame from init() stays up
       const sp = .4 + RAIN * 1.6;
-      this.t += dt * sp; this.spin += dt * .05 * sp;
+      this.t += dt * sp;
+      const o = OPTS.orb || {}, turn = dt * .05 * sp * (o.direction === 'left' ? -1 : 1);   // what turns, and which way
+      if (o.spin !== 'cage' && o.spin !== 'still') this.spin += turn;
+      if (o.spin !== 'sphere' && o.spin !== 'still') this.cage += turn;
       const fade = Math.exp(-dt * sp * 1.1);         // lights die down to their resting glow
       for (const rb of this.ribs) for (let j = 0; j < rb.n; j++) rb.b[j] = Math.max(rb.base[j], rb.b[j] * fade);
-      for (let n = dt * sp * 70; n > 0; n--) {       // flickers
+      for (let n = dt * sp * (o.lights === 'calm' ? 8 : 70); n > 0; n--) {       // flickers; calm: now and then
         if (n < 1 && Math.random() > n) break;
         const rb = this.ribs[Math.random() * this.L | 0]; rb.b[Math.random() * rb.n | 0] = rnd(.5, 1);
       }
-      this.packets.forEach((pk, i) => {              // packets streaming along the slats
+      if (o.lights !== 'calm') this.packets.forEach((pk, i) => {              // packets streaming along the slats; none when calm
         const rb = this.ribs[pk.k];
         pk.pos += pk.v * dt * sp;
         for (let j = 0; j < pk.len; j++) { const q = ((Math.floor(pk.pos) - Math.sign(pk.v) * j) % rb.n + rb.n) % rb.n; rb.b[q] = Math.max(rb.b[q], 1 - j / pk.len * .6); }
@@ -1170,22 +1260,27 @@ const STYLES = {
   // katakana falling at three depths: small, dim, slow columns far back; large, bright, fast ones near. Each column
   // has a white-hot head, the trail cools behind it, and its glyphs (some mirrored) change as it falls
   cascade: {
-    scale: 1, GL: 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789:=+*<>',
+    scale: 1, reinit: true, GL: 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789:=+*<>',
     DEPTH: [[11, .35, .6], [15, .6, 1], [21, 1, 1.45]],     // font size, brightness, speed
-    g() { return [this.GL[Math.random() * this.GL.length | 0], Math.random() < .45]; },
+    g() {   // a glyph from the set the options pick: katakana (the first 45), digits (the next 10), or all
+      const o = OPTS.cascade || {}, [a, b] = o.glyphs === 'katakana' ? [0, 45] : o.glyphs === 'digits' ? [45, 55] : [0, this.GL.length];
+      return [this.GL[a + (Math.random() * (b - a) | 0)], Math.random() < .45];
+    },
+    dens() { return { sparse: .5, dense: 1.6 }[(OPTS.cascade || {}).density] || 1; },
     col(d, y) {
       const [fs] = this.DEPTH[d];
-      return { d, x: Math.floor(rnd(0, W / fs)) * fs, y, v: rnd(5, 13) * this.DEPTH[d][2], len: rnd(10, 32) | 0, trail: [], row: -1e9, on: Math.random() < .25 + RAIN * 1.2 };
+      return { d, x: Math.floor(rnd(0, W / fs)) * fs, y, v: rnd(5, 13) * this.DEPTH[d][2], len: rnd(10, 32) | 0, trail: [], row: -1e9, on: Math.random() < (.25 + RAIN * 1.2) * this.dens() };
     },
     init() {
       this.cols = [];
-      this.DEPTH.forEach(([fs], d) => { for (let i = 0, n = Math.ceil(W / fs * [1, .6, .28][d]); i < n; i++) { const c = this.col(d, rnd(-H * .3, H * 1.2)); c.trail = Array.from({ length: c.len }, () => this.g()); this.cols.push(c); } });
+      const one = (OPTS.cascade || {}).layers === 'one', share = one ? [0, 1.6, 0] : [1, .6, .28];   // one: just the middle depth
+      this.DEPTH.forEach(([fs], d) => { for (let i = 0, n = Math.ceil(W / fs * share[d] * this.dens()); i < n; i++) { const c = this.col(d, rnd(-H * .3, H * 1.2)); c.trail = Array.from({ length: c.len }, () => this.g()); this.cols.push(c); } });
     },
     frame(dt) {
       if (!(dt = every(this, 30, dt))) return;
       cx.globalAlpha = 1; cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H);
       cx.textBaseline = 'top'; cx.textAlign = 'center';
-      const sp = .3 + RAIN * 1.4;
+      const sp = .3 + RAIN * 1.4, green = (OPTS.cascade || {}).heads === 'green';
       for (let d = 0; d < 3; d++) {
         const [fs, br] = this.DEPTH[d];
         cx.font = `${fs - 1}px ${KANA}, ${MONO}`;
@@ -1202,7 +1297,7 @@ const STYLES = {
             const y = (row - k) * fs;
             if (y < -fs || y > H) return;
             cx.globalAlpha = br * (k ? (1 - k / c.len) ** 1.4 : 1);
-            cx.fillStyle = k === 0 ? T.acc : k < 3 ? T.hi : T.ink;
+            cx.fillStyle = k === 0 ? (green ? T.hi : T.acc) : k < 3 ? T.hi : T.ink;
             if (flip) { cx.setTransform(-1, 0, 0, 1, x, y); cx.fillText(ch, 0, 0); cx.setTransform(1, 0, 0, 1, 0, 0); }   // mirrored; cheaper than save/restore
             else cx.fillText(ch, x, y);
           });
@@ -1215,7 +1310,7 @@ const STYLES = {
   // and fading out. Every few sweeps the signal changes: a clean sine, a ringing step, a square wave, a burst. On a
   // wide screen an FFT of the signal and a second channel in roll mode fill the sides. The readouts follow the signal.
   scope: {
-    scale: 1, still: true,
+    scale: 1, still: true, reinit: true,   // its options go into the glass and the panels
     MODES: [
       { ch: '0.50 V', tb: '2.00 ms', f: '1.502 kHz', pk: [[3, 1], [9, .3]], y: (u, t) => 2.3 * Math.sin(TAU * 3 * u + t * .12) + .55 * Math.sin(TAU * 9 * u + t * .5) },
       { ch: '1.00 V', tb: '500 µs', f: '12.48 kHz', pk: [[12, .45], [13, .8], [14, .45]], y: (u) => u < .14 ? 0 : 3.1 * Math.exp(-(u - .14) * 6) * Math.sin(TAU * 13 * (u - .14)) },
@@ -1223,6 +1318,8 @@ const STYLES = {
       { ch: '2.00 V', tb: '5.00 µs', f: '6.250 MHz', pk: [[29, .5], [30, .8], [31, 1]], y: (u, t) => 3 * Math.sin(TAU * 31 * u + t * .7) * Math.exp(-(((u - .5) / .17) ** 2)) },
     ],
     init() {
+      const op = OPTS.scope || {};
+      this.FADE = { short: 2.6, long: .45 }[op.afterglow] || 1.1;
       const div = this.div = Math.floor(Math.min(W / 10.8, H / 8.8)), gw = div * 10, gh = div * 8;
       const gx = this.gx = Math.round((W - gw) / 2), gy = this.gy = Math.round((H - gh) / 2), light = T.mode === 'light';
       this.gw = gw; this.gh = gh; this.cy0 = gy + gh / 2;
@@ -1235,8 +1332,8 @@ const STYLES = {
       g.strokeStyle = T.ink; g.fillStyle = T.ink; g.lineWidth = 1;
       g.globalAlpha = light ? .3 : .22; g.strokeRect(gx + .5, gy + .5, gw, gh);
       g.globalAlpha = light ? .26 : .2;
-      for (let i = 1; i < 10; i++) for (let y = gy; y <= gy + gh; y += div / 5) g.fillRect(gx + i * div, Math.round(y), 1, 1);
-      for (let j = 1; j < 8; j++) for (let x = gx; x <= gx + gw; x += div / 5) g.fillRect(Math.round(x), gy + j * div, 1, 1);
+      if (op.graticule !== 'off') for (let i = 1; i < 10; i++) for (let y = gy; y <= gy + gh; y += div / 5) g.fillRect(gx + i * div, Math.round(y), 1, 1);
+      if (op.graticule !== 'off') for (let j = 1; j < 8; j++) for (let x = gx; x <= gx + gw; x += div / 5) g.fillRect(Math.round(x), gy + j * div, 1, 1);
       g.globalAlpha = light ? .32 : .26; g.beginPath();
       const mx = gx + 5 * div + .5, my = gy + 4 * div + .5, tk = Math.max(3, div * .07);
       for (let x = gx; x <= gx + gw + .1; x += div / 5) { g.moveTo(Math.round(x) + .5, my - tk); g.lineTo(Math.round(x) + .5, my + tk); }
@@ -1247,9 +1344,9 @@ const STYLES = {
       this.trail = []; this.clk = 0;
       // the instruments either side, where a wide screen leaves room: an FFT of the signal, and a second channel rolling
       const side = gx - div * .6, pw = Math.min(side * .7, div * 2.6);
-      this.panels = side > div * 1.2 ? { w: pw, lx: Math.round(gx - div * .6 - pw), rx: Math.round(gx + gw + div * .6) } : null;
+      this.panels = side > div * 1.2 && op.sides !== 'off' ? { w: pw, lx: Math.round(gx - div * .6 - pw), rx: Math.round(gx + gw + div * .6) } : null;
       this.bars = new Float32Array(32); this.roll = []; this.ch2 = rnd(0, 100);
-      this.t = rnd(0, 100); this.u = 0; this.m = 0; this.sweeps = 0; this.acc = 0;
+      this.t = rnd(0, 100); this.u = 0; this.m = { square: 2, burst: 3 }[op.signal] || 0; this.sweeps = 0; this.acc = 0;
       if (RAIN <= 0) {             // stilled: one whole trace, as if the beam had just passed
         this.draw(0, 1);
         this.u = 1;
@@ -1365,7 +1462,7 @@ const STYLES = {
       this.draw(this.u, u1); this.u = u1;
       if (this.u >= 1) {                                        // retrace, and every few sweeps a new signal
         this.u = 0; this.last = null;
-        if (++this.sweeps >= 4 + (Math.random() * 3 | 0)) { this.sweeps = 0; this.m = (this.m + 1 + (Math.random() * (this.MODES.length - 1) | 0)) % this.MODES.length; }
+        if (((OPTS.scope || {}).signal || 'cycle') === 'cycle' && ++this.sweeps >= 4 + (Math.random() * 3 | 0)) { this.sweeps = 0; this.m = (this.m + 1 + (Math.random() * (this.MODES.length - 1) | 0)) % this.MODES.length; }
       }
       this.paint();
     },
@@ -1373,8 +1470,9 @@ const STYLES = {
   // an amber radar screen: range rings and bearing ticks on dark glass, a sweep turning, and what it finds (ground
   // clutter, a few slow contacts with their tracks) lit as the beam passes and fading until it comes round again
   radar: {
-    scale: 1, still: true,
+    scale: 1, still: true, reinit: true,   // reinit: its options are drawn in at init
     init() {
+      const o = OPTS.radar || {}; this.dir = o.sweep === 'anticlockwise' ? -1 : 1;
       const R = this.R = Math.min(W, H) * .44, ox = this.ox = W / 2, oy = this.oy = H / 2, light = T.mode === 'light';
       const mk = () => { const o = document.createElement('canvas'); o.width = W; o.height = H; return [o, o.getContext('2d')]; };
       const [b, g] = mk(); this.back = b;
@@ -1382,9 +1480,9 @@ const STYLES = {
       let gr = g.createRadialGradient(ox, oy, 0, ox, oy, R * 1.1);
       gr.addColorStop(0, rgba(T.ink, light ? .06 : .05)); gr.addColorStop(1, rgba(T.ink, 0)); g.fillStyle = gr; g.fillRect(0, 0, W, H);
       g.strokeStyle = T.ink; g.fillStyle = T.ink; g.lineWidth = 1;
-      for (let i = 1; i <= 5; i++) { g.globalAlpha = i === 5 ? .32 : .14; g.beginPath(); g.arc(ox, oy, R * i / 5, 0, TAU); g.stroke(); }
+      for (let i = o.rings === 'off' ? 5 : 1; i <= 5; i++) { g.globalAlpha = i === 5 ? .32 : .14; g.beginPath(); g.arc(ox, oy, R * i / 5, 0, TAU); g.stroke(); }
       g.globalAlpha = .08; g.beginPath();
-      for (let a = 0; a < 360; a += 30) { const t = a * Math.PI / 180; g.moveTo(ox, oy); g.lineTo(ox + Math.sin(t) * R, oy - Math.cos(t) * R); }
+      for (let a = 0; a < (o.rings === 'off' ? 0 : 360); a += 30) { const t = a * Math.PI / 180; g.moveTo(ox, oy); g.lineTo(ox + Math.sin(t) * R, oy - Math.cos(t) * R); }
       g.stroke();
       g.globalAlpha = .3; g.beginPath();                                         // bearing ticks round the rim
       for (let a = 0; a < 360; a += 5) {
@@ -1398,7 +1496,7 @@ const STYLES = {
       g.globalAlpha = 1;
       // ground clutter: a few patches of land, speckled, lit only as the beam passes
       this.clut = [];
-      for (let k = 0; k < 5; k++) {
+      for (let k = 0; k < (o.clutter === 'off' ? 0 : 5); k++) {
         const ca = rnd(0, TAU), cr = rnd(.35, .9), n = 90 + (Math.random() * 160 | 0), sa = rnd(.08, .3), sr = rnd(.04, .1);
         for (let i = 0; i < n; i++) {
           const r = Math.min(.98, Math.max(.05, cr + (Math.random() + Math.random() - 1) * sr)), a = ca + (Math.random() + Math.random() - 1) * sa / r * .4;
@@ -1406,10 +1504,12 @@ const STYLES = {
         }
       }
       this.clut.sort((p, q) => p.a - q.a);
-      this.tgts = Array.from({ length: 6 }, (_, i) => ({ x: rnd(-.8, .8), y: rnd(-.8, .8), h: rnd(0, TAU), v: rnd(.004, .012), id: 'TK ' + (100 + Math.random() * 800 | 0), seen: 0, trail: [] }));
+      this.tgts = Array.from({ length: o.contacts === 'many' ? 14 : 6 }, (_, i) => ({ x: rnd(-.8, .8), y: rnd(-.8, .8), h: rnd(0, TAU), v: rnd(.004, .012), id: 'TK ' + (100 + Math.random() * 800 | 0), seen: 0, trail: [] }));
       [this.pc, this.p] = mk();
       this.a = rnd(0, TAU); this.acc = 0;
-      { for (let i = 0; i < 64; i++) this.sweep(this.a - TAU + i * TAU / 64, this.a - TAU + (i + 1) * TAU / 64, (i + 1) / 64); }
+      { for (let i = 0; i < 64; i++) { const f = (i + 1) / 64;
+          if (this.dir > 0) this.sweep(this.a - TAU + i * TAU / 64, this.a - TAU + (i + 1) * TAU / 64, f);
+          else this.sweep(this.a + TAU - (i + 1) * TAU / 64, this.a + TAU - i * TAU / 64, f); } }
       this.paint();
     },
     pos(r, a) { return [this.ox + Math.sin(a) * r * this.R, this.oy - Math.cos(a) * r * this.R]; },
@@ -1434,8 +1534,10 @@ const STYLES = {
       cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over'; cx.drawImage(this.back, 0, 0); cx.drawImage(this.pc, 0, 0);
       cx.save(); cx.beginPath(); cx.arc(this.ox, this.oy, R, 0, TAU); cx.clip();
       cx.globalCompositeOperation = light ? 'source-over' : 'lighter';
-      const gr = cx.createConicGradient(this.a - Math.PI / 2 - .9, this.ox, this.oy);     // the wedge of glow trailing the beam
-      gr.addColorStop(0, rgba(T.ink, 0)); gr.addColorStop(.143, rgba(T.ink, light ? .12 : .16)); gr.addColorStop(.144, rgba(T.ink, 0)); gr.addColorStop(1, rgba(T.ink, 0));
+      const wa = light ? .12 : .16, gr = cx.createConicGradient(this.a - Math.PI / 2 - (this.dir > 0 ? .9 : 0), this.ox, this.oy);   // the wedge of glow trailing the beam
+      if (this.dir > 0) { gr.addColorStop(0, rgba(T.ink, 0)); gr.addColorStop(.143, rgba(T.ink, wa)); gr.addColorStop(.144, rgba(T.ink, 0)); }
+      else { gr.addColorStop(0, rgba(T.ink, wa)); gr.addColorStop(.143, rgba(T.ink, 0)); }
+      gr.addColorStop(1, rgba(T.ink, 0));
       cx.fillStyle = gr; cx.fillRect(this.ox - R, this.oy - R, R * 2, R * 2);
       const [ex, ey] = this.pos(1, this.a);
       cx.strokeStyle = T.hi; cx.lineWidth = 1.5; cx.globalAlpha = .85; cx.beginPath(); cx.moveTo(this.ox, this.oy); cx.lineTo(ex, ey); cx.stroke();
@@ -1466,15 +1568,16 @@ const STYLES = {
         if (Math.random() < dt * .05) t.h += rnd(-.6, .6);
         if (Math.hypot(t.x, t.y) > 1.05) Object.assign(t, { x: -t.x * .9, y: -t.y * .9, trail: [], seen: 0 });
       }
-      const a0 = this.a; this.a += dt * sp * .6;
-      this.sweep(a0, this.a);
+      this.dir = (OPTS.radar || {}).sweep === 'anticlockwise' ? -1 : 1;
+      const a0 = this.a; this.a += dt * sp * .6 * this.dir;
+      if (this.dir > 0) this.sweep(a0, this.a); else this.sweep(this.a, a0);
       this.paint();
     },
   },
   // a text-mode desktop: a shaded backdrop in character cells, a grey menu bar with a clock, a status bar of
   // function keys, and the block of a text-mode mouse cursor drifting from place to place
   textmode: {
-    scale: 1,
+    scale: 1, reinit: true,   // so an option change shows at once
     MENU: ['File', 'Edit', 'Search', 'Run', 'Options', 'Window', 'Help'],
     KEYS: [['F1', 'Help'], ['F2', 'Save'], ['F3', 'Open'], ['F5', 'Zoom'], ['F6', 'Next'], ['F10', 'Menu']],
     init() {
@@ -1492,8 +1595,10 @@ const STYLES = {
       if (!W || !H) return;
       const { cw, ch, fs, cols, rows } = this;
       cx.globalAlpha = 1; cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H);
-      cx.globalAlpha = .5; cx.fillStyle = this.shade; cx.fillRect(0, ch, W, H - ch * 2);
+      const o = OPTS.textmode || {};
+      cx.globalAlpha = { medium: .8, dark: 1 }[o.shade] || .5; cx.fillStyle = this.shade; cx.fillRect(0, ch, W, H - ch * 2);
       cx.globalAlpha = 1; cx.font = `${fs}px ${MONO}`; cx.textBaseline = 'top';
+      if (o.bars !== 'off') {
       const bar = T.bar && T.bar[0] === '#' ? T.bar : T.ink, on = T.barb && T.barb[0] === '#' ? T.barb : T.bg;
       // the menu bar: first letters picked out, a clock at the right
       cx.fillStyle = bar; cx.fillRect(0, 0, W, ch);
@@ -1501,14 +1606,16 @@ const STYLES = {
       for (const m of this.MENU) {
         cx.fillStyle = T.err; cx.fillText(m[0], x * cw, 0); cx.fillStyle = on; cx.fillText(m.slice(1), (x + 1) * cw, 0); x += m.length + 3;
       }
-      const d = new Date(), clock = [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':');
-      cx.fillStyle = on; cx.fillText(clock, (cols - clock.length - 2) * cw, 0);
+      const d = new Date(), h12 = o.clock === '12h', hr = h12 ? (d.getHours() + 11) % 12 + 1 : d.getHours();
+      const clock = [hr, d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':') + (h12 ? (d.getHours() < 12 ? ' AM' : ' PM') : '');
+      cx.fillStyle = on; if (o.clock !== 'off') cx.fillText(clock, (cols - clock.length - 2) * cw, 0);
       // the status bar
       const y = (rows - 1) * ch; cx.fillStyle = bar; cx.fillRect(0, y, W, H - y);
       x = 1;
       for (const [k, l] of this.KEYS) { cx.fillStyle = T.err; cx.fillText(k, x * cw, y); cx.fillStyle = on; cx.fillText(l, (x + k.length + 1) * cw, y); x += k.length + l.length + 3; }
+      }
       // the mouse: an inverted cell
-      cx.globalAlpha = .85; cx.fillStyle = T.hi; cx.fillRect(this.mx * cw, this.my * ch, cw, ch);
+      cx.globalAlpha = .85; cx.fillStyle = T.hi; if (o.cursor !== 'off') cx.fillRect(this.mx * cw, this.my * ch, cw, ch);
       cx.globalAlpha = 1;
     },
     frame(dt) {
@@ -1531,7 +1638,7 @@ const STYLES = {
   // a broadsheet page ghosted under the cards: a masthead between rules, columns of greeked type with headlines,
   // a halftone photo or two. It sets itself line by line, holds, then fades for the next edition
   broadsheet: {
-    scale: 1,
+    scale: 1, reinit: true,   // its options go into the layout
     init() {
       const [o, g] = [document.createElement('canvas'), null]; o.width = W; o.height = H; this.page = o; this.g = o.getContext('2d');
       this.layout(); this.t = 0; this.phase = 'set'; this.fade = 1;
@@ -1540,12 +1647,13 @@ const STYLES = {
       this.paint();
     },
     layout() {
-      const m = Math.round(Math.min(W, H) * .05), cols = W > H ? 6 : 3, gut = Math.round(W * .012), top = Math.round(H * .17);
+      const op = OPTS.broadsheet || {}, nc = { four: 4, three: 3 }[op.columns] || 6;
+      const m = Math.round(Math.min(W, H) * .05), cols = W > H ? nc : Math.min(nc, 3), gut = Math.round(W * .012), top = Math.round(H * .17);
       const cw = (W - m * 2 - gut * (cols - 1)) / cols, lh = Math.max(7, Math.round(H / 95)), items = [];
       this.m = m; this.top = top;
       // the photos: one or two blocks spanning columns
       const photos = [];
-      for (let k = 0; k < (Math.random() < .5 ? 1 : 2); k++) {
+      for (let k = 0; k < (op.photos === 'off' ? 0 : Math.random() < .5 ? 1 : 2); k++) {
         const c0 = Math.random() * (cols - 1) | 0, span = Math.min(cols - c0, 2 + (Math.random() * 2 | 0)), y0 = top + rnd(.05, .45) * (H - top);
         if (photos.some(p => c0 < p.c1 && c0 + span > p.c0)) continue;
         photos.push({ c0, c1: c0 + span, x: m + c0 * (cw + gut), y: y0, w: span * cw + (span - 1) * gut, h: Math.min(H - m - y0, rnd(.22, .34) * H) });
@@ -1584,7 +1692,7 @@ const STYLES = {
       g.textAlign = 'center'; g.font = `${fs * 2.6}px ${FONTS[T.display] ? FONTS[T.display][0] : MONO}`;
       g.fillText('The Live Feed', W / 2, (Math.round(top * .3) + top) / 2);
       g.globalAlpha = .5;
-      for (let c = 1; c < cols; c++) { const x = Math.round(m + c * (cw + gut) - gut / 2) + .5; g.fillRect(x, top + lh, 1, H - m - top - lh); }
+      if (op.rules !== 'off') for (let c = 1; c < cols; c++) { const x = Math.round(m + c * (cw + gut) - gut / 2) + .5; g.fillRect(x, top + lh, 1, H - m - top - lh); }
       g.globalAlpha = 1; g.textAlign = 'start';
     },
     put(it) {
@@ -1609,7 +1717,8 @@ const STYLES = {
     paint() {
       if (!W || !H) return;
       cx.globalAlpha = 1; cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H);
-      cx.globalAlpha = (T.mode === 'light' ? .13 : .11) * this.fade; cx.drawImage(this.page, 0, 0); cx.globalAlpha = 1;
+      cx.globalAlpha = Math.min(1, (T.mode === 'light' ? .13 : .11) * this.fade * ({ faint: .6, bold: 1.8 }[(OPTS.broadsheet || {}).ink] || 1));
+      cx.drawImage(this.page, 0, 0); cx.globalAlpha = 1;
     },
     frame(dt) {
       if (RAIN <= 0 || !(dt = every(this, 15, dt))) return;
@@ -1625,17 +1734,17 @@ const STYLES = {
   // neon signs on a dark brick wall at night, in the rain: tubes buzzing, a letter that won't stay lit, now and
   // then a whole sign stuttering; their light caught on the wet ground below and in the falling rain
   signs: {
-    scale: 1, still: true,
+    scale: 1, still: true, reinit: true,   // its options go into the wall and the signs
     WORDS: ['OPEN', 'LIVE', 'ALL NIGHT', 'NO VACANCY', 'ON AIR', 'COFFEE', 'TATTOO', 'ARCADE'],
     init() {
-      const u = this.u = Math.min(W, H), fy = this.fy = Math.round(H * .8), light = T.mode === 'light';
+      const u = this.u = Math.min(W, H), fy = this.fy = Math.round(H * .8), light = T.mode === 'light', op = this.op = OPTS.signs || {};
       const mk = (w, h) => { const o = document.createElement('canvas'); o.width = Math.max(1, Math.ceil(w)); o.height = Math.max(1, Math.ceil(h)); return [o, o.getContext('2d')]; };
       // the wall: courses of brick, barely there; the wet ground below
       const [b, g] = mk(W, H); this.back = b;
       g.fillStyle = T.bg; g.fillRect(0, 0, W, H);
       const bh = Math.max(10, Math.round(u / 40)), bw = bh * 3.2;
       g.strokeStyle = T.ink; g.globalAlpha = light ? .06 : .035; g.lineWidth = 1; g.beginPath();
-      for (let y = 0, r = 0; y < fy; y += bh, r++) {
+      for (let y = 0, r = 0; y < (op.wall === 'plain' ? 0 : fy); y += bh, r++) {
         g.moveTo(0, y + .5); g.lineTo(W, y + .5);
         for (let x = (r % 2) * bw / 2; x < W; x += bw) { g.moveTo(Math.round(x) + .5, y); g.lineTo(Math.round(x) + .5, Math.min(fy, y + bh)); }
       }
@@ -1650,7 +1759,7 @@ const STYLES = {
       if (!this.fonts) {            // the sign fonts may not be loaded yet: draw again once they are
         this.fonts = Promise.all(disp.map(f => document.fonts.load(`40px ${f}`))).then(() => { if (R === this) this.init(); });
       }
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0, n = { two: 2, five: 5 }[op.signs] || 4; i < n; i++) {
         const [sx, sy] = spots[i], col = cols[i % 3], tube = Math.max(2, u / 260);
         if (i === 3) { this.signs.push(this.shape(sx * W, sy * fy, u * .09, col, tube, mk)); continue; }
         const word = words[i], fam = disp[i % 3], size = u * (word.length > 6 ? .07 : .1), italic = fam.includes('Serif') ? 'italic ' : '';
@@ -1668,9 +1777,9 @@ const STYLES = {
           letters.push({ img: o, x: x - pad, y: sy * fy - o.height / 2, on: 1 });
           x += w;
         }
-        this.signs.push({ letters, col, x: sx * W, y: sy * fy, buzz: 0, bad: Math.random() < .6 ? 1 + (Math.random() * (letters.length - 1) | 0) : -1 });
+        this.signs.push({ letters, col, x: sx * W, y: sy * fy, buzz: 0, bad: Math.random() < ({ rare: .2, often: 1 }[op.flicker] || .6) ? 1 + (Math.random() * (letters.length - 1) | 0) : -1 });
       }
-      this.drops = Array.from({ length: Math.round(W / 9) }, () => ({ x: rnd(0, W), y: rnd(-H, H), v: rnd(.8, 1.2), l: rnd(.5, 1.2) }));
+      this.drops = Array.from({ length: op.rain === 'off' ? 0 : Math.round(W / (op.rain === 'heavy' ? 3.5 : 9)) }, () => ({ x: rnd(0, W), y: rnd(-H, H), v: rnd(.8, 1.2), l: rnd(.5, 1.2) }));
       this.acc = 0; this.paint();
     },
     // an outline shape in tube: an arrow, a star, a ring with a bolt, a cocktail glass
@@ -1718,7 +1827,7 @@ const STYLES = {
       for (const sg of this.signs) {
         if (sg.buzz > 0) {                                  // a stutter: the whole sign flickers, then comes back
           sg.buzz -= dt; const on = sg.buzz <= 0 || Math.random() < .45 ? 1 : 0; sg.letters.forEach(l => l.on = on);
-        } else if (Math.random() < dt * .025 * sp) sg.buzz = rnd(.2, 1.1);
+        } else if (Math.random() < dt * .025 * sp * ({ rare: .25, often: 4 }[this.op.flicker] || 1)) sg.buzz = rnd(.2, 1.1);
         if (sg.bad >= 0 && sg.buzz <= 0) {                  // the letter that won't stay lit
           const l = sg.letters[sg.bad]; l.on = Math.random() < (l.on ? .93 : .3) ? (l.on ? 1 : 0) : 1 - l.on;
           if (!l.on && Math.random() < .02) l.on = .35;
@@ -1731,9 +1840,10 @@ const STYLES = {
   // a field map: contour lines of made-up ground (every fifth one heavier), a lettered grid, a north arrow and a
   // scale bar; a route draws itself from waypoint to waypoint to an objective, which pulses; then a new route
   topo: {
-    scale: 1, still: true,
+    scale: 1, still: true, reinit: true,   // the map is drawn at init
     init() {
-      const u = this.u = Math.min(W, H), light = T.mode === 'light';
+      const u = this.u = Math.min(W, H), light = T.mode === 'light', op = OPTS.topo || {};
+      const NC = { sparse: 14, dense: 40 }[op.contours] || 26;
       const [b, g] = (() => { const o = document.createElement('canvas'); o.width = W; o.height = H; return [o, o.getContext('2d')]; })();
       this.back = b;
       g.fillStyle = T.bg; g.fillRect(0, 0, W, H);
@@ -1743,9 +1853,9 @@ const STYLES = {
       const c = Math.max(8, Math.round(u / 90)), nx = Math.ceil(W / c) + 1, ny = Math.ceil(H / c) + 1, F = new Float32Array(nx * ny);
       let lo = 1e9, hi = -1e9;
       for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const v = F[j * nx + i] = ht(i * c, j * c); lo = Math.min(lo, v); hi = Math.max(hi, v); }
-      const step = (hi - lo) / 26;
+      const step = (hi - lo) / NC;
       g.strokeStyle = T.ink; g.lineJoin = 'round';
-      for (let k = 1; k < 26; k++) {
+      for (let k = 1; k < NC; k++) {
         const lv = lo + k * step, heavy = k % 5 === 0;
         g.globalAlpha = heavy ? (light ? .22 : .2) : (light ? .1 : .09); g.lineWidth = heavy ? 1.4 : 1; g.beginPath();
         for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
@@ -1761,6 +1871,7 @@ const STYLES = {
       }
       // the grid with its references
       const gs = this.gs = Math.round(u / 5), fs = this.fs = Math.max(10, Math.round(u / 70));
+      if (op.refs !== 'off') {
       g.globalAlpha = light ? .16 : .14; g.lineWidth = 1; g.beginPath();
       for (let x = gs; x < W; x += gs) { g.moveTo(Math.round(x) + .5, 0); g.lineTo(Math.round(x) + .5, H); }
       for (let y = gs; y < H; y += gs) { g.moveTo(0, Math.round(y) + .5); g.lineTo(W, Math.round(y) + .5); }
@@ -1768,6 +1879,9 @@ const STYLES = {
       g.globalAlpha = .45; g.fillStyle = T.ink; g.font = `${fs}px ${MONO}`; g.textBaseline = 'top';
       for (let x = 0, n = 0; x < W; x += gs, n++) g.fillText(String.fromCharCode(65 + n % 26), x + fs * .4, fs * .4);
       for (let y = gs, n = 1; y < H; y += gs, n++) g.fillText(String(n).padStart(2, '0'), fs * .4, y + fs * .4);
+      }
+      g.fillStyle = T.ink; g.font = `${fs}px ${MONO}`; g.textBaseline = 'top';
+      if (op.markers !== 'off') {
       // north arrow and scale bar, bottom right
       const nx0 = W - u * .07, ny0 = H - u * .16;
       g.globalAlpha = .5; g.beginPath(); g.moveTo(nx0, ny0 - u * .05); g.lineTo(nx0 + u * .015, ny0); g.lineTo(nx0, ny0 - u * .012); g.lineTo(nx0 - u * .015, ny0); g.closePath(); g.fill();
@@ -1775,6 +1889,7 @@ const STYLES = {
       const sx = W - u * .3, sy = H - u * .05;
       for (let i = 0; i < 4; i++) { g.globalAlpha = i % 2 ? .2 : .5; g.fillRect(sx + i * u * .05, sy, u * .05, fs * .4); }
       g.globalAlpha = .45; g.textAlign = 'left'; g.fillText('0', sx, sy + fs * .8); g.textAlign = 'right'; g.fillText('2 KM', sx + u * .2, sy + fs * .8);
+      }
       g.globalAlpha = 1; g.textAlign = 'start';
       this.route(); this.acc = 0;
       this.p = this.L;       // the first route is already drawn; later ones draw themselves
@@ -1792,6 +1907,7 @@ const STYLES = {
       if (!W || !H) return;
       const fs = this.fs, pts = this.pts, light = T.mode === 'light';
       cx.globalAlpha = 1; cx.drawImage(this.back, 0, 0);
+      if ((OPTS.topo || {}).route === 'off') return;
       cx.globalAlpha = .85 * this.fade; cx.strokeStyle = cx.fillStyle = T.acc; cx.lineWidth = Math.max(1.5, this.u / 400);
       cx.setLineDash([this.u / 90, this.u / 140]); cx.beginPath(); cx.moveTo(pts[0][0], pts[0][1]);
       let left = this.p, reached = 0;
@@ -1819,6 +1935,8 @@ const STYLES = {
     },
     frame(dt) {
       if (RAIN <= 0 || !(dt = every(this, 24, dt))) return;
+      if ((OPTS.topo || {}).route === 'off') { if (!this.bare) this.paint(); this.bare = true; return; }
+      this.bare = false;
       const sp = .4 + RAIN * 1.6;
       if (this.p < this.L) this.p += dt * sp * this.u * .06;
       else if ((this.hold += dt * sp) > 14) { if ((this.fade -= dt * .5) <= 0) this.route(); }
@@ -1828,7 +1946,7 @@ const STYLES = {
   // a botanical sun print: fern fronds and leaves laid on the coated sheet leave pale silhouettes in the blue, soft
   // at the edges; the print slowly develops, holds, and clears for the next arrangement. Brushed edges to the coating
   sunprint: {
-    scale: 1,
+    scale: 1, reinit: true,   // a new print with its options
     init() {
       const u = this.u = Math.min(W, H);
       const mk = () => { const o = document.createElement('canvas'); o.width = W; o.height = H; return [o, o.getContext('2d')]; };
@@ -1851,10 +1969,12 @@ const STYLES = {
     arrange() {
       const p = this.p, u = this.u; p.clearRect(0, 0, W, H);
       p.fillStyle = p.strokeStyle = T.ink; p.lineCap = p.lineJoin = 'round';
-      p.shadowColor = T.ink; p.shadowBlur = u * .006;
-      const n = 2 + (Math.random() * 2 | 0);
+      const op = OPTS.sunprint || {}, few = op.count === 'few', many = op.count === 'many';
+      p.shadowColor = T.ink; p.shadowBlur = op.edges === 'crisp' ? 0 : u * .006;
+      const n = op.plants === 'leaves' ? 0 : few ? 1 : many ? 4 + (Math.random() * 2 | 0) : 2 + (Math.random() * 2 | 0);
+      const nl = op.plants === 'ferns' ? 0 : few ? 2 : many ? 10 + (Math.random() * 4 | 0) : 4 + (Math.random() * 4 | 0);
       for (let i = 0; i < n; i++) this.frond(rnd(.1, .9) * W, rnd(.15, .95) * H, rnd(-Math.PI, 0) - .3, rnd(.35, .6) * u);
-      for (let i = 0; i < 4 + (Math.random() * 4 | 0); i++) this.leaf(rnd(0, W), rnd(0, H), rnd(0, TAU), rnd(.05, .11) * u);
+      for (let i = 0; i < nl; i++) this.leaf(rnd(0, W), rnd(0, H), rnd(0, TAU), rnd(.05, .11) * u);
       p.shadowBlur = 0;
     },
     frond(x, y, ang, len) {
@@ -1893,7 +2013,7 @@ const STYLES = {
     },
     frame(dt) {
       if (RAIN <= 0 || !(dt = every(this, 15, dt))) return;
-      const sp = .4 + RAIN * 1.6;
+      const sp = (.4 + RAIN * 1.6) * ({ slow: .5, fast: 2 }[(OPTS.sunprint || {}).develop] || 1);
       if (this.phase === 'dev') { if ((this.k += dt * sp * .12) >= 1) { this.k = 1; this.phase = 'hold'; this.t = 0; } }
       else if (this.phase === 'hold') { if ((this.t += dt * sp) > 30) this.phase = 'clear'; }
       else if ((this.k -= dt * sp * .2) <= 0) { this.k = 0; this.arrange(); this.phase = 'dev'; }
@@ -1904,7 +2024,7 @@ const STYLES = {
   // flowchart get written up a stroke at a time in chalk; when the board is full, an eraser wipes it in bands,
   // leaving smudges behind, and the writing starts again
   chalk: {
-    scale: 1,
+    scale: 1, reinit: true,   // a fresh board with its options
     // what gets written up: each at most once on the board at a time
     LINES: ['f(x) = x² - 3x + 2', 'a² + b² = c²', 'O(n log n)', 'lim sin(x)/x = 1', 'P(A|B) = P(B|A) P(A) / P(B)',
             'if (tests pass) ship()', 'TODO: write the tests!', 'y = mx + b', 'E = mc²', '2 + 2 = 4', 'n! = n (n-1)!',
@@ -1937,7 +2057,7 @@ const STYLES = {
       }
       g.fillStyle = T.ink; g.font = `${Math.round(u * .05)}px ${FONTS.hand[0]}`;
       g.font = `${Math.round(u * .035)}px ${FONTS.hand[0]}`;
-      for (const t of this.GHOSTS) { g.globalAlpha = rnd(.02, .04); g.fillText(t, rnd(0, .9) * W, rnd(.08, .92) * this.HB); }
+      for (const t of (OPTS.chalk || {}).ghosts === 'off' ? [] : this.GHOSTS) { g.globalAlpha = rnd(.02, .04); g.fillText(t, rnd(0, .9) * W, rnd(.08, .92) * this.HB); }
       const dust = g.createLinearGradient(0, this.HB - u * .08, 0, this.HB);
       dust.addColorStop(0, rgba(T.ink, 0)); dust.addColorStop(1, rgba(T.ink, .045));
       g.globalAlpha = 1; g.fillStyle = dust; g.fillRect(0, this.HB - u * .08, W, u * .08);
@@ -1961,7 +2081,7 @@ const STYLES = {
     // chalk on the board: a slightly broken line, a little dust
     seg(x0, y0, x1, y1, col, w) {
       const d = this.bd, n = Math.max(1, Math.hypot(x1 - x0, y1 - y0) / 4);
-      d.strokeStyle = d.fillStyle = col; d.lineCap = 'round';
+      d.strokeStyle = d.fillStyle = (OPTS.chalk || {}).colors === 'white' ? T.ink : col; d.lineCap = 'round';
       d.globalAlpha = .05; d.lineWidth = w * 3.5; d.beginPath(); d.moveTo(x0, y0); d.lineTo(x1, y1); d.stroke();   // powder
       for (let i = 0; i < n; i++) {
         const a = i / n, b = (i + 1) / n;
@@ -1982,13 +2102,13 @@ const STYLES = {
     },
     // the next thing to write: a line of working, a plot, or a little flowchart; as strokes to draw in order
     next() {
-      const u = this.u, k = Math.random(), w = Math.max(2, u / 300), strokes = [];
+      const u = this.u, k = { equations: .3, plots: .7, flowcharts: .9 }[(OPTS.chalk || {}).content] ?? Math.random(), w = Math.max(2, u / 300), strokes = [];
       const col = () => Math.random() < .7 ? T.ink : Math.random() < .5 ? T.acc : T.acc2;
       const wob = (x0, y0, x1, y1, c) => { const m = [rnd(-2, 2), rnd(-2, 2)]; strokes.push({ pts: [[x0, y0], [(x0 + x1) / 2 + m[0], (y0 + y1) / 2 + m[1]], [x1, y1]], c }); };
       const text = (s, x, y, fs, c) => {
         const t = document.createElement('canvas'), g = t.getContext('2d'), f = `${fs}px ${FONTS.hand[0]}`;
         g.font = f; t.width = Math.ceil(g.measureText(s).width + fs); t.height = Math.ceil(fs * 1.5);
-        g.font = f; g.textBaseline = 'middle'; g.fillStyle = c;
+        g.font = f; g.textBaseline = 'middle'; g.fillStyle = (OPTS.chalk || {}).colors === 'white' ? T.ink : c;
         g.filter = `blur(${Math.max(1, fs * .05)}px)`; g.globalAlpha = .3; g.fillText(s, fs * .2, t.height / 2);   // powder round the strokes
         g.filter = 'none'; g.globalAlpha = 1; g.fillText(s, fs * .2, t.height / 2);
         for (let i = 0; i < t.width / 5; i++) { g.globalAlpha = rnd(.1, .3); g.fillRect(rnd(0, t.width), rnd(0, t.height), 1, 1); }   // dust
@@ -2089,7 +2209,9 @@ const STYLES = {
       } else if (this.job && !this.job.done) this.step(this.job, this.u * 1.1 * dt * sp);
       else if ((this.wait -= dt * sp) <= 0) {
         this.job = this.next(); this.wait = rnd(1.5, 4);
-        if (!this.job) this.wipe = { x: -this.u * .06, y: 0, h: this.u * .11, dir: 1 };     // full: wipe the board
+        if (this.job) {}
+        else if ((OPTS.chalk || {}).wipe === 'clean') { d.clearRect(0, 0, W, H); this.used = []; this.on.clear(); this.wait = 1.5; dirty = [0, 0, W, H]; }   // full: clear it at once
+        else this.wipe = { x: -this.u * .06, y: 0, h: this.u * .11, dir: 1 };     // full: wipe the board
       }
       if (dirty) this.paint(dirty);
     },
@@ -2104,7 +2226,7 @@ function resize() {
   R && R.init();
 }
 function setRain(name) {
-  R = STYLES[name]; R.acc = 0; S = R.scale;
+  R = STYLES[name]; RNAME = name; R.acc = 0; S = R.scale;
   cv.classList.toggle('px', S > 1);
   resize();
 }
@@ -2304,6 +2426,10 @@ async function poll() {
     const data = await r.json(), evs = data.events || [];
     if (data.look) { layers.feed = data.look; applyLook(); }  // `glitchwall config --theme ...` applies live
     SLEEP = !!data.sleep;
+    if (data.opts) {   // a background that draws its options in at init starts again when they change
+      const was = JSON.stringify(OPTS[RNAME]); OPTS = data.opts;
+      if (R && R.reinit && JSON.stringify(OPTS[RNAME]) !== was) R.init();
+    }
     for (const [k, v] of Object.entries(data.tune || {}))   // `glitchwall config --linger 12` etc.
       if (tuned[k] !== v) { tuned[k] = v; setProperty(k, v); }
     if (data.last < since) since = 0;                          // the feed restarted: start over

@@ -43,13 +43,21 @@ DEFAULTS = {
     "cards": 4,              # blocks on screen at once, 1-6
     "intensity": 5,          # background intensity, 0 (still) - 10
     "glass": 58,             # card opacity, 20-95
+    "grain": 5,              # film grain: 0 none, 5 the theme's own, 10 double
     "corner": "top-left",    # rest the mouse in this screen corner to open the settings; see CORNERS
     "screens": "all",        # all | primary
+    "renderer": "native",    # Windows: who draws glitchwall's own windows, see RENDERERS (the page if the exe is missing)
+}
+from . import themes as _themes   # noqa: E402  (themes needs nothing from here)
+DEFAULTS.update({k: next(iter(choices)) for k, choices in _themes.OPTIONS.items()})   # orb_spin, orb_dir, ...
+RENDERERS = {
+    "native": "glitchwall-render, drawn with Direct2D: far lighter (the default)",
+    "web": "the wallpaper page in WebView2",
 }
 
 TUNE = {   # setting -> (page slider name, lowest, highest)
     "type_speed": ("typeSpeed", 1, 20), "linger": ("linger", 2, 30), "cards": ("cards", 1, 6),
-    "intensity": ("rain", 0, 10), "glass": ("glass", 20, 95),
+    "intensity": ("rain", 0, 10), "glass": ("glass", 20, 95), "grain": ("grain", 0, 10),
 }
 
 
@@ -80,6 +88,8 @@ def apply_changes(s: dict, changes: dict) -> tuple[dict, list[str]]:
         elif k in TUNE:
             _, lo, hi = TUNE[k]
             ok = isinstance(v, int) and not isinstance(v, bool) and lo <= v <= hi
+        elif k in themes.OPTIONS:
+            ok = isinstance(v, str) and v in themes.OPTIONS[k]
         elif k == "corner":
             ok = v in CORNERS
         elif k == "label":
@@ -89,6 +99,17 @@ def apply_changes(s: dict, changes: dict) -> tuple[dict, list[str]]:
         else:
             refused.append(k)
     return out, refused
+
+
+def opts(s: dict) -> dict:
+    """Each background's own options, as the page and the renderer read them: {"orb": {"spin": "both", ...}}."""
+    out = {}
+    for bg, keys in _themes.OPTIONS_OF.items():
+        out[bg] = {}
+        for k in keys:
+            v = s.get(k, DEFAULTS[k])
+            out[bg][k[len(bg) + 1:]] = v if v in _themes.OPTIONS[k] else DEFAULTS[k]
+    return out
 
 
 CORNERS = {
@@ -185,7 +206,7 @@ def load_settings() -> dict:
     return s
 
 
-KEEP_ON_RESET = ("port", "screens", "mode", "paused")   # how it's installed, what it shows, stream-safety
+KEEP_ON_RESET = ("port", "screens", "mode", "paused", "renderer")   # how it's installed, what it shows, stream-safety
 
 
 def reset_settings(s: dict) -> dict:

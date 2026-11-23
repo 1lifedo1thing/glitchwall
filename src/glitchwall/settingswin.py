@@ -12,6 +12,7 @@ import ctypes
 import os
 import threading
 import time
+import webbrowser
 from ctypes import wintypes
 
 WIN = os.name == "nt"
@@ -213,6 +214,10 @@ class Settings:
         webview.start(private_mode=True, storage_path=str(cfg.state_dir() / "webview-settings"), icon=self.icon)
 
 
+# the one page the settings window may open outside itself: the theme request form
+THEME_REQUEST_URL = "https://github.com/marklesterb28/glitchwall/issues/new?template=theme-request.yml"
+
+
 class Api:
     """What the settings page may call (window.pywebview.api.*). Kept to window chores, nothing else."""
 
@@ -224,3 +229,7 @@ class Api:
 
     def keep(self, on: bool) -> None:
         self._s.keep(on)
+
+    def request_theme(self) -> bool:
+        """Open the theme request form in the default browser. Fixed address: the page cannot pick another."""
+        return webbrowser.open(THEME_REQUEST_URL)
