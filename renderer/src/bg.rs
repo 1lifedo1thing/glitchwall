@@ -1,5 +1,5 @@
 //! Backgrounds: each one draws into the full-screen scene bitmap that the cards' glass blurs.
-//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record", "notebook", "textmode", "sunprint", "draft", "topo", "radar" and "orb"; every other background falls back to a plain fill until it is.
+//! Ported so far: the page's "pixel", "cascade", "broadsheet", "halftone", "stop", "grid", "record", "notebook", "textmode", "sunprint", "draft", "topo", "radar", "orb", "scope" and "oracle"; every other background falls back to a plain fill until it is.
 use crate::fonts::Fonts;
 use crate::gfx::{Gfx, rect, rgba};
 use crate::json::Json;
@@ -37,6 +37,8 @@ pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result
         "topo" => Box::new(Topo::new(g, fonts, look, o)?),
         "radar" => Box::new(Radar::new(g, fonts, look, o)?),
         "orb" => Box::new(Orb::new(g, look)?),
+        "scope" => Box::new(Scope::new(g, fonts, look, o)?),
+        "oracle" => Box::new(Oracle::new(g, fonts, look, o)?),
         _ => Box::new(Plain),
     })
 }
@@ -2481,6 +2483,488 @@ impl Background for Orb {
         self.sprites(g, &dot, !light)?;
         if self.caged { self.cage_layer(g, look, s, ox, oy, u)?; }
         unsafe { g.dc.DrawBitmap(&self.front, Some(&full), 1.0, D2D1_INTERPOLATION_MODE_LINEAR, None, None); }
+        Ok(())
+    }
+}
+
+/// a lab oscilloscope: a graticule on dark glass, one beam sweeping it, the trace fading by its age; the signal
+/// changes every few sweeps (or stays on one, by option). Either side, where a wide screen leaves room: a spectrum of
+/// the signal and a second channel rolling. The glass is one mask (tinted each frame); each sweep's pieces of trace
+/// are kept as geometry and drawn at the brightness their age allows. 30 fps; still at 0 (one whole trace).
+pub struct Scope { mask: ID2D1Bitmap1, factory: ID2D1Factory, round: ID2D1StrokeStyle, fmt: IDWriteTextFormat,
+                   div: f32, gx: f32, gy: f32, gw: f32, gh: f32, cy0: f32, w: f32, h: f32, fs: f32,
+                   panels: Option<(f32, f32, f32)>, trail: Vec<(ID2D1PathGeometry, f32)>, last: Option<D2D_POINT_2F>,
+                   bars: [f32; 32], roll: std::collections::VecDeque<f32>, ch2: f32,
+                   t: f32, clk: f32, u: f32, m: usize, sweeps: u32, rng: Rng, still: bool,
+                   fade: f32, signal: usize, built: (bool, bool) }   // options: afterglow, signal (0 cycles); in the glass: graticule, side panels
+
+struct ScopeMode { ch: &'static str, tb: &'static str, f: &'static str, pk: &'static [(f32, f32)] }
+
+const SCOPE_MODES: [ScopeMode; 4] = [
+    ScopeMode { ch: "0.50 V", tb: "2.00 ms", f: "1.502 kHz", pk: &[(3.0, 1.0), (9.0, 0.3)] },
+    ScopeMode { ch: "1.00 V", tb: "500 µs", f: "12.48 kHz", pk: &[(12.0, 0.45), (13.0, 0.8), (14.0, 0.45)] },
+    ScopeMode { ch: "0.20 V", tb: "1.00 ms", f: "2.000 kHz", pk: &[(4.0, 1.0), (12.0, 0.33), (20.0, 0.2), (28.0, 0.14)] },
+    ScopeMode { ch: "2.00 V", tb: "5.00 µs", f: "6.250 MHz", pk: &[(29.0, 0.5), (30.0, 0.8), (31.0, 1.0)] },
+];
+
+/// the signal of mode m at sweep position u (0-1), in divisions
+fn scope_y(m: usize, u: f32, t: f32) -> f32 {
+    match m {
+        0 => 2.3 * (TAU * 3.0 * u + t * 0.12).sin() + 0.55 * (TAU * 9.0 * u + t * 0.5).sin(),
+        1 => if u < 0.14 { 0.0 } else { 3.1 * (-(u - 0.14) * 6.0).exp() * (TAU * 13.0 * (u - 0.14)).sin() },
+        2 => { let q = (u * 4.0) % 1.0; let e = q.min((q - 0.5).abs()); let s = if q < 0.5 { 1.0 } else { -1.0 };
+               2.0 * s + s * 0.9 * (-e * 60.0).exp() * (e * 260.0).cos() }
+        _ => 3.0 * (TAU * 31.0 * u + t * 0.7).sin() * (-((u - 0.5) / 0.17).powi(2)).exp(),
+    }
+}
+
+impl Scope {
+    fn built(o: &Json) -> (bool, bool) { (o.get("graticule").str() != Some("off"), o.get("sides").str() != Some("off")) }
+    fn new(g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result<Scope> {
+        let (w, h) = (g.w as f32, g.h as f32);
+        let built = Self::built(o);
+        let light = look.light;
+        let div = (w / 10.8).min(h / 8.8).floor();
+        let (gw, gh) = (div * 10.0, div * 8.0);
+        let (gx, gy) = (((w - gw) / 2.0).round(), ((h - gh) / 2.0).round());
+        let mask = g.surface(w, h)?;
+        let factory = unsafe { g.dc.GetFactory()? };
+        unsafe {   // the glass: a solid frame, dotted divisions, the centre axes ticked in fifths
+            let dc = &g.dc;
+            let old = dc.GetTarget()?;
+            dc.SetTarget(&mask);
+            dc.BeginDraw();
+            dc.Clear(Some(&D2D1_COLOR_F::default()));
+            let white = g.brush([1.0, 1.0, 1.0, 1.0])?;
+            white.SetOpacity(if light { 0.3 } else { 0.22 });
+            dc.DrawRectangle(&rect(gx + 0.5, gy + 0.5, gw, gh), &white, 1.0, None);
+            if built.0 {
+                white.SetOpacity(if light { 0.26 } else { 0.2 });
+                for i in 1..10 { let mut y = gy; while y <= gy + gh { dc.FillRectangle(&rect(gx + i as f32 * div, y.round(), 1.0, 1.0), &white); y += div / 5.0; } }
+                for j in 1..8 { let mut x = gx; while x <= gx + gw { dc.FillRectangle(&rect(x.round(), gy + j as f32 * div, 1.0, 1.0), &white); x += div / 5.0; } }
+            }
+            white.SetOpacity(if light { 0.32 } else { 0.26 });
+            let (mx, my, tk) = (gx + 5.0 * div + 0.5, gy + 4.0 * div + 0.5, (div * 0.07).max(3.0));
+            let mut x = gx; while x <= gx + gw + 0.1 { let xx = x.round() + 0.5; dc.DrawLine(p2(xx, my - tk), p2(xx, my + tk), &white, 1.0, None); x += div / 5.0; }
+            let mut y = gy; while y <= gy + gh + 0.1 { let yy = y.round() + 0.5; dc.DrawLine(p2(mx - tk, yy), p2(mx + tk, yy), &white, 1.0, None); y += div / 5.0; }
+            dc.EndDraw(None, None)?;
+            dc.SetTarget(&old);
+        }
+        let props = D2D1_STROKE_STYLE_PROPERTIES { startCap: D2D1_CAP_STYLE_ROUND, endCap: D2D1_CAP_STYLE_ROUND,
+                                                   dashCap: D2D1_CAP_STYLE_ROUND, lineJoin: D2D1_LINE_JOIN_ROUND, ..Default::default() };
+        let round = unsafe { factory.CreateStrokeStyle(&props, None)? };
+        let fs = (div * 0.15).round().max(11.0);
+        let fmt = fonts.format(&look.mono.family, fs, 400)?;
+        let side = gx - div * 0.6;
+        let pw = (side * 0.7).min(div * 2.6);
+        let panels = if side > div * 1.2 && built.1 { Some((pw, (gx - div * 0.6 - pw).round(), (gx + gw + div * 0.6).round())) } else { None };
+        let mut rng = Rng(0x5c0e_0f00_0000_0001);
+        let mut s = Scope { mask, factory, round, fmt, div, gx, gy, gw, gh, cy0: gy + gh / 2.0, w, h, fs, panels, trail: Vec::new(), last: None,
+                            bars: [0.0; 32], roll: std::collections::VecDeque::new(), ch2: rng.range(0.0, 100.0),
+                            t: rng.range(0.0, 100.0), clk: 0.0, u: 0.0, m: 0, sweeps: 0, rng, still: false, fade: 1.1, signal: 0, built };
+        s.opts(o);
+        Ok(s)
+    }
+
+    /// where the beam is at sweep position u in the current mode
+    fn at(&mut self, u: f32) -> D2D_POINT_2F {
+        p2(self.gx + u * self.gw, self.cy0 - scope_y(self.m, u, self.t) * self.div + self.rng.range(-0.4, 0.4))
+    }
+
+    /// the trace from u0 to u1, kept as one piece of the persistence
+    fn piece(&mut self, u0: f32, u1: f32) -> Result<()> {
+        let n = ((u1 - u0) * self.gw / 1.5).ceil().max(2.0) as usize;
+        let mut pts = Vec::with_capacity(n + 2);
+        if u0 > 0.0 { if let Some(l) = self.last { pts.push(l); } }
+        for i in pts.len()..=n { let p = self.at(u0 + (u1 - u0) * i as f32 / n as f32); pts.push(p); }
+        self.last = pts.last().copied();
+        unsafe {
+            let path = self.factory.CreatePathGeometry()?;
+            let sink = path.Open()?;
+            sink.BeginFigure(pts[0], D2D1_FIGURE_BEGIN_HOLLOW);
+            sink.AddLines(&pts[1..]);
+            sink.EndFigure(D2D1_FIGURE_END_OPEN);
+            sink.Close()?;
+            self.trail.push((path, self.clk));
+        }
+        Ok(())
+    }
+
+    fn label(&self, g: &Gfx, s: &str, x: f32, base: f32, right: bool, b: &ID2D1SolidColorBrush) {
+        let t: Vec<u16> = s.encode_utf16().collect();
+        let fs = self.fs;
+        unsafe {
+            let _ = self.fmt.SetTextAlignment(if right { DWRITE_TEXT_ALIGNMENT_TRAILING } else { DWRITE_TEXT_ALIGNMENT_LEADING });
+            let r = if right { rect(x - 600.0, base - fs * 1.05, 600.0, fs * 1.5) } else { rect(x, base - fs * 1.05, 600.0, fs * 1.5) };
+            g.dc.DrawText(&t, &self.fmt, &r, b, D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL);
+        }
+    }
+}
+
+impl Background for Scope {
+    fn fps(&self) -> f32 { if self.still { 0.0 } else { 30.0 } }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.fade = match o.get("afterglow").str() { Some("short") => 2.6, Some("long") => 0.45, _ => 1.1 };
+        self.signal = match o.get("signal").str() { Some("sine") => 1, Some("square") => 2, Some("burst") => 3, _ => 0 };
+        if self.signal > 0 { self.m = [0, 0, 2, 3][self.signal]; }
+        Self::built(o) != self.built
+    }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        let was = self.still;
+        self.still = level <= 0.0;
+        if self.still && !was && self.trail.is_empty() { self.piece(0.0, 1.0)?; self.u = 1.0; }   // stilled: one whole trace
+        if !self.still {
+            let sp = 0.3 + level * 1.2;
+            self.t += dt * sp; self.clk += dt * sp;
+            let (clk, fade) = (self.clk, self.fade);
+            self.trail.retain(|(_, b)| (clk - b) * fade < 4.0);   // faded out: gone for good
+            // the side instruments: spectrum bars ease toward the signal's harmonics, channel 2 rolls on
+            for i in 0..32 {
+                let mut v = 0.03 + self.rng.f() * 0.05;
+                for &(hh, a) in SCOPE_MODES[self.m].pk { v += a * 0.85 * (-((i as f32 + 1.0) - hh).powi(2) / 1.2).exp(); }
+                let target = (v * (0.9 + self.rng.f() * 0.2)).min(1.0);
+                self.bars[i] += (target - self.bars[i]) * (dt * 8.0).min(1.0);
+            }
+            self.ch2 += dt * sp;
+            let c = self.ch2;
+            let c2 = 0.55 * (c * 1.3).sin() * (c * 0.21).sin() + 0.2 * (c * 4.7).sin() + self.rng.range(-0.04, 0.04);
+            self.roll.push_front(c2.clamp(-1.0, 1.0));
+            if self.roll.len() > 181 { self.roll.pop_back(); }
+            let u1 = (self.u + dt * sp / 1.5).min(1.0);
+            self.piece(self.u, u1)?;
+            self.u = u1;
+            if self.u >= 1.0 {   // retrace, and every few sweeps a new signal
+                self.u = 0.0; self.last = None;
+                self.sweeps += 1;
+                if self.signal == 0 && self.sweeps >= 4 + (self.rng.f() * 3.0) as u32 {
+                    self.sweeps = 0;
+                    self.m = (self.m + 1 + (self.rng.f() * 3.0) as usize) % 4;
+                }
+            }
+        }
+        let (w, h, d) = (self.w, self.h, self.div);
+        let light = look.light;
+        let blend = if light { D2D1_PRIMITIVE_BLEND_SOURCE_OVER } else { D2D1_PRIMITIVE_BLEND_ADD };
+        unsafe {
+            let dc = &g.dc;
+            dc.Clear(Some(&rgba(look.bg)));
+            let rt: &ID2D1RenderTarget = dc;
+            let ink = look.ink;
+            let stops = [D2D1_GRADIENT_STOP { position: 0.0, color: D2D1_COLOR_F { r: ink[0], g: ink[1], b: ink[2], a: if light { 0.05 } else { 0.045 } } },
+                         D2D1_GRADIENT_STOP { position: 1.0, color: D2D1_COLOR_F { r: ink[0], g: ink[1], b: ink[2], a: 0.0 } }];
+            let coll = rt.CreateGradientStopCollection(&stops, D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP)?;
+            let rr = (w * w + h * h).sqrt() * 0.55;
+            let glow = dc.CreateRadialGradientBrush(&D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES { center: p2(w / 2.0, h / 2.0), gradientOriginOffset: p2(0.0, 0.0),
+                                                                                         radiusX: rr, radiusY: rr }, None, &coll)?;
+            dc.FillRectangle(&rect(0.0, 0.0, w, h), &glow);
+            let inkb = g.brush(look.ink)?;
+            dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);   // FillOpacityMask needs it
+            dc.FillOpacityMask(&self.mask, &inkb, Some(&rect(0.0, 0.0, w, h)), None);
+            dc.SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+            // the persistence: a wide soft pass and then the line, each piece as bright as its age allows
+            let dim = g.brush(look.dim)?;
+            dc.SetPrimitiveBlend(blend);
+            for (lw, a) in [((d * 0.09).max(5.0), 0.08), (1.6, 0.75)] {
+                for (p, b) in &self.trail {
+                    let k = (-(self.clk - b) * self.fade).exp();
+                    if k < 0.02 { continue; }
+                    dim.SetOpacity(a * k);
+                    dc.DrawGeometry(p, &dim, lw, &self.round);
+                }
+            }
+            dc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_SOURCE_OVER);
+            // the side instruments
+            if let Some((pw, lx, rx)) = self.panels {
+                let (gy, gh) = (self.gy, self.gh);
+                for x in [lx, rx] {
+                    inkb.SetOpacity(0.18); dc.DrawRectangle(&rect(x + 0.5, gy + 0.5, pw, gh), &inkb, 1.0, None);
+                    inkb.SetOpacity(0.1);
+                    if x == lx { for k in 1..4 { dc.FillRectangle(&rect(x + pw * k as f32 / 4.0, gy, 1.0, gh), &inkb); } }
+                    else { dc.FillRectangle(&rect(x + pw / 2.0, gy, 1.0, gh), &inkb); }
+                }
+                dc.SetPrimitiveBlend(blend);
+                let bh = gh / 32.0;
+                dim.SetOpacity(0.5);
+                for (i, v) in self.bars.iter().enumerate() { dc.FillRectangle(&rect(lx + 1.0, gy + i as f32 * bh + bh * 0.2, (v * (pw - 2.0)).max(1.0), bh * 0.6), &dim); }
+                if self.roll.len() > 1 {
+                    let step = gh / 180.0;
+                    let pts: Vec<D2D_POINT_2F> = self.roll.iter().enumerate().map(|(i, v)| p2(rx + pw / 2.0 + v * pw * 0.42, gy + i as f32 * step)).collect();
+                    let path = self.factory.CreatePathGeometry()?;
+                    let sink = path.Open()?;
+                    sink.BeginFigure(pts[0], D2D1_FIGURE_BEGIN_HOLLOW);
+                    sink.AddLines(&pts[1..]);
+                    sink.EndFigure(D2D1_FIGURE_END_OPEN);
+                    sink.Close()?;
+                    for (lw, a) in [((d * 0.07).max(4.0), 0.07), (1.4, 0.7)] { dim.SetOpacity(a); dc.DrawGeometry(&path, &dim, lw, &self.round); }
+                }
+                dc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_SOURCE_OVER);
+            }
+            // the beam itself: a short white-hot head on the trace
+            if level > 0.0 && self.u < 1.0 {
+                dc.SetPrimitiveBlend(blend);
+                let hi = g.brush(look.hi)?;
+                let (n, back) = (14, 0.025);
+                let mut prev = self.at((self.u - back).max(0.0));
+                for i in 1..=n {
+                    let q = self.at((self.u - back * (1.0 - i as f32 / n as f32)).max(0.0));
+                    hi.SetOpacity(0.9 * i as f32 / n as f32);
+                    dc.DrawLine(prev, q, &hi, 1.0 + 1.6 * i as f32 / n as f32, &self.round);
+                    prev = q;
+                }
+                let hc = look.hi;
+                let stops = [D2D1_GRADIENT_STOP { position: 0.0, color: D2D1_COLOR_F { r: hc[0], g: hc[1], b: hc[2], a: 0.55 } },
+                             D2D1_GRADIENT_STOP { position: 1.0, color: D2D1_COLOR_F { r: hc[0], g: hc[1], b: hc[2], a: 0.0 } }];
+                let coll = rt.CreateGradientStopCollection(&stops, D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP)?;
+                let hb = dc.CreateRadialGradientBrush(&D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES { center: prev, gradientOriginOffset: p2(0.0, 0.0),
+                                                                                           radiusX: d * 0.22, radiusY: d * 0.22 }, None, &coll)?;
+                dc.FillRectangle(&rect(prev.x - d * 0.22, prev.y - d * 0.22, d * 0.44, d * 0.44), &hb);
+                dc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_SOURCE_OVER);
+            }
+            // the readouts round the graticule
+            let md = &SCOPE_MODES[self.m];
+            let (fs, pad) = (self.fs, self.fs * 0.8);
+            let (top, bot) = (self.gy - pad, self.gy + self.gh + pad + fs);
+            let txt = g.brush([ink[0], ink[1], ink[2], 0.55])?;
+            self.label(g, &format!("CH1  {}/div   DC", md.ch), self.gx, top, false, &txt);
+            self.label(g, &format!("M  {}/div", md.tb), self.gx, bot, false, &txt);
+            self.label(g, &format!("f  {}", md.f), self.gx + self.gw, bot, true, &txt);
+            self.label(g, "TRIG'D", self.gx + self.gw, top, true, &g.brush([look.acc[0], look.acc[1], look.acc[2], 0.85])?);
+            if let Some((_, lx, rx)) = self.panels {
+                self.label(g, "FFT  CH1", lx, top, false, &txt); self.label(g, "0 dB", lx, bot, false, &txt);
+                self.label(g, "CH2  ROLL", rx, top, false, &txt); self.label(g, "5.00 s/div", rx, bot, false, &txt);
+            }
+        }
+        Ok(())
+    }
+}
+
+/// one great ring of thin jagged data strokes, woven into a band that swells and pinches as it slowly turns. Every
+/// stroke has its own write head running round it, rewriting the data as it passes (the bright stretch just behind
+/// it); now and then a few strokes diverge in the accent, with a reading. Each stroke is one path a frame. 20 fps;
+/// still at 0.
+pub struct Oracle { factory: ID2D1Factory, fmt: IDWriteTextFormat, r: f32, ox: f32, oy: f32, w: f32, h: f32, fs: f32,
+                    cos: Vec<f32>, sin: Vec<f32>, env: Vec<f32>, t: f32, rot: f32, read: f32,
+                    tr: Vec<OrTr>, anom: Option<OrAnom>, wait: f32, rng: Rng, still: bool,
+                    wild: f32, dir: f32, red: bool, scales: bool }   // options: stroke amplitude, turning, divergences, scales
+
+struct OrTr { k: usize, off: f32, amp: f32, v: Vec<f32>, head: f32, sp: f32, a: f32, w: f32 }
+struct OrAnom { c: usize, w: i32, k: usize, n: usize, pull: f32, age: f32, life: f32, val: f32, id: String }
+
+const OR_M: usize = 480;
+const OR_K: usize = 34;
+
+impl Oracle {
+    fn new(g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result<Oracle> {
+        let (w, h) = (g.w as f32, g.h as f32);
+        let r = w.min(h) * 0.32;
+        let fs = (r * 0.032).round().max(10.0);
+        let mut rng = Rng(0x0ac1_e000_0000_0001);
+        let cos = (0..OR_M).map(|i| (i as f32 / OR_M as f32 * TAU).cos()).collect();
+        let sin = (0..OR_M).map(|i| (i as f32 / OR_M as f32 * TAU).sin()).collect();
+        let tr = (0..OR_K).map(|k| {
+            let u = k as f32 / (OR_K - 1) as f32;
+            OrTr { k, off: (u - 0.5) * 0.36 + rng.range(-0.02, 0.02), amp: rng.range(0.025, 0.075), v: vec![0.0; OR_M], head: rng.range(0.0, OR_M as f32),
+                   sp: rng.range(0.04, 0.12) * OR_M as f32 * if rng.f() < 0.35 { -1.0 } else { 1.0 }, a: rng.range(0.1, 0.38),
+                   w: if rng.f() < 0.18 { 1.25 } else { 0.7 } }
+        }).collect();
+        let mut s = Oracle { factory: unsafe { g.dc.GetFactory()? }, fmt: fonts.format(&look.mono.family, fs, 400)?, r, ox: w / 2.0, oy: h / 2.0, w, h, fs,
+                             cos, sin, env: vec![0.0; OR_M], t: rng.range(0.0, 500.0), rot: rng.range(0.0, TAU), read: 0.99 + rng.range(0.0, 0.009),
+                             tr, anom: None, wait: 0.0, rng, still: false, wild: 1.0, dir: 1.0, red: true, scales: true };
+        s.opts(o);
+        for k in 0..OR_K { for i in 0..OR_M { let v = s.field(k, i); s.tr[k].v[i] = v; } }
+        if s.red { let a = s.rng.range(0.12, 0.3); s.diverge(a); }   // one already showing, so even a stilled ring has its red
+        Ok(s)
+    }
+
+    /// the data: a few slow waves around the ring (shared by neighbouring strokes, so the band flows), plus jag and spikes
+    fn field(&mut self, k: usize, i: usize) -> f32 {
+        let a = i as f32 / OR_M as f32 * TAU;
+        let (t, p) = (self.t, k as f32 * 0.12);
+        let mut v = (3.0 * a + t * 0.35 + p).sin() * 0.45 + (7.0 * a - t * 0.5 + p * 1.7).sin() * 0.3 + (17.0 * a + t * 0.9 - p * 2.3).sin() * 0.15;
+        v += (self.rng.f() - 0.5) * 0.45;
+        if self.rng.f() < 0.03 { v += if self.rng.f() < 0.5 { -1.0 } else { 1.0 } * self.rng.range(0.8, 2.0); }
+        v
+    }
+
+    fn rad(&self, tr: &OrTr, i: usize) -> f32 { let e = self.env[i]; self.r * (1.0 + tr.off * e + tr.amp * self.wild * e * tr.v[i]) }
+
+    fn diverge(&mut self, age: f32) {   // a few neighbouring strokes pulled out of true for a while, with a reading
+        let life = self.rng.range(8.0, 14.0);
+        let val = self.rng.range(0.012, 0.09);
+        self.anom = Some(OrAnom { c: (self.rng.f() * OR_M as f32) as usize % OR_M, w: self.rng.range(14.0, 28.0) as i32, k: (self.rng.f() * OR_K as f32) as usize % OR_K,
+                                  n: 3 + (self.rng.f() * 3.0) as usize, pull: self.rng.range(0.05, 0.1), age: age * life, life, val,
+                                  id: format!("#{:04x}", (self.rng.f() * 65535.0) as u32) });
+        self.read = 1.0 - val * self.rng.range(0.05, 0.15);
+    }
+
+    /// a polyline along a stroke, n samples from `from`, in ring coordinates
+    fn path(&self, pts: impl Iterator<Item = D2D_POINT_2F>) -> Result<ID2D1PathGeometry> {
+        unsafe {
+            let path = self.factory.CreatePathGeometry()?;
+            let sink = path.Open()?;
+            let mut first = true;
+            for p in pts { if first { sink.BeginFigure(p, D2D1_FIGURE_BEGIN_HOLLOW); first = false; } else { sink.AddLine(p); } }
+            if !first { sink.EndFigure(D2D1_FIGURE_END_OPEN); }
+            sink.Close()?;
+            Ok(path)
+        }
+    }
+    fn trace(&self, tr: &OrTr, from: i64, n: i64, dir: i64) -> Result<ID2D1PathGeometry> {
+        let m = OR_M as i64;
+        self.path((0..=n).map(|j| { let i = ((from + dir * j) % m + m) as usize % OR_M; let r = self.rad(tr, i); p2(r * self.cos[i], r * self.sin[i]) }))
+    }
+
+    fn say(&self, g: &Gfx, s: &str, x: f32, y: f32, al: i32, b: &ID2D1SolidColorBrush) {   // al: -1 right of x, 0 centred, 1 left; y the middle
+        let t: Vec<u16> = s.encode_utf16().collect();
+        let fs = self.fs;
+        unsafe {
+            let _ = self.fmt.SetTextAlignment(match al { -1 => DWRITE_TEXT_ALIGNMENT_TRAILING, 0 => DWRITE_TEXT_ALIGNMENT_CENTER, _ => DWRITE_TEXT_ALIGNMENT_LEADING });
+            let _ = self.fmt.SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+            let r = match al { -1 => rect(x - 600.0, y - fs, 600.0, fs * 2.0), 0 => rect(x - 300.0, y - fs, 600.0, fs * 2.0), _ => rect(x, y - fs, 600.0, fs * 2.0) };
+            g.dc.DrawText(&t, &self.fmt, &r, b, D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL);
+        }
+    }
+}
+
+impl Background for Oracle {
+    fn fps(&self) -> f32 { if self.still { 0.0 } else { 20.0 } }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.wild = match o.get("strokes").str() { Some("calm") => 0.45, Some("wild") => 2.2, _ => 1.0 };
+        self.dir = if o.get("direction").str() == Some("anticlockwise") { -1.0 } else { 1.0 };
+        self.red = o.get("red").str() != Some("off");
+        if !self.red { self.anom = None; }
+        self.scales = o.get("scales").str() != Some("off");
+        false
+    }
+    fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
+        self.still = level <= 0.0;
+        if !self.still {
+            let sp = 0.4 + level * 1.6;
+            self.t += dt * sp; self.rot += dt * 0.016 * sp * self.dir;
+            let m = OR_M as i64;
+            for k in 0..OR_K {   // each head rewrites the samples it passes
+                let (from, dir) = (self.tr[k].head.floor() as i64, self.tr[k].sp.signum() as i64);
+                self.tr[k].head += self.tr[k].sp * dt * sp;
+                let n = (self.tr[k].head.floor() as i64 - from).abs();
+                for j in 1..=n { let i = ((from + dir * j) % m + m) as usize % OR_M; let v = self.field(k, i); self.tr[k].v[i] = v; }
+                self.tr[k].head = self.tr[k].head.rem_euclid(OR_M as f32);
+            }
+            let mut ended = false;
+            if let Some(a) = &mut self.anom { a.age += dt * sp; ended = a.age > a.life; }
+            else if self.red { self.wait -= dt * sp; if self.wait <= 0.0 { self.diverge(0.0); } }
+            if ended { self.anom = None; self.wait = self.rng.range(1.5, 4.0); }
+        }
+        let (r, ox, oy, w, h, t) = (self.r, self.ox, self.oy, self.w, self.h, self.t);
+        for i in 0..OR_M {   // the band's thickness: swells and pinches around the ring, drifting slowly
+            let a = i as f32 / OR_M as f32 * TAU;
+            self.env[i] = 0.14 + 0.86 * (0.5 + 0.5 * (2.0 * a + t * 0.06).sin()).powf(2.2) * (0.7 + 0.3 * (5.0 * a - t * 0.11).sin());
+        }
+        let ink = look.ink;
+        let ic = |a: f32| D2D1_COLOR_F { r: ink[0], g: ink[1], b: ink[2], a };
+        unsafe {
+            let dc = &g.dc;
+            let rt: &ID2D1RenderTarget = dc;
+            dc.Clear(Some(&rgba(look.bg)));
+            // the parts that never move: a faint halo where the band sits, a vignette, guide circles, a centre mark
+            // the page's gradient runs from R .6 to R 1.55; here from the centre, so its stops are moved out to match
+            let (r0, r1) = (r * 0.6, r * 1.55);
+            let st = |f: f32| (r0 + (r1 - r0) * f) / r1;
+            let halo = rt.CreateGradientStopCollection(&[D2D1_GRADIENT_STOP { position: 0.0, color: ic(0.0) }, D2D1_GRADIENT_STOP { position: st(0.0), color: ic(0.0) },
+                                                          D2D1_GRADIENT_STOP { position: st(0.4), color: ic(if look.light { 0.05 } else { 0.04 }) },
+                                                          D2D1_GRADIENT_STOP { position: 1.0, color: ic(0.0) }], D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP)?;
+            let hb = dc.CreateRadialGradientBrush(&D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES { center: p2(ox, oy), gradientOriginOffset: p2(0.0, 0.0), radiusX: r1, radiusY: r1 }, None, &halo)?;
+            dc.FillRectangle(&rect(0.0, 0.0, w, h), &hb);
+            if !look.light {
+                let (v0, v1) = (r * 1.1, (w * w + h * h).sqrt() * 0.62);
+                let vg = rt.CreateGradientStopCollection(&[D2D1_GRADIENT_STOP { position: 0.0, color: D2D1_COLOR_F::default() },
+                                                            D2D1_GRADIENT_STOP { position: v0 / v1, color: D2D1_COLOR_F::default() },
+                                                            D2D1_GRADIENT_STOP { position: 1.0, color: D2D1_COLOR_F { r: 0.0, g: 0.0, b: 0.0, a: 0.6 } }],
+                                                          D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP)?;
+                let vb = dc.CreateRadialGradientBrush(&D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES { center: p2(ox, oy), gradientOriginOffset: p2(0.0, 0.0), radiusX: v1, radiusY: v1 }, None, &vg)?;
+                dc.FillRectangle(&rect(0.0, 0.0, w, h), &vb);
+            }
+            let inkb = g.brush(ink)?;
+            for (rr, a) in [(r * 0.62, 0.09), (r * 0.6, 0.04), (r * 1.4, 0.06), (r * 1.47, 0.03)] {
+                inkb.SetOpacity(a);
+                dc.DrawEllipse(&D2D1_ELLIPSE { point: p2(ox, oy), radiusX: rr, radiusY: rr }, &inkb, 1.0, None);
+            }
+            inkb.SetOpacity(0.22);
+            dc.DrawLine(p2(ox - 7.0, oy), p2(ox + 7.0, oy), &inkb, 1.0, None);
+            dc.DrawLine(p2(ox, oy - 7.0), p2(ox, oy + 7.0), &inkb, 1.0, None);
+            // scales: fine ticks outside turning against the ring, coarse ones inside turning with it, faster
+            if self.scales {
+                for (r0, n, l, rot, al) in [(r * 1.4, 180, 5.0f32, -self.rot * 0.6, 0.22), (r * 0.62, 60, -6.0, self.rot * 1.7, 0.2)] {
+                    inkb.SetOpacity(al);
+                    for k in 0..n {
+                        let a = rot + k as f32 / n as f32 * TAU;
+                        let ll = if k % 15 != 0 { l } else { l * 2.4 };
+                        let (s, c) = a.sin_cos();
+                        dc.DrawLine(p2(ox + c * r0, oy + s * r0), p2(ox + c * (r0 + ll), oy + s * (r0 + ll)), &inkb, 1.0, None);
+                    }
+                }
+            }
+            let (s, c) = self.rot.sin_cos();
+            dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2 { M11: c, M12: s, M21: -s, M22: c, M31: ox, M32: oy });
+            let line = g.brush(if look.light { ink } else { look.dim })?;   // on paper the faint colour vanishes: draw in ink
+            for tr in &self.tr {
+                line.SetOpacity(tr.a);
+                let p = self.trace(tr, 0, OR_M as i64, 1)?;
+                dc.DrawGeometry(&p, &line, tr.w, None);
+            }
+            // the freshly written stretch behind every head, brightest nearest it
+            let hi = g.brush(look.hi)?;
+            for tr in &self.tr {
+                let (hd, dir) = (tr.head.floor() as i64, -(tr.sp.signum() as i64));
+                for (o, n, al) in [(0i64, 10i64, 0.75), (10, 16, 0.4), (26, 24, 0.16)] {
+                    hi.SetOpacity(al);
+                    let p = self.trace(tr, hd + dir * o, n, dir)?;
+                    dc.DrawGeometry(&p, &hi, 1.0, None);
+                }
+            }
+            // a divergence: a few strokes pulled out of true, in the accent
+            let acc = g.brush(look.acc)?;
+            if let Some(an) = &self.anom {
+                let f = (an.age / 0.9).min((an.life - an.age) / 0.9).clamp(0.0, 1.0);
+                let m = OR_M as i64;
+                for s in 0..an.n {
+                    let tr = &self.tr[(an.k + s) % OR_K];
+                    let p = self.path((-an.w..=an.w).map(|j| {
+                        let i = ((an.c as i64 + j as i64) % m + m) as usize % OR_M;
+                        let bump = (j as f32 / an.w as f32 * std::f32::consts::PI / 2.0).cos().powi(2) * f;
+                        let rr = self.rad(tr, i) + r * an.pull * bump * if s % 2 == 1 { -0.6 } else { 1.0 } * (1.0 + 0.3 * (j as f32 * 0.45 + s as f32 * 1.9).sin());
+                        p2(rr * self.cos[i], rr * self.sin[i])
+                    }))?;
+                    let a = (0.95 - s as f32 * 0.12) * f;
+                    acc.SetOpacity(a * 0.25); dc.DrawGeometry(&p, &acc, 5.0, None);   // its glow
+                    acc.SetOpacity(a); dc.DrawGeometry(&p, &acc, 1.2, None);
+                }
+            }
+            dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2::identity());
+            // its leader line and reading, upright, outside the ring
+            let fs = self.fs;
+            if let Some(an) = &self.anom {
+                let f = (an.age / 0.9).min((an.life - an.age) / 0.9).clamp(0.0, 1.0);
+                let a = self.rot + an.c as f32 / OR_M as f32 * TAU;
+                let (s, c) = a.sin_cos();
+                let (x1, y1, x2, y2) = (ox + c * r * 1.22, oy + s * r * 1.22, ox + c * r * 1.36, oy + s * r * 1.36);
+                let side = if c < 0.0 { -1.0 } else { 1.0 };
+                acc.SetOpacity(0.8 * f);
+                dc.DrawLine(p2(x1, y1), p2(x2, y2), &acc, 1.0, None);
+                dc.DrawLine(p2(x2, y2), p2(x2 + side * fs * 3.0, y2), &acc, 1.0, None);
+                dc.FillRectangle(&rect(x1 - 2.0, y1 - 2.0, 4.0, 4.0), &acc);
+                let tx = x2 + side * fs * 3.6;
+                let al = if side < 0.0 { -1 } else { 1 };
+                inkb.SetOpacity(0.55 * f);
+                self.say(g, "DIVERGENCE", tx, y2 - fs * 0.7, al, &inkb);
+                acc.SetOpacity(0.9 * f);
+                self.say(g, &format!("Δ {:.4}   {}", an.val, an.id), tx, y2 + fs * 0.7, al, &acc);
+            }
+            // the centre: one quiet reading
+            inkb.SetOpacity(0.38);
+            self.say(g, "P R O J E C T I O N", ox, oy - fs * 2.2, 0, &inkb);
+            inkb.SetOpacity(0.7);
+            self.say(g, &format!("{:.5}", self.read), ox, oy + fs * 2.2, 0, &inkb);
+        }
         Ok(())
     }
 }
