@@ -324,11 +324,39 @@ def run_feed(port: int | None = None) -> None:
                 subprocess.Popen(live_command("settings"), close_fds=True)
         threading.Thread(target=wh.watch_corner, args=(lambda: cfg.corner(live.get()), open_settings, threading.Event()),
                          daemon=True).start()
+        if live.get().get("tray", True):   # glitchwall in the notification area, for as long as the feed runs
+            start_tray(live, open_settings)
     if not host:
         httpd.serve_forever()
         return
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     host.run(threading.Event())   # the windows need this (the main) thread; runs until the process ends
+
+
+def start_tray(live: "LiveSettings", open_settings) -> None:
+    """The notification-area icon: a click opens the settings; its menu also pauses (stream-safe) and quits."""
+    import subprocess
+    from .platforms import live_command, wallpaper_source
+    from .tray import Tray
+
+    def set_paused(v: bool) -> None:
+        s = cfg.load_settings()
+        s["paused"] = v
+        cfg.save_settings(s)
+
+    def quit_all() -> None:
+        tray.hide()   # take the icon away first, or it lingers in the tray until the mouse passes over it
+        subprocess.Popen(live_command("stop"), close_fds=True)
+
+    def menu() -> list:
+        p = bool(live.get().get("paused"))
+        return [("Open settings", open_settings),
+                ("Resume" if p else "Pause (stream-safe)", lambda: set_paused(not p)),
+                None,
+                ("Quit glitchwall", quit_all)]
+
+    tray = Tray(str(wallpaper_source() / "glitchwall.ico"), "glitchwall", menu)
+    tray.show()
 
 
 def start_source(mode: str, store: EventStore) -> threading.Event:
