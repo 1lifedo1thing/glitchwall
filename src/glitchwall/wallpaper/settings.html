@@ -14,7 +14,7 @@
   }
   * { box-sizing:border-box; }
   html, body { margin:0; height:100%; background:var(--bg); color:var(--ph-dim); font:12px/1.4 'Departure Mono', Consolas, monospace; }
-  body { display:grid; grid-template-rows:auto minmax(0,1fr) auto; height:100vh; overflow:hidden;
+  body { display:grid; grid-template-rows:auto minmax(0,1fr) auto; height:calc(100vh / var(--z, 1)); overflow:hidden;
          background:radial-gradient(120% 100% at 50% 35%, var(--glass), var(--bg) 75%); }
   body::after { content:''; position:fixed; inset:0; pointer-events:none; z-index:50;   /* scanlines over the whole tube */
                 background:repeating-linear-gradient(transparent 0 2px, rgba(0,0,0,.18) 2px 3px); }
@@ -49,7 +49,7 @@
   #pause.on .t { color:var(--amber); text-shadow:0 0 5px rgba(255,176,0,.6); }
 
   /* one compact column: the wallpaper itself is the preview, so this window only needs the controls */
-  main { display:flex; flex-direction:column; gap:10px; padding:10px 12px; min-height:0; overflow:auto; }
+  main { display:flex; flex-direction:column; gap:10px; padding:10px 12px; min-height:0; overflow:hidden; }   /* never scrolls: fit() shrinks everything instead */
   .side { display:flex; flex-direction:column; gap:10px; min-width:0; }
   /* the readout keeps one height whatever it says, so nothing below it ever jumps */
   #readout { order:-1; height:112px; }
@@ -508,8 +508,22 @@ function wear() {
   st.setProperty('--ph', t.ink); st.setProperty('--ph-hi', t.hi || t.ink); st.setProperty('--ph-dim', t.muted || t.ink);
   st.setProperty('--ph-rgb', hex(t.ink) || '93,255,122'); st.setProperty('--amber', t.acc || '#ffb000');
 }
+// never a scroll bar: when the window is too short for everything, shrink the whole page until it fits
+function fit() {
+  const root = document.documentElement, main = document.querySelector('main'), last = main.lastElementChild;
+  if (!last) return;
+  // what everything needs, in page pixels (the same at any zoom): header, main's content, footer
+  const need = document.querySelector('header').offsetHeight + (last.offsetTop + last.offsetHeight - main.offsetTop + 12)
+             + document.querySelector('footer').offsetHeight;
+  const z = Math.min(1, Math.floor(innerHeight / need * 1000) / 1000);
+  if (String(z) !== root.style.getPropertyValue('--z')) { root.style.zoom = z; root.style.setProperty('--z', z); }
+}
+addEventListener('resize', () => fit());
+if (document.fonts) document.fonts.ready.then(() => fit());
+if (window.ResizeObserver) new ResizeObserver(() => fit()).observe(document.documentElement);
 function render() {
   wear();
+  requestAnimationFrame(fit);
   renderOpts();
   document.querySelectorAll('.knob').forEach(b => {
     const kind = b.dataset.help, o = Object.keys(C[kind]), i = Math.max(0, o.indexOf(S[kind]));
