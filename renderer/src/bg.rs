@@ -1763,18 +1763,51 @@ impl Background for Radar {
 /// a ribbed black sphere sunk in the floor of a vast, dark data hall: rows of racks to the horizon with status lights
 /// blinking, the sphere's slats lit by the room, and on its shell rows of red lights that flicker, with packets
 /// streaming along them. The hall and the floor in front of the opening are drawn once (in the theme's colors); each
-/// frame draws the rack lights and the glows as sprite batches. 20 fps; still at 0. (The page's readouts: not yet.)
+/// frame draws the rack lights and the glows as sprite batches, and a geodesic cage over the shell. 20 fps; still at 0. (The page's readouts: not yet.)
 pub struct Orb { back: ID2D1Bitmap1, front: ID2D1Bitmap1, glow: ID2D1Bitmap1, dot: ID2D1Bitmap1, batch: ID2D1SpriteBatch,
                  dc3: ID2D1DeviceContext3, factory: ID2D1Factory, sphere: [ID2D1Brush; 3], rim: ID2D1Brush,
                  leds: Vec<Led>, ribs: Vec<Rib>, packets: Vec<(usize, f32, f32, usize)>, rng: Rng,
                  s: f32, ox: f32, oy: f32, w: f32, h: f32, t: f32, spin: f32, still: bool,
-                 dest: Vec<D2D_RECT_F>, tint: Vec<D2D1_COLOR_F> }
+                 dest: Vec<D2D_RECT_F>, tint: Vec<D2D1_COLOR_F>, net: Vec<[f32; 3]>, tris: Vec<[u16; 3]>, mesh: ID2D1Bitmap1, mdc: ID2D1DeviceContext, mdc3: ID2D1DeviceContext3,
+                 mbatch: ID2D1SpriteBatch, hole: ID2D1Bitmap1, holes: ID2D1Bitmap1, cage: f32 }
 
 struct Led { x: f32, y: f32, s: f32, a: f32, red: bool, kind: u8, f: f32, p: f32 }
 struct Rib { phi: f32, n: usize, o: f32, base: Vec<f32>, b: Vec<f32> }
 
 const ORB_L: usize = 30;
 const ORB_N: usize = 110;
+const ORB_NET: usize = 14;
+const HOLE_IN: f32 = 0.06;   // the hole texture's triangle: (a, a), (c, a), (a, c), a = HOLE_IN, c = 1 - 2.5a
+
+/// a geodesic net on the unit sphere (an icosahedron, each face cut into n x n triangles): its joints and cells
+fn geodesic(n: usize) -> (Vec<[f32; 3]>, Vec<[u16; 3]>) {
+    let t = (1.0 + 5f32.sqrt()) / 2.0;
+    let v: [[f32; 3]; 12] = [[-1.0, t, 0.0], [1.0, t, 0.0], [-1.0, -t, 0.0], [1.0, -t, 0.0], [0.0, -1.0, t], [0.0, 1.0, t],
+                             [0.0, -1.0, -t], [0.0, 1.0, -t], [t, 0.0, -1.0], [t, 0.0, 1.0], [-t, 0.0, -1.0], [-t, 0.0, 1.0]];
+    let faces = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
+                 [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]];
+    let mut pts: Vec<[f32; 3]> = Vec::new();
+    let mut seen = std::collections::HashMap::new();
+    let mut tris = Vec::new();
+    let nf = n as f32;
+    for [a, b, c] in faces {
+        // i/n of the way from corner a to b, j/n from a to c, pushed out onto the sphere
+        let mut at = |i: usize, j: usize| -> u16 {
+            let (i, j) = (i as f32, j as f32);
+            let p: [f32; 3] = std::array::from_fn(|d| (v[a][d] * (nf - i - j) + v[b][d] * i + v[c][d] * j) / nf);
+            let l = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
+            let key = p.map(|x| (x / l * 1e4).round() as i32);
+            *seen.entry(key).or_insert_with(|| { pts.push(p.map(|x| x / l)); (pts.len() - 1) as u16 })
+        };
+        for i in 0..n {
+            for j in 0..n - i {
+                tris.push([at(i, j), at(i + 1, j), at(i, j + 1)]);
+                if i + j < n - 1 { tris.push([at(i + 1, j), at(i + 1, j + 1), at(i, j + 1)]); }
+            }
+        }
+    }
+    (pts, tris)
+}
 
 fn mixc(p: Color, q: Color, t: f32) -> Color { [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t, 1.0] }
 fn ca(c: Color, a: f32) -> D2D1_COLOR_F { D2D1_COLOR_F { r: c[0], g: c[1], b: c[2], a } }
@@ -1782,14 +1815,17 @@ fn ca(c: Color, a: f32) -> D2D1_COLOR_F { D2D1_COLOR_F { r: c[0], g: c[1], b: c[
 impl Orb {
     fn new(g: &Gfx, look: &Look) -> Result<Orb> {
         let (w, h) = (g.w as f32, g.h as f32);
-        let s = w.min(h) * 0.29;
-        let (ox, oy) = (w / 2.0, h * 0.44);
+        // the hall is laid out from s0; the sphere (radius s) is smaller than that, sitting in a smaller opening
+        let s0 = w.min(h) * 0.29;
+        let s = s0 * 0.75;
+        let (ox, oy0) = (w / 2.0, h * 0.44);
         let light = look.light;
         let mut rng = Rng(0x0eb0_5f1e_0000_0001);
         let (ink, bg, acc) = (look.ink, look.bg, look.acc);
         let body: Color = if light { ink } else { [0.0, 0.0, 0.0, 1.0] };
-        let (cy, cr, ce) = (oy + s * 0.45, s * 0.96, 0.24f32);
-        let vy = oy - s * 0.38;
+        let (cy, cr, ce) = (oy0 + s0 * 0.45, s * 0.96, 0.24f32);
+        let oy = cy - s * 0.45;
+        let vy = oy0 - s0 * 0.38;
         let (hc, rh, ceil) = (5.0f32, 2.2f32, 8.0f32);
         let f = (cy - vy) * 10.0 / hc;
         let sx = |x: f32, z: f32| ox + f * x / z;
@@ -2023,10 +2059,34 @@ impl Orb {
         }).collect();
         let dc3: ID2D1DeviceContext3 = g.dc.cast()?;
         let batch = unsafe { dc3.CreateSpriteBatch()? };
+        // the cage: a fine net of holes in a second skin over the sphere, drawn on its own context each frame
+        let (net, tris) = geodesic(ORB_NET);
+        let c = s + 4.0;
+        let mesh = g.surface(c * 2.0, c * 2.0)?;
+        let mdc = unsafe { g.dc.GetDevice()?.CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE)? };
+        unsafe { mdc.SetDpi(96.0 * g.scale, 96.0 * g.scale); }
+        let mdc3: ID2D1DeviceContext3 = mdc.cast()?;
+        let mbatch = unsafe { mdc3.CreateSpriteBatch()? };
+        // a hole: a white triangle, mapped onto each cell; the holes are drawn as these on their own layer, which is
+        // then cut out of the skin
+        let hole = g.surface(64.0, 64.0)?;
+        let holes = g.surface(c * 2.0, c * 2.0)?;
+        unsafe {
+            let dc = &g.dc;
+            let old = dc.GetTarget()?;
+            dc.SetTarget(&hole);
+            dc.BeginDraw();
+            dc.Clear(Some(&D2D1_COLOR_F::default()));
+            let (a, c) = (HOLE_IN * 64.0, (1.0 - 2.5 * HOLE_IN) * 64.0);
+            dc.FillGeometry(&quad([p2(a, a), p2(c, a), p2(a, c), p2(a, a)])?, &g.brush([1.0, 1.0, 1.0, 1.0])?, None);
+            dc.EndDraw(None, None)?;
+            dc.SetTarget(&old);
+        }
         let mut o = Orb { back, front, glow, dot, batch, dc3, factory, sphere, rim, leds, ribs, packets: Vec::new(), rng,
-                          s, ox, oy, w, h, t: 0.0, spin: 0.0, still: false, dest: Vec::new(), tint: Vec::new() };
+                          s, ox, oy, w, h, t: 0.0, spin: 0.0, still: false, dest: Vec::new(), tint: Vec::new(), net, tris, mesh, mdc, mdc3, mbatch, hole, holes, cage: 0.0 };
         o.t = o.rng.range(0.0, 300.0);
         o.spin = o.rng.range(-0.5, 0.1);
+        o.cage = o.spin;
         o.packets = (0..22).map(|_| o.packet()).collect();
         Ok(o)
     }
@@ -2047,6 +2107,15 @@ impl Orb {
         let (y2, z2) = (y * t1.cos() - z * t1.sin(), y * t1.sin() + z * t1.cos());
         let lam = (-0.48 * x + 0.58 * y2 + 0.66 * z2).max(0.0);
         (self.ox + x * self.s, self.oy - y2 * self.s, z2, lam)
+    }
+
+    /// a point given in a frame turned by angle a about the upright, at radius r; returns x, y, depth, light
+    fn proj(&self, v: [f32; 3], a: f32, r: f32) -> (f32, f32, f32, f32) {
+        let (c, sn) = (a.cos(), a.sin());
+        let (x, z) = (v[0] * c + v[2] * sn, v[2] * c - v[0] * sn);
+        let t1 = 0.34f32;
+        let (y2, z2) = (v[1] * t1.cos() - z * t1.sin(), v[1] * t1.sin() + z * t1.cos());
+        (self.ox + x * r, self.oy - y2 * r, z2, (-0.48 * x + 0.58 * y2 + 0.66 * z2).max(0.0))
     }
 
     fn sprites(&mut self, g: &Gfx, bmp: &ID2D1Bitmap1, add: bool) -> Result<()> {
@@ -2075,6 +2144,7 @@ impl Background for Orb {
             let sp = 0.4 + level * 1.6;
             self.t += dt * sp;
             self.spin += dt * 0.05 * sp;
+            self.cage += dt * 0.05 * sp;
             let fade = (-dt * sp * 1.1).exp();   // lights die down to their resting glow
             for rb in &mut self.ribs { for j in 0..rb.n { rb.b[j] = rb.base[j].max(rb.b[j] * fade); } }
             let mut n = dt * sp * 70.0;   // flickers
@@ -2176,6 +2246,52 @@ impl Background for Orb {
             self.tint.push(D2D1_COLOR_F { r: core[0] * a, g: core[1] * a, b: core[2] * a, a });
         }
         self.sprites(g, &dot, !light)?;
+        // the cage: the sphere's skin again over all of it, with a fine hex net of holes punched through (a min blend), so
+        // the slats and lights only peek through; the holes close up toward the edge, where we see them side on
+        let c = s + 4.0;
+        // each cell's hole: the texture's triangle mapped (an affine sprite) onto the cell shrunk toward its middle
+        let pr: Vec<(f32, f32, f32)> = self.net.iter().map(|&v| { let p = self.proj(v, self.cage, s); (p.0 - ox + c, p.1 - oy + c, p.2) }).collect();
+        let (ha, hd) = (HOLE_IN, 1.0 - 3.5 * HOLE_IN);
+        let mut mats = Vec::new();
+        for t in &self.tris {
+            let (a, b, d) = (pr[t[0] as usize], pr[t[1] as usize], pr[t[2] as usize]);
+            if a.2 + b.2 + d.2 < 0.15 { continue; }
+            let (mx, my) = ((a.0 + b.0 + d.0) / 3.0, (a.1 + b.1 + d.1) / 3.0);
+            let k = 0.74;
+            let q = |p: (f32, f32, f32)| (mx + (p.0 - mx) * k, my + (p.1 - my) * k);
+            let (q0, q1, q2) = (q(a), q(b), q(d));
+            let (m11, m12, m21, m22) = ((q1.0 - q0.0) / hd, (q1.1 - q0.1) / hd, (q2.0 - q0.0) / hd, (q2.1 - q0.1) / hd);
+            mats.push(windows::Foundation::Numerics::Matrix3x2 { M11: m11, M12: m12, M21: m21, M22: m22,
+                                                                 M31: q0.0 - ha * (m11 + m21), M32: q0.1 - ha * (m12 + m22) });
+        }
+        let holes = vec![rect(0.0, 0.0, 1.0, 1.0); mats.len()];
+        unsafe {
+            let m = &self.mdc;
+            m.SetTarget(&self.holes);
+            m.BeginDraw();
+            m.Clear(Some(&D2D1_COLOR_F::default()));
+            if !holes.is_empty() {
+                self.mbatch.Clear();
+                self.mbatch.AddSprites(holes.len() as u32, holes.as_ptr(), None, None, Some(mats.as_ptr()), size_of::<D2D_RECT_F>() as u32, 0, 0,
+                                       size_of::<windows::Foundation::Numerics::Matrix3x2>() as u32)?;
+                m.SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);
+                self.mdc3.DrawSpriteBatch(&self.mbatch, 0, holes.len() as u32, &self.hole, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, D2D1_SPRITE_OPTIONS_NONE);
+                m.SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+            }
+            m.EndDraw(None, None)?;
+            m.SetTarget(&self.mesh);
+            m.BeginDraw();
+            m.Clear(Some(&D2D1_COLOR_F::default()));
+            m.SetTransform(&turn(0.0, c - ox, c - oy));
+            let e = D2D1_ELLIPSE { point: p2(ox, oy), radiusX: s, radiusY: s };
+            for b in &self.sphere { m.FillEllipse(&e, b); }
+            m.DrawEllipse(&D2D1_ELLIPSE { point: p2(ox, oy), radiusX: s - 0.7, radiusY: s - 0.7 }, &self.rim, 1.4, None);
+            m.SetTransform(&turn(0.0, 0.0, 0.0));
+            m.DrawImage(&self.holes, None, None, D2D1_INTERPOLATION_MODE_LINEAR, D2D1_COMPOSITE_MODE_DESTINATION_OUT);
+            m.EndDraw(None, None)?;
+            m.SetTarget(None);
+            g.dc.DrawBitmap(&self.mesh, Some(&rect(ox - c, oy - c, c * 2.0, c * 2.0)), 1.0, D2D1_INTERPOLATION_MODE_LINEAR, None, None);
+        }
         unsafe { g.dc.DrawBitmap(&self.front, Some(&full), 1.0, D2D1_INTERPOLATION_MODE_LINEAR, None, None); }
         Ok(())
     }

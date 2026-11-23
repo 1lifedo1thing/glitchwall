@@ -912,21 +912,24 @@ const STYLES = {
   // stacked with slats carrying rows of tiny red lights: some steady, some flickering, packets streaming along them
   // like data on a bus. Readouts point at parts of it as they turn into view, and where one points the lights burn.
   orb: {
-    scale: 1, still: true, L: 30, N: 110,
+    scale: 1, still: true, L: 30, N: 110, NET: 14,
     LABELS: [['DIVERGENCE', v => `Δ ${(v * .09).toFixed(4)}`], ['RECALCULATING', v => `SECTOR ${(v * 96 | 0) + 1}`],
              ['LOAD', v => `${(60 + v * 39).toFixed(1)} %`], ['VARIANCE', v => `σ ${(v * .3).toFixed(3)}`],
              ['THREAD', v => '0x' + (v * 0xffff | 0).toString(16).padStart(4, '0').toUpperCase()], ['CONVERGENCE', v => `${(90 + v * 9.9).toFixed(2)} %`]],
     init() {
-      const S = this.S = Math.min(W, H) * .29, ox = this.ox = W / 2, oy = this.oy = H * .44, light = T.mode === 'light';
+      if (!W || !H) return;     // no size yet: resize() will init again
+      // the hall is laid out from S0; the sphere (radius S) is smaller than that, sitting in a smaller opening
+      const S0 = Math.min(W, H) * .29, S = this.S = S0 * .75, ox = this.ox = W / 2, oy0 = H * .44, light = T.mode === 'light';
       const mk = (w, h) => { const o = document.createElement('canvas'); o.width = w; o.height = h; return [o, o.getContext('2d')]; };
-      this.t = rnd(0, 300); this.spin = rnd(-.5, .1); this.acc = 0;
+      this.t = rnd(0, 300); this.spin = this.cage = rnd(-.5, .1); this.acc = 0;
       this.body = light ? T.ink : '#000000'; this.skin = light ? T.bg : T.dim;    // a dark machine on any palette
+      this.gloss = light ? T.bg : T.ink;
       const ink = T.ink, dark = this.body;
       const mix = (p, q, t) => { const a = rgb(p), z = rgb(q); return '#' + a.map((v, i) => Math.round(v + (z[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
       // the sphere sits sunk in a round opening in the floor of a vast, empty data hall: the opening's centre, half-width, squash
-      const cy = this.cy = oy + S * .45, ca = this.ca = S * .96, ce = .24;
+      const cy = this.cy = oy0 + S0 * .45, oy = this.oy = cy - S * .45, ca = this.ca = S * .96, ce = .24;
       // the hall in perspective: eye 5 units up, the opening 10 units away; racks 2.2 tall, ceiling 8 up
-      const vy = oy - S * .38, HC = 5, F = (cy - vy) * 10 / HC, RH = 2.2, CEIL = 8;
+      const vy = oy0 - S0 * .38, HC = 5, F = (cy - vy) * 10 / HC, RH = 2.2, CEIL = 8;
       const sx = (X, Z) => ox + F * X / Z, sy = (Y, Z) => vy + F * (HC - Y) / Z;
       const [b, g] = mk(W, H); this.back = b;
       g.fillStyle = T.bg; g.fillRect(0, 0, W, H);
@@ -1039,6 +1042,8 @@ const STYLES = {
         const base = Float32Array.from({ length: n }, () => Math.random() < .17 ? rnd(.3, .65) : 0);
         return { phi, n, o: rnd(0, TAU), base, b: Float32Array.from(base, v => Math.max(v, Math.random() < .12 ? rnd(.3, 1) : 0)) };
       });
+      this.net = this.geodesic(this.NET);     // a cage over the shell: a fine geodesic net, a triangular hole in each cell
+      [this.mesh, this.meshG] = mk(this.c * 2, this.c * 2);
       this.packets = Array.from({ length: 22 }, () => this.packet());
       const [gs, gg] = mk(32, 32); this.glowImg = gs;     // one light's glow, drawn scaled for every light
       gr = gg.createRadialGradient(16, 16, 0, 16, 16, 16);
@@ -1063,6 +1068,33 @@ const STYLES = {
           if (d < .2) rb.b[j] = Math.max(rb.b[j], .75 + .25 * Math.sin(this.t * 4 + j));
         }
       }
+    },
+    // a geodesic net on the unit sphere (an icosahedron, each face cut into n x n triangles): joints x y z, and cells
+    // as three joint numbers each
+    geodesic(n) {
+      const t = (1 + Math.sqrt(5)) / 2;
+      const V = [[-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0], [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t], [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]];
+      const F = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
+                 [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]];
+      const pts = [], seen = new Map();
+      const at = (a, b, c, i, j) => {      // i/n of the way from corner a to b, j/n from a to c, pushed out onto the sphere
+        const v = [0, 1, 2].map(d => (V[a][d] * (n - i - j) + V[b][d] * i + V[c][d] * j) / n), l = Math.hypot(...v);
+        const id = v.map(x => Math.round(x / l * 1e4)).join();
+        if (!seen.has(id)) { seen.set(id, pts.length / 3); pts.push(v[0] / l, v[1] / l, v[2] / l); }
+        return seen.get(id);
+      };
+      const tris = [];
+      for (const [a, b, c] of F) for (let i = 0; i < n; i++) for (let j = 0; i + j < n; j++) {
+        tris.push(at(a, b, c, i, j), at(a, b, c, i + 1, j), at(a, b, c, i, j + 1));
+        if (i + j < n - 1) tris.push(at(a, b, c, i + 1, j), at(a, b, c, i + 1, j + 1), at(a, b, c, i, j + 1));
+      }
+      return { pts: Float32Array.from(pts), tris: Uint16Array.from(tris) };
+    },
+    // a point given in the cage's own frame (x, y, z), turned with it, at radius R; returns [x, y, depth, light]
+    proj(x, y, z, R) {
+      const c = Math.cos(this.cage), s = Math.sin(this.cage), x1 = x * c + z * s, z1 = z * c - x * s;
+      const T1 = .34, y2 = y * Math.cos(T1) - z1 * Math.sin(T1), z2 = y * Math.sin(T1) + z1 * Math.cos(T1);
+      return [this.ox + x1 * R, this.oy - y2 * R, z2, Math.max(0, -.48 * x1 + .58 * y2 + .66 * z2)];
     },
     packet() { const k = Math.random() * this.L | 0; return { k, pos: rnd(0, this.ribs[k].n), v: rnd(3, 11) * (Math.random() < .5 ? -1 : 1), len: 2 + (Math.random() * 6 | 0) }; },
     // a point on the shell: latitude phi, body longitude th; returns [x, y, depth, light]
@@ -1125,6 +1157,27 @@ const STYLES = {
         cx.globalAlpha = Math.min(1, a * 1.2); cx.fillRect(lit[i] - w / 2, lit[i + 1] - u * .5, w, u);
       }
       cx.globalCompositeOperation = 'source-over'; cx.globalAlpha = 1;
+      // the cage: the sphere's skin again over all of it, with a triangular hole cut in every cell of a geodesic net, so
+      // what is left is a frame of dark struts and the slats and lights peek through; cells seen side on toward the edge
+      // close up
+      const m = this.meshG, c = this.c, net = this.net, K = .74, P = new Float32Array(net.pts.length / 3 * 3);
+      for (let i = 0; i < net.pts.length; i += 3) {
+        const p = this.proj(net.pts[i], net.pts[i + 1], net.pts[i + 2], S);
+        P[i] = p[0] - this.ox + c; P[i + 1] = p[1] - this.oy + c; P[i + 2] = p[2];
+      }
+      const cut = new Path2D();
+      for (let t = 0; t < net.tris.length; t += 3) {
+        const a = net.tris[t] * 3, b = net.tris[t + 1] * 3, d = net.tris[t + 2] * 3;
+        if (P[a + 2] + P[b + 2] + P[d + 2] < .15) continue;
+        const mx = (P[a] + P[b] + P[d]) / 3, my = (P[a + 1] + P[b + 1] + P[d + 1]) / 3;
+        cut.moveTo(mx + (P[a] - mx) * K, my + (P[a + 1] - my) * K);
+        cut.lineTo(mx + (P[b] - mx) * K, my + (P[b + 1] - my) * K);
+        cut.lineTo(mx + (P[d] - mx) * K, my + (P[d + 1] - my) * K); cut.closePath();
+      }
+      m.globalCompositeOperation = 'source-over'; m.globalAlpha = 1; m.clearRect(0, 0, c * 2, c * 2); m.drawImage(this.orbImg, 0, 0);
+      m.globalCompositeOperation = 'destination-out'; m.fill(cut);
+      cx.drawImage(this.mesh, this.ox - c, this.oy - c);
+      cx.globalAlpha = 1;
       cx.drawImage(this.front, 0, 0);               // the floor in front of the opening, over the sphere's base
       // the readouts, each pointing at its part of the sphere while that part faces us
       const fs = Math.max(10, Math.round(S * .045));
@@ -1147,7 +1200,7 @@ const STYLES = {
     frame(dt) {
       if (RAIN <= 0 || !(dt = every(this, 20, dt))) return;     // 0 stills it: the frame from init() stays up
       const sp = .4 + RAIN * 1.6;
-      this.t += dt * sp; this.spin += dt * .05 * sp;
+      this.t += dt * sp; this.spin += dt * .05 * sp; this.cage += dt * .05 * sp;
       const fade = Math.exp(-dt * sp * 1.1);         // lights die down to their resting glow
       for (const rb of this.ribs) for (let j = 0; j < rb.n; j++) rb.b[j] = Math.max(rb.base[j], rb.b[j] * fade);
       for (let n = dt * sp * 70; n > 0; n--) {       // flickers
