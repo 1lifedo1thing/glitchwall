@@ -103,7 +103,7 @@ impl Scene {
         gfx::set_bool(&fx.pmatrix, 2, true)?;
         let mono = fonts.format("Consolas", 16.0, 400)?;
         let mut s = Scene {
-            bg: bg::make(&look.rain, &g, &fonts, &look)?, opts: Json::Null, scene, overlay: None, anim_in: None, anim_out: None, place_mode: "any".into(),
+            bg: bg::make(&look.rain, &g, &fonts, &look, &Json::Null)?, opts: Json::Null, scene, overlay: None, anim_in: None, anim_out: None, place_mode: "any".into(),
             bar: mono.clone(), status_fmt: mono.clone(), mono, line_h: 18.4, bar_h: 24.0,
             g, fonts, css, look, look_key: String::new(), fx,
             cards: Vec::new(), queue: VecDeque::new(), typing: None, wait_until: None, busy_queue: false,
@@ -145,8 +145,8 @@ impl Scene {
         self.anim_out = t.get("out").str().and_then(|s| anim::parse(&self.css, s));
         self.place_mode = t.get("place").str().unwrap_or("any").to_string();   // dock | stack | any, as the page's PLACE
         if l.rain != old_rain || l.mono.family != old_mono || !self.bg_drawn {
-            self.bg = bg::make(&l.rain, &self.g, &self.fonts, &l)?;
-            self.bg.opts(&self.opts.get(&l.rain));
+            self.bg = bg::make(&l.rain, &self.g, &self.fonts, &l, self.opts.get(&l.rain))?;
+            self.bg.opts(self.opts.get(&l.rain));
         }
         self.overlay = Some(self.make_overlay()?);
         self.bg_drawn = false;
@@ -207,7 +207,15 @@ impl Scene {
         if !was && self.asleep { self.slept_at = Some(now); }
         if !data.get("look").is_null() { self.set_look(looks, data.get("look"))?; }
         let opts = data.get("opts");   // the background's own options, {"orb": {"spin": ...}}
-        if !opts.is_null() && *opts != self.opts { self.opts = opts.clone(); self.bg.opts(&self.opts.get(&self.look.rain)); }
+        if !opts.is_null() && *opts != self.opts {
+            self.opts = opts.clone();
+            let o = self.opts.get(&self.look.rain);
+            if self.bg.opts(o) {   // an option drawn in once: make the background again, with it
+                self.bg = bg::make(&self.look.rain, &self.g, &self.fonts, &self.look, o)?;
+                self.bg.opts(o);
+                self.bg_drawn = false;
+            }
+        }
         let tune = data.get("tune");
         if let Some(v) = tune.get("typeSpeed").num() { self.tune.cps = 60.0 + v * 40.0; }
         if let Some(v) = tune.get("rain").num() { self.tune.rain = v as f32 / 10.0; }

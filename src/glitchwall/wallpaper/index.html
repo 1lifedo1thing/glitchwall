@@ -253,7 +253,7 @@ function applyLook() {
 function setAlpha() { document.documentElement.style.setProperty('--alpha', (T.solid ?? GLASS).toFixed(2)); }
 
 // ---------- settings (the sliders) ----------
-let TYPE_CPS = 240, RAIN = .5, LINGER = 7000, MAXCARDS = 4, OPTS = {}, BASE_GRAIN = 0, GRAIN_K = 1;
+let TYPE_CPS = 240, RAIN = .5, LINGER = 7000, MAXCARDS = 4, OPTS = {}, RNAME = '', BASE_GRAIN = 0, GRAIN_K = 1;
 // film grain: the theme's own times the slider (5 = as it comes); past 5 even a grainless theme gets some
 const grainOf = () => BASE_GRAIN * GRAIN_K + Math.max(0, GRAIN_K - 1) * .08;   // OPTS: each background's own options
 // ?still : for screenshots (headless browsers): no glitch, instant typing, cards stay
@@ -380,15 +380,16 @@ const STYLES = {
     scale: 1, init() { this.ph = 0; },
     frame(dt) {
       if (!(dt = every(this, 30, dt))) return;
-      this.ph = (this.ph + dt * (.25 + RAIN * .9)) % 1;
+      const o = OPTS.grid || {};
+      if (o.scroll !== 'off') this.ph = (this.ph + dt * (.25 + RAIN * .9)) % 1;
       cx.fillStyle = T.bg; cx.fillRect(0, 0, W, H);
       if (RAIN <= 0) return;
-      const y0 = H * .6, cxm = W / 2, a = .25 + RAIN * .5;
+      const y0 = H * ({ low: .7, high: .5 }[o.horizon] || .6), cxm = W / 2, a = .25 + RAIN * .5;
       const sr = Math.min(W, H) * .2, sy = y0 - sr * .35, gr = cx.createLinearGradient(0, sy - sr, 0, sy + sr);
       gr.addColorStop(0, T.acc); gr.addColorStop(1, T.ink);
-      cx.globalAlpha = a * .9; cx.fillStyle = gr; cx.beginPath(); cx.arc(cxm, sy, sr, 0, TAU); cx.fill();
+      if (o.sun !== 'off') { cx.globalAlpha = a * .9; cx.fillStyle = gr; cx.beginPath(); cx.arc(cxm, sy, sr, 0, TAU); cx.fill(); }
       cx.globalAlpha = 1; cx.fillStyle = T.bg;
-      for (let k = 0; k < 7; k++) { const yy = sy + sr * (.05 + k * .14), h = 1 + k * 1.6; cx.fillRect(cxm - sr, yy, sr * 2, h); }
+      if (o.sun !== 'off' && o.stripes !== 'off') for (let k = 0; k < 7; k++) { const yy = sy + sr * (.05 + k * .14), h = 1 + k * 1.6; cx.fillRect(cxm - sr, yy, sr * 2, h); }
       cx.fillRect(0, y0, W, H - y0);
       cx.strokeStyle = T.dim; cx.lineWidth = 1.2;
       const C = (H - y0) * .5;
@@ -1446,8 +1447,9 @@ const STYLES = {
   // an amber radar screen: range rings and bearing ticks on dark glass, a sweep turning, and what it finds (ground
   // clutter, a few slow contacts with their tracks) lit as the beam passes and fading until it comes round again
   radar: {
-    scale: 1, still: true,
+    scale: 1, still: true, reinit: true,   // reinit: its options are drawn in at init
     init() {
+      const o = OPTS.radar || {}; this.dir = o.sweep === 'anticlockwise' ? -1 : 1;
       const R = this.R = Math.min(W, H) * .44, ox = this.ox = W / 2, oy = this.oy = H / 2, light = T.mode === 'light';
       const mk = () => { const o = document.createElement('canvas'); o.width = W; o.height = H; return [o, o.getContext('2d')]; };
       const [b, g] = mk(); this.back = b;
@@ -1455,9 +1457,9 @@ const STYLES = {
       let gr = g.createRadialGradient(ox, oy, 0, ox, oy, R * 1.1);
       gr.addColorStop(0, rgba(T.ink, light ? .06 : .05)); gr.addColorStop(1, rgba(T.ink, 0)); g.fillStyle = gr; g.fillRect(0, 0, W, H);
       g.strokeStyle = T.ink; g.fillStyle = T.ink; g.lineWidth = 1;
-      for (let i = 1; i <= 5; i++) { g.globalAlpha = i === 5 ? .32 : .14; g.beginPath(); g.arc(ox, oy, R * i / 5, 0, TAU); g.stroke(); }
+      for (let i = o.rings === 'off' ? 5 : 1; i <= 5; i++) { g.globalAlpha = i === 5 ? .32 : .14; g.beginPath(); g.arc(ox, oy, R * i / 5, 0, TAU); g.stroke(); }
       g.globalAlpha = .08; g.beginPath();
-      for (let a = 0; a < 360; a += 30) { const t = a * Math.PI / 180; g.moveTo(ox, oy); g.lineTo(ox + Math.sin(t) * R, oy - Math.cos(t) * R); }
+      for (let a = 0; a < (o.rings === 'off' ? 0 : 360); a += 30) { const t = a * Math.PI / 180; g.moveTo(ox, oy); g.lineTo(ox + Math.sin(t) * R, oy - Math.cos(t) * R); }
       g.stroke();
       g.globalAlpha = .3; g.beginPath();                                         // bearing ticks round the rim
       for (let a = 0; a < 360; a += 5) {
@@ -1471,7 +1473,7 @@ const STYLES = {
       g.globalAlpha = 1;
       // ground clutter: a few patches of land, speckled, lit only as the beam passes
       this.clut = [];
-      for (let k = 0; k < 5; k++) {
+      for (let k = 0; k < (o.clutter === 'off' ? 0 : 5); k++) {
         const ca = rnd(0, TAU), cr = rnd(.35, .9), n = 90 + (Math.random() * 160 | 0), sa = rnd(.08, .3), sr = rnd(.04, .1);
         for (let i = 0; i < n; i++) {
           const r = Math.min(.98, Math.max(.05, cr + (Math.random() + Math.random() - 1) * sr)), a = ca + (Math.random() + Math.random() - 1) * sa / r * .4;
@@ -1479,10 +1481,12 @@ const STYLES = {
         }
       }
       this.clut.sort((p, q) => p.a - q.a);
-      this.tgts = Array.from({ length: 6 }, (_, i) => ({ x: rnd(-.8, .8), y: rnd(-.8, .8), h: rnd(0, TAU), v: rnd(.004, .012), id: 'TK ' + (100 + Math.random() * 800 | 0), seen: 0, trail: [] }));
+      this.tgts = Array.from({ length: o.contacts === 'many' ? 14 : 6 }, (_, i) => ({ x: rnd(-.8, .8), y: rnd(-.8, .8), h: rnd(0, TAU), v: rnd(.004, .012), id: 'TK ' + (100 + Math.random() * 800 | 0), seen: 0, trail: [] }));
       [this.pc, this.p] = mk();
       this.a = rnd(0, TAU); this.acc = 0;
-      { for (let i = 0; i < 64; i++) this.sweep(this.a - TAU + i * TAU / 64, this.a - TAU + (i + 1) * TAU / 64, (i + 1) / 64); }
+      { for (let i = 0; i < 64; i++) { const f = (i + 1) / 64;
+          if (this.dir > 0) this.sweep(this.a - TAU + i * TAU / 64, this.a - TAU + (i + 1) * TAU / 64, f);
+          else this.sweep(this.a + TAU - (i + 1) * TAU / 64, this.a + TAU - i * TAU / 64, f); } }
       this.paint();
     },
     pos(r, a) { return [this.ox + Math.sin(a) * r * this.R, this.oy - Math.cos(a) * r * this.R]; },
@@ -1507,8 +1511,10 @@ const STYLES = {
       cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over'; cx.drawImage(this.back, 0, 0); cx.drawImage(this.pc, 0, 0);
       cx.save(); cx.beginPath(); cx.arc(this.ox, this.oy, R, 0, TAU); cx.clip();
       cx.globalCompositeOperation = light ? 'source-over' : 'lighter';
-      const gr = cx.createConicGradient(this.a - Math.PI / 2 - .9, this.ox, this.oy);     // the wedge of glow trailing the beam
-      gr.addColorStop(0, rgba(T.ink, 0)); gr.addColorStop(.143, rgba(T.ink, light ? .12 : .16)); gr.addColorStop(.144, rgba(T.ink, 0)); gr.addColorStop(1, rgba(T.ink, 0));
+      const wa = light ? .12 : .16, gr = cx.createConicGradient(this.a - Math.PI / 2 - (this.dir > 0 ? .9 : 0), this.ox, this.oy);   // the wedge of glow trailing the beam
+      if (this.dir > 0) { gr.addColorStop(0, rgba(T.ink, 0)); gr.addColorStop(.143, rgba(T.ink, wa)); gr.addColorStop(.144, rgba(T.ink, 0)); }
+      else { gr.addColorStop(0, rgba(T.ink, wa)); gr.addColorStop(.143, rgba(T.ink, 0)); }
+      gr.addColorStop(1, rgba(T.ink, 0));
       cx.fillStyle = gr; cx.fillRect(this.ox - R, this.oy - R, R * 2, R * 2);
       const [ex, ey] = this.pos(1, this.a);
       cx.strokeStyle = T.hi; cx.lineWidth = 1.5; cx.globalAlpha = .85; cx.beginPath(); cx.moveTo(this.ox, this.oy); cx.lineTo(ex, ey); cx.stroke();
@@ -1539,8 +1545,9 @@ const STYLES = {
         if (Math.random() < dt * .05) t.h += rnd(-.6, .6);
         if (Math.hypot(t.x, t.y) > 1.05) Object.assign(t, { x: -t.x * .9, y: -t.y * .9, trail: [], seen: 0 });
       }
-      const a0 = this.a; this.a += dt * sp * .6;
-      this.sweep(a0, this.a);
+      this.dir = (OPTS.radar || {}).sweep === 'anticlockwise' ? -1 : 1;
+      const a0 = this.a; this.a += dt * sp * .6 * this.dir;
+      if (this.dir > 0) this.sweep(a0, this.a); else this.sweep(this.a, a0);
       this.paint();
     },
   },
@@ -2177,7 +2184,7 @@ function resize() {
   R && R.init();
 }
 function setRain(name) {
-  R = STYLES[name]; R.acc = 0; S = R.scale;
+  R = STYLES[name]; RNAME = name; R.acc = 0; S = R.scale;
   cv.classList.toggle('px', S > 1);
   resize();
 }
@@ -2377,7 +2384,10 @@ async function poll() {
     const data = await r.json(), evs = data.events || [];
     if (data.look) { layers.feed = data.look; applyLook(); }  // `glitchwall config --theme ...` applies live
     SLEEP = !!data.sleep;
-    if (data.opts) OPTS = data.opts;
+    if (data.opts) {   // a background that draws its options in at init starts again when they change
+      const was = JSON.stringify(OPTS[RNAME]); OPTS = data.opts;
+      if (R && R.reinit && JSON.stringify(OPTS[RNAME]) !== was) R.init();
+    }
     for (const [k, v] of Object.entries(data.tune || {}))   // `glitchwall config --linger 12` etc.
       if (tuned[k] !== v) { tuned[k] = v; setProperty(k, v); }
     if (data.last < since) since = 0;                          // the feed restarted: start over

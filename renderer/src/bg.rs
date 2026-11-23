@@ -14,26 +14,28 @@ pub trait Background {
     fn fps(&self) -> f32;
     /// draw into the scene (its BeginDraw is open); `level` is the rain setting, 0-1
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()>;
-    /// the background's own options from the settings, {"spin": "both", ...}; most have none
-    fn opts(&mut self, _: &Json) {}
+    /// the background's own options from the settings, {"spin": "both", ...}; most have none. True: they change
+    /// something drawn once, so make it again (with them)
+    fn opts(&mut self, _: &Json) -> bool { false }
 }
 
 /// called outside any drawing (a background may draw its sprites up front)
-pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Box<dyn Background>> {
+/// `o`: the background's own options ({"rings": "off", ...}), for those that draw them in once
+pub fn make(name: &str, g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result<Box<dyn Background>> {
     Ok(match name {
         "pixel" => Box::new(Pixel::new(g)?),
         "cascade" => Box::new(Cascade::new(g, fonts, &look.mono.family)?),
         "broadsheet" => Box::new(Broadsheet::new(g, fonts, look)?),
         "halftone" => Box::new(Halftone::new(g)?),
         "stop" => Box::new(Stop::new(g, fonts, look)?),
-        "grid" => Box::new(Grid { ph: 0.0, still: false }),
+        "grid" => Box::new(Grid { ph: 0.0, still: false, sun: true, stripes: true, scroll: true, hz: 0.6 }),
         "record" => Box::new(Record::new(g, fonts, look)?),
         "notebook" => Box::new(Notebook::new(g)?),
         "textmode" => Box::new(Textmode::new(g, fonts, look)?),
         "sunprint" => Box::new(Sunprint::new(g)?),
         "draft" => Box::new(Draft::new(g, fonts, look)?),
         "topo" => Box::new(Topo::new(g, fonts, look)?),
-        "radar" => Box::new(Radar::new(g, fonts, look)?),
+        "radar" => Box::new(Radar::new(g, fonts, look, o)?),
         "orb" => Box::new(Orb::new(g, look)?),
         _ => Box::new(Plain),
     })
@@ -598,17 +600,24 @@ impl Background for Stop {
 }
 
 /// synthwave: striped sun over a perspective grid rolling toward you. Plain Direct2D shapes, 30 fps; still at 0.
-pub struct Grid { ph: f32, still: bool }
+pub struct Grid { ph: f32, still: bool, sun: bool, stripes: bool, scroll: bool, hz: f32 }
 
 impl Background for Grid {
     fn fps(&self) -> f32 { if self.still { 0.0 } else { 30.0 } }
+    fn opts(&mut self, o: &Json) -> bool {
+        self.sun = o.get("sun").str() != Some("off");
+        self.stripes = o.get("stripes").str() != Some("off");
+        self.scroll = o.get("scroll").str() != Some("off");
+        self.hz = match o.get("horizon").str() { Some("low") => 0.7, Some("high") => 0.5, _ => 0.6 };
+        false
+    }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
-        self.ph = (self.ph + dt * (0.25 + level * 0.9)) % 1.0;
+        if self.scroll { self.ph = (self.ph + dt * (0.25 + level * 0.9)) % 1.0; }
         self.still = level <= 0.0;
         unsafe { g.dc.Clear(Some(&rgba(look.bg))); }
         if self.still { return Ok(()); }
         let (w, h) = (g.w as f32, g.h as f32);
-        let (y0, cxm, a) = (h * 0.6, w / 2.0, 0.25 + level * 0.5);
+        let (y0, cxm, a) = (h * self.hz, w / 2.0, 0.25 + level * 0.5);
         let sr = w.min(h) * 0.2;
         let sy = y0 - sr * 0.35;
         unsafe {
@@ -620,10 +629,10 @@ impl Background for Grid {
             let sun = dc.CreateLinearGradientBrush(
                 &D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES { startPoint: D2D_POINT_2F { x: 0.0, y: sy - sr }, endPoint: D2D_POINT_2F { x: 0.0, y: sy + sr } },
                 Some(&D2D1_BRUSH_PROPERTIES { opacity: a * 0.9, transform: Default::default() }), &coll)?;
-            dc.FillEllipse(&D2D1_ELLIPSE { point: D2D_POINT_2F { x: cxm, y: sy }, radiusX: sr, radiusY: sr }, &sun);
+            if self.sun { dc.FillEllipse(&D2D1_ELLIPSE { point: D2D_POINT_2F { x: cxm, y: sy }, radiusX: sr, radiusY: sr }, &sun); }
             // its stripes, and the ground hiding its lower part
             let bg = g.brush(look.bg)?;
-            for k in 0..7 {
+            for k in 0..if self.sun && self.stripes { 7 } else { 0 } {
                 let (yy, hh) = (sy + sr * (0.05 + k as f32 * 0.14), 1.0 + k as f32 * 1.6);
                 dc.FillRectangle(&rect(cxm - sr, yy, sr * 2.0, hh), &bg);
             }
@@ -1533,14 +1542,16 @@ impl Background for Topo {
 /// device context, faded a little each frame; the trailing glow is one wedge mask drawn turned. 30 fps; still at 0.
 pub struct Radar { glass: ID2D1Bitmap1, wedge: ID2D1Bitmap1, pc: ID2D1Bitmap1, pdc: ID2D1DeviceContext, flood: ID2D1Effect,
                    fmt: IDWriteTextFormat, r: f32, ox: f32, oy: f32, fs: f32, w: f32, h: f32, a: f32, still: bool,
-                   clut: Vec<(f32, f32, f32)>, tgts: Vec<Contact>, rng: Rng }
+                   clut: Vec<(f32, f32, f32)>, tgts: Vec<Contact>, rng: Rng, dir: f32, built: (bool, bool, bool) }   // built: rings, clutter, many contacts
 
 struct Contact { x: f32, y: f32, hd: f32, v: f32, id: String, seen: bool, trail: Vec<(f32, f32)> }
 
 const TAU: f32 = std::f32::consts::TAU;
 
 impl Radar {
-    fn new(g: &Gfx, fonts: &Fonts, look: &Look) -> Result<Radar> {
+    fn new(g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result<Radar> {
+        let built = (o.get("rings").str() != Some("off"), o.get("clutter").str() != Some("off"), o.get("contacts").str() == Some("many"));
+        let dir = if o.get("sweep").str() == Some("anticlockwise") { -1.0 } else { 1.0 };
         let (w, h) = (g.w as f32, g.h as f32);
         let r = w.min(h) * 0.44;
         let (ox, oy) = (w / 2.0, h / 2.0);
@@ -1570,13 +1581,13 @@ impl Radar {
             let glow = dc.CreateRadialGradientBrush(&D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES { center: p2(ox, oy), gradientOriginOffset: p2(0.0, 0.0),
                                                                                          radiusX: r * 1.1, radiusY: r * 1.1 }, None, &coll)?;
             dc.FillRectangle(&rect(0.0, 0.0, w, h), &glow);
-            for i in 1..=5 {
+            for i in if built.0 { 1 } else { 5 }..=5 {   // without the rings: just the rim
                 white.SetOpacity(if i == 5 { 0.32 } else { 0.14 });
                 let rr = r * i as f32 / 5.0;
                 dc.DrawEllipse(&D2D1_ELLIPSE { point: p2(ox, oy), radiusX: rr, radiusY: rr }, &white, 1.0, None);
             }
             white.SetOpacity(0.08);
-            for k in 0..12 { dc.DrawLine(p2(ox, oy), pos(r, (k * 30) as f32 * TAU / 360.0), &white, 1.0, None); }
+            for k in 0..if built.0 { 12 } else { 0 } { dc.DrawLine(p2(ox, oy), pos(r, (k * 30) as f32 * TAU / 360.0), &white, 1.0, None); }
             white.SetOpacity(0.3);
             for k in 0..72 {
                 let deg = k * 5;
@@ -1628,18 +1639,23 @@ impl Radar {
                 clut.push((a.rem_euclid(TAU), rr, rng.range(0.25, 0.9)));
             }
         }
-        let tgts = (0..6).map(|_| Contact { x: rng.range(-0.8, 0.8), y: rng.range(-0.8, 0.8), hd: rng.range(0.0, TAU), v: rng.range(0.004, 0.012),
+        let tgts = (0..if built.2 { 14 } else { 6 }).map(|_| Contact { x: rng.range(-0.8, 0.8), y: rng.range(-0.8, 0.8), hd: rng.range(0.0, TAU), v: rng.range(0.004, 0.012),
                                             id: format!("TK {}", 100 + (rng.f() * 800.0) as u32), seen: false, trail: Vec::new() }).collect();
         let pdc = unsafe { g.dc.GetDevice()?.CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE)? };
         let flood = unsafe { pdc.CreateEffect(&CLSID_D2D1Flood)? };
         unsafe { pdc.SetDpi(96.0 * g.scale, 96.0 * g.scale); pdc.SetTarget(&pc); }
         let a = rng.range(0.0, TAU);
-        let mut rd = Radar { glass, wedge, pc, pdc, flood, fmt, r, ox, oy, fs, w, h, a, still: false, clut, tgts, rng };
+        if !built.1 { clut.clear(); }
+        let mut rd = Radar { glass, wedge, pc, pdc, flood, fmt, r, ox, oy, fs, w, h, a, still: false, clut, tgts, rng, dir, built };
         // the stilled frame: one turn's worth already swept, older bearings dimmer
         unsafe {
             rd.pdc.BeginDraw();
             rd.pdc.Clear(Some(&D2D1_COLOR_F::default()));
-            for i in 0..64 { rd.sweep(look, a - TAU + i as f32 * TAU / 64.0, a - TAU + (i + 1) as f32 * TAU / 64.0, (i + 1) as f32 / 64.0)?; }
+            for i in 0..64 {
+                let f = (i + 1) as f32 / 64.0;
+                if dir > 0.0 { rd.sweep(look, a - TAU + i as f32 * TAU / 64.0, a - TAU + (i + 1) as f32 * TAU / 64.0, f)?; }
+                else { rd.sweep(look, a + TAU - (i + 1) as f32 * TAU / 64.0, a + TAU - i as f32 * TAU / 64.0, f)?; }
+            }
             rd.pdc.EndDraw(None, None)?;
         }
         Ok(rd)
@@ -1687,6 +1703,10 @@ impl Radar {
 }
 
 impl Background for Radar {
+    fn opts(&mut self, o: &Json) -> bool {
+        self.dir = if o.get("sweep").str() == Some("anticlockwise") { -1.0 } else { 1.0 };
+        (o.get("rings").str() != Some("off"), o.get("clutter").str() != Some("off"), o.get("contacts").str() == Some("many")) != self.built
+    }
     fn fps(&self) -> f32 { if self.still { 0.0 } else { 30.0 } }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
         self.still = level <= 0.0;
@@ -1710,8 +1730,8 @@ impl Background for Radar {
                     if (t.x * t.x + t.y * t.y).sqrt() > 1.05 { t.x *= -0.9; t.y *= -0.9; t.trail.clear(); t.seen = false; }
                 }
                 let a0 = self.a;
-                self.a += dt * sp * 0.6;
-                self.sweep(look, a0, self.a, 1.0)?;
+                self.a += dt * sp * 0.6 * self.dir;
+                if self.dir > 0.0 { self.sweep(look, a0, self.a, 1.0)?; } else { self.sweep(look, self.a, a0, 1.0)?; }
                 self.pdc.EndDraw(None, None)?;
             }
         }
@@ -1726,7 +1746,9 @@ impl Background for Radar {
             // the glow trailing the beam, turned to where the beam points (screen angle a - 90 degrees)
             let wd = (r + 2.0).ceil();
             let (s, c) = (self.a - TAU / 4.0).sin_cos();
-            dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2 { M11: c, M12: s, M21: -s, M22: c, M31: ox, M32: oy });
+            // anticlockwise: the wedge mirrored, trailing the other way
+            let (m21, m22) = if self.dir > 0.0 { (-s, c) } else { (s, -c) };
+            dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2 { M11: c, M12: s, M21: m21, M22: m22, M31: ox, M32: oy });
             ink.SetOpacity(if look.light { 0.12 } else { 0.16 });
             dc.FillOpacityMask(&self.wedge, &ink, Some(&rect(0.0, -wd, wd, wd * 2.0)), None);
             dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2::identity());
@@ -2218,11 +2240,12 @@ impl Orb {
 
 impl Background for Orb {
     fn fps(&self) -> f32 { if self.still { 0.0 } else { 20.0 } }
-    fn opts(&mut self, o: &Json) {
+    fn opts(&mut self, o: &Json) -> bool {
         let d = if o.get("direction").str() == Some("left") { -1.0 } else { 1.0 };
         self.caged = o.get("cage").str() != Some("off");
         self.calm = o.get("lights").str() == Some("calm");
         self.turns = match o.get("spin").str() { Some("sphere") => (d, 0.0), Some("cage") => (0.0, d), Some("still") => (0.0, 0.0), _ => (d, d) };
+        false
     }
     fn draw(&mut self, g: &Gfx, look: &Look, level: f32, dt: f32) -> Result<()> {
         self.still = level <= 0.0;   // 0 stills it: the frame as it is stays up
