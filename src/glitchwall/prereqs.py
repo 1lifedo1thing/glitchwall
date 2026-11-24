@@ -88,7 +88,7 @@ def checks(mode: str = "live") -> list[Check]:
     v = sys.version_info
     out.append(Check("Python", FROZEN or v >= (3, 9),
                      "built into the exe" if FROZEN else f"{v.major}.{v.minor}.{v.micro} (needs 3.9 or newer)",
-                     hint="install a newer Python, or use the standalone exe"))
+                     hint="install a newer Python (uv tool install picks one for you)"))
     if WIN:
         b = windows_build()
         out.append(Check("Windows", b >= 17134, f"build {b} (needs Windows 10 1803 or newer)",
