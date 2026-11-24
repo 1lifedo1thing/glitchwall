@@ -95,7 +95,7 @@ made-up calls in your browser, with nothing installed and no logs read.
 
 ## Settings
 
-![turning the theme drum, pausing and setting the corner label, applied to the wallpaper live](docs/gifs/settings.gif)
+![switching themes, then pausing: the settings window and the wallpaper change together](docs/gifs/settings.gif)
 
 Open **glitchwall settings** from the tray icon, the Start menu, the desktop's right-click menu, a hot corner,
 or `glitchwall settings`. Everything applies to the wallpaper within a second; nothing restarts.
