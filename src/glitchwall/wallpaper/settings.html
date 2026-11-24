@@ -519,9 +519,10 @@ function renderOpts() {
   $('opts-t').textContent = `${(bg || '').toUpperCase()} OPTIONS`;
   GROUP_HELP.options = [names.join(' · '), 'back to how the background comes.'];
 }
-// the window wears the chosen colors: the theme's own, or the palette picked for it (phosphor is the window's own look)
+// the window wears the theme: its colors and fonts, whatever COLORS or FONT picked for the wallpaper (those change
+// the wallpaper only, so the window stays the theme you chose); phosphor is the window's own look
 function wear() {
-  const L = window.LOOKS && window.LOOKS.themes, name = S.palette && S.palette !== 'theme' ? S.palette : S.theme;
+  const L = window.LOOKS && window.LOOKS.themes, name = S.theme;
   const t = L && L[name], st = document.documentElement.style;
   const keys = ['--bg', '--glass', '--ph', '--ph-hi', '--ph-dim', '--ph-rgb', '--amber', '--mod', '--glow', '--scan', '--fd', '--fm', '--fdw', '--fmw'];
   if (!t || name === 'phosphor') { keys.forEach(k => st.removeProperty(k)); return; }
@@ -538,10 +539,10 @@ function wear() {
   // the orb's window is lit by its red lights: red type on black, white for anything paused
   if (name === 'orb') { st.setProperty('--ph', t.acc); st.setProperty('--ph-hi', '#ff9d94'); st.setProperty('--ph-dim', '#a8302a');
                         st.setProperty('--ph-rgb', hex(t.acc)); st.setProperty('--amber', t.ink); }
-  // the theme's own fonts (or the one picked for it): its title face for the readouts, its typing face for the rest
+  // the theme's own fonts: its title face for the readouts, its typing face for the rest
   // (font-size-adjust in the CSS makes each draw as big as the window's own)
-  const F = window.LOOKS.fonts || {}, pick = S.font && S.font !== 'theme' && F[S.font];
-  const disp = pick || F[t.display], mono = pick || F[t.mono];
+  const F = window.LOOKS.fonts || {};
+  const disp = F[t.display], mono = F[t.mono];
   if (disp) { st.setProperty('--fd', disp.family); st.setProperty('--fdw', String(disp.weight || 400)); }
   if (mono) { st.setProperty('--fm', mono.family); st.setProperty('--fmw', String(mono.weight || 400)); }
   // on paper: solid paper panels, no glow, barely-there scan lines
