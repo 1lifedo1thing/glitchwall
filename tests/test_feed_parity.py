@@ -16,6 +16,7 @@ from pathlib import Path
 
 KEY = "k" * 43
 SECRET = "abc123secretvalue"
+WALLPAPER = Path(__file__).resolve().parent.parent / "src" / "glitchwall" / "wallpaper"   # the page, looks.js, the fonts
 
 
 class FeedChecks:
@@ -148,9 +149,186 @@ class FeedChecks:
         self.assertNotIn(KEY, log)
 
     def test_unknown_path_404(self):
-        for p in ("/", "/index.html", "/config.js", "/../key", "/feedx", "/settings"):
+        for p in ("/../key", "/feedx", "/nope.js", "/fonts", "/fonts/", "/fonts/../../settings.py", "/..%2f..%2fsettings.py",
+                  "/%2e%2e/settings.py", "/..\\settings.py", "/C:/Windows/win.ini", "/fonts/licenses/../../../key"):
             with self.subTest(p):
-                self.assertEqual(self.get(p)[0].status, 404)
+                r, body = self.get(p)
+                self.assertEqual((r.status, body), (404, b""))
+
+    # ---- piece 2b: the page, the settings window, the settings in the feed
+    def test_static_files(self):
+        for p, name in (("/", "index.html"), ("/index.html", "index.html"), ("/settings.html", "settings.html"),
+                        ("/looks.js", "looks.js"), ("/fonts/VT323-Regular.ttf", "fonts/VT323-Regular.ttf"),
+                        ("/index.html?screen=1", "index.html")):
+            with self.subTest(p):
+                r, body = self.get(p)
+                self.assertEqual(r.status, 200)
+                self.assertEqual(body, (WALLPAPER / name).read_bytes())
+                self.assertEqual(r.getheader("Cache-Control"), "no-store")
+                self.assertIsNone(r.getheader("Access-Control-Allow-Origin"))
+        self.assertEqual(self.get("/index.html")[0].getheader("Content-Type"), "text/html")
+        self.assertIn("javascript", self.get("/looks.js")[0].getheader("Content-Type"))
+        r, body = self.get("/config.js")   # the key stays in the page address (#key=), out of every file
+        self.assertEqual((r.status, body), (200, b"// the key is in the page address\n"))
+        for headers in ({"Host": f"evil.example:{self.PORT}"}, {"X-None": "1"}):
+            with self.subTest(headers):
+                r, body = self.get("/index.html", headers)
+                self.assertEqual((r.status, body), (403, b""))
+
+    def expected_feed(self):
+        from glitchwall import settings as cfg
+        from glitchwall import themes
+        s = cfg.load_settings()
+        return {"look": themes.look(s), "mode": cfg.mode(s), "label": cfg.display_label(s), "tune": cfg.tune(s),
+                "opts": cfg.opts(s), "corner": cfg.corner(s), "masked": cfg.masked(s), "paused": bool(s.get("paused"))}
+
+    def test_feed_fields_from_settings(self):
+        cases = [{}, {"theme": "NEON", "palette": "nope", "font": "doto", "linger": 99, "glass": "x", "cards": " 3 ",
+                      "intensity": True, "grain": 2.7, "corner": "Bottom-Right", "masked": "words", "orb_spin": "nope"},
+                 {"agent_claude": False, "agent_gemini": True, "agent_codex": True},
+                 {"agent_claude": False, "agent_gemini": "yes"}, {"label": "MINE ☃"}, {"label": ""}, {"label": 5},
+                 {"mode": "ambient"}, {"mode": "ART", "corner": "off"}, {"masked": "Words", "corner": 7, "theme": None}]
+        try:
+            for s in cases:
+                with self.subTest(s):
+                    self.settings(s)
+                    d = self.fetch()
+                    self.assertEqual({k: d[k] for k in self.expected_feed()}, self.expected_feed())
+        finally:
+            self.settings({})
+
+    def test_broken_file_keeps_last_good(self):
+        f = self.home / "settings.json"
+        try:
+            self.settings({"theme": "neon", "paused": False})
+            self.assertEqual(self.fetch()["look"]["theme"], "neon")
+            f.write_text("{oops", encoding="utf-8")
+            os.utime(f, (time.time() + 99, time.time() + 99))
+            d = self.fetch()
+            self.assertEqual((d["look"]["theme"], d["paused"]), ("neon", False))
+            st, w = self.settings_req()   # the window reads the file itself: unreadable counts as paused
+            self.assertTrue(w["settings"]["paused"])
+            f.write_text('\ufeff{"theme": "neon", "paused": true}', encoding="utf-8")   # PowerShell's BOM is fine
+            os.utime(f, (time.time() + 199, time.time() + 199))
+            self.assertTrue(self.fetch()["paused"])
+        finally:
+            self.settings({})
+
+    # ---- the settings window's API (test_server.py's TestSettingsWindow, against either feed)
+    def settings_req(self, method="GET", key=KEY, body=None, origin="me", ctype="application/json", host=None):
+        me = f"http://127.0.0.1:{self.PORT}"
+        c = http.client.HTTPConnection("127.0.0.1", self.PORT, timeout=5)
+        hd = {"Host": host or f"127.0.0.1:{self.PORT}"}
+        if origin:
+            hd["Origin"] = me if origin == "me" else origin
+        if body is not None:
+            hd["Content-Type"] = ctype
+            body = body if isinstance(body, bytes) else json.dumps(body).encode()
+        c.request(method, f"/settings?key={key}", body=body, headers=hd)
+        r = c.getresponse()
+        data = r.read()
+        c.close()
+        return r.status, (json.loads(data) if data else None)
+
+    def expected_window(self, refused=()):
+        from glitchwall import settings as cfg
+        from glitchwall import themes
+        s = cfg.load_settings()
+        return {"settings": {k: s.get(k, v) for k, v in cfg.DEFAULTS.items()}, "refused": list(refused),
+                "defaults": {k: v for k, v in cfg.DEFAULTS.items() if k not in ("port", "host", "screens", "renderer")},
+                "choices": {**themes.KINDS, **themes.OPTIONS, "mode": cfg.MODES, "corner": cfg.CORNERS, "masked": cfg.MASKED},
+                "options": themes.OPTIONS_OF, "theme_rain": themes.THEME_RAIN,
+                "ranges": {k: [lo, hi] for k, (_, lo, hi) in cfg.TUNE.items()}, "running": True, "restarting": False}
+
+    def saved_text(self):   # what save_settings writes for what's on disk now
+        from glitchwall import settings as cfg
+        s = cfg.load_settings()
+        return json.dumps({k: s[k] for k in cfg.DEFAULTS if k in s}, indent=2) + "\n"
+
+    def test_settings_read(self):
+        try:
+            for s in ({}, {"theme": "neon", "cards": "x", "orb_spin": "nope", "extra": 1, "label": "é"}):
+                with self.subTest(s):
+                    self.settings(s)
+                    for origin in (None, "me", "null"):
+                        st, d = self.settings_req(origin=origin)
+                        self.assertEqual(st, 200)
+                        self.assertEqual(d, self.expected_window())
+                    self.assertNotIn("key", json.dumps(d["settings"]).lower().replace("mask", ""))
+        finally:
+            self.settings({})
+
+    def test_settings_change_saves(self):
+        f = self.home / "settings.json"
+        try:
+            st, d = self.settings_req("POST", body={"cards": 2, "mask_email": False, "port": 1, "label": "héllo ☃",
+                                                    "glass": 5, "theme": "neon", "orb_spin": "nope", "linger": True})
+            self.assertEqual(st, 200)
+            self.assertEqual(d, self.expected_window(["port", "glass", "orb_spin", "linger"]))
+            self.assertEqual((d["settings"]["cards"], d["settings"]["mask_email"], d["settings"]["label"]), (2, False, "héllo ☃"))
+            self.assertEqual(f.read_text(encoding="utf-8"), self.saved_text())   # byte for byte as Python writes it
+            self.assertFalse([p for p in self.home.iterdir() if p.name.endswith(".tmp")])
+            d = self.fetch()
+            self.assertEqual((d["tune"]["cards"], d["look"]["theme"], d["label"]), (2, "neon", "héllo ☃"))
+            st, d = self.settings_req("POST", body=[1, 2])   # not an object: no changes, saved as it is
+            self.assertEqual((st, d["refused"]), (200, []))
+        finally:
+            self.settings({})
+
+    def test_settings_reset_all(self):
+        try:
+            self.settings_req("POST", body={"theme": "neon", "cards": 1, "font": "doto", "mask_user": False,
+                                            "mode": "ambient", "paused": True})
+            st, d = self.settings_req("POST", body={"reset": True, "glass": 30, "linger": 0})
+            self.assertEqual(st, 200)
+            got = {k: d["settings"][k] for k in ("theme", "cards", "font", "mask_user", "mode", "paused", "glass")}
+            self.assertEqual(got, {"theme": "phosphor", "cards": 4, "font": "theme", "mask_user": True,
+                                   "mode": "ambient", "paused": True, "glass": 30})   # mode and pause are kept
+            self.assertEqual(d, self.expected_window(["linger"]))
+            self.assertFalse(d["restarting"])   # no built-in host here, so nothing to restart
+            st, d = self.settings_req("POST", body={"reset": "yes", "cards": 2})   # only true resets
+            self.assertEqual((d["settings"]["cards"], d["settings"]["glass"]), (2, 30))
+        finally:
+            self.settings({})
+
+    def test_settings_refusals(self):
+        try:
+            self.settings({})
+            cases = {
+                "wrong key": dict(method="POST", key="x" * 43, body={"paused": True}),
+                "no origin": dict(method="POST", origin=None, body={"paused": True}),
+                "other site": dict(method="POST", origin="https://evil.example", body={"paused": True}),
+                "file page": dict(method="POST", origin="null", body={"paused": True}),   # or a sandboxed frame
+                "other local server": dict(method="POST", origin="http://localhost:3000", body={"paused": True}),
+                "form post": dict(method="POST", body=b"paused=true", ctype="application/x-www-form-urlencoded"),
+                "text post": dict(method="POST", body=b'{"paused": true}', ctype="text/plain"),
+                "json-ish post": dict(method="POST", body=b'{"paused": true}', ctype="application/json-x"),
+                "rebinding": dict(method="POST", body={"paused": True}, host=f"evil.example:{self.PORT}"),
+                "read, wrong key": dict(key="x" * 43),
+                "read, other site": dict(origin="https://evil.example"),
+                "read, rebinding": dict(host=f"evil.example:{self.PORT}"),
+            }
+            for name, kw in cases.items():
+                with self.subTest(name):
+                    self.assertEqual(self.settings_req(**kw), (403, None))
+            self.assertEqual(self.settings_req("POST", body={"paused": True}, ctype="application/json; charset=utf-8")[0], 200)
+            self.settings({})
+            self.assertEqual(self.settings_req("POST", body=b"{nope")[0], 400)
+            self.assertEqual(self.settings_req("POST", body=b'\xff{"paused": true}')[0], 400)
+            self.assertEqual(self.settings_req("POST", body=b"x" * 8193)[0], 400)   # too long
+            for length in ("abc", "0", "-1", "8193"):   # a Content-Length that won't do
+                with self.subTest(length):
+                    c = http.client.HTTPConnection("127.0.0.1", self.PORT, timeout=5)
+                    c.putrequest("POST", f"/settings?key={KEY}", skip_host=True)
+                    for k, v in {"Host": f"127.0.0.1:{self.PORT}", "Origin": f"http://127.0.0.1:{self.PORT}",
+                                 "Content-Type": "application/json", "Content-Length": length}.items():
+                        c.putheader(k, v)
+                    c.endheaders()
+                    self.assertEqual(c.getresponse().status, 400)
+                    c.close()
+            self.assertFalse(self.fetch()["paused"])
+        finally:
+            self.settings({})
 
     def test_commands_only_and_pause(self):
         try:
@@ -216,7 +394,9 @@ class TestPythonFeed(FeedChecks, unittest.TestCase):
         from glitchwall.server import EventStore, LiveSettings, make_handler, serve
         live = LiveSettings()
         store = EventStore(Redactor(), hidden=lambda: bool(live.get().get("paused")))
+        # as run_feed sets it up: it serves the page and the settings window too
         h = make_handler(store, cfg.load_key(), port, live, refusal_log=home / "last-refused.txt",
+                         static_dir=WALLPAPER, config_js="// the key is in the page address\n", editable=True,
                          extra_origins=(f"http://127.0.0.1:{port}", f"http://localhost:{port}"))
         cls.httpd = serve(h, port)
         threading.Thread(target=cls.httpd.serve_forever, daemon=True).start()
@@ -248,7 +428,8 @@ class TestRustFeed(FeedChecks, unittest.TestCase):
 
     @classmethod
     def start(cls, home, port, seed):
-        cls.proc = subprocess.Popen([os.environ["GW_FEED_EXE"], "feed", "--port", str(port), "--seed", str(seed)],
+        cls.proc = subprocess.Popen([os.environ["GW_FEED_EXE"], "feed", "--port", str(port), "--seed", str(seed),
+                                     "--wallpaper", str(WALLPAPER)],
                                     env={**os.environ, "GLITCHWALL_HOME": str(home)})
 
     @classmethod
