@@ -168,6 +168,37 @@ streams.append({"path": MAIN, "newer_than": 1795514400.0, "lines": [
     msg([call(f"t{k}", "run_shell_command", {"command": f"stamp {st}"})], mid=f"t{k}", ts=st) for k, st in enumerate(stamps)]
     + [patch([{"id": "t1", "result": "patches have no timestamp"}])]})
 
+# shell answers as the model gets them (seen in real logs, v0.71.1): wrapped, with exit codes and bookkeeping
+# lines; resultDisplay is then a terminal grid, not text
+grid = [[{"text": "screen row", "bold": False}], [{"text": " ", "inverse": True}]]
+shell_outs = [
+    "<untrusted_context>\nOutput: hello\nProcess Group PGID: 4\n</untrusted_context>",
+    "<untrusted_context>\nOutput: not found\nExit Code: 1\nProcess Group PGID: 5\n</untrusted_context>",
+    "Command: ls\nDirectory: (root)\nOutput: a\nb\nc\nError: (none)\nExit Code: 0\nSignal: (none)\nBackground PIDs: (none)",
+    "Output: (empty)\nExit Code: -1",
+    "Output: x\nExit Code: --1",
+    "Output: x\nExit Code: (none)",
+    "Output: x\nExit Code: 000",
+    "Output:\n\nExit Code: 2",
+    "Error: spawn failed\nExit Code: 127",
+    "  <untrusted_context>\n\nOutput: spaced\n\n</untrusted_context>  ",
+    "<untrusted_context>no markers here</untrusted_context>",
+    "plain text, no markers",
+    "Output:no space\nkeeps going\nProcess Group PGID: 1\nafter the bookkeeping\nError: late error",
+]
+s = []
+for k, o in enumerate(shell_outs):
+    i = f"sh{k}"
+    s.append(msg([call(i, "run_shell_command", {"command": f"shell {k}"})]))
+    s.append(msg([call(i, "run_shell_command", {"command": f"shell {k}"}, status="success", resultDisplay=grid,
+                       result=[{"functionResponse": {"id": i, "name": "run_shell_command", "response": {"output": o}}}])]))
+s.append(msg([call("sh-read", "read_file", {"file_path": "/x"})]))
+s.append(msg([call("sh-read", "read_file", {"file_path": "/x"}, status="success", resultDisplay="Output: x\nExit Code: 1")]))
+s.append(msg([call("sh-disp", "run_shell_command", {"command": "display text"})]))
+s.append(msg([call("sh-disp", "run_shell_command", {"command": "display text"}, status="success",
+                   resultDisplay="Output: shown\nExit Code: 3")]))
+streams.append({"path": MAIN, "newer_than": None, "lines": s})
+
 # a subagent's log, and a project folder named by a hash
 for p in (SUB, HASHED):
     streams.append({"path": p, "newer_than": None, "lines": [

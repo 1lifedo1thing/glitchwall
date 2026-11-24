@@ -23,8 +23,12 @@ from .claude_logs import ACTIVE, FIRST_TAIL, MAX_OUT_LINES, _when, clip
 
 HIDDEN = ("update_plan", "write_stdin", "request_permissions", "request_user_input", "tool_search")
 SHELL_FLAGS = ("-c", "-lc", "-Command", "-command", "/c", "/C")
-HEADER = ("Chunk ID: ", "Wall time: ", "Process exited with code ", "Process running with session ID ",
-          "Original token count: ", "Total output lines: ", "Exit code: ")
+HEADER = ("Chunk ID: ", "Wall time", "Process exited with code ", "Process running with session ID ",
+          "Original token count: ", "Total output lines: ", "Exit code: ", "Script ")
+QUOTES = "\"'`"
+HEX = "0123456789abcdefABCDEF"
+JS_SIMPLE = {"n": "\n", "t": "\t", "r": "\r", "b": "\b", "f": "\f", "v": "\v", "0": "\0", "\n": ""}
+RUNNING = "Script running with cell ID "
 
 
 def logs_root() -> Path:
@@ -63,6 +67,92 @@ def patch_text(p: str) -> str:
     return clip("\n".join(out), 600)
 
 
+def js_string(src: str, i: int) -> str | None:
+    """The JavaScript string literal starting at src[i] (a quote), unescaped; None if it never closes."""
+    q, out, n = src[i], [], len(src)
+    i += 1
+    while i < n:
+        c = src[i]
+        if c == q:
+            return "".join(out)
+        if c == "\\" and i + 1 < n:
+            e = src[i + 1]
+            i += 2
+            if e in JS_SIMPLE:
+                out.append(JS_SIMPLE[e])
+                continue
+            h = None
+            if e == "u" and src[i:i + 1] == "{":
+                close = src.find("}", i)
+                if 1 < close - i <= 7 and all(x in HEX for x in src[i + 1:close]):
+                    h, i = int(src[i + 1:close], 16), close + 1
+            elif e in "ux":
+                w = 4 if e == "u" else 2
+                if len(src[i:i + w]) == w and all(x in HEX for x in src[i:i + w]):
+                    h, i = int(src[i:i + w], 16), i + w
+            if h is not None:
+                out.append(chr(h) if h <= 0x10FFFF and not 0xD800 <= h <= 0xDFFF else "\ufffd")
+            else:
+                out.append(e)
+            continue
+        out.append(c)
+        i += 1
+    return None
+
+
+def script_commands(src: str) -> list[str]:
+    """The cmd strings a code-mode script passes to tools.exec_command({cmd: "..."})."""
+    out, pos, needle = [], 0, "tools.exec_command("
+    while (i := src.find(needle, pos)) >= 0:
+        start = i + len(needle)
+        nxt = src.find("tools.", start)
+        end = nxt if nxt >= 0 else len(src)
+        k = start
+        while (c := src.find("cmd", k, end)) >= 0:
+            a = c + 3
+            if a < end and src[a] in "\"'":
+                a += 1
+            while a < end and src[a] in " \t":
+                a += 1
+            if a < end and src[a] == ":":
+                a += 1
+                while a < end and src[a] in " \t\r\n":
+                    a += 1
+                if a < end and src[a] in QUOTES:
+                    lit = js_string(src, a)
+                    if lit is not None:
+                        out.append(lit)
+                        break
+            k = c + 3
+        pos = start
+    return out
+
+
+def script_patch(src: str) -> str | None:
+    """An apply_patch text written into a code-mode script, if there is one."""
+    i = src.find("*** Begin Patch")
+    if i < 0:
+        return None
+    if i > 0 and src[i - 1] in QUOTES:
+        lit = js_string(src, i - 1)
+        if lit is not None:
+            return lit
+    e = src.find("*** End Patch", i)
+    return src[i:e + len("*** End Patch")] if e >= 0 else src[i:]
+
+
+def describe_script(src: str) -> tuple[str, str]:
+    """Codex's code mode: one `exec` tool whose input is a short JavaScript calling tools.exec_command,
+    tools.apply_patch and the like. Shown as the edit and the commands it runs; anything else as the script."""
+    cmds = [clip(c, 300) for c in script_commands(src)]
+    patch = script_patch(src)
+    if patch is not None:
+        return "edit", patch_text(patch) + ("\n" + "\n".join("$ " + c for c in cmds) if cmds else "")
+    if cmds:
+        return "$", "\n".join(cmds)
+    return "tool", "exec " + clip(src, 200)
+
+
 def describe(name: str, args: dict, raw: str) -> tuple[str | None, str]:
     """A Codex function call -> (kind, text) as it should appear on the wall. kind None = skip."""
     def g(k):
@@ -90,12 +180,21 @@ def project_label(cwd) -> str:
     return name.split("-")[-1] or "codex"
 
 
+def _joined(v) -> str:
+    if isinstance(v, list):
+        return "\n".join(p["text"] for p in v if isinstance(p, dict) and isinstance(p.get("text"), str))
+    return v if isinstance(v, str) else ""
+
+
+def running_cell(v) -> str | None:
+    """The cell id when a code-mode script is still running (its output comes later, from a `wait` call)."""
+    first = _joined(v).split("\n")[0]
+    return (first[len(RUNNING):].strip() or None) if first.startswith(RUNNING) else None
+
+
 def output_text(v) -> tuple[str, bool]:
     """A tool's output as the wall shows it, and whether it failed (a nonzero exit code)."""
-    if isinstance(v, list):
-        text = "\n".join(p["text"] for p in v if isinstance(p, dict) and isinstance(p.get("text"), str))
-    else:
-        text = v if isinstance(v, str) else ""
+    text = _joined(v)
     code = None
     d = None
     if text.startswith("{"):
@@ -137,6 +236,8 @@ class CodexLogTailer:
         self.seen: set[str] = set()   # "u"+id once the call is shown, "r"+id once its result is
         self.proj: dict[Path, str] = {}
         self.side: dict[Path, bool] = {}
+        self.cells: dict[tuple[Path, str], str] = {}   # a code-mode script still running: its cell -> its call id
+        self.waits: dict[str, str] = {}                 # a `wait` call -> the call whose output it brings
 
     def _send(self, key: str, d: dict, f: Path, kind: str, ref: str, text: str) -> None:
         if key in self.seen or not text.strip():
@@ -177,11 +278,25 @@ class CodexLogTailer:
                 args = json.loads(raw)
             except (ValueError, RecursionError):
                 args = None
-            kind, text = describe(_s(p.get("name") or ""), args if isinstance(args, dict) else {}, raw)
+            args = args if isinstance(args, dict) else {}
+            name = _s(p.get("name") or "")
+            if name == "wait":   # code mode polling a running script: its output belongs to that script's call
+                target = self.cells.get((f, _s(args.get("cell_id"))))
+                if ref and target:
+                    self.waits[ref] = target
+                    if len(self.waits) > 5000:
+                        self.waits.clear()
+                return
+            kind, text = describe(name, args, raw)
         elif item == "custom_tool_call":
             name, inp = _s(p.get("name") or ""), p.get("input")
             inp = inp if isinstance(inp, str) else ""
-            kind, text = ("edit", patch_text(inp)) if name == "apply_patch" else ("tool", name + " " + clip(inp, 200))
+            if name == "apply_patch":
+                kind, text = "edit", patch_text(inp)
+            elif name == "exec":
+                kind, text = describe_script(inp)
+            else:
+                kind, text = "tool", name + " " + clip(inp, 200)
         elif item == "local_shell_call":
             ref = ref or _s(p.get("id") or "")
             a = p.get("action")
@@ -202,9 +317,16 @@ class CodexLogTailer:
             ref = _s(p.get("id") or "") or _s(d.get("timestamp")) + text
             kind = "web"
         elif item in ("function_call_output", "custom_tool_call_output"):
-            if ref and "u" + ref in self.seen:
+            target = ref if ref and "u" + ref in self.seen else self.waits.get(ref)
+            if target and "u" + target in self.seen:
+                cell = running_cell(p.get("output"))
+                if cell is not None:   # not done yet: a `wait` call brings the output later
+                    self.cells[(f, cell)] = target
+                    if len(self.cells) > 5000:
+                        self.cells.clear()
+                    return
                 text, failed = output_text(p.get("output"))
-                self._send("r" + ref, d, f, "err" if failed else "out", ref, text)
+                self._send("r" + target, d, f, "err" if failed else "out", target, text)
             return
         else:
             return

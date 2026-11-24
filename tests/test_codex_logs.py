@@ -132,5 +132,46 @@ class TestScan(unittest.TestCase):
             self.assertEqual(events, [])
 
 
+def ct(cid, name, inp):
+    return item({"type": "custom_tool_call", "status": "completed", "call_id": cid, "name": name, "input": inp})
+
+
+def ctout(cid, output):
+    return item({"type": "custom_tool_call_output", "call_id": cid, "output": output})
+
+
+class TestCodeMode(unittest.TestCase):
+    def test_js_string(self):
+        self.assertEqual(cx.js_string('"a\\nb" rest', 0), "a\nb")
+        self.assertEqual(cx.js_string("'\\u00e9\\u{1F600}\\x41'", 0), "\u00e9\U0001F600A")
+        self.assertEqual(cx.js_string('"\\uD800\\u{110000}\\q"', 0), "\ufffd\ufffdq")
+        self.assertIsNone(cx.js_string('"never closes', 0))
+
+    def test_describe_script(self):
+        src = 'const r = await tools.exec_command({cmd:"ls -la","workdir":"C:\\\\x"}); text(r.output);'
+        self.assertEqual(cx.describe_script(src), ("$", "ls -la"))
+        two = "await tools.exec_command({ 'cmd' : 'a' }); await tools.exec_command({\"cmd\":\n `b`});"
+        self.assertEqual(cx.describe_script(two), ("$", "a\nb"))
+        kind, text = cx.describe_script('const p = "*** Begin Patch\\n*** Add File: b.md\\n+hi\\n*** End Patch";'
+                                        ' await tools.apply_patch(p); await tools.exec_command({cmd: "git diff"})')
+        self.assertEqual(kind, "edit")
+        self.assertIn("b.md", text)
+        self.assertTrue(text.endswith("$ git diff"))
+        self.assertEqual(cx.describe_script("await tools.view_image({path: 'a.png'})")[0], "tool")
+        self.assertEqual(cx.describe_script('tools.exec_command({cmd: "unclosed')[0], "tool")
+
+    def test_running_then_wait(self):
+        feed = Feed()
+        got = feed(ct("r1", "exec", 'await tools.exec_command({cmd: "slow build"})'),
+                   ctout("r1", "Script running with cell ID 7\nWall time 30.0 seconds\nOutput:\n"),
+                   fc("w1", "wait", {"cell_id": "7"}),
+                   out("w1", [{"type": "input_text", "text": "Script running with cell ID 7\nOutput:\n"}]),
+                   fc("w2", "wait", {"cell_id": 7}),
+                   out("w2", [{"type": "input_text", "text": "Script completed\nWall time 3.1 seconds\nOutput:\n"},
+                              {"type": "input_text", "text": "built"}]),
+                   fc("w3", "wait", {"cell_id": "99"}), out("w3", "unknown cell"))
+        self.assertEqual(got, [("$", "slow build"), ("out", "built")])
+
+
 if __name__ == "__main__":
     unittest.main()

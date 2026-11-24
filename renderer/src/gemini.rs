@@ -61,8 +61,42 @@ pub fn project_label(f: &Path) -> String {
     if last.is_empty() { "gemini".into() } else { last.to_string() }
 }
 
-/// What a finished tool call printed: the UI's text if it has one, else the function response.
-fn result_text(tc: &Json) -> String {
+const SHELL_DROP: [&str; 5] = ["Command: ", "Directory: ", "Signal: ", "Background PIDs: ", "Process Group PGID: "];
+
+/// run_shell_command's answer to the model: "<untrusted_context>", then "Output: ...", "Exit Code: N" and
+/// bookkeeping lines. Keeps the output (and any "Error: ..." line) and says whether the exit code was nonzero.
+pub fn shell_output(text: &str) -> (String, bool) {
+    let mut t = py_strip(text);
+    if let Some(inner) = t.strip_prefix("<untrusted_context>").and_then(|r| r.strip_suffix("</untrusted_context>")) {
+        t = inner.trim_matches('\n');
+    }
+    let lines: Vec<&str> = t.split('\n').collect();
+    if !lines.iter().any(|x| x.starts_with("Output:") || x.starts_with("Exit Code: ")) { return (text.to_string(), false); }
+    let (mut out, mut code, mut keep): (Vec<&str>, Option<&str>, bool) = (Vec::new(), None, true);
+    for x in lines {
+        if let Some(r) = x.strip_prefix("Output:") {
+            out.push(r.trim_start_matches(' '));
+            keep = true;
+        } else if let Some(r) = x.strip_prefix("Exit Code: ") {
+            code = Some(py_strip(r));
+            keep = false;
+        } else if SHELL_DROP.iter().any(|d| x.starts_with(d)) {
+            keep = false;
+        } else if x.starts_with("Error: ") || keep {
+            out.push(x);
+            keep = true;
+        }
+    }
+    let failed = code.is_some_and(|c| {
+        let d = c.strip_prefix('-').unwrap_or(c);
+        !d.is_empty() && d.bytes().all(|b| b.is_ascii_digit()) && d.bytes().any(|b| b != b'0')
+    });
+    (out.join("\n"), failed)
+}
+
+/// What a finished tool call printed (the UI's text if it is plain text, else the function response), and
+/// whether a shell command in it failed.
+fn result_text(tc: &Json) -> (String, bool) {
     let mut out = tc.get("resultDisplay").str().unwrap_or("").to_string();
     if out.is_empty() {
         let r = tc.get("result");
@@ -83,13 +117,15 @@ fn result_text(tc: &Json) -> String {
         }
         out = texts.join("\n");
     }
+    let mut failed = false;
+    if tc.get("name").str() == Some("run_shell_command") { (out, failed) = shell_output(&out); }
     let mut out = py_strip(&out).to_string();
     if out.is_empty() { out = "(no output)".into(); }
     let lines = py_splitlines(&out);
     if lines.len() > MAX_OUT_LINES {
         out = lines[..MAX_OUT_LINES].join("\n") + &format!("\n… {} more lines", lines.len() - MAX_OUT_LINES);
     }
-    clip(&out, 900)
+    (clip(&out, 900), failed)
 }
 
 fn id_of(tc: &Json) -> String { let i = tc.get("id"); if truthy(i) { py_str(i) } else { String::new() } }
@@ -123,8 +159,9 @@ impl Tailer {
     }
 
     fn result(&mut self, tc: &Json, r: &str, f: &Path, emit: &mut impl FnMut(Event)) {
-        let kind = if matches!(tc.get("status").str(), Some("error") | Some("cancelled")) { "err" } else { "out" };
-        self.send(format!("r{r}"), tc, f, kind, r, result_text(tc), emit);
+        let (text, failed) = result_text(tc);
+        let kind = if failed || matches!(tc.get("status").str(), Some("error") | Some("cancelled")) { "err" } else { "out" };
+        self.send(format!("r{r}"), tc, f, kind, r, text, emit);
     }
 
     fn tool_call(&mut self, tc: &Json, f: &Path, emit: &mut impl FnMut(Event)) {

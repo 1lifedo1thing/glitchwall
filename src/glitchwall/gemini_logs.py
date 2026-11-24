@@ -69,8 +69,37 @@ def project_label(f: Path) -> str:
     return "gemini" if re.fullmatch(r"[0-9a-f]{32,}", name) else (name.split("-")[-1] or "gemini")
 
 
-def _result_text(tc: dict) -> str:
-    """What a finished tool call printed: the UI's text if it has one, else the function response."""
+SHELL_DROP = ("Command: ", "Directory: ", "Signal: ", "Background PIDs: ", "Process Group PGID: ")
+
+
+def shell_output(text: str) -> tuple[str, bool]:
+    """run_shell_command's answer to the model: "<untrusted_context>", then "Output: ...", "Exit Code: N" and
+    bookkeeping lines. Keeps the output (and any "Error: ..." line) and says whether the exit code was nonzero."""
+    t = text.strip()
+    if t.startswith("<untrusted_context>") and t.endswith("</untrusted_context>"):
+        t = t[len("<untrusted_context>"):-len("</untrusted_context>")].strip("\n")
+    lines = t.split("\n")
+    if not any(x.startswith(("Output:", "Exit Code: ")) for x in lines):
+        return text, False
+    out, code, keep = [], None, True
+    for x in lines:
+        if x.startswith("Output:"):
+            out.append(x[len("Output:"):].lstrip(" "))
+            keep = True
+        elif x.startswith("Exit Code: "):
+            code, keep = x[len("Exit Code: "):].strip(), False
+        elif x.startswith(SHELL_DROP):
+            keep = False
+        elif x.startswith("Error: ") or keep:
+            out.append(x)
+            keep = True
+    failed = code is not None and re.fullmatch(r"-?[0-9]+", code) is not None and int(code) != 0
+    return "\n".join(out), failed
+
+
+def _result_text(tc: dict) -> tuple[str, bool]:
+    """What a finished tool call printed (the UI's text if it is plain text, else the function response),
+    and whether a shell command in it failed."""
     shown = tc.get("resultDisplay")
     out = shown if isinstance(shown, str) else ""
     if not out:
@@ -90,11 +119,14 @@ def _result_text(tc: dict) -> str:
                         if isinstance(resp.get(k), str):
                             texts.append(resp[k])
         out = "\n".join(texts)
+    failed = False
+    if tc.get("name") == "run_shell_command":
+        out, failed = shell_output(out)
     out = out.strip() or "(no output)"
     lines = out.splitlines()
     if len(lines) > MAX_OUT_LINES:
         out = "\n".join(lines[:MAX_OUT_LINES]) + f"\n… {len(lines) - MAX_OUT_LINES} more lines"
-    return clip(out, 900)
+    return clip(out, 900), failed
 
 
 class GeminiLogTailer:
@@ -130,8 +162,9 @@ class GeminiLogTailer:
             self._result(tc, ref, f)
 
     def _result(self, tc: dict, ref: str, f: Path) -> None:
-        kind = "err" if tc.get("status") in ("error", "cancelled") else "out"
-        self._send("r" + ref, tc, f, kind, ref, _result_text(tc))
+        text, failed = _result_text(tc)
+        kind = "err" if failed or tc.get("status") in ("error", "cancelled") else "out"
+        self._send("r" + ref, tc, f, kind, ref, text)
 
     def parse_line(self, line: bytes, f: Path, newer_than: float | None = None) -> None:
         try:

@@ -190,6 +190,59 @@ streams.append({"path": FILE, "newer_than": None, "lines": [
     fc("cr", "exec_command", {"cmd": "crlf line"}) + "\r",
 ]})
 
+# code mode (seen in real logs, v0.172.0): one `exec` tool running a short JavaScript; a long one answers
+# "Script running with cell ID N" and a later `wait` call brings its output
+def ct(cid, name, inp):
+    return item({"type": "custom_tool_call", "status": "completed", "call_id": cid, "name": name, "input": inp})
+
+
+def ctout(cid, output):
+    return out(cid, output, "custom_tool_call_output")
+
+
+scripts = [
+    'const r = await tools.exec_command({cmd:"Get-Content -LiteralPath .\\\\notes.txt; python hello.py","workdir":"C:\\\\x"}); text(r.output);',
+    'const patch = "*** Begin Patch\\n*** Update File: C:\\\\x\\\\a.txt\\n@@\\n-line two\\n+line 2\\n*** End Patch";\n'
+    'const p = await tools.apply_patch(patch); text(p);\n'
+    'const r = await tools.exec_command({cmd:"rg -n \\"test\\" .", "workdir":"C:\\\\x"}); text(r.output);',
+    "await tools.exec_command({ 'cmd' : 'single quoted' }); await tools.exec_command({\"cmd\":\n  `template ${x}`});",
+    'tools.exec_command({cmd: "esc \\u00e9 \\u{1F600} \\x41 \\uD800 \\u{110000} \\u{} \\q \\0 \\\nend"})',
+    'tools.exec_command({workdir: "/a", command: "nope", cmd2: 1, cmd: "after others"})',
+    'tools.exec_command({cmd: "never closes',
+    'tools.exec_command({cmd: 5}); tools.exec_command({cmd: "second"})',
+    'tools.exec_command({}); tools.view_image({path: "a.png", cmd: "not exec_command\'s"})',
+    'const p = `\n*** Begin Patch\n*** Add File: b.md\n+hi\n*** End Patch`; await tools.apply_patch(p);',
+    "x = '*** Begin Patch\\n*** Delete File: gone.txt\\n*** End Patch'",
+    '"*** Begin Patch\n*** Update File: unclosed.txt',
+    "const r = await tools.view_image({path: 'shot.png'}); text(r);",
+    "",
+    "Löwe 🦁 tools.exec_command({cmd: \"ünïcode ✓\"})",
+]
+s = [meta("C:\\dev\\gw-agent-test")]
+for k, src in enumerate(scripts):
+    s.append(ct(f"x{k}", "exec", src))
+    s.append(ctout(f"x{k}", [{"type": "input_text", "text": "Script completed\nWall time 1.5 seconds\nOutput:\n"},
+                             {"type": "input_text", "text": f"result {k}"}]))
+# running, then a wait brings the output; a wait still running; a wait for an unknown cell; cells per file
+s += [
+    ct("r1", "exec", 'await tools.exec_command({cmd: "slow build"})'),
+    ctout("r1", "Script running with cell ID 7\nWall time 30.0 seconds\nOutput:\n"),
+    fc("w1", "wait", {"cell_id": "7", "yield_time_ms": 30000}),
+    out("w1", [{"type": "input_text", "text": "Script running with cell ID 7\nWall time 30.0 seconds\nOutput:\n"}]),
+    fc("w2", "wait", {"cell_id": 7}),
+    out("w2", [{"type": "input_text", "text": "Script completed\nWall time 3.1 seconds\nOutput:\n"},
+               {"type": "input_text", "text": "built"}]),
+    out("w2", "again"),
+    fc("w3", "wait", {"cell_id": "99"}), out("w3", "unknown cell"),
+    fc("w4", "wait", {}), out("w4", "no cell"),
+    ct("r2", "exec", 'await tools.exec_command({cmd: "blank cell"})'),
+    ctout("r2", "Script running with cell ID  \nOutput:\nshown, the cell id is blank"),
+    ct("r3", "exec", 'await tools.exec_command({cmd: "header only"})'),
+    ctout("r3", "Script completed\nWall time 0.1 seconds"),
+    fc("w5", "wait", {"cell_id": "7"}), out("w5", "cell 7 was answered already"),
+]
+streams.append({"path": FILE, "newer_than": None, "lines": s})
+
 # which lines count as new when a log is first seen
 stamps = ["2026-11-24T09:59:59Z", "2026-11-24T10:00:00Z", "2026-11-24T10:00:00.5Z", "2026-11-24T18:00:00+08:00",
           "2026-11-24T04:00:01-06:00", "garbage", "", "2026-11-24", None]

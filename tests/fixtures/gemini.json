@@ -1148,6 +1148,319 @@
     "tmp",
     "agent-live-wallpaper",
     "chats",
+    "session-2026-11-24T10-00-abcd1234.jsonl"
+   ],
+   "newer_than": null,
+   "lines": [
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh0\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 0\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh0\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 0\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": [[{\"text\": \"screen row\", \"bold\": false}], [{\"text\": \" \", \"inverse\": true}]], \"result\": [{\"functionResponse\": {\"id\": \"sh0\", \"name\": \"run_shell_command\", \"response\": {\"output\": \"<untrusted_context>\\nOutput: hello\\nProcess Group PGID: 4\\n</untrusted_context>\"}}}]}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh1\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 1\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh1\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 1\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": [[{\"text\": \"screen row\", \"bold\": false}], [{\"text\": \" \", \"inverse\": true}]], \"result\": [{\"functionResponse\": {\"id\": \"sh1\", \"name\": \"run_shell_command\", \"response\": {\"output\": \"<untrusted_context>\\nOutput: not found\\nExit Code: 1\\nProcess Group PGID: 5\\n</untrusted_context>\"}}}]}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh2\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 2\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh2\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 2\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": [[{\"text\": \"screen row\", \"bold\": false}], [{\"text\": \" \", \"inverse\": true}]], \"result\": [{\"functionResponse\": {\"id\": \"sh2\", \"name\": \"run_shell_command\", \"response\": {\"output\": \"Command: ls\\nDirectory: (root)\\nOutput: a\\nb\\nc\\nError: (none)\\nExit Code: 0\\nSignal: (none)\\nBackground PIDs: (none)\"}}}]}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh3\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 3\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh3\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 3\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": [[{\"text\": \"screen row\", \"bold\": false}], [{\"text\": \" \", \"inverse\": true}]], \"result\": [{\"functionResponse\": {\"id\": \"sh3\", \"name\": \"run_shell_command\", \"response\": {\"output\": \"Output: (empty)\\nExit Code: -1\"}}}]}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh4\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 4\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh4\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 4\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": [[{\"text\": \"screen row\", \"bold\": false}], [{\"text\": \" \", \"inverse\": true}]], \"result\": [{\"functionResponse\": {\"id\": \"sh4\", \"name\": \"run_shell_command\", \"response\": {\"output\": \"Output: x\\nExit Code: --1\"}}}]}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh5\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 5\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh5\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 5\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": [[{\"text\": \"screen row\", \"bold\": false}], [{\"text\": \" \", \"inverse\": true}]], \"result\": [{\"functionResponse\": {\"id\": \"sh5\", \"name\": \"run_shell_command\", \"response\": {\"output\": \"Output: x\\nExit Code: (none)\"}}}]}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh6\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 6\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh6\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 6\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": [[{\"text\": \"screen row\", \"bold\": false}], [{\"text\": \" \", \"inverse\": true}]], \"result\": [{\"functionResponse\": {\"id\": \"sh6\", \"name\": \"run_shell_command\", \"response\": {\"output\": \"Output: x\\nExit Code: 000\"}}}]}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh7\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 7\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh7\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 7\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": [[{\"text\": \"screen row\", \"bold\": false}], [{\"text\": \" \", \"inverse\": true}]], \"result\": [{\"functionResponse\": {\"id\": \"sh7\", \"name\": \"run_shell_command\", \"response\": {\"output\": \"Output:\\n\\nExit Code: 2\"}}}]}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh8\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 8\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh8\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 8\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": [[{\"text\": \"screen row\", \"bold\": false}], [{\"text\": \" \", \"inverse\": true}]], \"result\": [{\"functionResponse\": {\"id\": \"sh8\", \"name\": \"run_shell_command\", \"response\": {\"output\": \"Error: spawn failed\\nExit Code: 127\"}}}]}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh9\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 9\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh9\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 9\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": [[{\"text\": \"screen row\", \"bold\": false}], [{\"text\": \" \", \"inverse\": true}]], \"result\": [{\"functionResponse\": {\"id\": \"sh9\", \"name\": \"run_shell_command\", \"response\": {\"output\": \"  <untrusted_context>\\n\\nOutput: spaced\\n\\n</untrusted_context>  \"}}}]}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh10\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 10\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh10\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 10\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": [[{\"text\": \"screen row\", \"bold\": false}], [{\"text\": \" \", \"inverse\": true}]], \"result\": [{\"functionResponse\": {\"id\": \"sh10\", \"name\": \"run_shell_command\", \"response\": {\"output\": \"<untrusted_context>no markers here</untrusted_context>\"}}}]}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh11\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 11\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh11\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 11\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": [[{\"text\": \"screen row\", \"bold\": false}], [{\"text\": \" \", \"inverse\": true}]], \"result\": [{\"functionResponse\": {\"id\": \"sh11\", \"name\": \"run_shell_command\", \"response\": {\"output\": \"plain text, no markers\"}}}]}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh12\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 12\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh12\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"shell 12\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": [[{\"text\": \"screen row\", \"bold\": false}], [{\"text\": \" \", \"inverse\": true}]], \"result\": [{\"functionResponse\": {\"id\": \"sh12\", \"name\": \"run_shell_command\", \"response\": {\"output\": \"Output:no space\\nkeeps going\\nProcess Group PGID: 1\\nafter the bookkeeping\\nError: late error\"}}}]}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh-read\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/x\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh-read\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/x\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"Output: x\\nExit Code: 1\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh-disp\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"display text\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"sh-disp\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"display text\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"Output: shown\\nExit Code: 3\"}]}"
+   ],
+   "events": [
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "sh0",
+     "text": "shell 0"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "sh0",
+     "text": "hello"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "sh1",
+     "text": "shell 1"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "sh1",
+     "text": "not found"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "sh2",
+     "text": "shell 2"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "sh2",
+     "text": "a\nb\nc\nError: (none)"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "sh3",
+     "text": "shell 3"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "sh3",
+     "text": "(empty)"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "sh4",
+     "text": "shell 4"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "sh4",
+     "text": "x"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "sh5",
+     "text": "shell 5"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "sh5",
+     "text": "x"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "sh6",
+     "text": "shell 6"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "sh6",
+     "text": "x"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "sh7",
+     "text": "shell 7"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "sh7",
+     "text": "(no output)"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "sh8",
+     "text": "shell 8"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "sh8",
+     "text": "Error: spawn failed"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "sh9",
+     "text": "shell 9"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "sh9",
+     "text": "spaced"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "sh10",
+     "text": "shell 10"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "sh10",
+     "text": "<untrusted_context>no markers here</untrusted_context>"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "sh11",
+     "text": "shell 11"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "sh11",
+     "text": "plain text, no markers"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "sh12",
+     "text": "shell 12"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "sh12",
+     "text": "no space\nkeeps going\nError: late error"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "read",
+     "ref": "sh-read",
+     "text": "/x"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "sh-read",
+     "text": "Output: x\nExit Code: 1"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "sh-disp",
+     "text": "display text"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "sh-disp",
+     "text": "shown"
+    }
+   ]
+  },
+  {
+   "path": [
+    "tmp",
+    "agent-live-wallpaper",
+    "chats",
     "abcd1234-full-id",
     "e5f6a7b8.jsonl"
    ],

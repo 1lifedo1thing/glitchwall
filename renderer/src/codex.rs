@@ -19,8 +19,10 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 pub const HIDDEN: [&str; 5] = ["update_plan", "write_stdin", "request_permissions", "request_user_input", "tool_search"];
 const SHELL_FLAGS: [&str; 6] = ["-c", "-lc", "-Command", "-command", "/c", "/C"];
-const HEADER: [&str; 7] = ["Chunk ID: ", "Wall time: ", "Process exited with code ", "Process running with session ID ",
-                           "Original token count: ", "Total output lines: ", "Exit code: "];
+const HEADER: [&str; 8] = ["Chunk ID: ", "Wall time", "Process exited with code ", "Process running with session ID ",
+                           "Original token count: ", "Total output lines: ", "Exit code: ", "Script "];
+const QUOTES: [char; 3] = ['"', '\'', '`'];
+const RUNNING: &str = "Script running with cell ID ";
 static EMPTY: Json = Json::Obj(Vec::new());
 
 pub fn logs_root() -> PathBuf {
@@ -59,6 +61,99 @@ pub fn patch_text(p: &str) -> String {
     clip(&out.join("\n"), 600)
 }
 
+fn is_hex(s: &str) -> bool { s.bytes().all(|b| b.is_ascii_hexdigit()) }
+
+/// The JavaScript string literal starting at src[i] (a quote), unescaped; None if it never closes.
+pub fn js_string(src: &str, i: usize) -> Option<String> {
+    let b = src.as_bytes();
+    let q = b[i];
+    let (mut out, mut i) = (String::new(), i + 1);
+    while i < b.len() {
+        let c = src[i..].chars().next()?;
+        if c as u32 == q as u32 { return Some(out); }
+        if c == '\\' && i + 1 < b.len() {
+            let e = src[i + 1..].chars().next()?;
+            i += 1 + e.len_utf8();
+            let simple = match e { 'n' => Some("\n"), 't' => Some("\t"), 'r' => Some("\r"), 'b' => Some("\u{8}"), 'f' => Some("\u{c}"),
+                                   'v' => Some("\u{b}"), '0' => Some("\0"), '\n' => Some(""), _ => None };
+            if let Some(t) = simple { out.push_str(t); continue; }
+            let mut h: Option<u32> = None;
+            if e == 'u' && b.get(i) == Some(&b'{') {
+                if let Some(rel) = src[i..].find('}') {
+                    let close = i + rel;
+                    let inner = &src[i + 1..close];
+                    if close - i > 1 && inner.chars().count() + 1 <= 7 && is_hex(inner) {
+                        h = u32::from_str_radix(inner, 16).ok();
+                        i = close + 1;
+                    }
+                }
+            } else if e == 'u' || e == 'x' {
+                let w = if e == 'u' { 4 } else { 2 };
+                if let Some(t) = src.get(i..i + w) {
+                    if is_hex(t) { h = u32::from_str_radix(t, 16).ok(); i += w; }
+                }
+            }
+            match h {
+                Some(h) => out.push(char::from_u32(h).unwrap_or('\u{fffd}')),
+                None => out.push(e),
+            }
+            continue;
+        }
+        out.push(c);
+        i += c.len_utf8();
+    }
+    None
+}
+
+/// The cmd strings a code-mode script passes to tools.exec_command({cmd: "..."}).
+pub fn script_commands(src: &str) -> Vec<String> {
+    let (mut out, mut pos, needle) = (Vec::new(), 0, "tools.exec_command(");
+    let b = src.as_bytes();
+    while let Some(rel) = src[pos..].find(needle) {
+        let start = pos + rel + needle.len();
+        let end = src[start..].find("tools.").map_or(src.len(), |r| start + r);
+        let mut k = start;
+        while let Some(rc) = src[k..end].find("cmd") {
+            let c = k + rc;
+            let mut a = c + 3;
+            if a < end && (b[a] == b'"' || b[a] == b'\'') { a += 1; }
+            while a < end && (b[a] == b' ' || b[a] == b'\t') { a += 1; }
+            if a < end && b[a] == b':' {
+                a += 1;
+                while a < end && matches!(b[a], b' ' | b'\t' | b'\r' | b'\n') { a += 1; }
+                if a < end && QUOTES.contains(&(b[a] as char)) {
+                    if let Some(lit) = js_string(src, a) { out.push(lit); break; }
+                }
+            }
+            k = c + 3;
+        }
+        pos = start;
+    }
+    out
+}
+
+/// An apply_patch text written into a code-mode script, if there is one.
+pub fn script_patch(src: &str) -> Option<String> {
+    let i = src.find("*** Begin Patch")?;
+    if i > 0 && QUOTES.contains(&(src.as_bytes()[i - 1] as char)) {
+        if let Some(lit) = js_string(src, i - 1) { return Some(lit); }
+    }
+    Some(match src[i..].find("*** End Patch") { Some(e) => src[i..i + e + "*** End Patch".len()].to_string(), None => src[i..].to_string() })
+}
+
+/// Codex's code mode: one `exec` tool whose input is a short JavaScript calling tools.exec_command,
+/// tools.apply_patch and the like. Shown as the edit and the commands it runs; anything else as the script.
+pub fn describe_script(src: &str) -> (&'static str, String) {
+    let cmds: Vec<String> = script_commands(src).iter().map(|c| clip(c, 300)).collect();
+    if let Some(patch) = script_patch(src) {
+        let mut t = patch_text(&patch);
+        if !cmds.is_empty() { t += &("\n".to_string() + &cmds.iter().map(|c| format!("$ {c}")).collect::<Vec<_>>().join("\n")); }
+        return ("edit", t);
+    }
+    if !cmds.is_empty() { return ("$", cmds.join("\n")); }
+    ("tool", "exec ".to_string() + &clip(src, 200))
+}
+
 /// A Codex function call -> (kind, text) as it should appear on the wall. kind None = skip.
 pub fn describe(name: &str, args: &Json, raw: &str) -> (Option<&'static str>, String) {
     let g = |k: &str| match args.get(k) { Json::Str(s) => s.clone(), Json::Null => String::new(), v => dumps(v) };
@@ -80,13 +175,24 @@ pub fn project_label(cwd: &Json) -> String {
     if last.is_empty() { "codex".into() } else { last.to_string() }
 }
 
-/// A tool's output as the wall shows it, and whether it failed (a nonzero exit code).
-pub fn output_text(v: &Json) -> (String, bool) {
-    let mut text = match v {
+fn joined(v: &Json) -> String {
+    match v {
         Json::Arr(a) => a.iter().filter_map(|p| p.get("text").str()).collect::<Vec<_>>().join("\n"),
         Json::Str(s) => s.clone(),
         _ => String::new(),
-    };
+    }
+}
+
+/// The cell id when a code-mode script is still running (its output comes later, from a `wait` call).
+pub fn running_cell(v: &Json) -> Option<String> {
+    let t = joined(v);
+    let first = t.split('\n').next().unwrap_or("");
+    first.strip_prefix(RUNNING).map(py_strip).filter(|c| !c.is_empty()).map(str::to_string)
+}
+
+/// A tool's output as the wall shows it, and whether it failed (a nonzero exit code).
+pub fn output_text(v: &Json) -> (String, bool) {
+    let mut text = joined(v);
     let mut failed: Option<bool> = None;
     let d = if text.starts_with('{') { Json::parse(&text).ok() } else { None };
     if let Some(d @ Json::Obj(_)) = &d {
@@ -130,11 +236,13 @@ pub struct Tailer {
     seen: HashSet<String>,   // "u"+id once the call is shown, "r"+id once its result is
     proj: HashMap<PathBuf, String>,
     side: HashMap<PathBuf, bool>,
+    cells: HashMap<(PathBuf, String), String>,   // a code-mode script still running: its cell -> its call id
+    waits: HashMap<String, String>,              // a `wait` call -> the call whose output it brings
 }
 
 impl Tailer {
     pub fn new(root: PathBuf) -> Tailer {
-        Tailer { root, offsets: HashMap::new(), seen: HashSet::new(), proj: HashMap::new(), side: HashMap::new() }
+        Tailer { root, offsets: HashMap::new(), seen: HashSet::new(), proj: HashMap::new(), side: HashMap::new(), cells: HashMap::new(), waits: HashMap::new() }
     }
 
     fn send(&mut self, key: String, d: &Json, f: &Path, kind: &str, r: &str, text: String, emit: &mut impl FnMut(Event)) {
@@ -177,11 +285,23 @@ impl Tailer {
                 let raw = p.get("arguments").str().unwrap_or("");
                 let parsed = Json::parse(raw).ok();
                 let args = match &parsed { Some(a @ Json::Obj(_)) => a, _ => &EMPTY };
-                describe(&or_empty(p.get("name")), args, raw)
+                let name = or_empty(p.get("name"));
+                if name == "wait" {   // code mode polling a running script: its output belongs to that script's call
+                    if let Some(target) = self.cells.get(&(f.to_path_buf(), s_of(args.get("cell_id")))).cloned() {
+                        if !r.is_empty() {
+                            self.waits.insert(r, target);
+                            if self.waits.len() > 5000 { self.waits.clear(); }
+                        }
+                    }
+                    return;
+                }
+                describe(&name, args, raw)
             }
             Some("custom_tool_call") => {
                 let (name, inp) = (or_empty(p.get("name")), p.get("input").str().unwrap_or(""));
-                if name == "apply_patch" { (Some("edit"), patch_text(inp)) } else { (Some("tool"), name + " " + &clip(inp, 200)) }
+                if name == "apply_patch" { (Some("edit"), patch_text(inp)) }
+                else if name == "exec" { let (k, t) = describe_script(inp); (Some(k), t) }
+                else { (Some("tool"), name + " " + &clip(inp, 200)) }
             }
             Some("local_shell_call") => {
                 if r.is_empty() { r = or_empty(p.get("id")); }
@@ -203,9 +323,15 @@ impl Tailer {
                 (Some("web"), text)
             }
             Some("function_call_output") | Some("custom_tool_call_output") => {
-                if !r.is_empty() && self.seen.contains(&format!("u{r}")) {
+                let target = if !r.is_empty() && self.seen.contains(&format!("u{r}")) { Some(r.clone()) } else { self.waits.get(&r).cloned() };
+                if let Some(target) = target.filter(|t| self.seen.contains(&format!("u{t}"))) {
+                    if let Some(cell) = running_cell(p.get("output")) {   // not done yet: a `wait` call brings the output later
+                        self.cells.insert((f.to_path_buf(), cell), target);
+                        if self.cells.len() > 5000 { self.cells.clear(); }
+                        return;
+                    }
                     let (text, failed) = output_text(p.get("output"));
-                    self.send(format!("r{r}"), &d, f, if failed { "err" } else { "out" }, &r, text, emit);
+                    self.send(format!("r{target}"), &d, f, if failed { "err" } else { "out" }, &target, text, emit);
                 }
                 return;
             }

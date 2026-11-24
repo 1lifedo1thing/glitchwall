@@ -149,5 +149,31 @@ class TestScan(unittest.TestCase):
             self.assertEqual(events, [])
 
 
+class TestShellOutput(unittest.TestCase):
+    def test_wrapped(self):
+        self.assertEqual(gl.shell_output("<untrusted_context>\nOutput: hello\nProcess Group PGID: 4\n</untrusted_context>"),
+                         ("hello", False))
+        self.assertEqual(gl.shell_output("Output: not found\nExit Code: 1"), ("not found", True))
+        self.assertEqual(gl.shell_output("Command: ls\nDirectory: (root)\nOutput: a\nb\nError: (none)\nExit Code: 0"),
+                         ("a\nb\nError: (none)", False))
+
+    def test_codes(self):
+        for code, failed in (("-1", True), ("000", False), ("--1", False), ("(none)", False), ("127", True)):
+            self.assertEqual(gl.shell_output(f"Output: x\nExit Code: {code}")[1], failed, code)
+
+    def test_no_markers_left_alone(self):
+        self.assertEqual(gl.shell_output("plain text"), ("plain text", False))
+        t = "<untrusted_context>no markers</untrusted_context>"
+        self.assertEqual(gl.shell_output(t), (t, False))
+
+    def test_failed_shell_is_err(self):
+        grid = [[{"text": "row"}]]
+        o = "<untrusted_context>\nOutput: python: not found\nExit Code: 1\n</untrusted_context>"
+        got = Feed()(msg([call("s1", "run_shell_command", {"command": "python a.py"})]),
+                     msg([call("s1", "run_shell_command", {"command": "python a.py"}, status="success",
+                               resultDisplay=grid, result=[{"functionResponse": {"response": {"output": o}}}])]))
+        self.assertEqual(got, [("$", "python a.py"), ("err", "python: not found")])
+
+
 if __name__ == "__main__":
     unittest.main()

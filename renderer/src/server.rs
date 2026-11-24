@@ -439,7 +439,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("gw-agents-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let f = dir.join("settings.json");
-        let mut on = |text: &str| { std::fs::write(&f, text).unwrap(); let mut l = Live::new(f.clone()); l.agents_on() };
+        let on = |text: &str| { std::fs::write(&f, text).unwrap(); let mut l = Live::new(f.clone()); l.agents_on() };
         assert_eq!(on("{}"), ["agent_claude"]);
         assert_eq!(on(r#"{"agent_gemini": true, "agent_claude": false}"#), ["agent_gemini"]);
         assert_eq!(on(r#"{"agent_codex": "yes", "agent_gemini": 1, "agent_claude": null}"#), Vec::<&str>::new());

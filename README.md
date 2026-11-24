@@ -35,9 +35,10 @@ It reads your coding agent's own session logs, so there's nothing to set up in t
 Gemini CLI and Codex CLI once you turn them on (new on `main`, not in a release yet).
 
 > **Live mode needs a coding agent that runs on your PC.** Claude Code comes with a paid Claude plan (Pro or
-> Max) or an Anthropic API account; Gemini CLI has a free tier with a Google account; Codex CLI comes with a
-> ChatGPT plan or an OpenAI API key. Chatting on claude.ai, gemini.google.com or chatgpt.com writes no logs for
-> glitchwall to read. glitchwall itself is free, and the two modes below work with no agent at all.
+> Max) or an Anthropic API account; Gemini CLI runs on a Gemini API key from Google AI Studio (Google no longer
+> lets individuals use it with just a Google account); Codex CLI comes with a ChatGPT plan or an OpenAI API key.
+> Chatting on claude.ai, gemini.google.com or chatgpt.com writes no logs for glitchwall to read. glitchwall itself
+> is free, and the two modes below work with no agent at all.
 
 No agent, or not working right now? Two other modes keep it a wallpaper:
 

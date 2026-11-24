@@ -35,7 +35,9 @@ Source: `packages/core/src/services/chatRecordingService.ts`, `chatRecordingType
   `list_directory` (dir_path), `write_file`, `replace` (edit), `glob` / `grep_search` (pattern, dir_path),
   `google_web_search` (query), `web_fetch` (prompt), `invoke_agent`; bookkeeping tools (`write_todos`,
   `update_topic`, `tracker_*`, plan mode...) are not shown; anything else shows as a generic tool line.
-- **Cost to users:** free tier with a Google account. That answers "does it work without Claude Pro".
+- **Cost to users:** a Gemini API key from Google AI Studio (or Vertex AI). Signing in with a Google account
+  stopped working for individuals in late 2026 ("no longer supported for Gemini Code Assist for individuals",
+  pointing to Google's Antigravity); seen on 2026-11-24 with v0.71.1.
 
 ## Codex CLI (openai/codex, read at rust-v0.172.0)
 
@@ -79,7 +81,7 @@ Source: `codex-rs/rollout/src/recorder.rs`, `compression.rs`, `policy.rs`, `code
 3. Real-log check before release: install the agent, run a short session, compare.
 4. PRIVACY.md and the README say exactly which folders are read for each agent, and each agent can be turned
    off. Only folders of agents the user turned on are read.
-5. Order: Gemini CLI (free tier), Codex CLI, then OpenCode (local models).
+5. Order: Gemini CLI, Codex CLI, then OpenCode (local models).
 
 ## Not planned for now
 
