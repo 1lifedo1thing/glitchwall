@@ -144,7 +144,7 @@ fn dump_str(s: &str, o: &mut String) {
 }
 
 /// The value as Python would use it in a condition.
-fn truthy(v: &Json) -> bool {
+pub(crate) fn truthy(v: &Json) -> bool {
     match v { Json::Arr(a) => !a.is_empty(), Json::Obj(m) => !m.is_empty(), other => other.truthy() }
 }
 

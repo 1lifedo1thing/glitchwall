@@ -22,6 +22,10 @@ from .claude_logs import ACTIVE, FIRST_TAIL, MAX_OUT_LINES, _when, clip
 DONE = ("success", "error", "cancelled")
 
 
+def _list(v) -> list:
+    return v if isinstance(v, list) else []
+
+
 def logs_root() -> Path:
     base = os.environ.get("GEMINI_CLI_HOME")
     return (Path(base) / ".gemini" if base else Path.home() / ".gemini") / "tmp"
@@ -71,7 +75,7 @@ def _result_text(tc: dict) -> str:
     out = shown if isinstance(shown, str) else ""
     if not out:
         parts = tc.get("result")
-        parts = parts if isinstance(parts, list) else [parts]
+        parts = parts if isinstance(parts, list) else [parts]   # a list of parts, or one
         texts = []
         for p in parts:
             if isinstance(p, str):
@@ -102,14 +106,15 @@ class GeminiLogTailer:
         self.offsets: dict[Path, int] = {}
         self.seen: set[str] = set()   # "u"+id once the call is shown, "r"+id once its result is
 
-    def _send(self, key: str, d: dict, f: Path, kind: str, ref: str, text: str) -> None:
+    def _send(self, key: str, tc: dict, f: Path, kind: str, ref: str, text: str) -> None:
         if key in self.seen or not text.strip():
             return
         self.seen.add(key)
         if len(self.seen) > 5000:
             self.seen.clear()
+        ts = tc.get("timestamp")
         self.emit({
-            "ts": str(d.get("timestamp", "")), "proj": project_label(f), "session": f.stem.split("-")[-1][:4],
+            "ts": "" if ts is None else str(ts), "proj": project_label(f), "session": f.stem.split("-")[-1][:4],
             "side": f.parent.name != "chats", "kind": kind, "ref": ref[-12:], "text": text,
         })
 
@@ -122,7 +127,11 @@ class GeminiLogTailer:
         self._send("u" + ref, tc, f, kind, ref, text)
         status = tc.get("status")
         if status in DONE and ("result" in tc or "resultDisplay" in tc):
-            self._send("r" + ref, tc, f, "out" if status == "success" else "err", ref, _result_text(tc))
+            self._result(tc, ref, f)
+
+    def _result(self, tc: dict, ref: str, f: Path) -> None:
+        kind = "err" if tc.get("status") in ("error", "cancelled") else "out"
+        self._send("r" + ref, tc, f, kind, ref, _result_text(tc))
 
     def parse_line(self, line: bytes, f: Path, newer_than: float | None = None) -> None:
         try:
@@ -134,16 +143,16 @@ class GeminiLogTailer:
         patch = d.get("$patch")
         if isinstance(patch, dict):
             # a late result: {"toolCalls": [{"id", "result"}]} or {"updates": [{"toolCalls": [...]}]}
-            groups = [patch] + [u for u in (patch.get("updates") or []) if isinstance(u, dict)]
+            groups = [patch] + [u for u in _list(patch.get("updates")) if isinstance(u, dict)]
             for grp in groups:
-                for tc in grp.get("toolCalls") or []:
-                    if isinstance(tc, dict) and "u" + str(tc.get("id") or "") in self.seen:
-                        ref = str(tc["id"])
-                        self._send("r" + ref, d, f, "out", ref, _result_text(tc))
+                for tc in _list(grp.get("toolCalls")):
+                    ref = str(tc.get("id") or "") if isinstance(tc, dict) else ""
+                    if ref and "u" + ref in self.seen:
+                        self._result(tc, ref, f)
             return
         if d.get("type") != "gemini" or (newer_than is not None and _when(d.get("timestamp")) < newer_than):
             return
-        for tc in d.get("toolCalls") or []:
+        for tc in _list(d.get("toolCalls")):
             if isinstance(tc, dict):
                 self._tool_call(d, tc, f)
 

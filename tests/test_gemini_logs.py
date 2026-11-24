@@ -81,6 +81,14 @@ class TestParse(unittest.TestCase):
                    json.dumps({"$patch": {"id": "m1", "toolCalls": [{"id": "c4", "result": [{"text": "README.md"}]}]}}))
         self.assertEqual(out, [("find", "*.md"), ("out", "README.md")])
 
+    def test_patch_error_and_odd_shapes(self):
+        feed = Feed()
+        out = feed(msg([call("c7", "glob", {"pattern": "*.rs"})]),
+                   json.dumps({"$patch": {"toolCalls": 5, "updates": 7}}),
+                   json.dumps({"$patch": {"updates": [{"toolCalls": [{"id": "c7", "status": "error", "result": "denied"}]}]}}),
+                   json.dumps({"type": "gemini", "toolCalls": 12}))
+        self.assertEqual(out, [("find", "*.rs"), ("err", "denied")])
+
     def test_patch_for_unknown_call_is_ignored(self):
         self.assertEqual(Feed()(json.dumps({"$patch": {"toolCalls": [{"id": "zz", "result": "x"}]}})), [])
 

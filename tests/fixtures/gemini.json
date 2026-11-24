@@ -1,0 +1,1281 @@
+{
+ "streams": [
+  {
+   "path": [
+    "tmp",
+    "agent-live-wallpaper",
+    "chats",
+    "session-2026-11-24T10-00-abcd1234.jsonl"
+   ],
+   "newer_than": null,
+   "lines": [
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"run_shell_command-00-1732440000000-abcdef\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"git status -sb\", \"description\": \"status\", \"dir_path\": \"src\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"run_shell_command-00-1732440000000-abcdef\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"git status -sb\", \"description\": \"status\", \"dir_path\": \"src\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"result 0\\nsecond line\", \"result\": []}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"read_file-01-1732440000000-abcdef\", \"name\": \"read_file\", \"args\": {\"file_path\": \"C:\\\\dev\\\\x\\\\main.rs\", \"offset\": 10, \"limit\": 40}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"read_file-01-1732440000000-abcdef\", \"name\": \"read_file\", \"args\": {\"file_path\": \"C:\\\\dev\\\\x\\\\main.rs\", \"offset\": 10, \"limit\": 40}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"result 1\\nsecond line\", \"result\": []}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"read_many_files-02-1732440000000-abcdef\", \"name\": \"read_many_files\", \"args\": {\"include\": [\"src/**/*.ts\", \"README.md\"]}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"read_many_files-02-1732440000000-abcdef\", \"name\": \"read_many_files\", \"args\": {\"include\": [\"src/**/*.ts\", \"README.md\"]}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"result 2\\nsecond line\", \"result\": []}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"list_directory-03-1732440000000-abcdef\", \"name\": \"list_directory\", \"args\": {\"dir_path\": \"/home/me/app\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"list_directory-03-1732440000000-abcdef\", \"name\": \"list_directory\", \"args\": {\"dir_path\": \"/home/me/app\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"result 3\\nsecond line\", \"result\": []}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"write_file-04-1732440000000-abcdef\", \"name\": \"write_file\", \"args\": {\"file_path\": \"/tmp/a.txt\", \"content\": \"the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away \"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"write_file-04-1732440000000-abcdef\", \"name\": \"write_file\", \"args\": {\"file_path\": \"/tmp/a.txt\", \"content\": \"the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away \"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"result 4\\nsecond line\", \"result\": []}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"write_file-05-1732440000000-abcdef\", \"name\": \"write_file\", \"args\": {\"file_path\": \"/tmp/b.txt\", \"content\": \"short\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"write_file-05-1732440000000-abcdef\", \"name\": \"write_file\", \"args\": {\"file_path\": \"/tmp/b.txt\", \"content\": \"short\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"result 5\\nsecond line\", \"result\": []}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"replace-06-1732440000000-abcdef\", \"name\": \"replace\", \"args\": {\"file_path\": \"a.py\", \"old_string\": \"the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away \", \"new_string\": \"the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away !\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"replace-06-1732440000000-abcdef\", \"name\": \"replace\", \"args\": {\"file_path\": \"a.py\", \"old_string\": \"the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away \", \"new_string\": \"the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away !\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"result 6\\nsecond line\", \"result\": []}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"replace-07-1732440000000-abcdef\", \"name\": \"replace\", \"args\": {\"file_path\": \"a.py\", \"old_string\": \"x = 1\", \"new_string\": \"x = 2\", \"allow_multiple\": true}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"replace-07-1732440000000-abcdef\", \"name\": \"replace\", \"args\": {\"file_path\": \"a.py\", \"old_string\": \"x = 1\", \"new_string\": \"x = 2\", \"allow_multiple\": true}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"result 7\\nsecond line\", \"result\": []}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"grep_search-08-1732440000000-abcdef\", \"name\": \"grep_search\", \"args\": {\"pattern\": \"fn main\", \"dir_path\": \"src\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"grep_search-08-1732440000000-abcdef\", \"name\": \"grep_search\", \"args\": {\"pattern\": \"fn main\", \"dir_path\": \"src\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"result 8\\nsecond line\", \"result\": []}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"grep_search-09-1732440000000-abcdef\", \"name\": \"grep_search\", \"args\": {\"pattern\": \"TODO\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"grep_search-09-1732440000000-abcdef\", \"name\": \"grep_search\", \"args\": {\"pattern\": \"TODO\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"result 9\\nsecond line\", \"result\": []}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"glob-10-1732440000000-abcdef\", \"name\": \"glob\", \"args\": {\"pattern\": \"**/*.rs\", \"dir_path\": \"\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"glob-10-1732440000000-abcdef\", \"name\": \"glob\", \"args\": {\"pattern\": \"**/*.rs\", \"dir_path\": \"\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"result 10\\nsecond line\", \"result\": []}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"google_web_search-11-1732440000000-abcdef\", \"name\": \"google_web_search\", \"args\": {\"query\": \"rust fancy-regex\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"google_web_search-11-1732440000000-abcdef\", \"name\": \"google_web_search\", \"args\": {\"query\": \"rust fancy-regex\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"result 11\\nsecond line\", \"result\": []}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"web_fetch-12-1732440000000-abcdef\", \"name\": \"web_fetch\", \"args\": {\"prompt\": \"summarize https://example.com/a the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away \"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"web_fetch-12-1732440000000-abcdef\", \"name\": \"web_fetch\", \"args\": {\"prompt\": \"summarize https://example.com/a the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away \"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"result 12\\nsecond line\", \"result\": []}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"invoke_agent-13-1732440000000-abcdef\", \"name\": \"invoke_agent\", \"args\": {\"description\": \"Find the bug\", \"name\": \"codebase_investigator\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"invoke_agent-13-1732440000000-abcdef\", \"name\": \"invoke_agent\", \"args\": {\"description\": \"Find the bug\", \"name\": \"codebase_investigator\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"result 13\\nsecond line\", \"result\": []}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"invoke_agent-14-1732440000000-abcdef\", \"name\": \"invoke_agent\", \"args\": {\"name\": \"only a name\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"invoke_agent-14-1732440000000-abcdef\", \"name\": \"invoke_agent\", \"args\": {\"name\": \"only a name\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"result 14\\nsecond line\", \"result\": []}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"invoke_agent-15-1732440000000-abcdef\", \"name\": \"invoke_agent\", \"args\": {}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"invoke_agent-15-1732440000000-abcdef\", \"name\": \"invoke_agent\", \"args\": {}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"result 15\\nsecond line\", \"result\": []}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"mcp_github_search_issues-16-1732440000000-abcdef\", \"name\": \"mcp_github_search_issues\", \"args\": {\"title\": \"Löwe 🦁 \\\"quoted\\\"\", \"n\": 3, \"x\": 2.5, \"ok\": true, \"none\": null, \"list\": [1, \"two\", {\"three\": 3}], \"tab\": \"a\\tb\\nc\", \"neg\": -7, \"big\": 1e+20, \"small\": 1e-07, \"ctl\": \"\\u0001 \"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"mcp_github_search_issues-16-1732440000000-abcdef\", \"name\": \"mcp_github_search_issues\", \"args\": {\"title\": \"Löwe 🦁 \\\"quoted\\\"\", \"n\": 3, \"x\": 2.5, \"ok\": true, \"none\": null, \"list\": [1, \"two\", {\"three\": 3}], \"tab\": \"a\\tb\\nc\", \"neg\": -7, \"big\": 1e+20, \"small\": 1e-07, \"ctl\": \"\\u0001 \"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"result 16\\nsecond line\", \"result\": []}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"some_tool-17-1732440000000-abcdef\", \"name\": \"some_tool\", \"args\": {\"q\": \"z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z end\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"some_tool-17-1732440000000-abcdef\", \"name\": \"some_tool\", \"args\": {\"q\": \"z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z end\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"result 17\\nsecond line\", \"result\": []}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"other_tool-18-1732440000000-abcdef\", \"name\": \"other_tool\", \"args\": {}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"other_tool-18-1732440000000-abcdef\", \"name\": \"other_tool\", \"args\": {}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"result 18\\nsecond line\", \"result\": []}]}"
+   ],
+   "events": [
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "00000-abcdef",
+     "text": "git status -sb"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "00000-abcdef",
+     "text": "result 0\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "read",
+     "ref": "00000-abcdef",
+     "text": "C:\\dev\\x\\main.rs"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "00000-abcdef",
+     "text": "result 1\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "read",
+     "ref": "00000-abcdef",
+     "text": "[\"src/**/*.ts\", \"README.md\"]"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "00000-abcdef",
+     "text": "result 2\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "read",
+     "ref": "00000-abcdef",
+     "text": "/home/me/app"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "00000-abcdef",
+     "text": "result 3\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "write",
+     "ref": "00000-abcdef",
+     "text": "/tmp/a.txt\nthe quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the …"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "00000-abcdef",
+     "text": "result 4\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "write",
+     "ref": "00000-abcdef",
+     "text": "/tmp/b.txt\nshort"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "00000-abcdef",
+     "text": "result 5\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "edit",
+     "ref": "00000-abcdef",
+     "text": "a.py\n- the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown …\n+ the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running …"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "00000-abcdef",
+     "text": "result 6\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "edit",
+     "ref": "00000-abcdef",
+     "text": "a.py\n- x = 1\n+ x = 2"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "00000-abcdef",
+     "text": "result 7\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "find",
+     "ref": "00000-abcdef",
+     "text": "fn main  in src"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "00000-abcdef",
+     "text": "result 8\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "find",
+     "ref": "00000-abcdef",
+     "text": "TODO"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "00000-abcdef",
+     "text": "result 9\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "find",
+     "ref": "00000-abcdef",
+     "text": "**/*.rs"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "00000-abcdef",
+     "text": "result 10\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "web",
+     "ref": "00000-abcdef",
+     "text": "rust fancy-regex"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "00000-abcdef",
+     "text": "result 11\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "web",
+     "ref": "00000-abcdef",
+     "text": "summarize https://example.com/a the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox …"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "00000-abcdef",
+     "text": "result 12\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "agent",
+     "ref": "00000-abcdef",
+     "text": "Find the bug"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "00000-abcdef",
+     "text": "result 13\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "agent",
+     "ref": "00000-abcdef",
+     "text": "only a name"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "00000-abcdef",
+     "text": "result 14\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "agent",
+     "ref": "00000-abcdef",
+     "text": "subagent"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "00000-abcdef",
+     "text": "result 15\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "tool",
+     "ref": "00000-abcdef",
+     "text": "mcp_github_search_issues {\"title\": \"Löwe 🦁 \\\"quoted\\\"\", \"n\": 3, \"x\": 2.5, \"ok\": true, \"none\": null, \"list\": [1, \"two\", {\"three\": 3}], \"tab\": \"a\\tb\\nc\", \"neg\": -7, \"big\": 1e+20, \"small\": 1e-07, \"ctl\": \"\\u0001 \"}"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "00000-abcdef",
+     "text": "result 16\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "tool",
+     "ref": "00000-abcdef",
+     "text": "some_tool {\"q\": \"z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z …"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "00000-abcdef",
+     "text": "result 17\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "tool",
+     "ref": "00000-abcdef",
+     "text": "other_tool {}"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "00000-abcdef",
+     "text": "result 18\nsecond line"
+    }
+   ]
+  },
+  {
+   "path": [
+    "tmp",
+    "agent-live-wallpaper",
+    "chats",
+    "session-2026-11-24T10-00-abcd1234.jsonl"
+   ],
+   "newer_than": null,
+   "lines": [
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"h0\", \"name\": \"write_todos\", \"args\": {\"todos\": []}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"h1\", \"name\": \"update_topic\", \"args\": {\"todos\": []}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"h2\", \"name\": \"ask_user\", \"args\": {\"todos\": []}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"h3\", \"name\": \"enter_plan_mode\", \"args\": {\"todos\": []}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"h4\", \"name\": \"exit_plan_mode\", \"args\": {\"todos\": []}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"h5\", \"name\": \"activate_skill\", \"args\": {\"todos\": []}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"h6\", \"name\": \"get_internal_docs\", \"args\": {\"todos\": []}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"h7\", \"name\": \"tracker_create_task\", \"args\": {\"todos\": []}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"h8\", \"name\": \"tracker_update\", \"args\": {\"todos\": []}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"h0\", \"name\": \"write_todos\", \"args\": {}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"x\"}, {\"id\": \"h1\", \"name\": \"update_topic\", \"args\": {}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"x\"}, {\"id\": \"h2\", \"name\": \"ask_user\", \"args\": {}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"x\"}, {\"id\": \"h3\", \"name\": \"enter_plan_mode\", \"args\": {}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"x\"}, {\"id\": \"h4\", \"name\": \"exit_plan_mode\", \"args\": {}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"x\"}, {\"id\": \"h5\", \"name\": \"activate_skill\", \"args\": {}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"x\"}, {\"id\": \"h6\", \"name\": \"get_internal_docs\", \"args\": {}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"x\"}, {\"id\": \"h7\", \"name\": \"tracker_create_task\", \"args\": {}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"x\"}, {\"id\": \"h8\", \"name\": \"tracker_update\", \"args\": {}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"x\"}]}",
+    "{\"$patch\": {\"id\": \"m1\", \"toolCalls\": [{\"id\": \"h0\", \"result\": \"late\"}]}}"
+   ],
+   "events": []
+  },
+  {
+   "path": [
+    "tmp",
+    "agent-live-wallpaper",
+    "chats",
+    "session-2026-11-24T10-00-abcd1234.jsonl"
+   ],
+   "newer_than": null,
+   "lines": [
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r0\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 0\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r0\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 0\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"plain display\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r1\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 1\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r1\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 1\"}, \"status\": \"error\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"\", \"result\": [{\"functionResponse\": {\"id\": \"x\", \"name\": \"t\", \"response\": {\"output\": \"from the response\"}}}]}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r2\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 2\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r2\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 2\"}, \"status\": \"cancelled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": null, \"result\": [{\"functionResponse\": {\"id\": \"x\", \"name\": \"t\", \"response\": {\"error\": \"it broke\"}}}]}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r3\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 3\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r3\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 3\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": {\"fileDiff\": \"@@ -1 +1 @@\"}, \"result\": [{\"functionResponse\": {\"id\": \"x\", \"name\": \"t\", \"response\": {\"output\": \"diff shown as output\"}}}]}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r4\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 4\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r4\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 4\"}, \"status\": \"error\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"result\": [{\"text\": \"part one\"}, {\"inlineData\": {}}, {\"text\": \"part two\"}, \"a bare string\"]}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r5\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 5\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r5\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 5\"}, \"status\": \"cancelled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"result\": {\"text\": \"one part, not a list\"}}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r6\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 6\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r6\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 6\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"result\": \"just a string\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r7\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 7\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r7\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 7\"}, \"status\": \"error\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"result\": null}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r8\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 8\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r8\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 8\"}, \"status\": \"cancelled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"result\": []}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r9\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 9\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r9\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 9\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"line 0\\nline 1\\nline 2\\nline 3\\nline 4\\nline 5\\nline 6\\nline 7\\nline 8\\nline 9\\nline 10\\nline 11\\nline 12\\nline 13\\nline 14\\nline 15\\nline 16\\nline 17\\nline 18\\nline 19\\nline 20\\nline 21\\nline 22\\nline 23\\nline 24\\nline 25\\nline 26\\nline 27\\nline 28\\nline 29\\nline 30\\nline 31\\nline 32\\nline 33\\nline 34\\nline 35\\nline 36\\nline 37\\nline 38\\nline 39\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r10\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 10\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r10\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 10\"}, \"status\": \"error\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away \"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r11\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 11\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r11\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 11\"}, \"status\": \"cancelled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"cr\\rlf\\r\\nvt\\u000bff\\ffs\\u001cnells ps end\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r12\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 12\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r12\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 12\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r13\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 13\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r13\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 13\"}, \"status\": \"error\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"  padded  \\n\\n\", \"result\": [{\"functionResponse\": {\"id\": \"x\", \"name\": \"t\", \"response\": {\"output\": \"ignored\"}}}]}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r14\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 14\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r14\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 14\"}, \"status\": \"cancelled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"result\": [{\"functionResponse\": {\"id\": \"x\", \"name\": \"t\", \"response\": {\"output\": 12, \"error\": [\"no\"]}}}]}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r15\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 15\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"r15\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"cmd 15\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"ends in a key ghp_a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8\"}]}"
+   ],
+   "events": [
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "r0",
+     "text": "cmd 0"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "r0",
+     "text": "plain display"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "r1",
+     "text": "cmd 1"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "r1",
+     "text": "from the response"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "r2",
+     "text": "cmd 2"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "r2",
+     "text": "it broke"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "r3",
+     "text": "cmd 3"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "r3",
+     "text": "diff shown as output"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "r4",
+     "text": "cmd 4"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "r4",
+     "text": "part one\npart two\na bare string"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "r5",
+     "text": "cmd 5"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "r5",
+     "text": "one part, not a list"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "r6",
+     "text": "cmd 6"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "r6",
+     "text": "just a string"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "r7",
+     "text": "cmd 7"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "r7",
+     "text": "(no output)"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "r8",
+     "text": "cmd 8"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "r8",
+     "text": "(no output)"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "r9",
+     "text": "cmd 9"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "r9",
+     "text": "line 0\nline 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\n… 26 more lines"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "r10",
+     "text": "cmd 10"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "r10",
+     "text": "the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick …"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "r11",
+     "text": "cmd 11"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "r11",
+     "text": "cr\rlf\r\nvt\u000bff\ffs\u001cnells ps end"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "r12",
+     "text": "cmd 12"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "r12",
+     "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx …"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "r13",
+     "text": "cmd 13"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "r13",
+     "text": "padded"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "r14",
+     "text": "cmd 14"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "r14",
+     "text": "(no output)"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "r15",
+     "text": "cmd 15"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "r15",
+     "text": "ends in a key ghp_a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8"
+    }
+   ]
+  },
+  {
+   "path": [
+    "tmp",
+    "agent-live-wallpaper",
+    "chats",
+    "session-2026-11-24T10-00-abcd1234.jsonl"
+   ],
+   "newer_than": null,
+   "lines": [
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"p1\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/p\"}, \"status\": \"executing\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"not yet\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"p1\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/p\"}, \"status\": \"awaiting_approval\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"result\": []}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"p1\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/p\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"p1\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/p\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"now\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"a1\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/a\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"a1\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/a\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"a1\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/a\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"a2\", \"name\": \"glob\", \"args\": {\"pattern\": \"*\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"a1\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/a\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"x\"}, {\"id\": \"a1\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/a\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"x\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"a2\", \"name\": \"glob\", \"args\": {\"pattern\": \"*\"}, \"status\": \"SUCCESS\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"case matters\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"toolu_0123456789abcdefghij\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"long id\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}"
+   ],
+   "events": [
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "read",
+     "ref": "p1",
+     "text": "/p"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "p1",
+     "text": "now"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "read",
+     "ref": "a1",
+     "text": "/a"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "find",
+     "ref": "a2",
+     "text": "*"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "a1",
+     "text": "x"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "89abcdefghij",
+     "text": "long id"
+    }
+   ]
+  },
+  {
+   "path": [
+    "tmp",
+    "agent-live-wallpaper",
+    "chats",
+    "session-2026-11-24T10-00-abcd1234.jsonl"
+   ],
+   "newer_than": null,
+   "lines": [
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"q1\", \"name\": \"glob\", \"args\": {\"pattern\": \"*.md\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"q2\", \"name\": \"glob\", \"args\": {\"pattern\": \"*.rs\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"q3\", \"name\": \"glob\", \"args\": {\"pattern\": \"*.py\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"q4\", \"name\": \"glob\", \"args\": {\"pattern\": \"*.go\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"$patch\": {\"id\": \"m1\", \"toolCalls\": [{\"id\": \"q1\", \"result\": [{\"text\": \"README.md\"}]}]}}",
+    "{\"$patch\": {\"id\": \"m1\", \"toolCalls\": [{\"id\": \"q1\", \"result\": [{\"text\": \"again\"}]}]}}",
+    "{\"$patch\": {\"id\": \"m1\", \"toolCalls\": [], \"updates\": [{\"toolCalls\": [{\"id\": \"q2\", \"status\": \"error\", \"result\": [{\"functionResponse\": {\"id\": \"x\", \"name\": \"t\", \"response\": {\"error\": \"denied\"}}}]}]}, \"x\", 3]}}",
+    "{\"$patch\": {\"id\": \"m1\", \"toolCalls\": [{\"id\": \"q3\", \"status\": \"cancelled\", \"resultDisplay\": \"stopped\"}]}}",
+    "{\"$patch\": {\"id\": \"m1\", \"toolCalls\": [{\"id\": \"zz\", \"result\": \"unknown id\"}, \"not a dict\", null, {\"result\": \"no id\"}]}}",
+    "{\"$patch\": {\"toolCalls\": 5, \"updates\": 7}}",
+    "{\"$patch\": \"not a dict\"}",
+    "{\"$patch\": {\"updates\": {\"toolCalls\": [{\"id\": \"q4\", \"result\": \"dict, not list\"}]}}}",
+    "{\"$patch\": {\"id\": \"m1\", \"toolCalls\": [{\"id\": \"q4\", \"result\": \"the go files\", \"timestamp\": \"2026-11-24T10:05:00Z\"}]}}"
+   ],
+   "events": [
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "find",
+     "ref": "q1",
+     "text": "*.md"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "find",
+     "ref": "q2",
+     "text": "*.rs"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "find",
+     "ref": "q3",
+     "text": "*.py"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "find",
+     "ref": "q4",
+     "text": "*.go"
+    },
+    {
+     "ts": "",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "q1",
+     "text": "README.md"
+    },
+    {
+     "ts": "",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "q2",
+     "text": "denied"
+    },
+    {
+     "ts": "",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "err",
+     "ref": "q3",
+     "text": "stopped"
+    },
+    {
+     "ts": "2026-11-24T10:05:00Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "q4",
+     "text": "the go files"
+    }
+   ]
+  },
+  {
+   "path": [
+    "tmp",
+    "agent-live-wallpaper",
+    "chats",
+    "session-2026-11-24T10-00-abcd1234.jsonl"
+   ],
+   "newer_than": null,
+   "lines": [
+    "not json",
+    "[]",
+    "{}",
+    "null",
+    "42",
+    "\"a string\"",
+    "",
+    "{\"$set\": {\"sessionId\": \"s\", \"kind\": \"main\"}}",
+    "{\"$rewindTo\": \"m1\"}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"user\", \"content\": \"\", \"toolCalls\": [{\"id\": \"u1\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/user\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"info\", \"content\": \"\", \"toolCalls\": [{\"id\": \"u2\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/info\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"type\": \"gemini\", \"toolCalls\": \"nope\"}",
+    "{\"type\": \"gemini\", \"toolCalls\": 12}",
+    "{\"type\": \"gemini\", \"toolCalls\": {\"id\": \"x\"}}",
+    "{\"type\": \"gemini\"}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [1, null, \"x\", [], {\"name\": \"read_file\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"empty id\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": null, \"name\": \"run_shell_command\", \"args\": {\"command\": \"null id\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": 0, \"name\": \"run_shell_command\", \"args\": {\"command\": \"zero id\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": 7, \"name\": \"run_shell_command\", \"args\": {\"command\": \"number id\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": true, \"name\": \"run_shell_command\", \"args\": {\"command\": \"true id\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"w1\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"   \"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"w2\", \"name\": \"run_shell_command\", \"args\": {\"command\": null}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"w3\", \"name\": \"run_shell_command\", \"args\": {\"command\": 0}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"w4\", \"name\": \"run_shell_command\", \"args\": {\"command\": 12.5}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"w5\", \"name\": \"run_shell_command\", \"args\": {}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"w6\", \"name\": \"run_shell_command\", \"args\": null, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"w7\", \"name\": \"run_shell_command\", \"args\": [\"ls\"], \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"w8\", \"name\": \"read_file\", \"args\": {\"file_path\": true}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"w9\", \"name\": \"read_file\", \"args\": {\"file_path\": \"ééé\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"w10\", \"name\": null, \"args\": {\"command\": \"no name\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"w11\", \"name\": 5, \"args\": {\"x\": 1}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}, {\"id\": \"w12\", \"name\": \"read_file\", \"args\": {\"file_path\": {\"nested\": [1, 2]}}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"n1\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/no ts\"}, \"status\": \"scheduled\", \"timestamp\": null}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"n2\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/num ts\"}, \"status\": \"scheduled\", \"timestamp\": 12345}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"n3\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/bool ts\"}, \"status\": \"scheduled\", \"timestamp\": false}]}",
+    "{\"type\": \"gemini\", \"toolCalls\": [{\"id\": \"dup\", \"name\": \"glob\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/dup\"}}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"c1\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"crlf line\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}\r"
+   ],
+   "events": [
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "7",
+     "text": "number id"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "True",
+     "text": "true id"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "w3",
+     "text": "0"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "w4",
+     "text": "12.5"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "read",
+     "ref": "w8",
+     "text": "true"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "read",
+     "ref": "w9",
+     "text": "ééé"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "tool",
+     "ref": "w10",
+     "text": " {\"command\": \"no name\"}"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "tool",
+     "ref": "w11",
+     "text": "5 {\"x\": 1}"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "read",
+     "ref": "w12",
+     "text": "{\"nested\": [1, 2]}"
+    },
+    {
+     "ts": "",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "read",
+     "ref": "n1",
+     "text": "/no ts"
+    },
+    {
+     "ts": "12345",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "read",
+     "ref": "n2",
+     "text": "/num ts"
+    },
+    {
+     "ts": "False",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "read",
+     "ref": "n3",
+     "text": "/bool ts"
+    },
+    {
+     "ts": "",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "read",
+     "ref": "dup",
+     "text": "/dup"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "c1",
+     "text": "crlf line"
+    }
+   ]
+  },
+  {
+   "path": [
+    "tmp",
+    "agent-live-wallpaper",
+    "chats",
+    "session-2026-11-24T10-00-abcd1234.jsonl"
+   ],
+   "newer_than": 1795514400.0,
+   "lines": [
+    "{\"id\": \"t0\", \"timestamp\": \"2026-11-24T09:59:59Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"t0\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"stamp 2026-11-24T09:59:59Z\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"t1\", \"timestamp\": \"2026-11-24T10:00:00Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"t1\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"stamp 2026-11-24T10:00:00Z\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"t2\", \"timestamp\": \"2026-11-24T10:00:00.5Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"t2\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"stamp 2026-11-24T10:00:00.5Z\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"t3\", \"timestamp\": \"2026-11-24T18:00:00+08:00\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"t3\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"stamp 2026-11-24T18:00:00+08:00\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"t4\", \"timestamp\": \"2026-11-24T04:00:01-06:00\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"t4\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"stamp 2026-11-24T04:00:01-06:00\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"t5\", \"timestamp\": \"garbage\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"t5\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"stamp garbage\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"t6\", \"timestamp\": \"\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"t6\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"stamp \"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"t7\", \"timestamp\": \"2026-11-24\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"t7\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"stamp 2026-11-24\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"t8\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"t8\", \"name\": \"run_shell_command\", \"args\": {\"command\": \"stamp None\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"$patch\": {\"id\": \"m1\", \"toolCalls\": [{\"id\": \"t1\", \"result\": \"patches have no timestamp\"}]}}"
+   ],
+   "events": [
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "t1",
+     "text": "stamp 2026-11-24T10:00:00Z"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "t2",
+     "text": "stamp 2026-11-24T10:00:00.5Z"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "t3",
+     "text": "stamp 2026-11-24T18:00:00+08:00"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "$",
+     "ref": "t4",
+     "text": "stamp 2026-11-24T04:00:01-06:00"
+    },
+    {
+     "ts": "",
+     "proj": "wallpaper",
+     "session": "abcd",
+     "side": false,
+     "kind": "out",
+     "ref": "t1",
+     "text": "patches have no timestamp"
+    }
+   ]
+  },
+  {
+   "path": [
+    "tmp",
+    "agent-live-wallpaper",
+    "chats",
+    "abcd1234-full-id",
+    "e5f6a7b8.jsonl"
+   ],
+   "newer_than": null,
+   "lines": [
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"s1\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/side\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"s1\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/side\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"side out\"}]}"
+   ],
+   "events": [
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "e5f6",
+     "side": true,
+     "kind": "read",
+     "ref": "s1",
+     "text": "/side"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "e5f6",
+     "side": true,
+     "kind": "out",
+     "ref": "s1",
+     "text": "side out"
+    }
+   ]
+  },
+  {
+   "path": [
+    "tmp",
+    "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "chats",
+    "session-2026-11-24T10-00-9f9f.jsonl"
+   ],
+   "newer_than": null,
+   "lines": [
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"s1\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/side\"}, \"status\": \"scheduled\", \"timestamp\": \"2026-11-24T10:00:00.000Z\"}]}",
+    "{\"id\": \"m1\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"gemini\", \"content\": \"\", \"toolCalls\": [{\"id\": \"s1\", \"name\": \"read_file\", \"args\": {\"file_path\": \"/side\"}, \"status\": \"success\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"resultDisplay\": \"side out\"}]}"
+   ],
+   "events": [
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "gemini",
+     "session": "9f9f",
+     "side": false,
+     "kind": "read",
+     "ref": "s1",
+     "text": "/side"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "gemini",
+     "session": "9f9f",
+     "side": false,
+     "kind": "out",
+     "ref": "s1",
+     "text": "side out"
+    }
+   ]
+  }
+ ],
+ "labels": [
+  {
+   "path": [
+    "tmp",
+    "agent-live-wallpaper",
+    "chats",
+    "session-2026-11-24T10-00-abcd1234.jsonl"
+   ],
+   "out": "wallpaper"
+  },
+  {
+   "path": [
+    "tmp",
+    "agent-live-wallpaper",
+    "chats",
+    "abcd1234-full-id",
+    "e5f6a7b8.jsonl"
+   ],
+   "out": "wallpaper"
+  },
+  {
+   "path": [
+    "tmp",
+    "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "chats",
+    "session-2026-11-24T10-00-9f9f.jsonl"
+   ],
+   "out": "gemini"
+  },
+  {
+   "path": [
+    "tmp",
+    "plain",
+    "chats",
+    "s.jsonl"
+   ],
+   "out": "plain"
+  },
+  {
+   "path": [
+    "tmp",
+    "ends-with-",
+    "chats",
+    "s.jsonl"
+   ],
+   "out": "gemini"
+  },
+  {
+   "path": [
+    "tmp",
+    "0123ABCD0123ABCD0123ABCD0123ABCD",
+    "chats",
+    "s.jsonl"
+   ],
+   "out": "0123ABCD0123ABCD0123ABCD0123ABCD"
+  },
+  {
+   "path": [
+    "tmp",
+    "abc123",
+    "chats",
+    "x",
+    "s.jsonl"
+   ],
+   "out": "abc123"
+  }
+ ]
+}

@@ -10,6 +10,7 @@ mod bg;
 mod desk;
 mod feed;
 mod fonts;
+mod gemini;
 mod gfx;
 mod json;
 mod logs;
