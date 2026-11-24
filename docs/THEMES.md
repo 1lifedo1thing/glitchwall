@@ -102,99 +102,173 @@ theme, for mixing your own: `code` and `stars` (30 fps), `snow` (30), `jukebox` 
 
 ### Up close
 
-Full-size shots (click one to open it). They come from ambient mode, so every session in them is made up.
+Full-size shots from the native renderer (click one to open it). They come from ambient mode, so every session
+in them is made up.
 
 <table>
-<tr><td>
+<tr>
+<td>
 
 [![the phosphor look](shots/phosphor.jpg)](shots/phosphor.jpg)<br><sub>phosphor</sub>
 
-</td><td>
+</td>
+<td>
 
 [![the drafting look](shots/drafting.jpg)](shots/drafting.jpg)<br><sub>drafting</sub>
 
-</td></tr>
-<tr><td>
-
-[![the notebook look](shots/notebook.jpg)](shots/notebook.jpg)<br><sub>notebook</sub>
-
-</td><td>
-
-[![the sleeve look](shots/sleeve.jpg)](shots/sleeve.jpg)<br><sub>sleeve</sub>
-
-</td></tr>
-<tr><td>
-
-[![the duplicator look](shots/duplicator.jpg)](shots/duplicator.jpg)<br><sub>duplicator</sub>
-
-</td><td>
+</td>
+</tr>
+<tr>
+<td>
 
 [![the newsprint look](shots/newsprint.jpg)](shots/newsprint.jpg)<br><sub>newsprint</sub>
 
-</td></tr>
-<tr><td>
+</td>
+<td>
 
-[![the oracle look](shots/oracle.jpg)](shots/oracle.jpg)<br><sub>oracle</sub>
+[![the nightprint look](shots/nightprint.jpg)](shots/nightprint.jpg)<br><sub>nightprint</sub>
 
-</td><td>
-
-[![the oracle, art mode look](shots/art-oracle.jpg)](shots/art-oracle.jpg)<br><sub>oracle, art mode</sub>
-
-</td></tr>
-<tr><td>
-
-[![the orb look](shots/orb.jpg)](shots/orb.jpg)<br><sub>orb</sub>
-
-</td><td>
-
-[![the orb, art mode look](shots/art-orb.jpg)](shots/art-orb.jpg)<br><sub>orb, art mode</sub>
-
-</td></tr>
-<tr><td>
-
-[![the scope look](shots/scope.jpg)](shots/scope.jpg)<br><sub>scope</sub>
-
-</td><td>
-
-[![the scope, art mode look](shots/art-scope.jpg)](shots/art-scope.jpg)<br><sub>scope, art mode</sub>
-
-</td></tr>
-<tr><td>
-
-[![the chalkboard look](shots/chalkboard.jpg)](shots/chalkboard.jpg)<br><sub>chalkboard</sub>
-
-</td><td>
-
-[![the chalkboard, art mode look](shots/art-chalkboard.jpg)](shots/art-chalkboard.jpg)<br><sub>chalkboard, art mode</sub>
-
-</td></tr>
-<tr><td>
+</td>
+</tr>
+<tr>
+<td>
 
 [![the neon look](shots/neon.jpg)](shots/neon.jpg)<br><sub>neon</sub>
 
-</td><td>
+</td>
+<td>
+
+[![the fieldops look](shots/fieldops.jpg)](shots/fieldops.jpg)<br><sub>fieldops</sub>
+
+</td>
+</tr>
+<tr>
+<td>
+
+[![the duplicator look](shots/duplicator.jpg)](shots/duplicator.jpg)<br><sub>duplicator</sub>
+
+</td>
+<td>
+
+[![the sleeve look](shots/sleeve.jpg)](shots/sleeve.jpg)<br><sub>sleeve</sub>
+
+</td>
+</tr>
+<tr>
+<td>
+
+[![the notebook look](shots/notebook.jpg)](shots/notebook.jpg)<br><sub>notebook</sub>
+
+</td>
+<td>
 
 [![the bsod look](shots/bsod.jpg)](shots/bsod.jpg)<br><sub>bsod</sub>
 
-</td></tr>
-<tr><td>
+</td>
+</tr>
+<tr>
+<td>
+
+[![the cyanotype look](shots/cyanotype.jpg)](shots/cyanotype.jpg)<br><sub>cyanotype</sub>
+
+</td>
+<td>
+
+[![the oracle look](shots/oracle.jpg)](shots/oracle.jpg)<br><sub>oracle</sub>
+
+</td>
+</tr>
+<tr>
+<td>
+
+[![the orb look](shots/orb.jpg)](shots/orb.jpg)<br><sub>orb</sub>
+
+</td>
+<td>
+
+[![the scope look](shots/scope.jpg)](shots/scope.jpg)<br><sub>scope</sub>
+
+</td>
+</tr>
+<tr>
+<td>
+
+[![the chalkboard look](shots/chalkboard.jpg)](shots/chalkboard.jpg)<br><sub>chalkboard</sub>
+
+</td>
+<td>
+
+[![the matrix look](shots/matrix.jpg)](shots/matrix.jpg)<br><sub>matrix</sub>
+
+</td>
+</tr>
+<tr>
+<td>
+
+[![the amber look](shots/amber.jpg)](shots/amber.jpg)<br><sub>amber</sub>
+
+</td>
+<td>
+
+[![the synthwave look](shots/synthwave.jpg)](shots/synthwave.jpg)<br><sub>synthwave</sub>
+
+</td>
+</tr>
+<tr>
+<td>
+
+[![the msdos look](shots/msdos.jpg)](shots/msdos.jpg)<br><sub>msdos</sub>
+
+</td>
+<td>
+
+[![the oracle, art mode look](shots/art-oracle.jpg)](shots/art-oracle.jpg)<br><sub>oracle, art mode</sub>
+
+</td>
+</tr>
+<tr>
+<td>
+
+[![the orb, art mode look](shots/art-orb.jpg)](shots/art-orb.jpg)<br><sub>orb, art mode</sub>
+
+</td>
+<td>
+
+[![the scope, art mode look](shots/art-scope.jpg)](shots/art-scope.jpg)<br><sub>scope, art mode</sub>
+
+</td>
+</tr>
+<tr>
+<td>
+
+[![the chalkboard, art mode look](shots/art-chalkboard.jpg)](shots/art-chalkboard.jpg)<br><sub>chalkboard, art mode</sub>
+
+</td>
+<td>
 
 [![the synthwave, art mode look](shots/art-synthwave.jpg)](shots/art-synthwave.jpg)<br><sub>synthwave, art mode</sub>
 
-</td><td>
+</td>
+</tr>
+<tr>
+<td>
 
 [![the duplicator, art mode look](shots/art-halftone.jpg)](shots/art-halftone.jpg)<br><sub>duplicator, art mode</sub>
 
-</td></tr>
-<tr><td>
+</td>
+<td>
 
 [![the sleeve + starburst, art mode look](shots/art-starburst.jpg)](shots/art-starburst.jpg)<br><sub>sleeve + starburst, art mode</sub>
 
-</td><td>
+</td>
+</tr>
+<tr>
+<td>
 
 [![the fieldops + testcard, art mode look](shots/art-testcard.jpg)](shots/art-testcard.jpg)<br><sub>fieldops + testcard, art mode</sub>
 
-</td></tr>
+</td>
+</tr>
 </table>
 
 

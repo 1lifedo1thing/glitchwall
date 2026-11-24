@@ -58,15 +58,17 @@ extern "system" fn wndproc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT {
 }
 
 /// a window for one screen: behind the icons, or (peek) a small topmost window to look at while developing
-pub fn window(r: Rect, peek: bool) -> Result<HWND> {
+pub fn window(r: Rect, peek: Option<(u32, u32)>) -> Result<HWND> {
     unsafe {
         let inst = GetModuleHandleW(None)?;
         let class = w!("glitchwall-render");
         RegisterClassW(&WNDCLASSW { lpfnWndProc: Some(wndproc), hInstance: inst.into(), lpszClassName: class, ..Default::default() });
-        let (x, y, w, h, ex) = if peek { (r.x + r.w - 980, r.y + r.h - 620, 960, 560, WS_EX_TOPMOST | WS_EX_TOOLWINDOW) }
-                               else { (r.x, r.y, r.w, r.h, WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE) };
+        let (x, y, w, h, ex) = if let Some((pw, ph)) = peek {
+            let (pw, ph) = (pw as i32, ph as i32);
+            ((r.x + r.w - pw - 20).max(r.x), (r.y + r.h - ph - 60).max(r.y), pw, ph, WS_EX_TOPMOST | WS_EX_TOOLWINDOW)
+        } else { (r.x, r.y, r.w, r.h, WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE) };
         let hwnd = CreateWindowExW(ex, class, w!("glitchwall"), WS_POPUP, x, y, w, h, HWND::default(), HMENU::default(), inst, None)?;
-        if peek { let _ = ShowWindow(hwnd, SW_SHOWNA); } else { behind_icons(hwnd, r)?; }
+        if peek.is_some() { let _ = ShowWindow(hwnd, SW_SHOWNA); } else { behind_icons(hwnd, r)?; }
         Ok(hwnd)
     }
 }

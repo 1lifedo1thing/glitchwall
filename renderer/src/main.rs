@@ -1,6 +1,6 @@
 //! glitchwall-render: glitchwall's wallpaper drawn natively (Direct2D), one window per screen behind the desktop icons,
 //! fed by glitchwall's own feed. glitchwall starts it (renderer = native); it can also run by hand:
-//!   GLITCHWALL_KEY=<feed key> glitchwall-render --port 47833 [--which all|primary] [--wallpaper DIR] [--parent PID] [--scale X] [--peek]
+//!   GLITCHWALL_KEY=<feed key> glitchwall-render --port 47833 [--which all|primary] [--wallpaper DIR] [--parent PID] [--scale X] [--peek [--peek-size WxH]]
 //! --wallpaper is the folder with looks.js, index.html and the fonts (default: the one next to this exe).
 //! `glitchwall-render feed [--port N]` runs the feed instead (server.rs; piece 2a, not used by glitchwall yet).
 #![windows_subsystem = "windows"]
@@ -44,6 +44,11 @@ fn run() -> Result<()> {
         return server::run(&args).map_err(|e| Error::new(HRESULT(-1), e.as_str()));
     }
     let peek = args.iter().any(|a| a == "--peek");
+    // --peek-size: the peek window's size, for screenshots at a set resolution (default 960x560)
+    let peek_size: (u32, u32) = arg(&args, "--peek-size").and_then(|s| {
+        let (w, h) = s.split_once('x')?;
+        Some((w.parse().ok()?, h.parse().ok()?))
+    }).filter(|&(w, h)| (320..=3840).contains(&w) && (200..=2160).contains(&h)).unwrap_or((960, 560));
     let port: Option<u16> = arg(&args, "--port").and_then(|p| p.parse().ok());
     let which = arg(&args, "--which").unwrap_or_else(|| "all".into());
     let key = std::env::var("GLITCHWALL_KEY").unwrap_or_default();
@@ -62,8 +67,8 @@ fn run() -> Result<()> {
     let layout = mons.clone();
     let mut screens = Vec::new();
     for (n, r) in mons {
-        let hwnd = desk::window(r, peek)?;
-        let (w, h) = if peek { (960, 560) } else { (r.w as u32, r.h as u32) };
+        let hwnd = desk::window(r, peek.then_some(peek_size))?;
+        let (w, h) = if peek { peek_size } else { (r.w as u32, r.h as u32) };
         let scale = force_scale.unwrap_or_else(|| desk::scale(r));   // --scale: try another display scaling
         let g = gfx::Gfx::new(hwnd, w, h, scale)?;
         let mut scene = scene::Scene::new(g, fonts.clone(), css.clone(), &looks)?;
