@@ -154,7 +154,8 @@ Redaction is a safety net, not a guarantee: when you stream or share your screen
 ## FAQ
 
 **Will it slow my PC down?** About 6.5% of one core (0.4% of a 16-core CPU) and 153 MB: about the CPU of a
-simple web wallpaper, with less memory. Screens covered by a window, a fullscreen game or a locked PC draw nothing. `--intensity 0` stills
+simple web wallpaper, with less memory. Screens covered by a window, a fullscreen game or a locked PC draw nothing
+(under 1% of one core in all). `--intensity 0` stills
 the background entirely. [Compared with other live wallpapers →](docs/PERFORMANCE.md)
 
 **Does it work with other agents?** Claude Code today. The log reader is one small file
