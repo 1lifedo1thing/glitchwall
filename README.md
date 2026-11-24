@@ -484,6 +484,10 @@ Nothing else: not your terminal, not your shell history, not other windows, not 
 
   Websites you visit can't read it. Refused requests are noted in `last-refused.txt`, without the key.
 
+  Its pages can be shown inside a frame only by another of its own pages (`frame-ancestors 'self'`): the
+  settings window frames the wallpaper page, with no key, to draw a backdrop's thumbnail. A website can't
+  frame them, so it can't trick you into clicking the settings window through a page of its own.
+
 ### 📁 Files it adds (all removed by `uninstall`)
 
 | Where | What |

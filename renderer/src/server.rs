@@ -27,8 +27,8 @@ pub const KEEP: usize = 300;   // events kept in memory
 pub const BATCH: usize = 60;   // most events per answer
 const MODES: [&str; 3] = ["live", "ambient", "art"];
 // every answer: never sniffed into another type, never framed by another page, no address passed on in a Referer
-const SAFE_HEADERS: [(&str, &str); 4] = [("X-Content-Type-Options", "nosniff"), ("X-Frame-Options", "DENY"),
-    ("Content-Security-Policy", "frame-ancestors 'none'"), ("Referrer-Policy", "no-referrer")];
+const SAFE_HEADERS: [(&str, &str); 4] = [("X-Content-Type-Options", "nosniff"), ("X-Frame-Options", "SAMEORIGIN"),
+    ("Content-Security-Policy", "frame-ancestors 'self'"), ("Referrer-Policy", "no-referrer")];
 
 /// glitchwall's state folder, as settings.py has it (GLITCHWALL_HOME, else ~/.glitchwall)
 pub fn state_dir() -> PathBuf {

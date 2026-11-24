@@ -31,9 +31,10 @@ KEEP = 300   # events kept in memory
 BATCH = 60   # most events per response
 
 LOCAL_ORIGIN = "null"   # a page opened from a file
-# every response: never sniffed into another type, never framed by another page, no address passed on in a Referer
-SAFE_HEADERS = (("X-Content-Type-Options", "nosniff"), ("X-Frame-Options", "DENY"),
-                ("Content-Security-Policy", "frame-ancestors 'none'"), ("Referrer-Policy", "no-referrer"))
+# every response: never sniffed into another type, framed only by the feed's own pages (the settings window's
+# backdrop thumbnails; another site's page can't frame one, so no clickjacking), no address passed on in a Referer
+SAFE_HEADERS = (("X-Content-Type-Options", "nosniff"), ("X-Frame-Options", "SAMEORIGIN"),
+                ("Content-Security-Policy", "frame-ancestors 'self'"), ("Referrer-Policy", "no-referrer"))
 
 
 class EventStore:
