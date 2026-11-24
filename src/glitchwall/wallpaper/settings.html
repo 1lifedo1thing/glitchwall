@@ -627,8 +627,8 @@ if (window.ResizeObserver) new ResizeObserver(() => fit()).observe(document.docu
 function swatch(win, val, kind) {
   const L = window.LOOKS || {}, v = S[kind], ws = win.style, vs = val.style;
   ['background', 'border-color', 'box-shadow'].forEach(k => ws.removeProperty(k));
-  ['color', 'text-shadow', 'font-family', 'font-weight', 'background'].forEach(k => vs.removeProperty(k));
-  if (!v || v === 'theme') return;
+  ['color', 'text-shadow', 'font-family', 'font-weight', 'background', 'animation'].forEach(k => vs.removeProperty(k));
+  if (!v || v === 'theme') { win.played = null; return; }
   if (kind === 'palette') {
     const t = (L.themes || {})[v];
     if (!t) return;
@@ -637,11 +637,30 @@ function swatch(win, val, kind) {
   } else if (kind === 'font') {
     const f = (L.fonts || {})[v];
     if (f) { vs.fontFamily = f.family; vs.fontWeight = String(f.weight || 400); }
+  } else if (kind === 'transition') {   // ARRIVAL: the name comes in the way cards do, once each time it's turned
+    if (win.played === v) return;
+    win.played = v;
+    const t = (L.transitions || {})[v];
+    if (t && t.in) arrivals().then(() => { if (S.transition !== v) return;
+      vs.animation = 'none'; void val.offsetWidth; vs.setProperty('--sx', '-140px'); vs.animation = t.in; });
   } else if (kind === 'rain') {   // BACKDROP: a still of that backdrop, in the theme and colors picked, the name on a dark strip
     vs.background = 'rgba(0,0,0,.62)'; vs.color = '#fff'; vs.textShadow = 'none';
     const want = [S.theme, S.palette, v].join('|');
     shoot(want).then(url => { if (url && [S.theme, S.palette, S.rain].join('|') === want) ws.background = `#000 center/cover url(${url})`; });
   }
+}
+// the arrivals' keyframes, borrowed once from the wallpaper page's own styles so there's one copy of each
+let arrived = null;
+function arrivals() {
+  return arrived = arrived || fetch('index.html').then(r => r.text()).then(html => {
+    const out = [], re = /@keyframes\s+\w+\s*\{/g;
+    for (let m; (m = re.exec(html));) {
+      let i = re.lastIndex, depth = 1;
+      while (depth && i < html.length) { const c = html[i++]; if (c === '{') depth++; else if (c === '}') depth--; }
+      out.push(html.slice(m.index, i));
+    }
+    const st = document.createElement('style'); st.textContent = out.join('\n'); document.head.appendChild(st);
+  }).catch(() => {});
 }
 // a backdrop's still: the wallpaper page itself, drawn in a frame out of sight for a moment, then copied off its
 // canvas and the frame removed. One frame at a time: a newer pick replaces one still drawing
