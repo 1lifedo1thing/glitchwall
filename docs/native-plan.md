@@ -152,6 +152,19 @@ fixtures. The feed comes in parts, each built, tested and committed on its own:
 - **2b. Settings.** settings.json load/save with the same defaults and validation (apply_changes, opts, tune, masked,
   corner, mode), LiveSettings re-read on change, `/settings` GET/POST and reset, the static files (index.html,
   settings.html, looks.js) served with `#key=`. Parity: TestSettingsWindow and test_settings.py against either feed.
+  Done: settings.rs (DEFAULTS from looks.js like themes.py, apply_changes, reset, tune/opts/look/masked/corner/mode,
+  display_label/live_label, the temp-file save written as json.dumps(indent=2) writes it, Live = LiveSettings) and
+  server.rs (/settings GET/POST/reset, the static files from `--wallpaper DIR`, default the folder next to the exe,
+  /config.js without the key, the settings fields in /feed). Parity: test_feed_parity.py now runs both feeds set up
+  as run_feed has it (page served, settings editable) and checks the static files and traversal refusals, the feed
+  fields for odd settings, a broken file keeping the last good settings, and the settings window's answers, saved
+  file and refusals, all against what settings.py computes; settings.rs has test_settings.py's and the settings
+  window's unit cases. Where Rust differs on purpose: a whole number sent as 3.0 counts as an int (the JSON reader
+  can't tell), NaN/Infinity make settings.json unreadable (paused) where Python reads them, list or object values
+  where Python would raise are refused or defaulted, a failed save answers 500, content types come from a fixed
+  table (Python asks the registry), and the connection is closed gracefully (unread input drained) so a refused
+  body never resets it. Also fixed in 2a's code: `;` no longer splits the query (parse_qs since 3.9.2), and `//x`
+  is read as `/x` (http.server). Not here: the restart after RESET ALL and the per-screen sleep flag (piece 3).
 - **2c. Modes.** ambient (made-up sessions) and art, follow_mode switching, the demo script. Parity: test_modes.py.
 - **2d. Switch over.** `glitchwall start` runs the Rust feed when the exe is there; the Python one stays the fallback
   until pieces 3-4 replace the rest. The tray and hot corner stay in Python until piece 3 moves the desktop host.
