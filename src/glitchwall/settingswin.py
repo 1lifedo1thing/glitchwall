@@ -90,14 +90,17 @@ class Settings:
 
     def open(self):
         import webview
-        # as tall as it likes on a big screen, never taller than the screen it opens on (sizes in logical px)
+        # one fixed size, no resizing or maximizing: the page is laid out for it. Sizes are logical px, so it grows
+        # with the monitor's scaling; on a screen too short for it the whole window shrinks in proportion (the
+        # page zooms to match) rather than changing shape
         x0, y0, x1, y1 = work_area_at_cursor() if WIN else (0, 0, 1600, 900)
         scale = (ctypes.windll.user32.GetDpiForSystem() / 96) if WIN else 1.0
-        h = max(560, min(940, int((y1 - y0) / scale) - 48))
-        x = int(x0 / scale + ((x1 - x0) / scale - 560) / 2)   # centred on that screen, all of it on screen
-        y = int(y0 / scale + max(0, ((y1 - y0) / scale - h) / 2))
-        self.window = webview.create_window("glitchwall settings", self.url, js_api=Api(self), width=560, height=h,
-                                            x=x, y=y, min_size=(480, 520), background_color="#010401")
+        k = min(1.0, ((y1 - y0) / scale - 40) / WIN_H)
+        ww, wh = int(WIN_W * k), int(WIN_H * k)
+        x = int(x0 / scale + ((x1 - x0) / scale - ww) / 2)   # centred on that screen, all of it on screen
+        y = int(y0 / scale + max(0, ((y1 - y0) / scale - wh) / 2))
+        self.window = webview.create_window("glitchwall settings", self.url, js_api=Api(self), width=ww, height=wh,
+                                            x=x, y=y, resizable=False, background_color="#010401")
         threading.Thread(target=self._dock_loop, args=(self.window,), daemon=True).start()
         return self.window
 
@@ -214,8 +217,9 @@ class Settings:
         webview.start(private_mode=True, storage_path=str(cfg.state_dir() / "webview-settings"), icon=self.icon)
 
 
-# the one page the settings window may open outside itself: the theme request form
-THEME_REQUEST_URL = "https://github.com/marklesterb28/glitchwall/issues/new?template=theme-request.yml"
+# the one page the settings window may open outside itself: the feedback forms (bug, feature, theme, security)
+WIN_W, WIN_H = 560, 1050   # the settings window with its frame, in logical px (the page, about 1000 tall, fits at zoom 1)
+FEEDBACK_URL = "https://github.com/marklesterb28/glitchwall/issues/new/choose"
 
 
 class Api:
@@ -230,6 +234,6 @@ class Api:
     def keep(self, on: bool) -> None:
         self._s.keep(on)
 
-    def request_theme(self) -> bool:
-        """Open the theme request form in the default browser. Fixed address: the page cannot pick another."""
-        return webbrowser.open(THEME_REQUEST_URL)
+    def feedback(self) -> bool:
+        """Open the feedback forms in the default browser. Fixed address: the page cannot pick another."""
+        return webbrowser.open(FEEDBACK_URL)

@@ -27,12 +27,16 @@
     --glow:0 0 5px rgba(var(--ph-rgb),.6); --ph-rgb:93,255,122; --amber:#ffb000; --red:#ff5a4a;
   }
   * { box-sizing:border-box; }
-  html, body { margin:0; height:100%; background:var(--bg); color:var(--ph-dim); font:var(--fmw, 400) calc(12px * var(--fms, 1))/1.4 var(--fm, 'Departure Mono', Consolas, monospace); }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--ph-dim); font:var(--fmw, 400) 12px/1.4 var(--fm, 'Departure Mono', Consolas, monospace); }
   body { display:grid; grid-template-rows:auto minmax(0,1fr) auto; height:calc(100vh / var(--z, 1)); overflow:hidden;
          background:radial-gradient(120% 100% at 50% 35%, var(--glass), var(--bg) 75%); }
   body::after { content:''; position:fixed; inset:0; pointer-events:none; z-index:50;   /* scanlines over the whole tube */
                 background:repeating-linear-gradient(transparent 0 2px, var(--scan, rgba(0,0,0,.18)) 2px 3px); }
   button { font:inherit; color:inherit; }
+  /* every theme's faces draw with the default faces' capital height, so sizes mean the same in every theme */
+  html, body, .brand, kbd { font-size-adjust:cap-height .73; }
+  #readout .l1, .win .val, .drum .item, .drumfoot, .fader .val { font-size-adjust:cap-height .56; }   /* capitals: their height */
+  #readout .l2, #label { font-size-adjust:ex-height .4; }   /* running text: its lowercase height */
   .tag { font-size:10px; letter-spacing:.22em; color:var(--ph); text-shadow:var(--glow); }
   .tag::before { content:'> '; color:var(--ph-dim); text-shadow:none; }
 
@@ -63,15 +67,14 @@
   #pause.on .t { color:var(--amber); text-shadow:0 0 5px rgba(255,176,0,.6); }
 
   /* one compact column: the wallpaper itself is the preview, so this window only needs the controls */
-  main { display:flex; flex-direction:column; gap:10px; padding:10px 12px; min-height:0; overflow:hidden; }   /* never scrolls: fit() shrinks everything instead */
-  .side { display:flex; flex-direction:column; gap:10px; min-width:0; }
+  main { display:flex; flex-direction:column; gap:8px; padding:8px 12px; min-height:0; overflow:hidden; }   /* never scrolls: fit() shrinks everything instead */
   /* the readout keeps one height whatever it says, so nothing below it ever jumps */
-  #readout { order:-1; height:112px; }
+  #readout { height:114px; padding:9px 12px; }
   #readout .l2 { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; }
   #pause { min-width:178px; }
   .drum.still .item { transition:none; }   /* the first placement: straight into position, no pile-up */
   footer { gap:4px 14px !important; padding:6px 14px !important; }
-  main > *, .side > * { flex-shrink:0; }   /* never squash a module: scroll instead */
+  main > * { flex-shrink:0; }   /* never squash a module: scroll instead */
   .mod { position:relative; min-width:0; border:1px solid var(--ph-line); border-radius:4px; padding:24px 12px 12px; background:var(--mod, rgba(3,16,8,.55)); }
   .mod > h2 { position:absolute; top:7px; left:11px; margin:0; font-weight:400; }
   /* a module's DEFAULT key, top right; lit only when something in it differs from the default */
@@ -86,14 +89,14 @@
 
   /* the readout: what the control under the mouse or keyboard does */
   #readout { min-width:0; min-height:0; overflow:hidden; color:var(--ph); text-shadow:var(--glow); }
-  #readout .l1 { font:var(--fdw, 400) calc(22px * var(--fds, 1))/1 var(--fd, 'VT323', monospace); letter-spacing:.08em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #readout .l1 { font:var(--fdw, 400) 21px/1.3 var(--fd, 'VT323', monospace); letter-spacing:.08em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   #readout .l1::before { content:'$ '; color:var(--ph-dim); }
-  #readout .l2 { font:var(--fdw, 400) calc(18px * var(--fds, 1))/1.15 var(--fd, 'VT323', monospace); margin-top:7px; color:var(--ph-dim); text-shadow:none; overflow-wrap:anywhere; }
+  #readout .l2 { font:var(--fdw, 400) var(--ls, 17px)/1.22 var(--fd, 'VT323', monospace); margin-top:3px; color:var(--ph-dim); text-shadow:none; overflow-wrap:anywhere; }
   #readout .err { color:var(--red); }
 
   /* switches: a slide toggle that lights when on */
-  #priv { grid-area:priv; }
-  .switches { display:flex; gap:8px; }
+  .feedrow { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:5px 8px; align-items:end; }
+  .switches { grid-column:1 / -1; display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:8px; padding:4px 0 2px; }   /* a row of their own, a column each */
   .sw { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:6px; padding:3px 2px; border-radius:3px; cursor:pointer; background:none; border:0; }
   .sw .slot { position:relative; width:40px; height:20px; border-radius:10px; border:1px solid var(--ph-dim); }
   .sw .lever { position:absolute; top:3px; left:3px; width:12px; height:12px; border-radius:50%; background:var(--ph-dim); transition:left .12s, background .12s, box-shadow .12s; }
@@ -103,17 +106,17 @@
   .sw.on .name { color:var(--ph); text-shadow:var(--glow); }
   .labelrow { display:flex; gap:10px; align-items:center; margin-top:10px; }
   .labelrow label { font-size:9px; letter-spacing:.15em; }
-  #label { flex:1; min-width:0; height:27px; padding:3px 8px; font:var(--fdw, 400) calc(19px * var(--fds, 1)) var(--fd, 'VT323', monospace); color:var(--ph); background:transparent; border:1px solid var(--ph-line); border-radius:2px; outline:none; text-shadow:var(--glow); }
+  #label { flex:1; min-width:0; height:27px; padding:3px 8px; font:var(--fdw, 400) 19px var(--fd, 'VT323', monospace); color:var(--ph); background:transparent; border:1px solid var(--ph-line); border-radius:2px; outline:none; text-shadow:var(--glow); }
   #label:focus { border-color:var(--ph); box-shadow:var(--glow); }
 
   /* selectors: the setting in a window, ridges beside it that roll as it turns */
-  .knobs { display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:5px; }
-  #optknobs { grid-template-columns:repeat(4, minmax(0,1fr)); }
+  .knobs { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:5px 8px; }
   #opts[hidden] { display:none; }
   .knob { display:flex; flex-direction:column; align-items:center; gap:6px; background:none; border:0; padding:3px 0; cursor:ns-resize; border-radius:3px; min-width:0; }
   .rotor { display:flex; gap:3px; width:100%; height:44px; }
-  .win { flex:none; height:44px; min-width:0; display:grid; place-items:center; overflow:hidden; padding:0 3px; border:1px solid var(--ph-line); border-radius:2px; background:var(--glass); }
-  .win .val { display:block; max-width:100%; text-align:center; font:var(--fdw, 400) calc(18px * var(--fds, 1)) var(--fd, 'VT323', monospace); color:var(--ph); text-shadow:var(--glow); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .win { flex:1 1 0; height:44px; min-width:0; display:grid; place-items:center; overflow:hidden; padding:0 3px; border:1px solid var(--ph-line); border-radius:2px; background:var(--glass); }
+  .win .val { display:block; max-width:100%; text-align:center; font:var(--fdw, 400) var(--vs, 18px)/1.2 var(--fd, 'VT323', monospace); color:var(--ph); text-shadow:var(--glow); white-space:normal; line-height:1.2; padding:1px .25em; overflow:visible; overflow-wrap:normal; }
+  /* the padding is room for slanted and handwritten faces, whose last letter draws past its box: clipped there, AUTO read AUTC */
   .wheel { width:8px; border:1px solid var(--ph-dim); border-radius:2px; transition:background-position .18s;
            background:repeating-linear-gradient(180deg, var(--ph-dim) 0 1px, transparent 1px 5px); }
   .knob .name { font-size:9px; letter-spacing:.12em; }
@@ -121,17 +124,17 @@
   /* the theme drum, turning left to right */
   .drum { position:relative; height:54px; overflow:hidden; cursor:ew-resize; touch-action:none; border:1px solid var(--ph-line); border-radius:2px; background:var(--glass); }
   .drum .window { position:absolute; left:50%; top:6px; bottom:6px; width:132px; margin-left:-66px; border:1px solid var(--ph); box-shadow:var(--glow); }
-  .drum .item { position:absolute; left:50%; top:0; height:100%; width:124px; margin-left:-62px; display:grid; place-items:center;
-                font:var(--fdw, 400) calc(22px * var(--fds, 1)) var(--fd, 'VT323', monospace); letter-spacing:.06em; color:var(--ph-dim); white-space:nowrap; transition:transform .22s, opacity .22s; }
+  .drum .item { position:absolute; left:50%; top:9px; height:calc(100% - 18px); border-radius:2px; width:124px; margin-left:-62px; display:grid; place-items:center; padding:0 .25em;
+                font:var(--fdw, 400) var(--ds, 22px) var(--fd, 'VT323', monospace); letter-spacing:.06em; color:var(--ph-dim); white-space:nowrap; transition:transform .22s, opacity .22s; }
   .drum .item.sel { color:var(--ph); text-shadow:var(--glow); }
   .drum::after { content:''; position:absolute; inset:0; pointer-events:none; background:linear-gradient(90deg, var(--glass), transparent 32%, transparent 68%, var(--glass)); }
-  .drumfoot { display:flex; justify-content:space-between; margin-top:6px; font:var(--fdw, 400) calc(16px * var(--fds, 1))/1 var(--fd, 'VT323', monospace); }
+  .drumfoot { display:flex; justify-content:space-between; margin-top:6px; font:var(--fdw, 400) 16px/1 var(--fd, 'VT323', monospace); }
 
   /* faders, lying flat, two to a row, so the module stays short */
   .faders { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:6px 16px; }
   .fader { display:grid; grid-template-columns:50px minmax(0,1fr) 30px; align-items:center; gap:7px; padding:1px 3px; border-radius:3px; }
   .fader .name { font-size:9px; letter-spacing:.12em; }
-  .fader .val { height:23px; overflow:hidden; display:grid; place-items:center; text-align:center; font:var(--fdw, 400) calc(18px * var(--fds, 1))/1.15 var(--fd, 'VT323', monospace); color:var(--ph); text-shadow:var(--glow); border:1px solid var(--ph-line); border-radius:2px; }
+  .fader .val { height:23px; overflow:visible; display:grid; place-items:center; text-align:center; font:var(--fdw, 400) 18px/1.15 var(--fd, 'VT323', monospace); color:var(--ph); text-shadow:var(--glow); border:1px solid var(--ph-line); border-radius:2px; }
   .track { position:relative; height:20px; touch-action:none; cursor:ew-resize; }
   .track .ticks { position:absolute; inset:0 4px; background:repeating-linear-gradient(90deg, var(--ph-faint) 0 1px, transparent 1px 10%);
                   -webkit-mask:linear-gradient(#000 0 5px, transparent 5px 15px, #000 15px); mask:linear-gradient(#000 0 5px, transparent 5px 15px, #000 15px); }
@@ -159,25 +162,23 @@
   </div>
   <span class="grow"></span>
   <button id="resetall" data-help="resetall"><span class="led" id="led-reset"></span><span id="resetall-t">RESET ALL</span></button>
-  <button id="ask" data-help="ask">+ THEME</button>
+  <button id="ask" data-help="ask">FEEDBACK</button>
   <button id="snd" data-help="sound"><span class="led" id="led-snd"></span>SOUND</button>
   <button id="pause" data-help="pause"><span class="cap">P</span><span class="t"><b id="pause-t">PAUSE</b><small id="pause-s">STREAM-SAFE</small></span></button>
 </header>
 
 <main>
-  <div class="side">
-    <div class="mod"><h2 class="tag">SELECT</h2><button class="reset" data-group="select" data-help="reset:select">DEFAULT</button><div class="knobs" id="knobs"></div></div>
-    <div class="mod"><h2 class="tag">THEME</h2>
-      <div class="drum" id="drum" tabindex="0" data-help="theme" role="listbox" aria-label="theme"><div class="window"></div></div>
-      <div class="drumfoot"><span>&lt; TURN &gt;</span><span id="drumpos">--</span></div>
-    </div>
-    <div class="mod" id="motion"><h2 class="tag">MOTION</h2><button class="reset" data-group="motion" data-help="reset:motion">DEFAULT</button><div class="faders" id="faders"></div></div>
-    <div class="mod" id="opts" hidden><h2 class="tag" id="opts-t">OPTIONS</h2><button class="reset" data-group="options" data-help="reset:options">DEFAULT</button><div class="knobs" id="optknobs"></div></div>
-  </div>
-
+  <!-- in the order they're used: the theme, what it brings, its background's options, motion, then the feed itself -->
   <div class="mod" id="readout" aria-live="polite"><div class="l1">CONNECTING…</div><div class="l2"></div></div>
-  <div class="mod" id="priv"><h2 class="tag">PRIVACY</h2><button class="reset" data-group="privacy" data-help="reset:privacy">DEFAULT</button>
-    <div class="switches" id="switches"></div>
+  <div class="mod"><h2 class="tag">THEME</h2>
+    <div class="drum" id="drum" tabindex="0" data-help="theme" role="listbox" aria-label="theme"><div class="window"></div></div>
+    <div class="drumfoot"><span>&lt; TURN &gt;</span><span id="drumpos">--</span></div>
+  </div>
+  <div class="mod"><h2 class="tag">LOOK</h2><button class="reset" data-group="look" data-help="reset:look">DEFAULT</button><div class="knobs" id="knobs"></div></div>
+  <div class="mod" id="opts" hidden><h2 class="tag" id="opts-t">OPTIONS</h2><button class="reset" data-group="options" data-help="reset:options">DEFAULT</button><div class="knobs" id="optknobs"></div></div>
+  <div class="mod" id="motion"><h2 class="tag">MOTION</h2><button class="reset" data-group="motion" data-help="reset:motion">DEFAULT</button><div class="faders" id="faders"></div></div>
+  <div class="mod" id="priv"><h2 class="tag">FEED</h2><button class="reset" data-group="feed" data-help="reset:feed">DEFAULT</button>
+    <div class="feedrow" id="feedrow"><div class="switches" id="switches"></div></div>
     <div class="labelrow"><label for="label">LABEL</label><input id="label" maxlength="80" spellcheck="false" data-help="label"></div>
   </div>
 </main>
@@ -197,7 +198,8 @@
 const KEY = decodeURIComponent(location.hash.startsWith('#key=') ? location.hash.slice(5) : '');
 const API = `/settings?key=${encodeURIComponent(KEY)}`;
 const $ = id => document.getElementById(id);
-const KNOBS = [['mode', 'MODE'], ['palette', 'COLORS'], ['rain', 'BACKDROP'], ['font', 'FONT'], ['transition', 'ARRIVAL'], ['corner', 'CORNER']];
+const KNOBS = [['palette', 'COLORS'], ['rain', 'BACKDROP'], ['font', 'FONT'], ['transition', 'ARRIVAL']];
+const FEED_KNOBS = [['mode', 'MODE'], ['corner', 'CORNER'], ['masked', 'MASKED']];
 const FADERS = {
   type_speed: ['TYPING', 'How fast each call types itself out: 1 is a slow crawl, 20 is nearly instant.'],
   linger: ['LINGER', 'Seconds a card stays on screen after it finishes.'],
@@ -211,28 +213,31 @@ const SWITCHES = {
   mask_user: ['MASK USER', 'Your user name shows as "user" everywhere.'],
   mask_email: ['MASK EMAIL', 'Email addresses lose everything before the @.'],
 };
-const KNOB_HELP = { mode: 'MODE', palette: 'COLORS', rain: 'BACKGROUND', font: 'FONT', transition: 'TRANSITION (how cards arrive and leave)', corner: 'HOT CORNER' };
+const KNOB_HELP = { mode: 'MODE', palette: 'COLORS', rain: 'BACKGROUND', font: 'FONT', transition: 'TRANSITION (how cards arrive and leave)', corner: 'HOT CORNER', masked: 'MASKED (how hidden secrets show)' };
 const MODE_SHORT = { live: 'LIVE', ambient: 'AMBIENT', art: 'ART' };
 let S = {}, C = {}, D = {}, focusHelp = null, pending = {}, timer = null, busy = false, cleared = false;
 // what each DEFAULT key puts back. Mode stays as it is: switching to live would start showing real tool calls
-const GROUPS = { select: ['palette', 'rain', 'font', 'transition'], motion: Object.keys(FADERS),
-                 privacy: [...Object.keys(SWITCHES), 'label'], options: [] };
-const THEME_OWNS = [...GROUPS.select, ...GROUPS.motion];   // a new theme starts clean: no tweaks carried over
+const GROUPS = { look: ['palette', 'rain', 'font', 'transition'], motion: Object.keys(FADERS),
+                 feed: ['corner', 'masked', ...Object.keys(SWITCHES), 'label'], options: [] };
+const THEME_OWNS = [...GROUPS.look, ...GROUPS.motion];   // a new theme starts clean: no tweaks carried over
 const GROUP_HELP = {
-  select: ['COLORS · BACKDROP · FONT · ARRIVAL', 'back to what the theme comes with. Mode stays as it is.'],
+  look: ['COLORS · BACKDROP · FONT · ARRIVAL', 'back to what the theme comes with.'],
   motion: ['TYPING · LINGER · CARDS · MOTION · GLASS · GRAIN', 'back to the standard values.'],
   options: ['OPTIONS', 'back to how the background comes.'],
-  privacy: ['CALLS ONLY · MASKS · LABEL', 'back to the safe defaults: user name and emails masked, the stock label.'],
+  feed: ['CORNER · MASKED · CALLS ONLY · MASKS · LABEL', 'back to the safe defaults: user name and emails masked, the stock label. Mode stays as it is.'],
 };
 const differs = k => D[k] !== undefined && S[k] !== D[k];
 
 // ---------- words: what each option is, said once, plainly
 const clean = t => String(t || '').replace(/^extra: /, '');
 const CORNER_SHORT = { off: 'OFF', 'top-left': 'TOP-L', 'top-right': 'TOP-R', 'bottom-left': 'BOT-L', 'bottom-right': 'BOT-R' };
-function optName(kind, v) { return kind === 'corner' ? CORNER_SHORT[v] || v : v === 'theme' ? 'AUTO' : kind === 'mode' ? MODE_SHORT[v] || v : v.toUpperCase(); }
+function optName(kind, v) { if (kind === 'font' && v !== 'theme' && C.font[v]) return C.font[v].replace(/ \(.*/, '').toUpperCase();
+  return kind === 'corner' ? CORNER_SHORT[v] || v : v === 'theme' ? 'AUTO' : kind === 'mode' ? MODE_SHORT[v] || v : v.toUpperCase(); }
 function optText(kind, v) {
-  if (kind === 'theme') return clean(C.theme[v]);
+  if (kind === 'theme') return clean(C.theme[v]).replace(/([^.!?])$/, '$1.');
   if (kind === 'mode') return C.mode[v][0].toUpperCase() + C.mode[v].slice(1) + '.';
+  if (kind === 'masked') return 'Masked secrets show as ' + C.masked[v] + ', in a color of their own: '
+    + { dots: '••••', words: '[REDACTED]', blocks: '██████', stars: '********', noise: 'x7#qK!2z' }[v] + '.';
   if (kind === 'corner') return C.corner[v][0].toUpperCase() + C.corner[v].slice(1) + '. The glitchwall icon marks it on the wallpaper.';
   if (v === 'theme') {
     const t = S.theme;
@@ -248,9 +253,16 @@ function optText(kind, v) {
   }
   const d = C[kind][v]; return d ? d[0].toUpperCase() + d.slice(1) + '.' : '';
 }
-function say(l1, l2, bad) {
+// what the FONT knob says: a line with every letter in it, then the characters code mixes up
+const SAMPLE = 'The quick agent fixed my lazy JSON bug, proved it works\n0O 1lI {} => ;';
+function say(l1, l2, bad, face) {
   const [a, b] = $('readout').children;
   a.textContent = l1; b.textContent = l2 || ''; b.className = 'l2' + (bad ? ' err' : '');
+  // a font sample is written in that font, its two lines kept apart
+  b.style.fontFamily = face ? face.family : ''; b.style.fontWeight = face ? String(face.weight || 400) : '';
+  b.style.whiteSpace = face ? 'pre-line' : '';
+  // three lines at most: a long message in a wide font steps down until it fits, rather than being cut
+  for (let px = 17; px >= 12; px--) { b.style.setProperty('--ls', px + 'px'); if (b.scrollHeight <= Math.ceil(px * 1.22 * 3) + 1) break; }
 }
 function help(h) {
   focusHelp = h || focusHelp;
@@ -258,8 +270,8 @@ function help(h) {
   if (!h || !S.theme) return;
   const [kind, extra] = h.split(':');
   if (kind === 'pause') return say(S.paused ? 'PAUSE · ON' : 'PAUSE · OFF', S.paused ? 'The wallpaper shows nothing at all until you resume. Safe to stream.' : 'Press before you stream or share your screen: the wallpaper goes blank at once.');
-  if (kind === 'sound') return say(`SOUND · ${muted ? 'OFF' : 'ON'}`, 'Clicks and clacks in this window as you turn and flip things. Never on the wallpaper. M toggles it.');
-  if (kind === 'ask') return say('REQUEST A THEME', 'Opens a short form on GitHub in your browser: describe the look you want. Nothing is sent from here.');
+  if (kind === 'sound') return say(`SOUND · ${muted ? 'OFF' : 'ON'}`, 'Clicks and clacks in this window as you turn and flip things, a radio squelch as you go off air and back. Never on the wallpaper. M toggles it.');
+  if (kind === 'ask') return say('BUGS, IDEAS, THEMES', 'Opens the glitchwall forms on GitHub in your browser: report a bug, ask for a feature or a theme. Security problems have a private form there. Nothing is sent from here.');
   if (kind === 'label') return say('CORNER LABEL', 'The text in the bottom-right corner of the wallpaper. Enter saves it.');
   if (kind === 'theme') { const v = extra || S.theme; return say(`THEME · ${v.toUpperCase()}${v === S.theme ? '' : '  (CLICK TO PICK)'}`,
                           optText('theme', v) + (cleared && v === S.theme ? ' Earlier tweaks cleared: the theme starts as it comes.' : '')); }
@@ -269,6 +281,10 @@ function help(h) {
   if (kind === 'reset') { const [a, b] = GROUP_HELP[extra]; return say(`DEFAULT · ${extra.toUpperCase()}`, `${a}: ${b}`); }
   if (FADERS[kind]) return say(`${FADERS[kind][0]} · ${S[kind]}`, FADERS[kind][1]);
   if (SWITCHES[kind]) return say(`${SWITCHES[kind][0]} · ${S[kind] ? 'ON' : 'OFF'}`, SWITCHES[kind][1]);
+  if (kind === 'font') {   // AUTO shows the sample in the theme's own face, which the readout already wears
+    const f = S.font !== 'theme' && ((window.LOOKS && window.LOOKS.fonts) || {})[S.font];
+    return say(`${KNOB_HELP[kind]} · ${optName(kind, S.font)}`, SAMPLE, false, f || null);
+  }
   if (KNOB_HELP[kind]) return say(`${KNOB_HELP[kind]} · ${optName(kind, S[kind])}`, optText(kind, S[kind]));
 }
 
@@ -293,7 +309,7 @@ function holdPeek(wait = 0) {
   addEventListener('pointerup', end, true); addEventListener('pointercancel', end, true); addEventListener('blur', end);
 }
 function set(k, v, now) {
-  if (S[k] !== v && SOUND_OF(k)) snd(SOUND_OF(k));
+  if (S[k] !== v && SOUND_OF(k, v)) snd(SOUND_OF(k, v));
   if (k === 'theme' && v !== S.theme) {   // a new theme: drop the tweaks made under the old one
     cleared = cleared || THEME_OWNS.some(differs);
     for (const x of THEME_OWNS) if (differs(x)) { S[x] = D[x]; pending[x] = D[x]; }
@@ -377,6 +393,11 @@ function drum() {   // the theme drum: ←/→, the wheel, a sideways drag or a 
   for (const t of THEMES()) {
     const it = document.createElement('div'); it.className = 'item'; it.dataset.v = t; it.dataset.help = 'theme:' + t; it.setAttribute('role', 'option');
     it.textContent = t.toUpperCase();
+    // each theme on the drum is a swatch of itself, picked or not: its paper, its ink, its title face, an edge of
+    // its accent (as the COLORS knob shows a palette), so turning the drum previews them
+    const L = window.LOOKS || {}, th = (L.themes || {})[t], f = th && (L.fonts || {})[th.display];
+    if (th) { it.style.background = th.surface || th.bg; it.style.color = th.ink; it.style.boxShadow = `inset 0 -3px 0 ${th.acc || th.ink}`; }
+    if (f) { it.style.fontFamily = f.family; it.style.fontWeight = String(f.weight || 400); }
     dr.appendChild(it);
   }
   dr.addEventListener('keydown', e => {
@@ -406,8 +427,9 @@ function noise(t, dur, type, freq, q, gain) {
   src.buffer = buf; f.type = type; f.frequency.value = freq; f.Q.value = q; g.gain.value = gain;
   src.connect(f).connect(g).connect(AC.destination); src.start(t);
 }
-function tone(t, f0, f1, dur, gain) {
+function tone(t, f0, f1, dur, gain, type) {
   const o = AC.createOscillator(), g = AC.createGain();
+  if (type) o.type = type;
   o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
   g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
   o.connect(g).connect(AC.destination); o.start(t); o.stop(t + dur);
@@ -422,9 +444,12 @@ function snd(kind) {
     if (kind === 'drum') { noise(t, .04, 'bandpass', 1500, 2.5, .55); tone(t, 260, 140, .05, .08); }
     if (kind === 'clack') { noise(t, .05, 'lowpass', 1400, 1, .7); tone(t, 190, 90, .07, .25); }
     if (kind === 'thunk') { tone(t, 120, 45, .16, .55); noise(t, .06, 'lowpass', 700, 1, .6); }
+    // PAUSE as a radio: going off air, a burst of squelch and one falling beep; back on air, squelch and two rising chirps
+    if (kind === 'offair') { noise(t, .16, 'bandpass', 1900, 1.2, .35); tone(t + .12, 1250, 700, .14, .05, 'square'); }
+    if (kind === 'onair') { noise(t, .12, 'bandpass', 1900, 1.2, .3); tone(t + .1, 820, 1300, .07, .05, 'square'); tone(t + .2, 1050, 1650, .08, .05, 'square'); }
   } catch {}
 }
-const SOUND_OF = k => k === 'theme' ? 'drum' : k === 'paused' ? 'thunk' : SWITCHES[k] ? 'clack' : FADERS[k] ? 'tick' : KNOB_HELP[k] ? 'click' : null;
+const SOUND_OF = (k, v) => k === 'theme' ? 'drum' : k === 'paused' ? (v ? 'offair' : 'onair') : SWITCHES[k] ? 'clack' : FADERS[k] ? 'tick' : KNOB_HELP[k] ? 'click' : null;
 function toggleSound() {
   muted = !muted;
   try { localStorage.setItem('gw-sound', muted ? 'off' : 'on'); } catch {}
@@ -467,13 +492,14 @@ function resetGroup(g) {
 const winApi = () => { try { return window.pywebview && window.pywebview.api; } catch { return null; } };
 function build() {
   const kn = $('knobs'); KNOBS.forEach(([k, n]) => kn.appendChild(knob(k, n)));
+  const fr = $('feedrow'), swb = $('switches'); FEED_KNOBS.forEach(([k, n]) => fr.insertBefore(knob(k, n), swb));
   const fd = $('faders'); Object.keys(FADERS).forEach(k => fd.appendChild(fader(k)));
   const sws = $('switches'); Object.keys(SWITCHES).forEach(k => sws.appendChild(sw(k)));
   drum();
   $('pause').addEventListener('click', () => set('paused', !S.paused, true));
   $('snd').addEventListener('click', toggleSound);
-  $('ask').addEventListener('click', () => { const a = winApi(); if (a && a.request_theme) a.request_theme();
-    else window.open('https://github.com/marklesterb28/glitchwall/issues/new?template=theme-request.yml', '_blank', 'noopener'); });
+  $('ask').addEventListener('click', () => { const a = winApi(); if (a && a.feedback) a.feedback();
+    else window.open('https://github.com/marklesterb28/glitchwall/issues/new/choose', '_blank', 'noopener'); });
   $('label').addEventListener('focus', () => { const a = winApi(); if (a && a.keep) a.keep(true); });
   $('label').addEventListener('blur', () => { const a = winApi(); if (a && a.keep) a.keep(false); });
   $('resetall').addEventListener('click', resetAll);
@@ -511,25 +537,32 @@ function renderOpts() {
   $('opts-t').textContent = `${(bg || '').toUpperCase()} OPTIONS`;
   GROUP_HELP.options = [names.join(' · '), 'back to how the background comes.'];
 }
-// the window wears the chosen colors: the theme's own, or the palette picked for it (phosphor is the window's own look)
+// the window wears the theme: its colors and fonts, whatever COLORS or FONT picked for the wallpaper (those change
+// the wallpaper only, so the window stays the theme you chose); phosphor is the window's own look
 function wear() {
-  const L = window.LOOKS && window.LOOKS.themes, name = S.palette && S.palette !== 'theme' ? S.palette : S.theme;
+  const L = window.LOOKS && window.LOOKS.themes, name = S.theme;
   const t = L && L[name], st = document.documentElement.style;
-  const keys = ['--bg', '--glass', '--ph', '--ph-hi', '--ph-dim', '--ph-rgb', '--amber', '--mod', '--glow', '--scan', '--fd', '--fds', '--fm', '--fms', '--fdw', '--fmw'];
+  const keys = ['--bg', '--glass', '--ph', '--ph-hi', '--ph-dim', '--ph-rgb', '--amber', '--mod', '--glow', '--scan', '--fd', '--fm', '--fdw', '--fmw'];
   if (!t || name === 'phosphor') { keys.forEach(k => st.removeProperty(k)); return; }
   const hex = c => { const m = /^#?([0-9a-f]{6})/i.exec(c || ''); return m ? [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16)).join(',') : null; };
   st.setProperty('--bg', t.bg); st.setProperty('--glass', t.surface || t.bg);
-  st.setProperty('--ph', t.ink); st.setProperty('--ph-hi', t.hi || t.ink); st.setProperty('--ph-dim', t.muted || t.ink);
+  // the dim labels: the theme's muted color, unless it's too close to the background to read here (MS-DOS's muted is
+  // its own blue, meant for text on the grey title bars); then the next readable one of dim and ink
+  const lum = c => { const v = (hex(c) || '0,0,0').split(',').map(x => { x /= 255; return x <= .03928 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4; });
+    return .2126 * v[0] + .7152 * v[1] + .0722 * v[2]; };
+  const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + .05) / (y + .05); };
+  const dim = [t.muted, t.dim, t.ink].find(c => c && contrast(c, t.surface || t.bg) >= 3) || t.ink;
+  st.setProperty('--ph', t.ink); st.setProperty('--ph-hi', t.hi || t.ink); st.setProperty('--ph-dim', dim);
   st.setProperty('--ph-rgb', hex(t.ink) || '93,255,122'); st.setProperty('--amber', t.acc || '#ffb000');
-  // the orb's window is lit by its red lights (white would make it oracle's twin): red type, white for anything paused
+  // the orb's window is lit by its red lights: red type on black, white for anything paused
   if (name === 'orb') { st.setProperty('--ph', t.acc); st.setProperty('--ph-hi', '#ff9d94'); st.setProperty('--ph-dim', '#a8302a');
                         st.setProperty('--ph-rgb', hex(t.acc)); st.setProperty('--amber', t.ink); }
-  // the theme's own fonts (or the one picked for it): its title face for the readouts, its typing face for the rest,
-  // sized by how big each draws next to the window's own (VT323 draws small: its scale is 1.4)
-  const F = window.LOOKS.fonts || {}, pick = S.font && S.font !== 'theme' && F[S.font];
-  const disp = pick || F[t.display], mono = pick || F[t.mono];
-  if (disp) { st.setProperty('--fd', disp.family); st.setProperty('--fds', String(Math.min(1.1, (disp.scale || 1) / 1.4))); st.setProperty('--fdw', String(disp.weight || 400)); }
-  if (mono) { st.setProperty('--fm', mono.family); st.setProperty('--fms', String(Math.min(1.2, mono.scale || 1))); st.setProperty('--fmw', String(mono.weight || 400)); }
+  // the theme's own fonts: its title face for the readouts, its typing face for the rest
+  // (font-size-adjust in the CSS makes each draw as big as the window's own)
+  const F = window.LOOKS.fonts || {};
+  const disp = F[t.display], mono = F[t.mono];
+  if (disp) { st.setProperty('--fd', disp.family); st.setProperty('--fdw', String(disp.weight || 400)); }
+  if (mono) { st.setProperty('--fm', mono.family); st.setProperty('--fmw', String(mono.weight || 400)); }
   // on paper: solid paper panels, no glow, barely-there scan lines
   if (t.mode === 'light') { st.setProperty('--mod', t.surface || t.bg); st.setProperty('--glow', 'none'); st.setProperty('--scan', 'rgba(0,0,0,.04)'); }
   else ['--mod', '--glow', '--scan'].forEach(k => st.removeProperty(k));
@@ -552,16 +585,125 @@ function fit() {
   if (String(z) !== root.style.getPropertyValue('--z')) { root.style.zoom = z; root.style.setProperty('--z', z); }
 }
 addEventListener('resize', () => fit());
+// one text size for all the selector windows, and one for the theme drum: the size at which the longest choice fits.
+// Worked out again only when the font or the knobs change, never while turning one, so nothing jumps
+let evenKey = '';
+const asked = new Set();   // fonts evenText has asked to load
+function evenText() {
+  const st = document.documentElement.style, key = [st.getPropertyValue('--fd'), optsFor].join('|');
+  if (key === evenKey || !S.theme) return;
+  evenKey = key;
+  const fd = st.getPropertyValue('--fd');   // measured in a font still loading, it would come out wrong: again once it's in
+  if (fd && !document.fonts.check(`18px ${fd}`)) document.fonts.load(`18px ${fd}`).then(() => { evenKey = ''; evenText(); });
+  const wins = [...document.querySelectorAll('.win')];
+  if (!wins.length) return;
+  const room = Math.min(...wins.map(w => w.clientWidth)) - 8;   // they're all one width; less the padding
+  const probe = document.createElement('span'); probe.className = 'val';
+  probe.style.cssText = 'position:absolute;visibility:hidden;max-width:none;white-space:nowrap;--vs:18px';
+  wins[0].appendChild(probe);
+  let widest = 1;
+  const F = (window.LOOKS && window.LOOKS.fonts) || {}, loading = [];
+  document.querySelectorAll('.knob').forEach(b => { for (const v of Object.keys(C[b.dataset.help] || {})) {
+    // the FONT knob shows each font's name in that font (swatch): measured in it too
+    const f = b.dataset.help === 'font' && F[v];
+    probe.style.fontFamily = f ? f.family : ''; probe.style.fontWeight = f ? String(f.weight || 400) : '';
+    if (f && !asked.has(f.family) && !document.fonts.check(`18px ${f.family}`)) { asked.add(f.family); loading.push(document.fonts.load(`18px ${f.family}`)); }   // once each: one that never loads can't loop
+    for (const w of optName(b.dataset.help, v).split(' ')) { probe.textContent = w; widest = Math.max(widest, probe.scrollWidth); } } });   // the longest word: long names wrap
+  probe.remove();
+  for (const it of document.querySelectorAll('.drum .item')) {   // the drum's names, each in its theme's face
+    const fam = it.style.fontFamily;
+    if (fam && !asked.has(fam) && !document.fonts.check(`22px ${fam}`)) { asked.add(fam); loading.push(document.fonts.load(`22px ${fam}`)); }
+  }
+  if (loading.length) Promise.all(loading).then(() => { evenKey = ''; evenText(); });   // again once they're in
+  st.setProperty('--vs', Math.max(11, Math.min(18, Math.floor(18 * room / widest))) + 'px');
+  const items = [...document.querySelectorAll('.drum .item')];
+  // each name on the drum is in its own theme's face, so each is sized to fit on its own: the short ones stay big
+  st.setProperty('--ds', '22px');
+  for (const it of items) {
+    it.style.fontSize = '';
+    it.style.fontSize = Math.max(12, Math.min(22, Math.floor(22 * 116 / Math.max(1, it.scrollWidth)))) + 'px';
+  }
+}
 if (document.fonts) document.fonts.ready.then(() => fit());
 if (window.ResizeObserver) new ResizeObserver(() => fit()).observe(document.documentElement);
+// the COLORS and FONT knobs show what they've picked, like a swatch: the palette's own paper and ink (an edge of its
+// accent) in the knob's little window, the font's name in that font. The rest of the window keeps the theme (wear)
+function swatch(win, val, kind) {
+  const L = window.LOOKS || {}, v = S[kind], ws = win.style, vs = val.style;
+  ['background', 'border-color', 'box-shadow'].forEach(k => ws.removeProperty(k));
+  ['color', 'text-shadow', 'font-family', 'font-weight', 'background', 'animation'].forEach(k => vs.removeProperty(k));
+  if (!v || v === 'theme') { win.played = null; return; }
+  if (kind === 'palette') {
+    const t = (L.themes || {})[v];
+    if (!t) return;
+    ws.background = t.surface || t.bg; ws.borderColor = t.acc || t.ink; ws.boxShadow = `inset 0 -3px 0 ${t.acc || t.ink}`;
+    vs.color = t.ink; vs.textShadow = 'none';
+  } else if (kind === 'font') {
+    const f = (L.fonts || {})[v];
+    if (f) { vs.fontFamily = f.family; vs.fontWeight = String(f.weight || 400); }
+  } else if (kind === 'transition') {   // ARRIVAL: the name comes in the way cards do, once each time it's turned
+    if (win.played === v) return;
+    win.played = v;
+    const t = (L.transitions || {})[v];
+    if (t && t.in) arrivals().then(() => { if (S.transition !== v) return;
+      vs.animation = 'none'; void val.offsetWidth; vs.setProperty('--sx', '-140px'); vs.animation = t.in; });
+  } else if (kind === 'rain') {   // BACKDROP: a still of that backdrop, in the theme and colors picked, the name on a dark strip
+    vs.background = 'rgba(0,0,0,.62)'; vs.color = '#fff'; vs.textShadow = 'none';
+    const want = [S.theme, S.palette, v].join('|');
+    shoot(want).then(url => { if (url && [S.theme, S.palette, S.rain].join('|') === want) ws.background = `#000 center/cover url(${url})`; });
+  }
+}
+// the arrivals' keyframes, borrowed once from the wallpaper page's own styles so there's one copy of each
+let arrived = null;
+function arrivals() {
+  return arrived = arrived || fetch('index.html').then(r => r.text()).then(html => {
+    const out = [], re = /@keyframes\s+\w+\s*\{/g;
+    for (let m; (m = re.exec(html));) {
+      let i = re.lastIndex, depth = 1;
+      while (depth && i < html.length) { const c = html[i++]; if (c === '{') depth++; else if (c === '}') depth--; }
+      out.push(html.slice(m.index, i));
+    }
+    const st = document.createElement('style'); st.textContent = out.join('\n'); document.head.appendChild(st);
+  }).catch(() => {});
+}
+// a backdrop's still: the wallpaper page itself, drawn in a frame out of sight for a moment, then copied off its
+// canvas and the frame removed. One frame at a time: a newer pick replaces one still drawing
+const shots = new Map();
+let shooting = null;
+function shoot(key) {
+  if (shots.has(key)) return shots.get(key);
+  if (shooting) { shooting.f.remove(); shots.delete(shooting.key); shooting.done(''); }
+  const [theme, palette, rain] = key.split('|');
+  const q = new URLSearchParams({ still: '', theme, rain });
+  if (palette && palette !== 'theme') q.set('palette', palette);
+  const p = new Promise(done => {
+    const f = document.createElement('iframe');
+    f.tabIndex = -1; f.setAttribute('aria-hidden', 'true');
+    // in the window but invisible: a frame off screen gets no animation frames, so it would never draw
+    f.style.cssText = 'position:fixed;left:0;top:0;width:480px;height:270px;border:0;opacity:0;pointer-events:none;z-index:-1';
+    f.onload = () => setTimeout(() => {
+      let url = '';
+      try { url = f.contentDocument.getElementById('c').toDataURL('image/jpeg', .8); } catch (e) { /* no still: the name alone */ }
+      f.remove(); if (shooting && shooting.f === f) shooting = null;
+      if (!url) shots.delete(key);
+      done(url);
+    }, 1200);
+    shooting = { f, key, done };
+    f.src = 'index.html?' + q;
+    document.body.appendChild(f);
+  });
+  shots.set(key, p);
+  return p;
+}
 function render() {
   wear();
   requestAnimationFrame(fit);
   renderOpts();
+  evenText();
   document.querySelectorAll('.knob').forEach(b => {
     const kind = b.dataset.help, o = Object.keys(C[kind]), i = Math.max(0, o.indexOf(S[kind]));
     const val = b.querySelector('.val'); val.textContent = optName(kind, S[kind]);
-    for (let px = 18; px >= 12; px--) { val.style.fontSize = px + 'px'; if (val.scrollWidth <= val.clientWidth) break; }   // long names shrink to fit
+    swatch(b.querySelector('.win'), val, kind);
     b.querySelector('.wheel').style.backgroundPosition = `0 ${i * 5}px, 0 0`;   // the ridges roll as it turns
     b.setAttribute('aria-label', `${KNOB_HELP[kind]}: ${S[kind]}`);
   });

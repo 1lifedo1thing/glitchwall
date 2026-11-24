@@ -35,11 +35,13 @@ fn filter(s: &str) -> Filter {
 }
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)]   // name, misreg, rules, place: read from the theme like the page does, not drawn natively yet
 pub struct Look {
     pub name: String,
     pub light: bool,
     pub bg: Color, pub surface: Color, pub ink: Color, pub muted: Color, pub faint: Color,
     pub acc: Color, pub acc2: Color, pub err: Color, pub dim: Color, pub hi: Color,
+    pub mask: Color,   // masked secrets
     pub line: Color, pub bar: Color, pub barfg: Color, pub barb: Color, pub edge: Color, pub status: Color, pub off: Color,
     pub grain: f32, pub texture: String, pub scan: f32, pub glow: bool, pub misreg: bool, pub rules: bool,
     pub solid: Option<f32>,
@@ -100,6 +102,7 @@ impl Looks {
         Look {
             light, bg: c("bg"), surface: c("surface"), ink, muted: c("muted"), faint: c("faint"),
             acc: c("acc"), acc2: c("acc2"), err: c("err"), dim: c("dim"), hi: c("hi"),
+            mask: opt("mask").unwrap_or(c("acc2")),
             line: opt("line").unwrap_or(with_alpha(ink, if light { 0.22 } else { 0.3 })),
             bar: opt("bar").unwrap_or(with_alpha(ink, if light { 0.05 } else { 0.07 })),
             barfg: opt("barfg").unwrap_or(c("muted")), barb: opt("barb").unwrap_or(ink),

@@ -107,3 +107,51 @@ It would be ported with the existing tests turned into shared test vectors.
 - Transition and glow fidelity. CSS filters such as hue-rotate and backdrop blur have direct Direct2D effects, but small
   differences will show side by side.
 - Multi-monitor and DPI. winhost.py handles these today; the renderer gets one window per screen from it.
+
+## M4: Rust everything (planned 2026-11-23)
+
+Goal: one `glitchwall.exe`, no Python, no `uv tool install`. The web page stays (OBS browser source, Wallpaper
+Engine, the no-install demo, the README image tools) and is served by the Rust feed exactly as today.
+
+What is still Python: about 3,300 lines (cli 519, winhost 513, server 355, platforms 314, redact 263, settingswin 235,
+settings 224, ambient 203, prereqs 185, winexe 178, claude_logs 174, demo 97, themes 41) and 1,080 lines of tests.
+
+Pieces, in order; each one is built, tested against the Python version and committed on its own:
+
+1. **Redaction and log following** (redact, claude_logs): a Rust library. The riskiest part, so it goes first
+   with parity tests: the Python tests' inputs and outputs are dumped to JSON fixtures, and Rust must match every
+   one. Medium.
+2. **The feed** (server, settings, ambient, themes, demo): same HTTP API and access checks, so the renderer and the
+   page don't change. Parity tests from test_server, test_settings, test_modes. Large.
+3. **The desktop host** (winhost): screens, behind the icons, sleep and fullscreen checks, restarts, moved into the
+   renderer's process. Medium to large.
+4. **The CLI and install** (cli, platforms, prereqs, winexe): `glitchwall` subcommands, autostart, the desktop
+   menu entry. Medium.
+5. **The settings window** (settingswin): the same settings.html in WebView2, opened from Rust with the `wry`
+   crate instead of pywebview. Small to medium.
+
+Then: package one exe (zip or installer), update the README's install steps and the measurements.
+
+### Piece 2, the feed: how it is split (2026-11-23)
+
+Piece 1 is done: `renderer/src/redact.rs` (c0af200) and `renderer/src/logs.rs` (9a3bd95), matched to the Python by
+fixtures. The feed comes in parts, each built, tested and committed on its own:
+
+- **2a. HTTP and events.** `glitchwall-render feed --port N` runs a Rust feed: std::net, hand-written HTTP/1.1 (local
+  only, no crate), a thread per connection. `/feed` with the same Host/Origin/key checks (check_access), the safe
+  headers on every reply, CORS echoed only for allowed origins, 403 with an empty body and the refusal log without
+  the key, 404 for everything else when there is no static dir. The event store: redact on add, KEEP, hide_all and
+  the floor, since(n, commands_only), paused. The live sources from piece 1 feed it (logs.rs Tailer), plus the
+  terminal hook's files (shell_history.ShellTailer, to port).
+  Parity: tests/test_feed_parity.py runs one set of HTTP checks against both feeds, each with a temp GLITCHWALL_HOME
+  and events appended to a seed file it follows (the exe's test-only `--seed FILE`); the Rust one only with
+  GW_FEED_EXE set. TestCheckAccess's cases are also a Rust unit test (server.rs).
+  Done: server.rs (HTTP feed, event store) with its sources: logs.rs's Tailer in live mode and shell.rs (a port of
+  ShellTailer) while the terminal setting is on; mask_user/mask_email follow settings.json. On real logs the Rust and
+  Python feeds served identical text for every call both held. Ambient mode's generator moves to 2c.
+- **2b. Settings.** settings.json load/save with the same defaults and validation (apply_changes, opts, tune, masked,
+  corner, mode), LiveSettings re-read on change, `/settings` GET/POST and reset, the static files (index.html,
+  settings.html, looks.js) served with `#key=`. Parity: TestSettingsWindow and test_settings.py against either feed.
+- **2c. Modes.** ambient (made-up sessions) and art, follow_mode switching, the demo script. Parity: test_modes.py.
+- **2d. Switch over.** `glitchwall start` runs the Rust feed when the exe is there; the Python one stays the fallback
+  until pieces 3-4 replace the rest. The tray and hot corner stay in Python until piece 3 moves the desktop host.

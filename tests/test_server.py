@@ -92,7 +92,8 @@ class TestLiveServer(unittest.TestCase):
             with self.subTest(path):
                 r, _ = self.get(path)
                 self.assertEqual(r.getheader("X-Content-Type-Options"), "nosniff")
-                self.assertEqual(r.getheader("X-Frame-Options"), "DENY")
+                self.assertEqual(r.getheader("X-Frame-Options"), "SAMEORIGIN")
+                self.assertEqual(r.getheader("Content-Security-Policy"), "frame-ancestors 'self'")
                 self.assertEqual(r.getheader("Referrer-Policy"), "no-referrer")
 
     def test_refusals(self):

@@ -31,9 +31,10 @@ KEEP = 300   # events kept in memory
 BATCH = 60   # most events per response
 
 LOCAL_ORIGIN = "null"   # a page opened from a file
-# every response: never sniffed into another type, never framed by another page, no address passed on in a Referer
-SAFE_HEADERS = (("X-Content-Type-Options", "nosniff"), ("X-Frame-Options", "DENY"),
-                ("Content-Security-Policy", "frame-ancestors 'none'"), ("Referrer-Policy", "no-referrer"))
+# every response: never sniffed into another type, framed only by the feed's own pages (the settings window's
+# backdrop thumbnails; another site's page can't frame one, so no clickjacking), no address passed on in a Referer
+SAFE_HEADERS = (("X-Content-Type-Options", "nosniff"), ("X-Frame-Options", "SAMEORIGIN"),
+                ("Content-Security-Policy", "frame-ancestors 'self'"), ("Referrer-Policy", "no-referrer"))
 
 
 class EventStore:
@@ -159,6 +160,7 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
                                "look": look or themes.look(s), "mode": m,
                                "label": cfg.display_label(s) if label is None else label, "tune": cfg.tune(s), "opts": cfg.opts(s),
                                "corner": cfg.corner(s),   # where the hot-corner icon sits
+                               "masked": cfg.masked(s),   # how masked secrets show
                                # the built-in host: nobody can see this screen (covered, locked), so stop animating
                                "sleep": bool(sleeping and sleeping(q.get("screen", [""])[0]))}).encode()
             self.send_response(200)
@@ -209,7 +211,7 @@ def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | No
             body_out = json.dumps({
                 "settings": {k: s.get(k, v) for k, v in cfg.DEFAULTS.items()}, "refused": refused,
                 "defaults": {k: v for k, v in cfg.DEFAULTS.items() if k not in ("port", "host", "screens", "renderer")},
-                "choices": {**themes.KINDS, **themes.OPTIONS, "mode": cfg.MODES, "corner": cfg.CORNERS},
+                "choices": {**themes.KINDS, **themes.OPTIONS, "mode": cfg.MODES, "corner": cfg.CORNERS, "masked": cfg.MASKED},
                 "options": themes.OPTIONS_OF, "theme_rain": themes.THEME_RAIN,
                 "ranges": {k: [lo, hi] for k, (_, lo, hi) in cfg.TUNE.items()},
                 "running": True, "restarting": bool(reset and on_reset),
@@ -323,11 +325,67 @@ def run_feed(port: int | None = None) -> None:
                 subprocess.Popen(live_command("settings"), close_fds=True)
         threading.Thread(target=wh.watch_corner, args=(lambda: cfg.corner(live.get()), open_settings, threading.Event()),
                          daemon=True).start()
+        if live.get().get("tray", True):   # glitchwall in the notification area, for as long as the feed runs
+            start_tray(live, open_settings, on_change)
     if not host:
         httpd.serve_forever()
         return
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     host.run(threading.Event())   # the windows need this (the main) thread; runs until the process ends
+
+
+def start_tray(live: "LiveSettings", open_settings, on_change=None) -> None:
+    """The notification-area icon: a click opens the settings. Its menu has the everyday settings, each current one
+    ticked (mode, theme, hot corner, how masked secrets show, what shows), plus pause (stream-safe) and quit."""
+    import subprocess
+    from . import themes
+    from .platforms import live_command, wallpaper_source
+    from .tray import Tray
+
+    def change(k, v) -> None:
+        s = cfg.load_settings()
+        new, refused = cfg.apply_changes(s, {k: v})
+        if refused:
+            return
+        if k == "theme" and v != s.get("theme"):   # as the settings window does: a new theme starts clean
+            for x in ("palette", "rain", "font", "transition", *cfg.TUNE):   # its look and motion tweaks
+                new[x] = cfg.DEFAULTS[x]
+        cfg.save_settings(new)
+        if on_change and k in ("mask_user", "mask_email"):
+            on_change(new)
+
+    def quit_all() -> None:
+        tray.hide()   # take the icon away first, or it lingers in the tray until the mouse passes over it
+        subprocess.Popen(live_command("stop"), close_fds=True)
+
+    def pick(k, choices, name=lambda v: v.replace("-", " ").capitalize()) -> list:
+        cur = live.get().get(k, cfg.DEFAULTS.get(k))
+        return [(name(v), (lambda v=v: change(k, v)), v == cur) for v in choices]
+
+    def flip(k, label) -> tuple:
+        on = bool(live.get().get(k, cfg.DEFAULTS.get(k)))
+        return (label, lambda: change(k, not on), on)
+
+    masked = {"dots": "Dots  ••••", "words": "Words  [REDACTED]", "blocks": "Blocks  ████", "stars": "Stars  ****",
+              "noise": "Gibberish  x7#q"}
+
+    def menu() -> list:
+        s = live.get()
+        p = bool(s.get("paused"))
+        return [("Open settings", open_settings),
+                ("Resume" if p else "Pause (stream-safe)", lambda: change("paused", not p)),
+                None,
+                ("Mode", pick("mode", cfg.MODES)),
+                ("Theme", pick("theme", themes.THEMES)),
+                ("Hot corner", pick("corner", cfg.CORNERS)),
+                ("Masked secrets", pick("masked", masked, masked.get)),
+                ("Show", [flip("commands_only", "Calls only, no output"),
+                          None, flip("mask_user", "Mask my user name"), flip("mask_email", "Mask emails")]),
+                None,
+                ("Quit glitchwall", quit_all)]
+
+    tray = Tray(str(wallpaper_source() / "glitchwall.ico"), "glitchwall", menu)
+    tray.show()
 
 
 def start_source(mode: str, store: EventStore) -> threading.Event:

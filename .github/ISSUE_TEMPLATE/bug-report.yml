@@ -1,0 +1,37 @@
+name: Bug report
+description: Something in glitchwall doesn't work as it should
+title: "Bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Security problem** (a secret shown unmasked, another program or website reading the
+        feed)? Please use the private security form instead, so it can be fixed before it's public.
+        Before pasting logs or screenshots, check them for tokens, paths and names you'd rather not share.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version and setup
+      placeholder: e.g. glitchwall 0.9, Windows 11, native renderer, theme phosphor
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen again
+      placeholder: "1. glitchwall config --theme ...
+2. ..."
+  - type: textarea
+    id: doctor
+    attributes:
+      label: glitchwall doctor
+      description: The output of `glitchwall doctor`, if it helps (check it for anything private first).
+      render: text

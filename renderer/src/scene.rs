@@ -3,7 +3,7 @@
 use crate::anim::{self, Anim, Ctx, Ease, Pose};
 use crate::bg::{self, Background, Rng};
 use crate::fonts::Fonts;
-use crate::gfx::{self, Gfx, rect, rgba};
+use crate::gfx::{self, Gfx, rect};
 use crate::json::Json;
 use crate::looks::{Color, Look, Looks, with_alpha};
 use std::collections::{HashMap, VecDeque};
@@ -28,7 +28,7 @@ fn stack_bottom(b: Option<(f32, f32, f64)>, now: f64) -> f32 {
 #[derive(Clone, Copy, PartialEq)]
 enum Kind { Cmd, Out, Err }
 
-struct Part { kind: Kind, prefix: String, text: Vec<u16>, shown: usize }
+struct Part { kind: Kind, prefix: String, text: Vec<u16>, masks: Vec<(usize, usize)>, shown: usize }   // masks: (start, length) in text
 
 struct Card {
     id: u64, x: f32, y: f32, w: f32, maxh: f32, h: f32,
@@ -53,9 +53,9 @@ pub struct Scene {
     anim_in: Option<Anim>, anim_out: Option<Anim>, place_mode: String,
     mono: IDWriteTextFormat, bar: IDWriteTextFormat, status_fmt: IDWriteTextFormat, line_h: f32, bar_h: f32,
     fx: Effects,
-    cards: Vec<Card>, queue: VecDeque<Json>, typing: Option<Typing>, wait_until: Option<f64>, busy_queue: bool,
+    cards: Vec<Card>, queue: VecDeque<Json>, typing: Option<Typing>, wait_until: Option<f64>,
     by_ref: HashMap<String, u64>, current: Option<u64>, next_id: u64,
-    tune: Tune, rng: Rng,
+    tune: Tune, rng: Rng, masked: String,
     pub asleep: bool, pub ignore_sleep: bool, slept_at: Option<f64>, hidden: bool, art: bool,
     label: String, live_until: f64, blink: bool,
     last_frame: f64, last_bg: f64, bg_drawn: bool, changed: bool,
@@ -106,9 +106,9 @@ impl Scene {
             bg: bg::make(&look.rain, &g, &fonts, &look, &Json::Null)?, opts: Json::Null, scene, overlay: None, anim_in: None, anim_out: None, place_mode: "any".into(),
             bar: mono.clone(), status_fmt: mono.clone(), mono, line_h: 18.4, bar_h: 24.0,
             g, fonts, css, look, look_key: String::new(), fx,
-            cards: Vec::new(), queue: VecDeque::new(), typing: None, wait_until: None, busy_queue: false,
+            cards: Vec::new(), queue: VecDeque::new(), typing: None, wait_until: None,
             by_ref: HashMap::new(), current: None, next_id: 1,
-            tune: Tune { cps: 240.0, rain: 0.5, linger: 7.0, cards: 4, glass: 0.58, grain: 1.0 }, rng: Rng(0x2545_f491_4f6c_dd1d),
+            tune: Tune { cps: 240.0, rain: 0.5, linger: 7.0, cards: 4, glass: 0.58, grain: 1.0 }, rng: Rng(0x2545_f491_4f6c_dd1d), masked: "dots".into(),
             asleep: false, ignore_sleep: false, slept_at: None, hidden: false, art: false, label: "live tool feed".into(), live_until: 0.0, blink: false,
             last_frame: 0.0, last_bg: 0.0, bg_drawn: false, changed: true,
         };
@@ -122,6 +122,10 @@ impl Scene {
         self.look_key = key;
         let old_rain = self.look.rain.clone();
         let old_mono = self.look.mono.family.clone();
+        // some backgrounds paint their colors once, when they're built (the orb's hall, its floor rings and glow), so a
+        // new palette builds the background again too
+        let colors = |l: &Look| format!("{:?}", (l.light, l.bg, l.surface, l.ink, l.muted, l.faint, l.acc, l.acc2, l.dim, l.hi));
+        let old_colors = colors(&self.look);
         self.look = looks.resolve(want);
         let l = &self.look;
         let mono = &l.mono;
@@ -144,8 +148,8 @@ impl Scene {
         self.anim_in = t.get("in").str().and_then(|s| anim::parse(&self.css, s));
         self.anim_out = t.get("out").str().and_then(|s| anim::parse(&self.css, s));
         self.place_mode = t.get("place").str().unwrap_or("any").to_string();   // dock | stack | any, as the page's PLACE
-        if l.rain != old_rain || l.mono.family != old_mono || !self.bg_drawn {
-            self.bg = bg::make(&l.rain, &self.g, &self.fonts, &l, self.opts.get(&l.rain))?;
+        if l.rain != old_rain || l.mono.family != old_mono || colors(l) != old_colors || !self.bg_drawn {
+            self.bg = bg::make(&l.rain, &self.g, &self.fonts, l, self.opts.get(&l.rain))?;
             self.bg.opts(self.opts.get(&l.rain));
         }
         self.overlay = Some(self.make_overlay()?);
@@ -216,6 +220,7 @@ impl Scene {
             }
             self.bg_drawn = false;   // a still background shows the change too
         }
+        if let Some(m) = data.get("masked").str() { self.masked = m.to_string(); }   // how masked secrets show
         let tune = data.get("tune");
         if let Some(v) = tune.get("typeSpeed").num() { self.tune.cps = 60.0 + v * 40.0; }
         if let Some(v) = tune.get("rain").num() { self.tune.rain = v as f32 / 10.0; }
@@ -259,6 +264,7 @@ impl Scene {
     /// stack: a pile in the bottom-right corner, held by its bottom edge. dock: beside the newest card there is room
     /// next to (below, right, above, left), coming out from under it. Otherwise pop-up-ad placement: random size,
     /// best of 80 random tries so the new card covers the live ones least.
+    #[allow(clippy::type_complexity)]
     fn place(&mut self) -> (f32, f32, f32, f32, Ctx, Option<(f32, f32, f64)>) {
         let (sw, sh) = (self.g.w as f32, self.g.h as f32);
         if self.place_mode == "stack" {
@@ -320,9 +326,8 @@ impl Scene {
             let h = self.cards[i].h.max(48.0);
             if b + h > sh - 64.0 && k < live.len() - 1 { drop.push(self.cards[i].id); continue; }
             let c = &mut self.cards[i];
-            if let Some((_, to, _)) = c.bottom {
-                if (to - b).abs() > 0.5 { c.bottom = Some((stack_bottom(c.bottom, now), b, now)); }
-            }
+            if let Some((_, to, _)) = c.bottom
+                && (to - b).abs() > 0.5 { c.bottom = Some((stack_bottom(c.bottom, now), b, now)); }
             b += h + 14.0;
         }
         for id in drop { self.kill(id, now); }
@@ -333,6 +338,31 @@ impl Scene {
             if (y - c.y).abs() > 0.01 { c.y = y; moved = true; }
         }
         moved
+    }
+
+    /// A feed text as the wall shows it: each •••• the redaction wrote swapped for the masked setting's look (made
+    /// up fresh, never from the hidden text, always the same length), and where each one sits.
+    fn unmask(&mut self, text: &str) -> (Vec<u16>, Vec<(usize, usize)>) {
+        const WORDS: [&str; 14] = ["REDACTED", "REMOVED", "HIDDEN", "CENSORED", "DELETED", "ERASED", "EXPUNGED", "EXPURGATED",
+                                   "BLACKED OUT", "OBSCURED", "SUPPRESSED", "WITHHELD", "CONCEALED", "OMITTED"];
+        const NOISE: &[u8] = b"abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789#%&@$?!*+=~^";
+        let (mut out, mut masks) = (Vec::new(), Vec::new());
+        for (k, piece) in text.split(crate::redact::MASK).enumerate() {
+            if k > 0 {
+                let shown = match self.masked.as_str() {
+                    "words" => format!("[{}]", WORDS[(self.rng.f() * WORDS.len() as f32) as usize % WORDS.len()]),
+                    "blocks" => "██████".into(),
+                    "stars" => "********".into(),
+                    "noise" => (0..8).map(|_| NOISE[(self.rng.f() * NOISE.len() as f32) as usize % NOISE.len()] as char).collect(),
+                    _ => crate::redact::MASK.into(),
+                };
+                let w = wide(&shown);
+                masks.push((out.len(), w.len()));
+                out.extend(w);
+            }
+            out.extend(wide(piece));
+        }
+        (out, masks)
     }
 
     fn new_card(&mut self, ev: &Json, now: f64) -> u64 {
@@ -356,13 +386,26 @@ impl Scene {
             let Some(ev) = self.queue.pop_front() else { self.typing = None; return Ok(()); };
             let busy = self.queue.len() > 6;
             let kind = ev.get("kind").str().unwrap_or("tool").to_string();
-            let text: Vec<u16> = wide(ev.get("text").str().unwrap_or(""));
+            let (text, masks) = self.unmask(ev.get("text").str().unwrap_or(""));
             let r = ev.get("ref").str().unwrap_or("").to_string();
             if kind == "out" || kind == "err" {
-                let card = if r.is_empty() { self.current } else { self.by_ref.remove(&r) };
+                // live: more output to come for this card, so it stays its target
+                let live = ev.get("live").truthy();
+                let card = if r.is_empty() { self.current } else if live { self.by_ref.get(&r).copied() } else { self.by_ref.remove(&r) };
                 let Some(card) = card.filter(|id| self.cards.iter().any(|c| c.id == *id && c.dying.is_none())) else { continue };
+                let linger = self.tune.linger;
                 let c = self.cards.iter_mut().find(|c| c.id == card).unwrap();
-                c.parts.push(Part { kind: if kind == "err" { Kind::Err } else { Kind::Out }, prefix: String::new(), text, shown: 0 });
+                if let Some(p) = c.parts.iter_mut().rev().find(|p| p.kind != Kind::Cmd) {
+                    // more output for the same command: its newest lines in place of what was there, at once
+                    p.kind = if kind == "err" { Kind::Err } else { Kind::Out };
+                    p.shown = text.len();
+                    (p.text, p.masks) = (text, masks);
+                    c.dirty = true;
+                    c.kill_at = now + if live { linger.max(15.0) } else { linger };
+                    self.changed = true;
+                    continue;
+                }
+                c.parts.push(Part { kind: if kind == "err" { Kind::Err } else { Kind::Out }, prefix: String::new(), text, masks, shown: 0 });
                 let part = c.parts.len() - 1;
                 self.typing = Some(Typing { card, part, t0: now + 0.26, cps: self.tune.cps * 5.0, after: 0.12, out: true, busy });
                 return Ok(());
@@ -371,14 +414,14 @@ impl Scene {
             self.current = Some(card);
             if !r.is_empty() {
                 self.by_ref.insert(r, card);
-                if self.by_ref.len() > 50 { if let Some(k) = self.by_ref.keys().next().cloned() { self.by_ref.remove(&k); } }
+                if self.by_ref.len() > 50 && let Some(k) = self.by_ref.keys().next().cloned() { self.by_ref.remove(&k); }
             }
             let prompt = match kind.as_str() {
                 "$" => "$", "PS>" => "PS>", "read" => "cat", "write" => "write", "edit" => "edit", "find" => "grep",
                 "web" => "curl", "agent" => "spawn", "mouse" => "click", _ => ">",
             };
             let c = self.cards.iter_mut().find(|c| c.id == card).unwrap();
-            c.parts.push(Part { kind: Kind::Cmd, prefix: format!("{prompt} "), text, shown: 0 });
+            c.parts.push(Part { kind: Kind::Cmd, prefix: format!("{prompt} "), text, masks, shown: 0 });
             self.typing = Some(Typing { card, part: 0, t0: now + 0.26, cps: self.tune.cps * if busy { 4.0 } else { 1.0 },
                                         after: 0.2, out: false, busy });
             return Ok(());
@@ -388,8 +431,8 @@ impl Scene {
     /// move time on: typing, lingering, leaving. True if something visible changed.
     fn update(&mut self, now: f64) -> Result<bool> {
         let mut changed = false;
-        if let Some(t) = &self.typing {
-            if now >= t.t0 {
+        if let Some(t) = &self.typing
+            && now >= t.t0 {
                 let (id, part, t0, cps, after, out, busy) = (t.card, t.part, t.t0, t.cps, t.after, t.out, t.busy);
                 let linger = self.tune.linger;
                 match self.cards.iter_mut().find(|c| c.id == id && c.dying.is_none()) {
@@ -407,8 +450,7 @@ impl Scene {
                     }
                 }
             }
-        }
-        if let Some(w) = self.wait_until { if now >= w { self.wait_until = None; self.next(now)?; } }
+        if let Some(w) = self.wait_until && now >= w { self.wait_until = None; self.next(now)?; }
         let expired: Vec<u64> = self.cards.iter().filter(|c| c.dying.is_none() && now >= c.kill_at).map(|c| c.id).collect();
         for id in expired { self.kill(id, now); changed = true; }
         if self.place_mode == "stack" { changed |= self.restack(now); }
@@ -498,6 +540,7 @@ impl Scene {
         let ink_b = self.g.brush(l.ink)?;
         let acc_b = self.g.brush(l.acc)?;
         let err_b = self.g.brush(l.err)?;
+        let mask_b = self.g.brush(l.mask)?;
         let out_b = self.g.brush(with_alpha(l.ink, 0.82))?;
         for (k, p) in c.parts.iter().enumerate() {
             let mut t: Vec<u16> = wide(&p.prefix);
@@ -512,6 +555,9 @@ impl Scene {
                 let main: &ID2D1SolidColorBrush = match p.kind { Kind::Cmd => &ink_b, Kind::Out => &out_b, Kind::Err => &err_b };
                 lay.SetDrawingEffect(main, range(0, t.len() as u32))?;
                 if pre > 0 { lay.SetDrawingEffect(&acc_b, range(0, pre))?; }
+                for &(s, n) in &p.masks {   // masked secrets, in their own color
+                    if s < p.shown { lay.SetDrawingEffect(&mask_b, range(pre + s as u32, n.min(p.shown - s) as u32))?; }
+                }
                 if cursor { lay.SetDrawingEffect(&acc_b, range(t.len() as u32 - 1, 1))?; }
             }
             let mut m = DWRITE_TEXT_METRICS::default();
@@ -557,7 +603,7 @@ impl Scene {
             dc.PushAxisAlignedClip(&body, D2D1_ANTIALIAS_MODE_ALIASED);
             let mut y = 1.0 + bar_h + 8.0;
             let mut cut = overflow;
-            let rule_brushes: Vec<Option<ID2D1SolidColorBrush>> = blocks.iter().map(|b| b.3.map(|c| self.g.brush(c).ok()).flatten()).collect();
+            let rule_brushes: Vec<Option<ID2D1SolidColorBrush>> = blocks.iter().map(|b| b.3.and_then(|c| self.g.brush(c).ok())).collect();
             for (k, (lay, indent, hgt, _)) in blocks.iter().enumerate() {
                 if k > 0 { y += 6.0; }
                 let (mut top, mut hh) = (y, *hgt);

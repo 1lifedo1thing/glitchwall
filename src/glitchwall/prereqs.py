@@ -1,17 +1,13 @@
 """What glitchwall needs on this machine, checked before `install` (and by `glitchwall doctor`).
 
-Each check says whether it's there, why it matters, and how to get it. Missing pieces that can be
-fetched are offered, one question each: nothing is downloaded or installed without a yes. Downloads come
-only from Microsoft's own addresses, and an installer runs only if Windows confirms Microsoft signed it.
+Each check says whether it's there, why it matters, and how to get it. glitchwall never downloads or installs
+anything itself: for a missing piece it can only offer to open Microsoft's download page in your browser, and you
+take it from there.
 """
 from __future__ import annotations
 
 import os
-import shutil
-import subprocess
 import sys
-import tempfile
-import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
@@ -19,7 +15,6 @@ from typing import Callable
 WIN = sys.platform == "win32"
 FROZEN = bool(getattr(sys, "frozen", False))
 
-WEBVIEW2_URL = "https://go.microsoft.com/fwlink/p/?LinkId=2124703"   # Microsoft's Evergreen bootstrapper
 WEBVIEW2_PAGE = "https://developer.microsoft.com/microsoft-edge/webview2/"
 DOTNET_PAGE = "https://dotnet.microsoft.com/download/dotnet-framework/net481"
 DOTNET_472 = 461808   # the .NET Framework 4.7.2 release number; pywebview's Windows backend needs it
@@ -80,49 +75,6 @@ def claude_logs() -> Path | None:
 
 
 # ---------------------------------------------------------------- fixes
-def signed_by_microsoft(exe: Path) -> bool:
-    """Windows' own signature check: valid, and signed by Microsoft Corporation."""
-    ps = (f"$s=Get-AuthenticodeSignature -LiteralPath '{str(exe).replace(chr(39), chr(39) * 2)}';"
-          "if($s.Status -eq 'Valid' -and $s.SignerCertificate.Subject -match 'O=Microsoft Corporation'){'ok'}")
-    try:
-        out = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
-                             capture_output=True, text=True, timeout=60, check=False).stdout
-    except (OSError, subprocess.SubprocessError):
-        return False
-    return out.strip() == "ok"
-
-
-def download(url: str, dest: Path, say: Callable[[str], None]) -> bool:
-    say(f"  downloading {url}")
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "glitchwall-installer"})
-        with urllib.request.urlopen(req, timeout=60) as r, open(dest, "wb") as f:
-            shutil.copyfileobj(r, f)
-    except OSError as e:
-        say(f"  download failed: {e}")
-        return False
-    say(f"  got {dest.stat().st_size / 1e6:.1f} MB")
-    return True
-
-
-def install_webview2(say: Callable[[str], None]) -> bool:
-    """Microsoft's WebView2 bootstrapper, silent. Installs for this user only when not run as admin."""
-    with tempfile.TemporaryDirectory(prefix="glitchwall-") as d:
-        exe = Path(d) / "MicrosoftEdgeWebview2Setup.exe"
-        if not download(WEBVIEW2_URL, exe, say):
-            return False
-        if not signed_by_microsoft(exe):
-            say("  the download is not signed by Microsoft: not running it")
-            return False
-        say("  installing the WebView2 runtime (a minute or two)…")
-        try:
-            subprocess.run([str(exe), "/silent", "/install"], timeout=900, check=False)
-        except (OSError, subprocess.SubprocessError) as e:
-            say(f"  the installer did not run: {e}")
-            return False
-    return webview2_version() is not None
-
-
 def open_page(url: str) -> bool:
     import webbrowser
     webbrowser.open(url)
@@ -150,9 +102,9 @@ def checks(mode: str = "live") -> list[Check]:
         wv = webview2_version()
         out.append(Check("WebView2 runtime", wv is not None,
                          f"{wv}" if wv else "missing: the engine that draws the wallpaper behind your icons",
-                         fix_prompt="Download Microsoft's WebView2 runtime installer (about 2 MB, from "
-                                    "go.microsoft.com) and install it?",
-                         fix=None, hint=WEBVIEW2_PAGE))   # fix filled in by preflight (needs `say`)
+                         fix_prompt="Open Microsoft's WebView2 download page? (Install the Evergreen runtime, then "
+                                    "run install again.)",
+                         fix=lambda: open_page(WEBVIEW2_PAGE), hint=WEBVIEW2_PAGE))
         out.append(Check("pywebview", pywebview_ok(),
                          "bundled" if FROZEN else ("installed" if pywebview_ok() else
                                                    "missing: the library that opens those windows"),
@@ -169,9 +121,6 @@ def checks(mode: str = "live") -> list[Check]:
 def preflight(mode: str, say: Callable[[str], None], ask: Callable[[str], bool]) -> bool:
     """Check, offer to fix what's missing, check again. True if everything required is there."""
     found = checks(mode)
-    for c in found:
-        if c.name == "WebView2 runtime":
-            c.fix = lambda: install_webview2(say)
     say("checking what glitchwall needs:")
     for c in found:
         say(f"  {'ok ' if c.ok else ('-- ' if not c.required else 'XX ')} {c.name}: {c.detail}")
