@@ -315,22 +315,45 @@ fn event_json(e: crate::logs::Event) -> Ev {
          ("text".into(), Json::Str(e.text))]
 }
 
-/// The source (server.py's follow_mode): Claude Code's logs while the mode is live, started and stopped as the mode
-/// changes.
+/// The agents whose logs live mode reads, as settings.py's AGENTS: on only when the setting is exactly true
+/// (Claude Code by default, the others off until turned on). An agent that is off has its folder left alone.
+pub const AGENTS: [(&str, bool); 3] = [("agent_claude", true), ("agent_gemini", false), ("agent_codex", false)];
+
+impl Live {
+    pub fn agents_on(&mut self) -> Vec<&'static str> {
+        let s = self.get();
+        // missing: the default; present: on only if exactly true (null, "yes" and 1 are off, as in server.py)
+        let set = |k: &str| s.entries().iter().rev().find(|(n, _)| n == k).map(|(_, v)| *v == Json::Bool(true));
+        AGENTS.iter().filter(|(k, d)| set(k).unwrap_or(*d)).map(|(k, _)| *k).collect()
+    }
+}
+
+/// Follow one agent's logs until stop is set.
+fn start_reader(agent: &str, feed: Arc<Feed>) -> Arc<AtomicBool> {
+    let stop = Arc::new(AtomicBool::new(false));
+    let s2 = stop.clone();
+    let agent = agent.to_string();
+    std::thread::spawn(move || {
+        let mut add = |e| feed.add(&event_json(e));
+        match agent.as_str() {
+            "agent_gemini" => crate::gemini::Tailer::new(crate::gemini::logs_root()).run(&s2, &mut add),
+            "agent_codex" => crate::codex::Tailer::new(crate::codex::logs_root()).run(&s2, &mut add),
+            _ => crate::logs::Tailer::new(crate::logs::logs_root()).run(&s2, &mut add),
+        }
+    });
+    stop
+}
+
+/// The sources (server.py's follow_mode): while the mode is live, one reader per agent turned on, each started
+/// and stopped on its own as the settings change.
 fn start_sources(feed: Arc<Feed>) {
     std::thread::spawn(move || {
-        let (mut mode, mut stop) = (String::new(), None::<Arc<AtomicBool>>);
+        let mut readers: Vec<(&'static str, Arc<AtomicBool>)> = Vec::new();
         loop {
-            let m = feed.live.lock().unwrap().mode();
-            if m != mode {
-                if let Some(s) = stop.take() { s.store(true, Ordering::Relaxed); }
-                if m == "live" {
-                    let (s, fd) = (Arc::new(AtomicBool::new(false)), feed.clone());
-                    let s2 = s.clone();
-                    std::thread::spawn(move || crate::logs::Tailer::new(crate::logs::logs_root()).run(&s2, &mut |e| fd.add(&event_json(e))));
-                    stop = Some(s);
-                }
-                mode = m;
+            let want = { let mut l = feed.live.lock().unwrap(); if l.mode() == "live" { l.agents_on() } else { Vec::new() } };
+            readers.retain(|(a, s)| { let keep = want.contains(a); if !keep { s.store(true, Ordering::Relaxed); } keep });
+            for a in want {
+                if !readers.iter().any(|(r, _)| *r == a) { readers.push((a, start_reader(a, feed.clone()))); }
             }
             std::thread::sleep(Duration::from_secs(1));
         }
@@ -409,6 +432,18 @@ mod tests {
         let b = s.since(0, false);
         assert_eq!(b.len(), BATCH);
         assert_eq!(b.last().unwrap().iter().find(|(k, _)| k == "id").unwrap().1.num(), Some(402.0));
+    }
+
+    #[test]
+    fn agents_off_until_turned_on() {
+        let dir = std::env::temp_dir().join(format!("gw-agents-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let f = dir.join("settings.json");
+        let mut on = |text: &str| { std::fs::write(&f, text).unwrap(); let mut l = Live::new(f.clone()); l.agents_on() };
+        assert_eq!(on("{}"), ["agent_claude"]);
+        assert_eq!(on(r#"{"agent_gemini": true, "agent_claude": false}"#), ["agent_gemini"]);
+        assert_eq!(on(r#"{"agent_codex": "yes", "agent_gemini": 1, "agent_claude": null}"#), Vec::<&str>::new());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

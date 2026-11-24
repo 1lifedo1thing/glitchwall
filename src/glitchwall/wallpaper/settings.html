@@ -96,7 +96,7 @@
 
   /* switches: a slide toggle that lights when on */
   .feedrow { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:5px 8px; align-items:end; }
-  .switches { grid-column:1 / -1; display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:8px; padding:4px 0 2px; }   /* a row of their own, a column each */
+  .switches { grid-column:1 / -1; display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:8px; padding:4px 0 2px; }   /* a row of their own, a column each */
   .sw { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:6px; padding:3px 2px; border-radius:3px; cursor:pointer; background:none; border:0; }
   .sw .slot { position:relative; width:40px; height:20px; border-radius:10px; border:1px solid var(--ph-dim); }
   .sw .lever { position:absolute; top:3px; left:3px; width:12px; height:12px; border-radius:50%; background:var(--ph-dim); transition:left .12s, background .12s, box-shadow .12s; }
@@ -212,6 +212,9 @@ const SWITCHES = {
   commands_only: ['CALLS ONLY', 'Show each call, never its output.'],
   mask_user: ['MASK USER', 'Your user name shows as "user" everywhere.'],
   mask_email: ['MASK EMAIL', 'Email addresses lose everything before the @.'],
+  agent_claude: ['CLAUDE CODE', "Live mode reads Claude Code's logs (~/.claude/projects). Off: that folder is never opened."],
+  agent_gemini: ['GEMINI CLI', "Live mode reads Gemini CLI's logs (~/.gemini/tmp). Off until you turn it on."],
+  agent_codex: ['CODEX CLI', "Live mode reads Codex CLI's logs (~/.codex/sessions). Off until you turn it on."],
 };
 const KNOB_HELP = { mode: 'MODE', palette: 'COLORS', rain: 'BACKGROUND', font: 'FONT', transition: 'TRANSITION (how cards arrive and leave)', corner: 'HOT CORNER', masked: 'MASKED (how hidden secrets show)' };
 const MODE_SHORT = { live: 'LIVE', ambient: 'AMBIENT', art: 'ART' };
@@ -224,7 +227,7 @@ const GROUP_HELP = {
   look: ['COLORS · BACKDROP · FONT · ARRIVAL', 'back to what the theme comes with.'],
   motion: ['TYPING · LINGER · CARDS · MOTION · GLASS · GRAIN', 'back to the standard values.'],
   options: ['OPTIONS', 'back to how the background comes.'],
-  feed: ['CORNER · MASKED · CALLS ONLY · MASKS · LABEL', 'back to the safe defaults: user name and emails masked, the stock label. Mode stays as it is.'],
+  feed: ['CORNER · MASKED · CALLS ONLY · MASKS · AGENTS · LABEL', 'back to the safe defaults: user name and emails masked, only Claude Code read, the stock label. Mode stays as it is.'],
 };
 const differs = k => D[k] !== undefined && S[k] !== D[k];
 

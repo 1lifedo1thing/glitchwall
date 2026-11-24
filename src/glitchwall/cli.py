@@ -122,6 +122,8 @@ def cmd_status(a) -> int:
     say(f"  mode        {cfg.mode(s)} ({cfg.MODES[cfg.mode(s)]})")
     say(f"  paused      {'yes (serving nothing)' if s['paused'] else 'no'}")
     say(f"  outputs     {'hidden (commands only)' if s['commands_only'] else 'shown'}")
+    on = [name for k, (name, _) in cfg.AGENTS.items() if s.get(k) is True]
+    say(f"  reads       {', '.join(on) if on else 'no agent (live mode shows nothing)'}")
     say(f"  state dir   {cfg.state_dir()}")
     say(f"  autostart   {plat.autostart_entry() or 'off'}")
     if plat.WIN:
@@ -338,7 +340,7 @@ def cmd_pause(a, paused: bool) -> int:
 def cmd_config(a) -> int:
     s = cfg.load_settings()
     changed = False
-    for name in ("commands_only", "mask_user", "mask_email"):
+    for name in ("commands_only", "mask_user", "mask_email", *cfg.AGENTS):
         v = getattr(a, name)
         if v is not None:
             s[name] = ON_OFF[v.lower()]
@@ -485,6 +487,9 @@ def parser() -> argparse.ArgumentParser:
     c.add_argument("--commands-only", dest="commands_only", choices=sorted(ON_OFF), metavar="on|off")
     c.add_argument("--mask-user", dest="mask_user", choices=sorted(ON_OFF), metavar="on|off")
     c.add_argument("--mask-email", dest="mask_email", choices=sorted(ON_OFF), metavar="on|off")
+    for k, (name, folder) in cfg.AGENTS.items():
+        c.add_argument("--" + k.split("_")[1], dest=k, choices=sorted(ON_OFF), metavar="on|off",
+                       help=f"read {name}'s logs in live mode ({folder})")
     c.add_argument("--label", help="text in the corner of the wallpaper")
     c.add_argument("--port", type=int)
     c.add_argument("--renderer", choices=sorted(cfg.RENDERERS),

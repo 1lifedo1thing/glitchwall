@@ -31,18 +31,19 @@ behind your icons: every shell command, file read and edit, search, web fetch an
 it runs, types itself out with its result, lingers, and leaves. A failing command's output shows in the theme's
 error color.
 
-It reads Claude Code's own session logs, so there's nothing to set up in Claude Code.
+It reads your coding agent's own session logs, so there's nothing to set up in the agent: Claude Code, and
+Gemini CLI and Codex CLI once you turn them on (new on `main`, not in a release yet).
 
-> **Live mode needs Claude Code**, Anthropic's coding agent, which comes with a paid Claude plan (Pro or Max)
-> or an Anthropic API account. The free Claude plan doesn't include it, and chatting on claude.ai or in the
-> Claude app writes no logs for glitchwall to read. Support for other agents is in the works. glitchwall itself is
-> free, and the two modes below work with no Claude at all.
+> **Live mode needs a coding agent that runs on your PC.** Claude Code comes with a paid Claude plan (Pro or
+> Max) or an Anthropic API account; Gemini CLI has a free tier with a Google account; Codex CLI comes with a
+> ChatGPT plan or an OpenAI API key. Chatting on claude.ai, gemini.google.com or chatgpt.com writes no logs for
+> glitchwall to read. glitchwall itself is free, and the two modes below work with no agent at all.
 
 No agent, or not working right now? Two other modes keep it a wallpaper:
 
 | Mode | What you see | What it reads |
 | --- | --- | --- |
-| `live` (default) | your agent's tool calls as they happen | your Claude Code logs, read-only |
+| `live` (default) | your agent's tool calls as they happen | your Claude Code logs, read-only; Gemini CLI's and Codex CLI's only if you turn them on |
 | `ambient` | endless made-up coding sessions: a bug found and fixed, tests failing then passing, a release | nothing |
 | `art` | just the background | nothing |
 
@@ -92,7 +93,7 @@ carries the same wheel and its SHA-256, if you'd rather download and check it yo
 
 | Needs | Download | Installed |
 | --- | --- | --- |
-| Windows 10 1803 or newer, .NET Framework 4.7.2 and WebView2 (Windows 11 has both). For `live` mode, Claude Code (paid Claude plan or API account) | 2.9 MB | about 78 MB, including the Python uv sets up |
+| Windows 10 1803 or newer, .NET Framework 4.7.2 and WebView2 (Windows 11 has both). For `live` mode, a coding agent: Claude Code, Gemini CLI or Codex CLI | 2.9 MB | about 78 MB, including the Python uv sets up |
 
 `install` checks those first. If one is missing it stops, says which, and offers to open Microsoft's download
 page; glitchwall itself never downloads or installs anything. Then it starts the feed, adds a start-at-logon
@@ -127,8 +128,8 @@ once closed.
 
 glitchwall shows your agent's activity on your screen, so it's built to be easy to trust and easy to check:
 
-- **It reads one thing:** in `live` mode, Claude Code's session logs, read-only, only what's new. In
-  `ambient` and `art` mode, no logs at all.
+- **It reads one thing:** in `live` mode, your coding agents' session logs, read-only, only what's new: Claude
+  Code's, and Gemini CLI's or Codex CLI's only once you turn them on. In `ambient` and `art` mode, no logs at all.
 - **It masks before it stores.** 50+ key formats, anything with a secret-sounding name, passwords in URLs and
   command lines, long random-looking tokens, and your home folder, user name and email. The page never even
   receives the real text.
@@ -173,9 +174,12 @@ doesn't include Claude Code, and regular chat on claude.ai or in the Claude app 
 the conversation on Anthropic's servers, so there's nothing to show. `ambient` and `art` modes need no Claude at
 all, and `uvx glitchwall demo --open` shows what live mode looks like.
 
-**Does it work with other agents?** Claude Code today; support for other agents, including ones that run local
-models, is in the works. The log reader is one small file
-([`claude_logs.py`](https://github.com/marklesterb28/glitchwall/blob/main/src/glitchwall/claude_logs.py)); pull requests for other agents are welcome.
+**Does it work with other agents?** Claude Code, Gemini CLI and Codex CLI (the last two are new on `main`, not
+in a release yet, and off until you turn them on: settings window → AGENTS, or `glitchwall config --gemini on` /
+`--codex on`). Agents that run local models, such as OpenCode, are next. Each log reader is one small file
+([`claude_logs.py`](https://github.com/marklesterb28/glitchwall/blob/main/src/glitchwall/claude_logs.py),
+[`gemini_logs.py`](https://github.com/marklesterb28/glitchwall/blob/main/src/glitchwall/gemini_logs.py),
+[`codex_logs.py`](https://github.com/marklesterb28/glitchwall/blob/main/src/glitchwall/codex_logs.py)); pull requests for other agents are welcome.
 
 **macOS or Linux?** Not today. The renderer draws with Direct2D and sits behind the icons through the Windows
 desktop, and there are no Macs or Linux PCs here to test on.
@@ -194,8 +198,9 @@ showing it to a friend helps just as much.
 
 ## Credits & license
 
-**MIT**, see [LICENSE](https://github.com/marklesterb28/glitchwall/blob/main/LICENSE) and [SECURITY.md](https://github.com/marklesterb28/glitchwall/blob/main/SECURITY.md). Not affiliated with Anthropic: "Claude" and
-"Claude Code" are Anthropic's trademarks, named only to say which logs glitchwall reads.
+**MIT**, see [LICENSE](https://github.com/marklesterb28/glitchwall/blob/main/LICENSE) and [SECURITY.md](https://github.com/marklesterb28/glitchwall/blob/main/SECURITY.md). Not affiliated with Anthropic, Google or OpenAI:
+"Claude" and "Claude Code" are Anthropic's trademarks, "Gemini" Google's, "Codex" OpenAI's, named only to say
+which logs glitchwall reads.
 
 Every font is bundled under the SIL Open Font License 1.1: Departure Mono © Helena Zhang
 ([OFL.txt](https://github.com/marklesterb28/glitchwall/blob/main/src/glitchwall/wallpaper/OFL.txt)), and VT323, IBM Plex Mono, Chakra Petch, Doto, Saira Stencil One,

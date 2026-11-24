@@ -262,6 +262,15 @@ class TestSettingsWindow(unittest.TestCase):
         self.assertIn("theme", cfg.apply_changes({}, {"theme": "no-such-theme"})[1])
         self.assertEqual(cfg.apply_changes({}, {"corner": "bottom-left"})[0]["corner"], "bottom-left")
         self.assertIn("corner", cfg.apply_changes({}, {"corner": "middle"})[1])
+        self.assertEqual(cfg.apply_changes({}, {"agent_gemini": True})[0], {"agent_gemini": True})
+        self.assertIn("agent_codex", cfg.apply_changes({}, {"agent_codex": "yes"})[1])
+
+    def test_agents_off_until_turned_on(self):
+        from glitchwall.server import agents_on
+        on = lambda saved: agents_on(cfg.load_settings(saved))   # noqa: E731
+        self.assertEqual(on({}), ("agent_claude",))
+        self.assertEqual(on({"agent_gemini": True, "agent_claude": False}), ("agent_gemini",))
+        self.assertEqual(on({"agent_codex": "yes", "agent_gemini": 1, "agent_claude": None}), ())
 
     def test_read(self):
         st, d = self.req(origin=None)

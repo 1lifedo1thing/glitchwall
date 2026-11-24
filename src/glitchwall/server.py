@@ -389,6 +389,7 @@ def start_tray(live: "LiveSettings", open_settings, on_change=None) -> None:
                 ("Theme", pick("theme", themes.THEMES)),
                 ("Hot corner", pick("corner", cfg.CORNERS)),
                 ("Masked secrets", pick("masked", masked, masked.get)),
+                ("Read logs of", [flip(k, name) for k, (name, _) in cfg.AGENTS.items()]),
                 ("Show", [flip("commands_only", "Calls only, no output"),
                           None, flip("mask_user", "Mask my user name"), flip("mask_email", "Mask emails")]),
                 None,
@@ -398,26 +399,51 @@ def start_tray(live: "LiveSettings", open_settings, on_change=None) -> None:
     tray.show()
 
 
+def agents_on(s: dict) -> tuple[str, ...]:
+    """The agents whose logs live mode reads: only those turned on (Claude Code by default, the others off)."""
+    return tuple(k for k in cfg.AGENTS if s.get(k, cfg.DEFAULTS[k]) is True)
+
+
 def start_source(mode: str, store: EventStore) -> threading.Event:
-    """Start the event source for a mode; set the returned event to stop it."""
+    """Start the event source for a mode; set the returned event to stop it. Live mode's sources are the agents'
+    log readers, started one by one in follow_mode (start_reader)."""
     stop = threading.Event()
-    if mode == "live":
-        from .claude_logs import ClaudeLogTailer
-        threading.Thread(target=ClaudeLogTailer(store.add).run, args=(stop,), daemon=True).start()
-    elif mode == "ambient":
+    if mode == "ambient":
         from . import ambient
         threading.Thread(target=ambient.generate, args=(store, stop), daemon=True).start()
     return stop
 
 
+def start_reader(agent: str, store: EventStore) -> threading.Event:
+    """Follow one agent's logs (a key of settings.AGENTS); set the returned event to stop it."""
+    from .claude_logs import ClaudeLogTailer
+    from .codex_logs import CodexLogTailer
+    from .gemini_logs import GeminiLogTailer
+    reader = {"agent_claude": ClaudeLogTailer, "agent_gemini": GeminiLogTailer, "agent_codex": CodexLogTailer}[agent]
+    stop = threading.Event()
+    threading.Thread(target=reader(store.add).run, args=(stop,), daemon=True).start()
+    return stop
+
+
 def follow_mode(store: EventStore, live: LiveSettings, poll: float = 1.0, quit: threading.Event | None = None) -> None:
+    """Keep the sources in step with the settings: the mode's own, and in live mode one reader per agent turned
+    on. Turning an agent on or off starts or stops just that reader; an agent that is off has its folder left alone."""
     mode, stop = None, None
+    readers: dict[str, threading.Event] = {}
     while not (quit and quit.is_set()):
-        m = cfg.mode(live.get())
+        s = live.get()
+        m = cfg.mode(s)
         if m != mode:
             if stop:
                 stop.set()
             mode, stop = m, start_source(m, store)
+        want = set(agents_on(s)) if m == "live" else set()
+        for a in [a for a in readers if a not in want]:
+            readers.pop(a).set()
+        for a in cfg.AGENTS:
+            if a in want and a not in readers:
+                readers[a] = start_reader(a, store)
         time.sleep(poll)
-    if stop:
-        stop.set()
+    for r in [stop, *readers.values()]:
+        if r:
+            r.set()

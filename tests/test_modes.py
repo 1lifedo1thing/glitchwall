@@ -69,9 +69,36 @@ class TestFollowMode(unittest.TestCase):
                     return {"mode": "art"}
 
         quit = threading.Event()
-        with mock.patch.object(server, "start_source", fake_start):
+        with mock.patch.object(server, "start_source", fake_start),                 mock.patch.object(server, "start_reader", lambda a, store: threading.Event()):
             server.follow_mode(EventStore(Redactor(home="", user="")), Live(), poll=0, quit=quit)
         self.assertEqual(started, ["live", "ambient", "art"])
+
+    def test_agents_start_and_stop_one_by_one(self):
+        # Gemini and Codex stay off until turned on; turning one on or off leaves the others' readers running
+        states = iter([{}, {"agent_gemini": True}, {"agent_gemini": True, "agent_claude": False},
+                       {"agent_gemini": "yes"}, {"mode": "art", "agent_codex": True}])
+        started, stops = [], {}
+
+        def fake_reader(a, store):
+            started.append(a)
+            stops.setdefault(a, []).append(threading.Event())
+            return stops[a][-1]
+
+        class Live:
+            def get(self):
+                try:
+                    return next(states)
+                except StopIteration:
+                    quit.set()
+                    return {"mode": "art"}
+
+        quit = threading.Event()
+        with mock.patch.object(server, "start_reader", fake_reader):
+            server.follow_mode(EventStore(Redactor(home="", user="")), Live(), poll=0, quit=quit)
+        # claude; + gemini; claude off; gemini "yes" is not on, claude back; art: everything stops
+        self.assertEqual(started, ["agent_claude", "agent_gemini", "agent_claude"])
+        self.assertTrue(all(e.is_set() for es in stops.values() for e in es))
+        self.assertNotIn("agent_codex", started)
 
     def test_art_starts_nothing(self):
         stop = server.start_source("art", EventStore(Redactor(home="", user="")))

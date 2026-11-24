@@ -6,11 +6,23 @@
 
 ### ✅ It reads
 
-In `ambient` and `art` mode it reads no logs at all, only its own settings. In `live` mode:
+In `ambient` and `art` mode it reads no logs at all, only its own settings. In `live` mode, the logs of the
+agents you have turned on, and no others:
 
-- **Claude Code session logs:** `~/.claude/projects/*/*.jsonl` (or `$CLAUDE_CONFIG_DIR/projects`),
-  opened **read-only**, only logs touched in the last 30 minutes, only the newly appended part.
-  From each line it takes tool calls and their results.
+| Agent | Folder | Starts |
+| --- | --- | --- |
+| Claude Code | `~/.claude/projects/*/*.jsonl` (or `$CLAUDE_CONFIG_DIR/projects`) | on |
+| Gemini CLI | `~/.gemini/tmp/*/chats/**/*.jsonl` (or `$GEMINI_CLI_HOME/.gemini/tmp`) | **off** until you turn it on |
+| Codex CLI | `~/.codex/sessions/YYYY/MM/DD/*.jsonl` (or `$CODEX_HOME/sessions`); never the compressed `.zst` ones | **off** until you turn it on |
+
+Each log is opened **read-only**, only logs touched in the last 30 minutes, only the newly appended part. From
+each line it takes tool calls and their results. An agent that is turned off has its folder left alone entirely:
+not listed, not opened. Turn agents on or off under **AGENTS** in the settings window, in the tray icon's
+**Read logs of** menu, or with `glitchwall config --claude on|off`, `--gemini on|off`, `--codex on|off`.
+
+**Why Gemini CLI and Codex CLI start off:** glitchwall started out reading only Claude Code's logs. Reading
+another agent's folder just because it is installed would quietly widen what it reads, so each one waits for you
+to say yes.
 - **Its own files:** a random key, `settings.json`, a pid file.
 
 Nothing else: not your terminal, not your shell history, not the screen, not what's in other windows.
@@ -131,7 +143,7 @@ secrets through it, plus ordinary text that must survive untouched.
 - **`config.js` holds your feed key.** Don't publish an exported wallpaper folder. If you did, delete
   the `key` file in the state folder and run `glitchwall install` again.
 - **Provided as is, with no warranty**, under the MIT license. See [LICENSE](../LICENSE) and [SECURITY.md](../SECURITY.md).
-- **Not affiliated with Anthropic.** "Claude" and "Claude Code" are trademarks of
-  Anthropic; they're named here only to say which logs glitchwall reads.
+- **Not affiliated with Anthropic, Google or OpenAI.** "Claude" and "Claude Code" are trademarks of Anthropic,
+  "Gemini" of Google, "Codex" and "OpenAI" of OpenAI; they're named here only to say which logs glitchwall reads.
 - **Free and open source, forever.** No accounts, no paid tier, no ads. Donations are appreciated but never
   required, and they don't unlock anything. See [Support](../README.md#support).

@@ -49,6 +49,15 @@ DEFAULTS = {
     "screens": "all",        # all | primary
     "renderer": "native",    # Windows: who draws glitchwall's own windows, see RENDERERS (the page if the exe is missing)
     "tray": True,            # Windows: an icon in the notification area while the feed runs (open settings, pause, quit)
+    # whose logs live mode reads (see AGENTS); only the folders of agents turned on here are ever opened
+    "agent_claude": True,
+    "agent_gemini": False,
+    "agent_codex": False,
+}
+AGENTS = {   # setting -> (name, the folder its logs are read from)
+    "agent_claude": ("Claude Code", "~/.claude/projects (or $CLAUDE_CONFIG_DIR/projects)"),
+    "agent_gemini": ("Gemini CLI", "~/.gemini/tmp (or $GEMINI_CLI_HOME/.gemini/tmp)"),
+    "agent_codex": ("Codex CLI", "~/.codex/sessions (or $CODEX_HOME/sessions)"),
 }
 from . import themes as _themes   # noqa: E402  (themes needs nothing from here)
 DEFAULTS.update({k: next(iter(choices)) for k, choices in _themes.OPTIONS.items()})   # orb_spin, orb_dir, ...
@@ -85,7 +94,7 @@ def apply_changes(s: dict, changes: dict) -> tuple[dict, list[str]]:
             ok = isinstance(v, str) and v in themes.KINDS[k]
         elif k == "mode":
             ok = v in MODES
-        elif k in ("paused", "commands_only", "mask_user", "mask_email", "tray"):
+        elif k in ("paused", "commands_only", "mask_user", "mask_email", "tray", *AGENTS):
             ok = isinstance(v, bool)
         elif k in TUNE:
             _, lo, hi = TUNE[k]
