@@ -133,7 +133,9 @@ Open **glitchwall settings** from the Start menu, the desktop's right-click menu
 the theme drum and the window fades almost away, so the wallpaper itself is your preview; let go and it's back.
 It speaks keyboard too (arrows turn and slide, Backspace puts a control back to default), clicks and clacks
 like a piece of lab gear (**SOUND** or **M** turns that off; the wallpaper is always silent), and each section
-has a DEFAULT key. **RESET ALL** (press twice) puts everything back and restarts the wallpaper fresh.
+has a DEFAULT key. **RESET ALL** (press twice) puts everything back and restarts the wallpaper fresh. The window
+itself wears the theme you picked: COLORS and FONT change only the wallpaper, so the controls stay put while you
+compare.
 
 [![the settings window: mode and look selectors, the theme drum, five sliders, privacy switches and the corner label](docs/shots/settings.png)](docs/shots/settings.png)
 
@@ -166,17 +168,18 @@ seconds it tucks itself into a thin strip; touch the strip and it slides back ou
 ![two screens showing the same calls, each with its own layout](docs/gifs/screens.gif)
 
 On Windows there's no wallpaper app to install: glitchwall puts one borderless window per screen behind your
-desktop icons, using WebView2, the Edge engine built into Windows. Screens added, removed or rearranged are
-picked up on their own, and so is a restarted Explorer. If the page's browser ever dies, glitchwall restarts
-itself. Your own wallpaper is never changed: `stop` or `uninstall` uncovers it again. Only want the main screen?
+desktop icons, drawn by its own small Rust renderer with Direct2D, no browser involved. Screens added, removed or
+rearranged are picked up on their own, and so is a restarted Explorer. If the renderer ever stops, glitchwall
+restarts it. Your own wallpaper is never changed: `stop` or `uninstall` uncovers it again. Only want the main screen?
 `glitchwall install --screens primary`.
 
 ### Light on your PC
 
-One small Python process that checks for new log lines once a second, and one web page per screen that draws
-at most 30 frames a second, whatever your monitor's refresh rate. A screen covered by a maximized or
-fullscreen window (a game, a video, your editor) goes to sleep until it's uncovered, and so does every screen
-while the PC is locked: about 17% of one core awake, 2.4% asleep. MOTION at 0 stills the background entirely.
+One small Python process that checks for new log lines once a second, and one small renderer that draws every
+screen at most 30 frames a second, whatever your monitor's refresh rate: about 6.5% of one core and 153 MB awake
+(the old WebView2 version took 34% and 699 MB). A screen covered by a maximized or fullscreen window (a game, a
+video, your editor) goes to sleep until it's uncovered, and so does every screen while the PC is locked, drawing
+nothing. MOTION at 0 stills the background entirely.
 In Task Manager it shows up as **glitchwall**, not as an anonymous Python. How that stacks up against other
 live wallpapers: [How it compares](#how-it-compares-with-other-live-wallpapers).
 
@@ -214,7 +217,8 @@ open Microsoft's download page in your browser; you install it, then run `instal
 never downloads or installs anything. `glitchwall doctor` runs the same checks any time.
 
 Then it starts the feed in the background, adds a start-at-logon entry, and puts the wallpaper behind
-your desktop icons on every screen (Windows 10 gets WebView2 with Edge; Windows 11 has it built in). To change
+your desktop icons on every screen. (WebView2 is only needed for the settings window: Windows 11 has it built
+in, Windows 10 gets it with Edge.) To change
 anything, open **glitchwall settings** from the Start menu, the desktop's right-click menu (on Windows 11 under
 *Show more options*), the hot corner, or `glitchwall settings`. See [the tour](#the-tour-) for what's in there.
 
@@ -235,7 +239,7 @@ in and taking them away. Use one as it is, or swap any single part.
 | `phosphor` (default) | green phosphor terminal at night: green on black glass, amber for anything live, bit-glyph rain, CRT tube | beam opens / collapses to a dot |
 | `drafting` | blueprint: chalk-white linework on cobalt, shapes drafting, dimensioning and hatching themselves, a title block in the corner | ruled in / erased |
 | `newsprint` · `nightprint` | cream newsprint, black ink, hot vermilion, a broadsheet page setting itself line by line under the cards; the same at night on charcoal | pressed on / lifted off |
-| `neon` | near-black neon: cyan ink, hot pink, dot-matrix titles, neon signs buzzing on a wet brick wall in the rain | tube flickers on / off |
+| `neon` | near-black neon: cyan ink, hot pink, dot-matrix titles, a rainy street at night in perspective: neon signs on a brick wall and hanging off it, street lamps, a signal flashing red at the crossing, the city far off, all of it mirrored in rippling puddles | tube flickers on / off |
 | `fieldops` | field-ops: khaki stock, hot orange, stencil type, a contour map with a route drawing itself from waypoint to objective | stamped / torn off |
 | `duplicator` | risograph: blue and fluorescent-pink inks, halftone, the pink drum a little off true | second ink lands off true |
 | `sleeve` | record sleeve: sepia paper, brown ink, mustard, a record turning in the corner | slides out of the sleeve |
@@ -536,24 +540,24 @@ different things.
 
 | | What it draws | CPU | Memory | Open source | Where the number comes from |
 |---|---|---|---|---|---|
-| **glitchwall** (Windows default: native) | Direct2D, no browser | 6.5% of one core (0.4% of a 16-core CPU) | 153 MB | yes | our test, below |
-| **glitchwall** (web page in WebView2) | animated web page | 34% of one core (2.2%) | 699 MB | yes | our test, below |
+| **glitchwall** | Direct2D, no browser | 6.5% of one core (0.4% of a 16-core CPU) | 153 MB | yes | our test, below |
 | [Lively Wallpaper](https://github.com/rocksdanister/lively) | simple web wallpaper (rain) | under 0.3% of the whole CPU | about 245 MB | yes | [one reviewer](https://www.windowscentral.com/software-apps/i-finally-tried-lively-wallpaper-to-animate-my-desktop-its-a-dream-for-customization) |
 | Lively Wallpaper | a YouTube page as wallpaper | about 4.5% of the whole CPU | about 800 MB | yes | same reviewer |
 | Wallpaper Engine | 60 fps video, hardware decoding | 1-2% of the whole CPU, ~40% GPU | not given | no | [forum post](https://steamcommunity.com/app/431960/discussions/2/1696045708644625403) |
 | [anipaper](https://github.com/Theldus/anipaper) (Linux) | 1080p 30 fps video, hardware decoding | 10.8% of a 4-core CPU (about 43% of one core) | not given | yes | author's benchmark |
 | [Hidamari](https://github.com/jeffshee/hidamari) (Linux) | video, Intel integrated GPU | about 1% CPU, 4% GPU | not given | yes | [article author](https://ubuntuhandbook.org/index.php/2024/10/video-animated-wallpaper-ubuntu/) |
 | macOS aerial wallpapers | built-in video | 20-100% CPU when it misbehaves | up to GBs | no | [bug reports](https://discussions.apple.com/thread/255180158) |
+| glitchwall (old version: web page in WebView2) | animated web page | 34% of one core (2.2%) | 699 MB | yes | our test, below |
 
 Our test: a 16-core Windows 11 desktop, matrix theme, ambient mode, every glitchwall process counted (the
 feed and the renderer), the desktop showing, 30 seconds. Native: three runs of 6.2-6.7% (2026-11-23); the
 default phosphor theme came out the same, and orb, the busiest background, at 10.3% of one core and 172 MB.
-The web page figure is from 2026-11-22.
+The old WebView2 version's figure is from 2026-11-22.
 
-**What the native renderer does.** On Windows, glitchwall draws every background with Direct2D straight from
-a small Rust program, with no browser in between: about a fifth of the CPU and a fifth of the memory of the
-web page. If the renderer is missing, it falls back to the page (`glitchwall config --renderer web` picks the
-page on purpose). In OBS and Wallpaper Engine, the web page is the way to run glitchwall.
+**What the renderer does.** On Windows, glitchwall draws every background with Direct2D straight from a small
+Rust program, with no browser in between: about a fifth of the CPU and a fifth of the memory of the old WebView2
+version. That old version is still there as a fallback if the renderer is missing (`glitchwall config --renderer
+web` picks it on purpose). In OBS and Wallpaper Engine, the web page is the way to run glitchwall.
 
 **Why the web page is heavier than a video wallpaper.** A video wallpaper hands its work to the graphics
 card's video decoder, so the CPU barely notices. glitchwall draws every frame live (falling glyphs, cards,

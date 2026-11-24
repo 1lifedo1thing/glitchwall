@@ -1792,59 +1792,265 @@ const STYLES = {
       this.paint();
     },
   },
-  // neon signs on a dark brick wall at night, in the rain: tubes buzzing, a letter that won't stay lit, now and
-  // then a whole sign stuttering; their light caught on the wet ground below and in the falling rain
+  // a street at night in the rain, seen from the pavement: a brick wall running off to a far vanishing point, neon
+  // signs on it and hanging off it on brackets, lamps along the kerb, a signal flashing red at the crossing, a city's
+  // lights far off. The wet road holds it all upside down: a faint sheen everywhere, and in the puddles the whole of
+  // it, broken up by the rain. One-point perspective throughout: d is how far down the street (0 near the camera),
+  // o how far out from the wall across the ground, h how high (in wall heights). bg.rs's Signs is the same street.
   signs: {
-    scale: 1, still: true, reinit: true,   // its options go into the wall and the signs
-    WORDS: ['OPEN', 'LIVE', 'ALL NIGHT', 'NO VACANCY', 'ON AIR', 'COFFEE', 'TATTOO', 'ARCADE'],
+    scale: 1, still: true, reinit: true,   // its options go into the street and the signs
+    // a street's worth, and a few for the people who leave this running while they code (bg.rs's SIGN_WORDS)
+    WORDS: ['OPEN', 'LIVE', 'ALL NIGHT', 'NO VACANCY', 'ON AIR', 'COFFEE', 'TATTOO', 'ARCADE', 'HOTEL', 'DINER', 'NOODLES',
+            'RAMEN', 'PIZZA', 'KARAOKE', 'RECORDS', 'VIDEO', 'LAUNDRY', 'JAZZ', 'BOWLING', 'CINEMA', 'PSYCHIC', 'DONUTS',
+            '24 HOURS', 'COME IN', 'CLOSED', 'DANCING', 'SHIP IT', 'NO BUGS', 'DEPLOY', 'IT WORKS', 'LGTM', 'HELLO WORLD'],
     init() {
-      const u = this.u = Math.min(W, H), fy = this.fy = Math.round(H * .8), light = T.mode === 'light', op = this.op = OPTS.signs || {};
+      const u = this.u = Math.min(W, H), light = this.light = T.mode === 'light', op = this.op = OPTS.signs || {};
       const mk = (w, h) => { const o = document.createElement('canvas'); o.width = Math.max(1, Math.ceil(w)); o.height = Math.max(1, Math.ceil(h)); return [o, o.getContext('2d')]; };
-      // the wall: courses of brick, barely there; the wet ground below
-      const [b, g] = mk(W, H); this.back = b;
-      g.fillStyle = T.bg; g.fillRect(0, 0, W, H);
-      const bh = Math.max(10, Math.round(u / 40)), bw = bh * 3.2;
-      g.strokeStyle = T.ink; g.globalAlpha = light ? .06 : .035; g.lineWidth = 1; g.beginPath();
-      for (let y = 0, r = 0; y < (op.wall === 'plain' ? 0 : fy); y += bh, r++) {
-        g.moveTo(0, y + .5); g.lineTo(W, y + .5);
-        for (let x = (r % 2) * bw / 2; x < W; x += bw) { g.moveTo(Math.round(x) + .5, y); g.lineTo(Math.round(x) + .5, Math.min(fy, y + bh)); }
+      // the camera: the vanishing point far right, a little below the middle; K sets how fast things shrink with
+      // depth, so that a brick looks like a brick at any width (kept sane on a tall screen)
+      const VX = W * .86, VY = H * .4, BASE = H * .76, WH = H * 1.26, K = Math.min(.5, .627 * H / VX), sc = H / 420, DPX = H * .59;
+      const z = d => 1 + d * K, Q = (d, o, h) => { const k = 1 + d * K; return [VX + (o * WH - VX) / k, VY + (BASE - WH * h - VY) / k]; };
+      const G = (d, o) => Q(d, o, 0), P = (d, h) => Q(d, 0, h), NEAR = Math.max(-1.3, (.4 - 1) / K), FAR = 80;
+      Object.assign(this, { VX, VY, BASE, WH, K, sc, DPX, z, Q });
+      const toward = (c, t) => mixHex(T.bg, c, t), dark = t => mixHex(T.bg, '#000000', t);
+      const C = { skyTop: light ? toward(T.acc2, .06) : dark(.5), skyLow: light ? toward(T.acc, .1) : toward(T.acc2, .14),
+                  road: light ? toward(T.ink, .16) : dark(.15), walk: light ? toward(T.ink, .08) : toward(T.ink, .05),
+                  kerb: light ? toward(T.ink, .2) : toward(T.ink, .09), wall: light ? toward(T.acc, .06) : toward(T.acc, .05),
+                  brick: mixHex(T.acc, '#b0603c', .5), iron: light ? toward(T.ink, .35) : toward(T.ink, .1),
+                  pole: light ? toward(T.ink, .45) : toward(T.ink, .16) };
+      C.pool = light ? mixHex(C.road, C.skyLow, .45) : mixHex(C.road, C.skyLow, .38);
+      this.C = C;
+      const LAMP = this.LAMP = mixHex('#ffb347', T.ink, .25);
+      let [b, g] = mk(W, H); this.back = b;
+      const poly = (pts, fill) => { g.beginPath(); g.moveTo(...pts[0]); for (const p of pts.slice(1)) g.lineTo(...p); g.closePath(); if (fill) g.fillStyle = fill; g.fill(); };
+      const gq = (d0, d1, o0, o1, f) => poly([G(d0, o0), G(d1, o0), G(d1, o1), G(d0, o1)], f);
+      // the sky, and the city far off: towers in silhouette, a few windows lit, a haze of light over them
+      let gr = g.createLinearGradient(0, 0, 0, VY); gr.addColorStop(0, C.skyTop); gr.addColorStop(1, C.skyLow); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+      if (!light) {                  // a few faint stars, what the rain and the city's glow leave of them
+        g.fillStyle = T.ink;
+        for (let i = 0, n = W * VY / 6000 | 0; i < n; i++) {
+          const y = VY * Math.pow(Math.random(), 1.6) * .92, s = Math.random() < .08 ? 1.6 : 1;
+          g.globalAlpha = rnd(.1, .35) * (1 - y / VY); g.fillRect(rnd(0, W), y, s * Math.max(1, sc * .5), s * Math.max(1, sc * .5));
+        }
+        g.globalAlpha = 1;
       }
-      g.stroke();
-      g.globalAlpha = 1; let gr = g.createLinearGradient(0, fy, 0, H);
-      gr.addColorStop(0, rgba(T.ink, light ? .08 : .05)); gr.addColorStop(1, rgba(T.ink, 0)); g.fillStyle = gr; g.fillRect(0, fy, W, H - fy);
-      g.globalAlpha = .25; g.fillStyle = T.ink; g.fillRect(0, fy, W, 1); g.globalAlpha = 1;
-      // the signs: two or three words and a shape, each in its own colour, laid out so they don't overlap
-      const cols = [T.acc, T.ink, T.acc2], words = [...this.WORDS].sort(() => Math.random() - .5), spots = [[.2, .22], [.74, .3], [.46, .56], [.18, .62], [.8, .66]].sort(() => Math.random() - .5);
-      this.signs = [];
+      const wc = [T.ink, T.acc, T.acc2, LAMP], towers = [];
+      for (let x = W * .1; x < W + 20;) {
+        const bw = rnd(14, 38) * sc, bh = rnd(18, 95) * sc, top = VY - bh;
+        towers.push([x + bw / 2, top - sc, bh]);
+        g.globalAlpha = 1; g.fillStyle = light ? toward(T.ink, rnd(.12, .22)) : toward(T.ink, rnd(.03, .07)); g.fillRect(x, top, bw, bh + 2);
+        for (let wy = top + 4 * sc; wy < VY - 3 * sc; wy += 5 * sc) for (let wx = x + 3 * sc; wx < x + bw - 3 * sc; wx += 4 * sc)
+          if (Math.random() < .18) { g.globalAlpha = rnd(.12, .4); g.fillStyle = wc[Math.random() * 4 | 0]; g.fillRect(wx, wy, 1.6 * sc, 2 * sc); }
+        x += bw + rnd(-4, 3) * sc;
+      }
+      // a warning light on top of each of the three tallest towers the wall doesn't hide (it hides what's left
+      // of where its top edge, running to the vanishing point, crosses that height)
+      const edge = y => { const k = (BASE - WH * 1.4 - VY) / (y - VY); return VX - VX / k; };
+      this.beacons = towers.filter(t => t[0] > edge(t[1]) + 3 * sc).sort((a, q) => q[2] - a[2]).slice(0, 3).map(t => [t[0], t[1], Math.random() * 3]);
+      g.globalAlpha = 1; gr = g.createLinearGradient(0, VY - 70 * sc, 0, VY + 4);
+      gr.addColorStop(0, rgba(T.acc, 0)); gr.addColorStop(1, rgba(T.acc, light ? .1 : .16)); g.fillStyle = gr; g.fillRect(0, VY - 70 * sc, W, 70 * sc + 4);
+      // the road: asphalt with a grain, a patch of newer asphalt, its markings
+      gq(NEAR, FAR, .2, 6, C.road);
+      g.fillStyle = T.ink;
+      for (let i = 0, n = W * H / 300 | 0; i < n; i++) { const [px, py] = G(rnd(NEAR, 14), rnd(.2, 3)); g.globalAlpha = rnd(.02, .06); g.fillRect(px, py, 1, 1); }
+      g.globalAlpha = 1; gq(2.9, 3.6, .9, 1.5, rgba('#000000', light ? .06 : .35));
+      const paint = rgba(T.ink, light ? .2 : .1), lane = rgba(mixHex(LAMP, T.ink, .3), light ? .5 : .3);
+      for (let o = .24; o < 1.85; o += .14) gq(-1.05, -.62, o, o + .075, paint);        // the crossing
+      gq(-.42, -.36, .2, .79, paint);                                                     // the stop line
+      gq(.55, 1.25, .485, .515, paint); poly([G(1.25, .44), G(1.25, .56), G(1.6, .5)], paint);   // straight on
+      for (let d = -.2; d < FAR; d += .9) gq(d, d + .45, .795, .81, lane);                // the centre line
+      gq(NEAR, FAR, 1.85, 1.86, rgba(T.ink, .08));
+      // a manhole cover: an iron disc in a rim, a grid of ridges, a vent hole (the steam comes out of it)
+      const MH = [.55, 1.3];
+      {
+        const [mx, my] = G(...MH), rx = WH * .085 / z(MH[0]), ry = rx * .2;
+        this.mh = [mx, my, rx];
+        g.fillStyle = mixHex(C.road, T.ink, .08); g.beginPath(); g.ellipse(mx, my, rx * 1.12, ry * 1.12, 0, 0, TAU); g.fill();
+        g.save(); g.fillStyle = C.iron; g.beginPath(); g.ellipse(mx, my, rx, ry, 0, 0, TAU); g.fill(); g.clip();
+        g.strokeStyle = T.ink; g.globalAlpha = .14; g.lineWidth = 1; g.beginPath();
+        for (let i = -6; i <= 6; i++) { g.moveTo(mx + i * rx / 6, my - ry); g.lineTo(mx + i * rx / 6, my + ry); }
+        for (let i = -3; i <= 3; i++) { g.moveTo(mx - rx, my + i * ry / 3); g.lineTo(mx + rx, my + i * ry / 3); }
+        g.stroke(); g.restore();
+        g.globalAlpha = .16; g.strokeStyle = T.ink; g.beginPath(); g.ellipse(mx, my, rx, ry, 0, 0, TAU); g.stroke();
+        g.globalAlpha = 1; g.fillStyle = C.pool; g.beginPath(); g.ellipse(mx + rx * .55, my - ry * .1, rx * .06, ry * .12, 0, 0, TAU); g.fill();
+      }
+      // the pavement: slabs, the kerb, a drain (a slot in the kerb, a grate in the gutter)
+      gq(NEAR, FAR, 0, .2, C.walk);
+      g.strokeStyle = rgba('#000000', light ? .12 : .5); g.lineWidth = 1; g.beginPath();
+      for (let d = NEAR; d < 16; d += .32) { g.moveTo(...G(d, 0)); g.lineTo(...G(d, .2)); }
+      g.moveTo(...G(NEAR, .1)); g.lineTo(...G(FAR, .1)); g.stroke();
+      const kf = (d, o) => { const [x, y] = G(d, o); return [x, y + 7 * sc / z(d)]; };
+      poly([G(NEAR, .2), G(FAR, .2), kf(FAR, .2), kf(NEAR, .2)], C.kerb);
+      g.strokeStyle = rgba(T.ink, .14); g.beginPath(); g.moveTo(...G(NEAR, .2)); g.lineTo(...G(FAR, .2)); g.stroke();
+      {
+        const d0 = 1.45, d1 = 1.95;
+        poly([G(d0, .2), G(d1, .2), kf(d1, .2), kf(d0, .2)], C.pool); gq(d0, d1, .205, .27, C.iron);
+        g.strokeStyle = rgba(T.ink, .3); g.beginPath();
+        for (let i = 0; i <= 9; i++) { const d = d0 + (d1 - d0) * i / 9; g.moveTo(...G(d, .205)); g.lineTo(...G(d, .27)); }
+        g.moveTo(...G(d0, .205)); g.lineTo(...G(d1, .205)); g.lineTo(...G(d1, .27)); g.lineTo(...G(d0, .27)); g.closePath(); g.stroke();
+      }
+      // puddles: one at the foot of the signal, more about the road and a few small ones on the pavement; each an
+      // oval with one or two more overlapping it, unevenly
+      const spots = [[-.3, .42, .3]];
+      for (let tries = 0; spots.length < 9 && tries < 80; tries++) {
+        const p = [rnd(NEAR + .25, 3.2), rnd(.03, 1.75), rnd(.1, .38)];
+        if (Math.abs(p[0] - MH[0]) < .6 && Math.abs(p[1] - MH[1]) < .4) continue;
+        if (p[1] < .2) p[2] = Math.min(p[2], .12);
+        spots.push(p);
+      }
+      const pud = this.pud = new Path2D(); let y0 = H, y1 = 0;
+      this.pools = [];
+      const oval = (x, y, a, c) => { pud.moveTo(x + a, y); pud.ellipse(x, y, a, c, 0, 0, TAU); y0 = Math.min(y0, y - c); y1 = Math.max(y1, y + c); };
+      for (const [d, o, s] of spots) {
+        const [x, y] = G(d, o), rx = WH * s / z(d) * .5, ry = rx * .2;
+        oval(x, y, rx, ry); this.pools.push([x, y, rx, ry]);
+        for (let i = 0, n = 1 + (Math.random() * 2 | 0); i < n; i++) {
+          const side = Math.random() < .5 ? -1 : 1;
+          oval(x + side * rx * rnd(.4, .8), y + ry * rnd(-.4, .4), rx * rnd(.3, .55), ry * rnd(.5, .85));
+        }
+      }
+      this.py0 = Math.max(0, Math.floor(y0)); this.py1 = Math.min(H, Math.ceil(y1));
+      g.fillStyle = C.pool; g.fill(pud); g.globalAlpha = light ? .1 : .07; g.strokeStyle = T.ink; g.stroke(pud); g.globalAlpha = 1;
+      // the wall, and its bricks: each its own shade, a little crooked, now and then one gone dark
+      poly([P(NEAR, 1.4), P(FAR, 1.4), P(FAR, 0), P(NEAR, 0)], C.wall);
+      if (op.wall !== 'plain') {
+        const rows = 52, bw = .17;
+        g.fillStyle = C.brick;
+        for (let r = 0; r < rows; r++) {
+          const h0 = r / rows * 1.3, h1 = (r + 1) / rows * 1.3, m = .012;
+          for (let d = NEAR + (r % 2) * bw / 2; d < FAR; d += bw) {
+            const j = () => rnd(-.006, .006);
+            const pts = [P(d + m, h0 + m * .5 + j()), P(d + bw - m, h0 + m * .5 + j()), P(d + bw - m, h1 - m * .5 + j()), P(d + m, h1 - m * .5 + j())];
+            if (pts[1][0] < -5) continue;
+            const wpx = pts[1][0] - pts[0][0];
+            if (wpx < 1.2) break;   // too far off to see; they fade out on the way there
+            g.globalAlpha = (light ? .12 : .16) * (Math.random() < .07 ? .3 : rnd(.55, 1)) * Math.min(1, (wpx - 1.2) / 8); poly(pts);
+          }
+        }
+      }
+      g.fillStyle = '#000000';   // grit
+      for (let i = 0, n = W * H / 500 | 0; i < n; i++) { const [px, py] = P(rnd(NEAR, 6), rnd(0, 1.3)); g.globalAlpha = rnd(.05, .2); g.fillRect(px, py, 1, 1); }
+      // far down the street the wall goes into the night's haze, a little at a time
+      g.globalAlpha = 1; gr = g.createLinearGradient(P(2.5, 0)[0], 0, VX, 0);
+      const haze = mixHex(C.wall, C.skyLow, .5); gr.addColorStop(0, rgba(haze, 0)); gr.addColorStop(1, rgba(haze, .85));
+      poly([P(2.5, 1.4), P(FAR, 1.4), P(FAR, 0), P(2.5, 0)], gr);
+      // what stands at the kerb, nearer than any sign, goes in a layer of its own drawn over the signs
+      [this.front, g] = mk(W, H);
+      // lamp posts along the kerb, their arms reaching out over the pavement
+      this.lamps = [-.35, 2.2, 5, 9.5].filter(d => d > NEAR + .2);
+      g.globalAlpha = 1; g.strokeStyle = C.pole; g.lineCap = 'round';
+      for (const d of this.lamps) {
+        g.lineWidth = Math.max(1, 5 * sc / z(d)); g.beginPath(); g.moveTo(...Q(d, .17, 0)); g.lineTo(...Q(d, .17, .5)); g.lineTo(...Q(d, .14, .5)); g.stroke();
+      }
+      g.lineCap = 'butt';
+      // traffic signs, in pictures only: a crossing ahead, one way, no parking
+      const pole = (d, ht) => { const [px, py] = G(d, .185), top = Q(d, .185, ht)[1]; g.strokeStyle = C.pole; g.lineWidth = Math.max(1, 3 * sc / z(d)); g.beginPath(); g.moveTo(px, py); g.lineTo(px, top); g.stroke(); return [px, top, sc / z(d)]; };
+      const sgn = (c, t) => mixHex(T.bg, c, light ? .85 : t), blk = light ? '#1d1b18' : dark(.6);
+      {
+        const [px, top, s] = pole(.35, .3), r = 26 * s, cy = top + r;
+        g.save(); g.translate(px, cy); g.rotate(Math.PI / 4); g.fillStyle = sgn('#e0c840', .35); g.fillRect(-r * .7, -r * .7, r * 1.4, r * 1.4);
+        g.strokeStyle = blk; g.lineWidth = 2 * s; g.strokeRect(-r * .62, -r * .62, r * 1.24, r * 1.24); g.restore();
+        g.strokeStyle = blk; g.lineWidth = 3 * s; g.lineCap = 'round'; g.beginPath();
+        g.arc(px, cy - r * .42, r * .11, 0, TAU); g.moveTo(px, cy - r * .28); g.lineTo(px - r * .04, cy + r * .1); g.lineTo(px - r * .2, cy + r * .42);
+        g.moveTo(px - r * .04, cy + r * .1); g.lineTo(px + r * .16, cy + r * .4); g.moveTo(px - r * .2, cy - r * .12); g.lineTo(px + r * .18, cy - r * .04); g.stroke();
+        g.lineCap = 'butt';
+      }
+      {
+        const [px, top, s] = pole(1.4, .36), w = 62 * s, h = 20 * s, x0 = px - w * .15, ay = top + h / 2, a = px - w * .05, e = px + w * .72;
+        g.fillStyle = sgn('#e8e8e0', .7); g.fillRect(x0, top, w, h); g.fillStyle = blk; g.fillRect(x0 + 2 * s, top + 2 * s, w - 4 * s, h - 4 * s);
+        g.fillStyle = sgn('#e8e8e0', .7); g.beginPath(); g.moveTo(a, ay - 2.5 * s); g.lineTo(e - 8 * s, ay - 2.5 * s); g.lineTo(e - 8 * s, ay - 6 * s); g.lineTo(e, ay);
+        g.lineTo(e - 8 * s, ay + 6 * s); g.lineTo(e - 8 * s, ay + 2.5 * s); g.lineTo(a, ay + 2.5 * s); g.closePath(); g.fill();
+      }
+      {
+        const [px, top, s] = pole(4.1, .32), r = 18 * s, cy = top + r;
+        g.fillStyle = sgn('#c03040', .55); g.beginPath(); g.arc(px, cy, r, 0, TAU); g.fill();
+        g.fillStyle = sgn('#3060a0', .5); g.beginPath(); g.arc(px, cy, r * .76, 0, TAU); g.fill();
+        g.strokeStyle = sgn('#c03040', .55); g.lineWidth = r * .24; g.beginPath(); g.moveTo(px - r * .54, cy - r * .54); g.lineTo(px + r * .54, cy + r * .54); g.stroke();
+      }
+      // the signal at the crossing: its pole and two housings (the lamps are drawn live)
+      {
+        const TL = -.15, tz = z(TL), ts = this.ts = sc / tz, [bx, by] = G(TL, .19);
+        const hd = this.head = { x: bx + 16 * ts, y: by - WH * .56 / tz, w: 22 * ts, h: 58 * ts }, pd = this.ped = { x: bx + 14 * ts, y: by - WH * .33 / tz, w: 22 * ts, h: 22 * ts };
+        g.strokeStyle = C.pole; g.lineWidth = Math.max(1, 5 * ts); g.beginPath(); g.moveTo(bx, by); g.lineTo(bx, hd.y - 6 * ts); g.stroke();
+        g.lineWidth = 3 * ts; g.beginPath(); g.moveTo(bx, hd.y + 10 * ts); g.lineTo(hd.x, hd.y + 10 * ts); g.moveTo(bx, pd.y + pd.h / 2); g.lineTo(pd.x, pd.y + pd.h / 2); g.stroke();
+        const box = mixHex(C.pole, '#000000', .3);
+        g.fillStyle = box; g.fillRect(hd.x, hd.y, hd.w, hd.h); g.fillRect(pd.x, pd.y, pd.w, pd.h);
+        g.fillStyle = dark(.7); g.fillRect(pd.x + 2 * ts, pd.y + 2 * ts, pd.w - 4 * ts, pd.h - 4 * ts);
+        for (let i = 0; i < 3; i++) {
+          const cy = hd.y + hd.h * (i + .5) / 3; g.fillStyle = dark(.7); g.beginPath(); g.arc(hd.x + hd.w / 2, cy, hd.w * .34, 0, TAU); g.fill();
+          g.fillStyle = box; g.fillRect(hd.x - 1, cy - hd.w * .42, hd.w + 2, hd.w * .12);   // a visor over each lamp
+        }
+        // where the red lamp and the hand show in the wet ground: the same point mirrored in it
+        const back = (x, y) => [((x - VX) * tz + VX) / WH, (by - y) * tz / WH];
+        const [ro, rh] = back(hd.x + hd.w / 2, hd.y + hd.h / 6), [po, ph] = back(pd.x + pd.w / 2, pd.y + pd.h / 2);
+        this.redR = Q(TL, ro, -rh); this.pedR = Q(TL, po, -ph);
+      }
+      g.globalAlpha = 1;
+      // the signs: words in tube, flat on the wall or on a blade hanging off it, and a shape or two; each in its
+      // own colour, spread down the street
+      const cols = [T.acc, T.ink, T.acc2, T.mask || T.acc], words = [...this.WORDS].sort(() => Math.random() - .5);
       const disp = ["'Instrument Serif'", "'Chakra Petch'", "'Saira Stencil One'"];
       if (!this.fonts) {            // the sign fonts may not be loaded yet: draw again once they are
         this.fonts = Promise.all(disp.map(f => document.fonts.load(`40px ${f}`))).then(() => { if (R === this) this.init(); });
       }
-      for (let i = 0, n = { two: 2, five: 5 }[op.signs] || 4; i < n; i++) {
-        const [sx, sy] = spots[i], col = cols[i % 3], tube = Math.max(2, u / 260);
-        if (i === 3) { this.signs.push(this.shape(sx * W, sy * fy, u * .09, col, tube, mk)); continue; }
-        const word = words[i], fam = disp[i % 3], size = u * (word.length > 6 ? .07 : .1), italic = fam.includes('Serif') ? 'italic ' : '';
-        const letters = [], tg = document.createElement('canvas').getContext('2d');
-        tg.font = `${italic}${size}px ${fam}`;
-        const total = tg.measureText(word).width, pad = size * .5;
-        let x = sx * W - total / 2;
-        for (const ch of word) {
-          const w = tg.measureText(ch).width, [o, c] = mk(w + pad * 2, size * 1.5 + pad * 2);
-          if (ch !== ' ') {
-            c.font = tg.font; c.textBaseline = 'middle'; c.lineJoin = 'round'; c.strokeStyle = col; c.lineWidth = tube;
-            c.shadowColor = col; c.shadowBlur = tube * 6; c.strokeText(ch, pad, o.height / 2); c.shadowBlur = tube * 2; c.strokeText(ch, pad, o.height / 2);
-            c.shadowBlur = 0; c.strokeStyle = light ? col : '#ffffff'; c.globalAlpha = .55; c.lineWidth = tube * .4; c.strokeText(ch, pad, o.height / 2);
-          }
-          letters.push({ img: o, x: x - pad, y: sy * fy - o.height / 2, on: 1 });
-          x += w;
+      const tube = Math.max(2, u / 260), n = { two: 5, five: 11 }[op.signs] || 8, badP = { rare: .2, often: 1 }[op.flicker] || .6;
+      // one letter in tube: stroked, glowing, a hot core; into its own little canvas
+      const glyph = (ch, font, size, col) => {
+        const tg = mk(1, 1)[1]; tg.font = font;
+        const w = tg.measureText(ch).width, pad = size * .5, [o, c] = mk(w + pad * 2, size * 1.5 + pad * 2);
+        if (ch !== ' ') {
+          c.font = font; c.textBaseline = 'middle'; c.lineJoin = 'round'; c.strokeStyle = col; c.lineWidth = tube;
+          c.shadowColor = col; c.shadowBlur = tube * 6; c.strokeText(ch, pad, o.height / 2); c.shadowBlur = tube * 2; c.strokeText(ch, pad, o.height / 2);
+          c.shadowBlur = 0; c.strokeStyle = light ? col : '#ffffff'; c.globalAlpha = .55; c.lineWidth = tube * .4; c.strokeText(ch, pad, o.height / 2);
         }
-        this.signs.push({ letters, col, x: sx * W, y: sy * fy, buzz: 0, bad: Math.random() < ({ rare: .2, often: 1 }[op.flicker] || .6) ? 1 + (Math.random() * (letters.length - 1) | 0) : -1 });
+        return { img: o, adv: w, pad, blank: ch === ' ' };
+      };
+      this.signs = [];
+      for (let i = 0; i < n; i++) {
+        const col = cols[i % 4], word = words[i % words.length], fam = disp[i % 3], italic = fam.includes('Serif') ? 'italic ' : '';
+        const kind = i % 5 === 3 ? 'shape' : word.length <= 7 && !word.includes(' ') && Math.random() < .45 ? 'blade' : 'flat';
+        const sg = { kind, col, buzz: 0, bad: -1, letters: [] };
+        if (kind === 'shape') {
+          const s = H * .07, img = this.shape(s, col, tube, mk);
+          sg.letters.push({ img, ox: 0, oy: 0, on: 1 }); sg.wd = s * 3 / DPX; sg.hh = s * 3 / WH;
+        } else if (kind === 'flat') {
+          const size = H * (word.length > 6 ? .07 : .09), font = `${italic}${size}px ${fam}`;
+          let x = 0;
+          for (const ch of word) { const gl = glyph(ch, font, size, col); if (!gl.blank) sg.letters.push({ img: gl.img, ox: x - gl.pad, oy: 0, on: 1 }); x += gl.adv; }
+          sg.wd = x / DPX; sg.hh = (size * 2.5) / WH;
+        } else {
+          // a blade: the letters one above the other, or across for a short word now and then
+          const size = H * .06, font = `${italic}${size}px ${fam}`, across = word.length <= 4 && Math.random() < .5, step = size * 1.05;
+          const gls = [...word].map(ch => glyph(ch, font, size, col));
+          if (across) {
+            const total = gls.reduce((a, q) => a + q.adv, 0); let x = -total / 2;
+            for (const q of gls) { sg.letters.push({ img: q.img, ox: x - q.pad, oy: -q.img.height / 2, on: 1 }); x += q.adv; }
+            sg.pw = total + size * .8; sg.ph = size * 1.6;
+          } else {
+            gls.forEach((q, k) => sg.letters.push({ img: q.img, ox: -q.img.width / 2, oy: (k - (gls.length - 1) / 2) * step - q.img.height / 2, on: 1 }));
+            sg.pw = Math.max(...gls.map(q => q.adv)) + size * .7; sg.ph = gls.length * step + size * .5;
+          }
+          sg.off = size * .35; sg.wd = .12; sg.hh = sg.ph / WH;
+        }
+        if (sg.letters.length > 1 && Math.random() < badP) sg.bad = 1 + (Math.random() * (sg.letters.length - 1) | 0);
+        this.signs.push(sg);
       }
+      // down the street, a gap between each; each at its own height, kept on the wall
+      const used = this.signs.reduce((a, s) => a + s.wd, 0), gap = Math.max(.25, (9 - used) / n);
+      let d = .7;
+      for (const sg of this.signs) {
+        sg.d = d; d += sg.wd + gap * rnd(.7, 1.3);
+        const lo = .17 + sg.hh / 2, hi = Math.max(lo, .52 - sg.hh / 2); sg.hc = rnd(lo, hi);
+      }
+      this.signs.sort((a, q) => q.d - a.d);   // far ones first
       this.drops = Array.from({ length: op.rain === 'off' ? 0 : Math.round(W / (op.rain === 'heavy' ? 3.5 : 9)) }, () => ({ x: rnd(0, W), y: rnd(-H, H), v: rnd(.8, 1.2), l: rnd(.5, 1.2) }));
+      this.puffs = Array.from({ length: 14 }, () => ({ k: Math.random(), x: rnd(-1, 1), v: rnd(.7, 1.3) }));
+      [this.refl, this.rg] = mk(W, H);
+      this.ripples = []; this.t = 0; this.clk = 0;
       this.acc = 0; this.paint();
     },
     // an outline shape in tube: an arrow, a star, a ring with a bolt, a cocktail glass
-    shape(x, y, s, col, tube, mk) {
+    shape(s, col, tube, mk) {
       const [o, c] = mk(s * 3, s * 3), k = Math.random() * 4 | 0;
       c.translate(s * 1.5, s * 1.5); c.strokeStyle = col; c.lineWidth = tube; c.lineJoin = c.lineCap = 'round';
       const path = () => {
@@ -1856,31 +2062,129 @@ const STYLES = {
       };
       c.shadowColor = col; c.shadowBlur = tube * 6; path(); c.stroke(); c.shadowBlur = tube * 2; c.stroke();
       c.shadowBlur = 0; c.strokeStyle = '#ffffff'; c.globalAlpha = .5; c.lineWidth = tube * .4; c.stroke();
-      return { letters: [{ img: o, x: x - s * 1.5, y: y - s * 1.5, on: 1 }], col, x, y, buzz: 0, bad: -1 };
+      return o;
     },
+    // a letter flat on the wall (or mirrored in the ground): its canvas mapped onto the wall's plane
+    onWall(c, sg, l, m) {
+      const bw = l.img.width, bh = l.img.height, dl = sg.d + l.ox / this.DPX, dr = dl + bw / this.DPX;
+      const ht = (sg.hc + bh / 2 / this.WH) * m, hb = (sg.hc - bh / 2 / this.WH) * m;
+      const p0 = this.Q(dl, 0, ht), p1 = this.Q(dr, 0, ht), p3 = this.Q(dl, 0, hb);
+      c.setTransform((p1[0] - p0[0]) / bw, (p1[1] - p0[1]) / bw, (p3[0] - p0[0]) / bh, (p3[1] - p0[1]) / bh, p0[0], p0[1]);
+    },
+    // a blade sign's panel, facing the street: its centre and scale on screen (mirrored: m = -1)
+    blade(sg, m) {
+      const s = 1 / this.z(sg.d), ht = sg.hc + sg.ph / 2 / this.WH, [ax, ay] = this.Q(sg.d, 0, ht * m);
+      return { ax, ay, s, x: ax + sg.off * s, y: m > 0 ? ay : ay - sg.ph * s, w: sg.pw * s, h: sg.ph * s };
+    },
+    glow(c, x, y, r, col, a, stretch) {
+      if (a <= .01 || r < 1) return;
+      c.setTransform(1, 0, 0, stretch, x, y);
+      const gr = c.createRadialGradient(0, 0, 0, 0, 0, r); gr.addColorStop(0, rgba(col, a)); gr.addColorStop(1, rgba(col, 0));
+      c.fillStyle = gr; c.fillRect(-r, -r, r * 2, r * 2); c.setTransform(1, 0, 0, 1, 0, 0);
+    },
+    blink(period, duty, phase) { const p = ((this.clk + phase) % period) / period; return p < duty ? Math.min(1, p / duty * 8, (duty - p) / duty * 8) : 0; },
     paint() {
       if (!W || !H) return;
-      const light = T.mode === 'light', fy = this.fy;
-      cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over'; cx.drawImage(this.back, 0, 0);
-      cx.globalCompositeOperation = light ? 'source-over' : 'lighter';
+      const light = this.light, add = light ? 'source-over' : 'lighter', Q = this.Q, z = this.z, sc = this.sc, WH = this.WH;
+      const red = this.blink(1.3, .5, 0), hand = this.blink(1, .5, .37), RED = '#ff2a20', WALK = '#ff5a2a';
+      const lit = sg => sg.letters.reduce((a, l) => a + l.on, 0) / sg.letters.length;
+      cx.setTransform(1, 0, 0, 1, 0, 0); cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over'; cx.drawImage(this.back, 0, 0);
+      for (const [x, y, ph] of this.beacons) {   // the towers' warning lights, slow
+        const a = this.blink(3, .3, ph);
+        cx.fillStyle = mixHex(mixHex(T.bg, '#000000', .3), RED, .25 + .75 * a); cx.fillRect(x - sc * .8, y - sc * .8, sc * 1.6, sc * 1.6);
+        cx.globalCompositeOperation = add; this.glow(cx, x, y, 7 * sc, RED, .5 * a, 1); cx.globalCompositeOperation = 'source-over';
+      }
+      // the street upside down, as the wet ground holds it: into a layer of its own
+      const rg = this.rg;
+      rg.setTransform(1, 0, 0, 1, 0, 0); rg.globalAlpha = 1; rg.globalCompositeOperation = 'source-over'; rg.clearRect(0, 0, W, H);
+      rg.globalCompositeOperation = add;
       for (const sg of this.signs) {
-        const lit = sg.letters.reduce((a, l) => a + l.on, 0) / sg.letters.length;
-        if (lit > .05) {                                    // the glow the sign throws on the wall around it
-          const r = this.u * .28, gr = cx.createRadialGradient(sg.x, sg.y, 0, sg.x, sg.y, r);
-          gr.addColorStop(0, rgba(sg.col, .07 * lit)); gr.addColorStop(1, rgba(sg.col, 0)); cx.globalAlpha = 1; cx.fillStyle = gr; cx.fillRect(sg.x - r, sg.y - r, r * 2, r * 2);
+        const on = lit(sg);
+        if (sg.kind === 'blade') {
+          const b = this.blade(sg, -1);
+          for (const l of sg.letters) {
+            if (l.on <= 0) continue;
+            rg.setTransform(b.s, 0, 0, -b.s, b.x + b.w / 2 + l.ox * b.s, b.y + b.h / 2 - l.oy * b.s); rg.globalAlpha = .55 * l.on; rg.drawImage(l.img, 0, 0);
+          }
+        } else for (const l of sg.letters) { if (l.on <= 0) continue; this.onWall(rg, sg, l, -1); rg.globalAlpha = .5 * l.on; rg.drawImage(l.img, 0, 0); }
+        rg.setTransform(1, 0, 0, 1, 0, 0); rg.globalAlpha = 1;
+        const [gx, gy] = Q(sg.d + sg.wd / 2, 0, -sg.hc);
+        this.glow(rg, gx, gy, WH * .1 / z(sg.d), sg.col, (light ? .12 : .3) * on, 2.4);
+      }
+      for (const d of this.lamps) { const [x, y] = Q(d, .14, -.5); this.glow(rg, x, y, 60 * sc / z(d), this.LAMP, light ? .2 : .5, 3); }
+      this.glow(rg, ...this.redR, 34 * this.ts, RED, .9 * red, 3);
+      this.glow(rg, ...this.pedR, 22 * this.ts, WALK, .7 * hand, 3);
+      rg.globalCompositeOperation = 'source-over';
+      // a faint sheen of it over all the wet ground; in the puddles the whole of it, in thin bands, each pushed
+      // sideways a little by the ripples (still water when there's no rain)
+      cx.globalCompositeOperation = add; cx.globalAlpha = .16; cx.drawImage(this.refl, 0, 0);
+      cx.save(); cx.clip(this.pud); cx.globalAlpha = 1;
+      const amp = this.u * (this.op.rain === 'off' ? .0006 : .0028), sh = 3;
+      for (let y = this.py0, j = 0; y < this.py1; y += sh, j++) {
+        const wob = Math.sin(j * 1.3 + this.t * 4) * amp + Math.sin(j * .37 - this.t * 2.3) * amp * .6, hh = Math.min(sh, this.py1 - y);
+        cx.drawImage(this.refl, 0, y, W, hh, wob, y, W, hh);
+      }
+      cx.globalCompositeOperation = 'source-over'; cx.strokeStyle = T.ink; cx.lineWidth = 1;
+      for (const [x, y, age, size] of this.ripples) {             // drops landing in the puddles: a ring that spreads and fades
+        const r = size * (.15 + age / .9);
+        cx.globalAlpha = (light ? .3 : .22) * (1 - age / .9); cx.beginPath(); cx.ellipse(x, y, r, r * .22, 0, 0, TAU); cx.stroke();
+      }
+      cx.restore();
+      // the light each sign throws on the bricks around it
+      cx.globalCompositeOperation = add;
+      for (const sg of this.signs) { const [x, y] = Q(sg.d + sg.wd / 2, 0, sg.hc); this.glow(cx, x, y, WH * .25 / z(sg.d), sg.col, (light ? .06 : .16) * lit(sg), 1); }
+      // the signs, far ones first
+      cx.globalCompositeOperation = 'source-over';
+      for (const sg of this.signs) {
+        if (sg.kind === 'blade') {
+          const b = this.blade(sg, 1);
+          cx.globalAlpha = 1; cx.strokeStyle = this.C.pole; cx.lineWidth = Math.max(1, 3 * sc * b.s);
+          cx.beginPath(); cx.moveTo(b.ax, b.y + b.h * .12); cx.lineTo(b.x, b.y + b.h * .12); cx.moveTo(b.ax, b.y + b.h * .88); cx.lineTo(b.x, b.y + b.h * .88); cx.stroke();
+          cx.fillStyle = light ? mixHex(T.bg, T.ink, .1) : mixHex(T.bg, '#000000', .3); cx.fillRect(b.x, b.y, b.w, b.h);
+          cx.strokeStyle = sg.col; cx.globalAlpha = .4 + .3 * lit(sg); cx.lineWidth = Math.max(1, 2 * sc * b.s); cx.strokeRect(b.x, b.y, b.w, b.h);
+          cx.globalCompositeOperation = add;
+          for (const l of sg.letters) { cx.setTransform(b.s, 0, 0, b.s, b.x + b.w / 2 + l.ox * b.s, b.y + b.h / 2 + l.oy * b.s); cx.globalAlpha = .12 + .88 * l.on; cx.drawImage(l.img, 0, 0); }
+          cx.setTransform(1, 0, 0, 1, 0, 0); cx.globalCompositeOperation = 'source-over';
+        } else {
+          cx.globalCompositeOperation = add;
+          for (const l of sg.letters) { this.onWall(cx, sg, l, 1); cx.globalAlpha = .12 + .88 * l.on; cx.drawImage(l.img, 0, 0); }
+          cx.setTransform(1, 0, 0, 1, 0, 0); cx.globalCompositeOperation = 'source-over';
         }
-        for (const l of sg.letters) {
-          cx.globalAlpha = .12 + .88 * l.on; cx.drawImage(l.img, l.x, l.y);
-          // and its reflection on the wet ground, stretched and broken up
-          const ry = fy + (fy - l.y - l.img.height) * .35;
-          cx.globalAlpha = .16 * l.on; cx.drawImage(l.img, l.x, ry + l.img.height * .6, l.img.width, -l.img.height * .6);
+      }
+      cx.globalAlpha = 1; cx.drawImage(this.front, 0, 0);
+      // the signal: flashing red, the other two lamps dark; below it a red hand flashing on its own beat
+      {
+        const hd = this.head, pd = this.ped, ts = this.ts, x = hd.x + hd.w / 2, r = hd.w * .3;
+        const lamp = (y, c, a) => { cx.fillStyle = mixHex(mixHex(T.bg, '#000000', .5), c, .15 + .85 * a); cx.beginPath(); cx.arc(x, y, r, 0, TAU); cx.fill(); };
+        cx.globalAlpha = 1; lamp(hd.y + hd.h / 6, RED, red); lamp(hd.y + hd.h / 2, '#5a3a10', 0); lamp(hd.y + hd.h * 5 / 6, '#103a18', 0);
+        const hx = pd.x + pd.w / 2, hy = pd.y + pd.h / 2, s = ts * 1.05;
+        cx.fillStyle = mixHex(mixHex(T.bg, '#000000', .5), WALK, .12 + .88 * hand); cx.beginPath(); cx.moveTo(hx - 4 * s, hy + 6 * s); cx.lineTo(hx - 4 * s, hy - 3 * s);
+        for (let i = 0; i < 4; i++) { const fx = hx - 3.5 * s + i * 2.4 * s, tip = hy - 7 * s + (i === 0 || i === 3 ? 1.5 * s : 0); cx.lineTo(fx, tip); cx.lineTo(fx + 1.6 * s, tip); cx.lineTo(fx + 1.6 * s, hy - 3 * s); }
+        cx.lineTo(hx + 6.5 * s, hy - s); cx.lineTo(hx + 4 * s, hy + 6 * s); cx.closePath(); cx.fill();
+        cx.globalCompositeOperation = add;
+        this.glow(cx, x, hd.y + hd.h / 6, 46 * ts, RED, .7 * red, 1);
+        this.glow(cx, hx, hy, 30 * ts, WALK, .5 * hand, 1);
+      }
+      // the lamps' light
+      for (const d of this.lamps) {
+        const [x, y] = Q(d, .14, .5), r = 34 * sc / z(d) * 2;
+        this.glow(cx, x, y, r, this.LAMP, light ? .25 : .45, 1);
+        this.glow(cx, x, y, r * .15, '#fff2dc', light ? .4 : .9, 1);
+        const [gx, gy] = Q(d, .14, 0); this.glow(cx, gx, gy, r * 1.3, this.LAMP, light ? .06 : .12, .25);
+      }
+      // steam drifting up out of the manhole's vent
+      cx.globalCompositeOperation = 'source-over';
+      { const [mx, my, rx] = this.mh;
+        for (const p of this.puffs) {
+          const k = p.k, x = mx + p.x * rx * .5 + Math.sin(this.t * .8 + p.x * 9) * rx * .3 * k, y = my - k * WH * .42 / z(.55), r = rx * (.25 + k * .9);
+          this.glow(cx, x, y, r, light ? T.ink : '#c8bed7', (light ? .05 : .07) * Math.sin(k * Math.PI), 1);
         }
       }
       // rain: thin streaks, catching the light
-      cx.globalAlpha = light ? .12 : .1; cx.strokeStyle = T.ink; cx.lineWidth = 1; cx.beginPath();
+      cx.globalAlpha = light ? .12 : .11; cx.strokeStyle = T.ink; cx.lineWidth = 1; cx.beginPath();
       for (const d of this.drops) { cx.moveTo(d.x, d.y); cx.lineTo(d.x - d.l * 2, d.y + d.l * this.u * .035); }
       cx.stroke();
-      cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over';
+      cx.setTransform(1, 0, 0, 1, 0, 0); cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over';
     },
     frame(dt) {
       if (RAIN <= 0 || !(dt = every(this, 24, dt))) return;
@@ -1895,6 +2199,15 @@ const STYLES = {
         }
       }
       for (const d of this.drops) { d.y += d.v * this.u * 1.6 * dt * sp; if (d.y > H) { d.y = rnd(-80, 0); d.x = rnd(0, W + 40); } }
+      this.t += dt * sp; this.clk += dt;   // the signal keeps real time, whatever the motion
+      for (const p of this.puffs) p.k = (p.k + dt * sp * .12 * p.v) % 1;
+      for (const r of this.ripples) r[2] += dt * sp;
+      this.ripples = this.ripples.filter(r => r[2] < .9);
+      for (let n = dt * sp * ({ off: 0, heavy: 20 }[this.op.rain] ?? 7); n > 0 && this.pools.length; n--) {
+        if (n < 1 && Math.random() > n) break;
+        const [px, py, rx, ry] = this.pools[Math.random() * this.pools.length | 0], a = rnd(0, TAU), k = Math.sqrt(Math.random()) * .8;
+        this.ripples.push([px + Math.cos(a) * rx * k, py + Math.sin(a) * ry * k, 0, rx * .35]);
+      }
       this.paint();
     },
   },

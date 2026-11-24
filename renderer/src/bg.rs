@@ -3056,16 +3056,92 @@ impl Background for Oracle {
     }
 }
 
-/// neon signs on a wet brick wall in the rain: two or three words and a shape in tube, each in its own colour, a
-/// glow thrown on the wall, broken reflections on the ground; now and then a sign stutters, and one letter won't
-/// stay lit. Each letter is drawn once (its glyph outline stroked as tube, blurred twice for the glow, a hot core)
-/// into its own little bitmap; the wall too. Each frame lays them out with their brightness. 24 fps; still at 0.
-pub struct Signs { back: ID2D1Bitmap1, signs: Vec<Sign>, drops: Vec<(f32, f32, f32, f32)>, rng: Rng, u: f32, w: f32, h: f32, fy: f32,
+/// a street at night in the rain, seen from the pavement: a brick wall running off to a far vanishing point, neon
+/// signs on it and hanging off it on brackets, lamps along the kerb, a signal flashing red at the crossing, a city's
+/// lights far off. The wet road holds it all upside down: a faint sheen everywhere, and in the puddles the whole of
+/// it, broken up by the rain. One-point perspective: d is how far down the street (0 near the camera), o how far
+/// out from the wall across the ground, h how high (in wall heights). The street is drawn once. Each frame: the
+/// signs (each letter its own little bitmap of tube, mapped onto the wall's plane), their mirror image in a layer of
+/// its own (a second drawing context) laid on the ground in thin bands through the puddles' outline, each band
+/// shifted a little by the ripples; the lamps, the signal, the steam, the rain. The page's "signs" is the same
+/// street. 24 fps; still at 0.
+pub struct Signs { back: ID2D1Bitmap1, front: ID2D1Bitmap1, signs: Vec<Sign>, drops: Vec<(f32, f32, f32, f32)>, rng: Rng, u: f32, w: f32, h: f32,
+                   cam: Cam, refl: ID2D1Bitmap1, pdc: ID2D1DeviceContext, pud: ID2D1Geometry, pools: Vec<(f32, f32, f32, f32)>,
+                   py: (f32, f32), ripples: Vec<(f32, f32, f32, f32)>, t: f32, clk: f32, puffs: Vec<(f32, f32, f32)>,   // ripples: x, y, age, size
+                   lamps: Vec<f32>, lampc: Color, pole: Color, panel: Color, head: [f32; 4], ped: [f32; 4], ts: f32, hand: ID2D1PathGeometry,
+                   red_r: (f32, f32), ped_r: (f32, f32), mh: (f32, f32, f32), beacons: Vec<(f32, f32, f32)>, grads: Vec<(Color, ID2D1GradientStopCollection)>,
                    still: bool, flick: f32, rain: u8, built: (usize, bool, u8) }   // options: flicker rate, rain; built: signs, plain wall, flicker
 
-struct Sign { letters: Vec<(ID2D1Bitmap1, f32, f32, f32, f32, f32)>, col: Color, x: f32, y: f32, buzz: f32, bad: Option<usize> }   // bitmap, x, y, w, h, on
+/// letters: bitmap, x, y (from the sign's start, or a blade's centre), w, h, on; kind: 0 flat on the wall, 1 a blade, 2 a shape
+struct Sign { letters: Vec<(ID2D1Bitmap1, f32, f32, f32, f32, f32)>, col: Color, kind: u8, d: f32, hc: f32, wd: f32, hh: f32,
+              pw: f32, ph: f32, off: f32, buzz: f32, bad: Option<usize> }
 
-const SIGN_WORDS: [&str; 8] = ["OPEN", "LIVE", "ALL NIGHT", "NO VACANCY", "ON AIR", "COFFEE", "TATTOO", "ARCADE"];
+type Mx = windows::Foundation::Numerics::Matrix3x2;
+
+/// the street's camera: the vanishing point far right, a little below the middle; k sets how fast things shrink with
+/// depth, so a brick looks like a brick at any width (kept sane on a tall screen); dpx: pixels in one unit of d
+#[derive(Clone, Copy)]
+struct Cam { vx: f32, vy: f32, base: f32, wh: f32, k: f32, sc: f32, dpx: f32 }
+impl Cam {
+    fn z(&self, d: f32) -> f32 { 1.0 + d * self.k }
+    fn q(&self, d: f32, o: f32, h: f32) -> (f32, f32) {
+        let k = self.z(d);
+        (self.vx + (o * self.wh - self.vx) / k, self.vy + (self.base - self.wh * h - self.vy) / k)
+    }
+    fn p(&self, d: f32, o: f32, h: f32) -> D2D_POINT_2F { let (x, y) = self.q(d, o, h); p2(x, y) }
+    /// a letter flat on the wall (m = 1) or mirrored in the ground (m = -1): its bitmap mapped onto the wall's plane
+    fn on_wall(&self, sg: &Sign, ox: f32, bw: f32, bh: f32, m: f32) -> Mx {
+        let dl = sg.d + ox / self.dpx;
+        let dr = dl + bw / self.dpx;
+        let (ht, hb) = ((sg.hc + bh / 2.0 / self.wh) * m, (sg.hc - bh / 2.0 / self.wh) * m);
+        let (p0, p1, p3) = (self.q(dl, 0.0, ht), self.q(dr, 0.0, ht), self.q(dl, 0.0, hb));
+        Mx { M11: (p1.0 - p0.0) / bw, M12: (p1.1 - p0.1) / bw, M21: (p3.0 - p0.0) / bh, M22: (p3.1 - p0.1) / bh, M31: p0.0, M32: p0.1 }
+    }
+    /// a blade's panel, facing the street: (where it meets the wall, its left, top, width, height, scale); mirrored: m = -1
+    fn blade(&self, sg: &Sign, m: f32) -> (f32, f32, f32, f32, f32, f32) {
+        let s = 1.0 / self.z(sg.d);
+        let ht = sg.hc + sg.ph / 2.0 / self.wh;
+        let (ax, ay) = self.q(sg.d, 0.0, ht * m);
+        (ax, ax + sg.off * s, if m > 0.0 { ay } else { ay - sg.ph * s }, sg.pw * s, sg.ph * s, s)
+    }
+}
+
+fn hx(c: u32) -> Color { [((c >> 16) & 255) as f32 / 255.0, ((c >> 8) & 255) as f32 / 255.0, (c & 255) as f32 / 255.0, 1.0] }
+
+/// on for `duty` of each `period`, with soft edges, like a bulb warming and cooling
+fn blink(clk: f32, period: f32, duty: f32, phase: f32) -> f32 {
+    let p = ((clk + phase) % period) / period;
+    if p < duty { (p / duty * 8.0).min((duty - p) / duty * 8.0).min(1.0) } else { 0.0 }
+}
+
+/// a soft round light: `col` at opacity `a` in the middle, fading out by `r` (`stretch` times taller than wide)
+fn glow(grads: &mut Vec<(Color, ID2D1GradientStopCollection)>, dc: &ID2D1DeviceContext, x: f32, y: f32, r: f32, col: Color, a: f32, stretch: f32) -> Result<()> {
+    if a <= 0.01 || r < 1.0 { return Ok(()); }
+    let coll = match grads.iter().find(|g| g.0 == col) {
+        Some(g) => g.1.clone(),
+        None => {
+            let rt: &ID2D1RenderTarget = dc;
+            let c = unsafe { rt.CreateGradientStopCollection(&[D2D1_GRADIENT_STOP { position: 0.0, color: D2D1_COLOR_F { r: col[0], g: col[1], b: col[2], a: 1.0 } },
+                                                                 D2D1_GRADIENT_STOP { position: 1.0, color: D2D1_COLOR_F { r: col[0], g: col[1], b: col[2], a: 0.0 } }],
+                                                               D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP)? };
+            grads.push((col, c.clone()));
+            c
+        }
+    };
+    unsafe {
+        let b = dc.CreateRadialGradientBrush(&D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES { center: p2(x, y), gradientOriginOffset: p2(0.0, 0.0),
+                                                                                    radiusX: r, radiusY: r * stretch }, None, &coll)?;
+        b.SetOpacity(a.min(1.0));
+        dc.FillRectangle(&rect(x - r, y - r * stretch, r * 2.0, r * 2.0 * stretch), &b);
+    }
+    Ok(())
+}
+
+// the page's WORDS: a street's worth, and a few for the people who leave this running while they code
+const SIGN_WORDS: [&str; 32] = ["OPEN", "LIVE", "ALL NIGHT", "NO VACANCY", "ON AIR", "COFFEE", "TATTOO", "ARCADE",
+    "HOTEL", "DINER", "NOODLES", "RAMEN", "PIZZA", "KARAOKE", "RECORDS", "VIDEO", "LAUNDRY", "JAZZ", "BOWLING", "CINEMA",
+    "PSYCHIC", "DONUTS", "24 HOURS", "COME IN", "CLOSED", "DANCING", "SHIP IT", "NO BUGS", "DEPLOY", "IT WORKS", "LGTM",
+    "HELLO WORLD"];
 
 fn font_face(fonts: &Fonts, fam: &str) -> Result<IDWriteFontFace> {
     let w: Vec<u16> = fam.encode_utf16().chain([0]).collect();
@@ -3079,60 +3155,377 @@ fn font_face(fonts: &Fonts, fam: &str) -> Result<IDWriteFontFace> {
 
 impl Signs {
     fn built(o: &Json) -> (usize, bool, u8) {
-        (match o.get("signs").str() { Some("two") => 2, Some("five") => 5, _ => 4 }, o.get("wall").str() == Some("plain"),
+        (match o.get("signs").str() { Some("two") => 5, Some("five") => 11, _ => 8 }, o.get("wall").str() == Some("plain"),
          match o.get("flicker").str() { Some("rare") => 1, Some("often") => 2, _ => 0 })
     }
 
     fn new(g: &Gfx, fonts: &Fonts, look: &Look, o: &Json) -> Result<Signs> {
         let (w, h) = (g.w as f32, g.h as f32);
         let u = w.min(h);
-        let fy = (h * 0.8).round();
         let light = look.light;
         let built = Self::built(o);
         let mut rng = Rng(0x5195_0000_0000_0001 ^ (std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(1) | 1));
+        let vx = w * 0.86;
+        let cam = Cam { vx, vy: h * 0.4, base: h * 0.76, wh: h * 1.26, k: (0.627 * h / vx).min(0.5), sc: h / 420.0, dpx: h * 0.59 };
+        let (sc, wh) = (cam.sc, cam.wh);
+        let near = (-1.3f32).max((0.4 - 1.0) / cam.k);
+        let far = 80.0f32;
+        let black = [0.0, 0.0, 0.0, 1.0];
+        let toward = |c: Color, t: f32| mixc(look.bg, c, t);
+        let dark = |t: f32| mixc(look.bg, black, t);
+        let sky_top = if light { toward(look.acc2, 0.06) } else { dark(0.5) };
+        let sky_low = if light { toward(look.acc, 0.1) } else { toward(look.acc2, 0.14) };
+        let road = if light { toward(look.ink, 0.16) } else { dark(0.15) };
+        let walk = if light { toward(look.ink, 0.08) } else { toward(look.ink, 0.05) };
+        let kerb = if light { toward(look.ink, 0.2) } else { toward(look.ink, 0.09) };
+        let wall = if light { toward(look.acc, 0.06) } else { toward(look.acc, 0.05) };
+        let brick = mixc(look.acc, hx(0xb0603c), 0.5);
+        let iron = if light { toward(look.ink, 0.35) } else { toward(look.ink, 0.1) };
+        let pole = if light { toward(look.ink, 0.45) } else { toward(look.ink, 0.16) };
+        let pool = mixc(road, sky_low, if light { 0.45 } else { 0.38 });
+        let lampc = mixc(hx(0xffb347), look.ink, 0.25);
         let factory = unsafe { g.dc.GetFactory()? };
         let back = g.surface(w, h)?;
+        let front = g.surface(w, h)?;
         let dc = &g.dc;
         let old = unsafe { dc.GetTarget()? };
-        unsafe {   // the wall: courses of brick, barely there; the wet ground below
+        // one shape of straight edges, or many (each its own figure) in one geometry
+        let figs = |list: &[&[D2D_POINT_2F]]| -> Result<ID2D1PathGeometry> {
+            unsafe {
+                let p = factory.CreatePathGeometry()?;
+                let k = p.Open()?;
+                for pts in list {
+                    k.BeginFigure(pts[0], D2D1_FIGURE_BEGIN_FILLED);
+                    for q in &pts[1..] { k.AddLine(*q); }
+                    k.EndFigure(D2D1_FIGURE_END_CLOSED);
+                }
+                k.Close()?;
+                Ok(p)
+            }
+        };
+        let br = |c: Color, a: f32| -> Result<ID2D1SolidColorBrush> { let b = g.brush(c)?; unsafe { b.SetOpacity(a); } Ok(b) };
+        let fill = |pts: &[D2D_POINT_2F], c: Color, a: f32| -> Result<()> { unsafe { dc.FillGeometry(&figs(&[pts])?, &br(c, a)?, None); } Ok(()) };
+        let gq = |d0: f32, d1: f32, o0: f32, o1: f32, c: Color, a: f32| fill(&[cam.p(d0, o0, 0.0), cam.p(d1, o0, 0.0), cam.p(d1, o1, 0.0), cam.p(d0, o1, 0.0)], c, a);
+        let line = |a: D2D_POINT_2F, b: D2D_POINT_2F, br: &ID2D1SolidColorBrush, wd: f32, st: Option<&ID2D1StrokeStyle>| unsafe { dc.DrawLine(a, b, br, wd, st); };
+        let round = unsafe { factory.CreateStrokeStyle(&D2D1_STROKE_STYLE_PROPERTIES { startCap: D2D1_CAP_STYLE_ROUND, endCap: D2D1_CAP_STYLE_ROUND,
+                                                                                         lineJoin: D2D1_LINE_JOIN_ROUND, ..Default::default() }, None)? };
+        let ell = |x: f32, y: f32, a: f32, b: f32| D2D1_ELLIPSE { point: p2(x, y), radiusX: a, radiusY: b };
+        let mh = (0.55f32, 1.3f32);
+        let mhs;
+        let mut pools: Vec<(f32, f32, f32, f32)> = Vec::new();
+        let mut ovals: Vec<Option<ID2D1Geometry>> = Vec::new();
+        let mut py = (h, 0.0f32);
+        let mut towers: Vec<(f32, f32, f32)> = Vec::new();
+        let beacons: Vec<(f32, f32, f32)>;
+        let lamps: Vec<f32> = [-0.35f32, 2.2, 5.0, 9.5].into_iter().filter(|d| *d > near + 0.2).collect();
+        let (tl, tz) = (-0.15f32, cam.z(-0.15));
+        let ts = sc / tz;
+        let (tbx, tby) = cam.q(tl, 0.19, 0.0);
+        let head = [tbx + 16.0 * ts, tby - wh * 0.56 / tz, 22.0 * ts, 58.0 * ts];
+        let ped = [tbx + 14.0 * ts, tby - wh * 0.33 / tz, 22.0 * ts, 22.0 * ts];
+        unsafe {
             dc.SetTarget(&back);
             dc.BeginDraw();
-            dc.Clear(Some(&rgba(look.bg)));
-            let ink = g.brush(look.ink)?;
-            if !built.1 {
-                ink.SetOpacity(if light { 0.06 } else { 0.035 });
-                let bh = (u / 40.0).round().max(10.0);
-                let bw = bh * 3.2;
-                let (mut y, mut r) = (0.0, 0);
-                while y < fy {
-                    dc.DrawLine(p2(0.0, y + 0.5), p2(w, y + 0.5), &ink, 1.0, None);
-                    let mut x = (r % 2) as f32 * bw / 2.0;
-                    while x < w { let xx = x.round() + 0.5; dc.DrawLine(p2(xx, y), p2(xx, fy.min(y + bh)), &ink, 1.0, None); x += bw; }
-                    y += bh; r += 1;
+            let rt: &ID2D1RenderTarget = dc;
+            // the sky, and the city far off: towers in silhouette, a few windows lit, a haze of light over them
+            let lin = |y0: f32, y1: f32, c0: D2D1_COLOR_F, c1: D2D1_COLOR_F| -> Result<ID2D1LinearGradientBrush> {
+                let coll = rt.CreateGradientStopCollection(&[D2D1_GRADIENT_STOP { position: 0.0, color: c0 }, D2D1_GRADIENT_STOP { position: 1.0, color: c1 }],
+                                                           D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP)?;
+                dc.CreateLinearGradientBrush(&D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES { startPoint: p2(0.0, y0), endPoint: p2(0.0, y1) }, None, &coll)
+            };
+            dc.FillRectangle(&rect(0.0, 0.0, w, h), &lin(0.0, cam.vy, rgba(sky_top), rgba(sky_low))?);
+            if !light {   // a few faint stars, what the rain and the city's glow leave of them
+                let star = g.brush(look.ink)?;
+                let px = (sc * 0.5).max(1.0);
+                for _ in 0..(w * cam.vy / 6000.0) as usize {
+                    let y = cam.vy * rng.f().powf(1.6) * 0.92;
+                    let s = if rng.f() < 0.08 { 1.6 } else { 1.0 };
+                    star.SetOpacity(rng.range(0.1, 0.35) * (1.0 - y / cam.vy));
+                    dc.FillRectangle(&rect(rng.range(0.0, w), y, s * px, s * px), &star);
                 }
             }
-            let rt: &ID2D1RenderTarget = dc;
-            let ic = |a: f32| D2D1_COLOR_F { r: look.ink[0], g: look.ink[1], b: look.ink[2], a };
-            let coll = rt.CreateGradientStopCollection(&[D2D1_GRADIENT_STOP { position: 0.0, color: ic(if light { 0.08 } else { 0.05 }) },
-                                                          D2D1_GRADIENT_STOP { position: 1.0, color: ic(0.0) }], D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP)?;
-            let gb = dc.CreateLinearGradientBrush(&D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES { startPoint: p2(0.0, fy), endPoint: p2(0.0, h) }, None, &coll)?;
-            dc.FillRectangle(&rect(0.0, fy, w, h - fy), &gb);
-            ink.SetOpacity(0.25);
-            dc.FillRectangle(&rect(0.0, fy, w, 1.0), &ink);
+            let wc = [look.ink, look.acc, look.acc2, lampc];
+            let mut x = w * 0.1;
+            while x < w + 20.0 {
+                let (bw, bh) = (rng.range(14.0, 38.0) * sc, rng.range(18.0, 95.0) * sc);
+                let top = cam.vy - bh;
+                towers.push((x + bw / 2.0, top - sc, bh));
+                dc.FillRectangle(&rect(x, top, bw, bh + 2.0), &br(if light { toward(look.ink, rng.range(0.12, 0.22)) } else { toward(look.ink, rng.range(0.03, 0.07)) }, 1.0)?);
+                let mut wy = top + 4.0 * sc;
+                while wy < cam.vy - 3.0 * sc {
+                    let mut wx = x + 3.0 * sc;
+                    while wx < x + bw - 3.0 * sc {
+                        if rng.f() < 0.18 {
+                            let c = wc[(rng.f() * 4.0) as usize % 4];
+                            dc.FillRectangle(&rect(wx, wy, 1.6 * sc, 2.0 * sc), &br(c, rng.range(0.12, 0.4))?);
+                        }
+                        wx += 4.0 * sc;
+                    }
+                    wy += 5.0 * sc;
+                }
+                x += bw + rng.range(-4.0, 3.0) * sc;
+            }
+            // a warning light on top of each of the three tallest towers the wall doesn't hide (it hides what's
+            // left of where its top edge, running to the vanishing point, crosses that height)
+            let edge = |y: f32| { let k = (cam.base - wh * 1.4 - cam.vy) / (y - cam.vy); cam.vx - cam.vx / k };
+            towers.retain(|t| t.0 > edge(t.1) + 3.0 * sc);
+            towers.sort_by(|a, b| b.2.total_cmp(&a.2));
+            beacons = towers.iter().take(3).map(|t| (t.0, t.1, rng.f() * 3.0)).collect();
+            let ac = |a: f32| D2D1_COLOR_F { r: look.acc[0], g: look.acc[1], b: look.acc[2], a };
+            dc.FillRectangle(&rect(0.0, cam.vy - 70.0 * sc, w, 70.0 * sc + 4.0), &lin(cam.vy - 70.0 * sc, cam.vy + 4.0, ac(0.0), ac(if light { 0.1 } else { 0.16 }))?);
+            // the road: asphalt with a grain, a patch of newer asphalt, its markings
+            gq(near, far, 0.2, 6.0, road, 1.0)?;
+            let ink = g.brush(look.ink)?;
+            for _ in 0..(w * h / 300.0) as usize {
+                let (px, py) = cam.q(rng.range(near, 14.0), rng.range(0.2, 3.0), 0.0);
+                ink.SetOpacity(rng.range(0.02, 0.06));
+                dc.FillRectangle(&rect(px, py, 1.0, 1.0), &ink);
+            }
+            gq(2.9, 3.6, 0.9, 1.5, black, if light { 0.06 } else { 0.35 })?;
+            let pa = if light { 0.2 } else { 0.1 };
+            let mut oc = 0.24;
+            while oc < 1.85 { gq(-1.05, -0.62, oc, oc + 0.075, look.ink, pa)?; oc += 0.14; }   // the crossing
+            gq(-0.42, -0.36, 0.2, 0.79, look.ink, pa)?;                                     // the stop line
+            gq(0.55, 1.25, 0.485, 0.515, look.ink, pa)?;                                    // straight on
+            fill(&[cam.p(1.25, 0.44, 0.0), cam.p(1.25, 0.56, 0.0), cam.p(1.6, 0.5, 0.0)], look.ink, pa)?;
+            let lane = mixc(lampc, look.ink, 0.3);
+            let mut d = -0.2;
+            while d < far { gq(d, d + 0.45, 0.795, 0.81, lane, if light { 0.5 } else { 0.3 })?; d += 0.9; }   // the centre line
+            gq(near, far, 1.85, 1.86, look.ink, 0.08)?;
+            {   // a manhole cover: an iron disc in a rim, a grid of ridges, a vent hole (the steam comes out of it)
+                let (mx, my) = cam.q(mh.0, mh.1, 0.0);
+                let rx = wh * 0.085 / cam.z(mh.0);
+                let ry = rx * 0.2;
+                mhs = (mx, my, rx);
+                dc.FillEllipse(&ell(mx, my, rx * 1.12, ry * 1.12), &br(mixc(road, look.ink, 0.08), 1.0)?);
+                dc.FillEllipse(&ell(mx, my, rx, ry), &br(iron, 1.0)?);
+                ink.SetOpacity(0.14);
+                for i in -5..=5 {   // the ridges, each cut to the disc
+                    let dx = i as f32 * rx / 6.0;
+                    let k = ry * (1.0 - (dx / rx).powi(2)).max(0.0).sqrt();
+                    line(p2(mx + dx, my - k), p2(mx + dx, my + k), &ink, 1.0, None);
+                }
+                for i in -2..=2 {
+                    let dy = i as f32 * ry / 3.0;
+                    let k = rx * (1.0 - (dy / ry).powi(2)).max(0.0).sqrt();
+                    line(p2(mx - k, my + dy), p2(mx + k, my + dy), &ink, 1.0, None);
+                }
+                ink.SetOpacity(0.16);
+                dc.DrawEllipse(&ell(mx, my, rx, ry), &ink, 1.0, None);
+                dc.FillEllipse(&ell(mx + rx * 0.55, my - ry * 0.1, rx * 0.06, ry * 0.12), &br(pool, 1.0)?);
+            }
+            // the pavement: slabs, the kerb, a drain (a slot in the kerb, a grate in the gutter)
+            gq(near, far, 0.0, 0.2, walk, 1.0)?;
+            let seam = br(black, if light { 0.12 } else { 0.5 })?;
+            let mut d = near;
+            while d < 16.0 { line(cam.p(d, 0.0, 0.0), cam.p(d, 0.2, 0.0), &seam, 1.0, None); d += 0.32; }
+            line(cam.p(near, 0.1, 0.0), cam.p(far, 0.1, 0.0), &seam, 1.0, None);
+            let kf = |d: f32, o: f32| { let (x, y) = cam.q(d, o, 0.0); p2(x, y + 7.0 * sc / cam.z(d)) };
+            fill(&[cam.p(near, 0.2, 0.0), cam.p(far, 0.2, 0.0), kf(far, 0.2), kf(near, 0.2)], kerb, 1.0)?;
+            ink.SetOpacity(0.14);
+            line(cam.p(near, 0.2, 0.0), cam.p(far, 0.2, 0.0), &ink, 1.0, None);
+            {
+                let (d0, d1) = (1.45, 1.95);
+                fill(&[cam.p(d0, 0.2, 0.0), cam.p(d1, 0.2, 0.0), kf(d1, 0.2), kf(d0, 0.2)], pool, 1.0)?;
+                gq(d0, d1, 0.205, 0.27, iron, 1.0)?;
+                ink.SetOpacity(0.3);
+                for i in 0..=9 { let d = d0 + (d1 - d0) * i as f32 / 9.0; line(cam.p(d, 0.205, 0.0), cam.p(d, 0.27, 0.0), &ink, 1.0, None); }
+                dc.DrawGeometry(&figs(&[&[cam.p(d0, 0.205, 0.0), cam.p(d1, 0.205, 0.0), cam.p(d1, 0.27, 0.0), cam.p(d0, 0.27, 0.0)]])?, &ink, 1.0, None);
+            }
+            // puddles: one at the foot of the signal, more about the road and a few small ones on the pavement;
+            // each an oval with one or two more overlapping it, unevenly
+            let mut spots = vec![(-0.3f32, 0.42f32, 0.3f32)];
+            let mut tries = 0;
+            while spots.len() < 9 && tries < 80 {
+                tries += 1;
+                let mut p = (rng.range(near + 0.25, 3.2), rng.range(0.03, 1.75), rng.range(0.1, 0.38));
+                if (p.0 - mh.0).abs() < 0.6 && (p.1 - mh.1).abs() < 0.4 { continue; }
+                if p.1 < 0.2 { p.2 = p.2.min(0.12); }
+                spots.push(p);
+            }
+            for &(d, o, s) in &spots {
+                let (x, y) = cam.q(d, o, 0.0);
+                let rx = wh * s / cam.z(d) * 0.5;
+                let ry = rx * 0.2;
+                pools.push((x, y, rx, ry));
+                let mut add = |x: f32, y: f32, a: f32, b: f32| -> Result<()> {
+                    ovals.push(Some(factory.CreateEllipseGeometry(&ell(x, y, a, b))?.cast()?));
+                    py = (py.0.min(y - b), py.1.max(y + b));
+                    Ok(())
+                };
+                add(x, y, rx, ry)?;
+                for _ in 0..(1 + (rng.f() * 2.0) as usize) {
+                    let side = if rng.f() < 0.5 { -1.0 } else { 1.0 };
+                    add(x + side * rx * rng.range(0.4, 0.8), y + ry * rng.range(-0.4, 0.4), rx * rng.range(0.3, 0.55), ry * rng.range(0.5, 0.85))?;
+                }
+            }
+            let pud: ID2D1Geometry = factory.CreateGeometryGroup(D2D1_FILL_MODE_WINDING, &ovals)?.cast()?;
+            dc.FillGeometry(&pud, &br(pool, 1.0)?, None);
+            ink.SetOpacity(if light { 0.1 } else { 0.07 });
+            dc.DrawGeometry(&pud, &ink, 1.0, None);
+            // the wall, and its bricks: each its own shade, a little crooked, now and then one gone dark (a handful
+            // of shades, each one geometry of many bricks)
+            fill(&[cam.p(near, 0.0, 1.4), cam.p(far, 0.0, 1.4), cam.p(far, 0.0, 0.0), cam.p(near, 0.0, 0.0)], wall, 1.0)?;
+            if !built.1 {
+                let (rows, bw, m) = (52, 0.17f32, 0.012f32);
+                let top = if light { 0.12 } else { 0.16 };
+                let mut shades: Vec<Vec<[D2D_POINT_2F; 4]>> = vec![Vec::new(); 16];
+                for r in 0..rows {
+                    let (h0, h1) = (r as f32 / rows as f32 * 1.3, (r + 1) as f32 / rows as f32 * 1.3);
+                    let mut d = near + (r % 2) as f32 * bw / 2.0;
+                    while d < far {
+                        let mut j = || rng.range(-0.006, 0.006);
+                        let pts = [cam.p(d + m, 0.0, h0 + m * 0.5 + j()), cam.p(d + bw - m, 0.0, h0 + m * 0.5 + j()),
+                                   cam.p(d + bw - m, 0.0, h1 - m * 0.5 + j()), cam.p(d + m, 0.0, h1 - m * 0.5 + j())];
+                        d += bw;
+                        if pts[1].x < -5.0 { continue; }
+                        let wpx = pts[1].x - pts[0].x;
+                        if wpx < 1.2 { break; }   // too far off to see; they fade out on the way there
+                        let a = (if rng.f() < 0.07 { 0.3 } else { rng.range(0.55, 1.0) }) * ((wpx - 1.2) / 8.0).min(1.0);
+                        shades[((a * 15.0).round() as usize).min(15)].push(pts);
+                    }
+                }
+                for (k, list) in shades.iter().enumerate() {
+                    if list.is_empty() { continue; }
+                    let a = top * k as f32 / 15.0;
+                    let refs: Vec<&[D2D_POINT_2F]> = list.iter().map(|q| &q[..]).collect();
+                    dc.FillGeometry(&figs(&refs)?, &br(brick, a)?, None);
+                }
+            }
+            {   // far down the street the wall goes into the night's haze, a little at a time
+                let haze = mixc(wall, sky_low, 0.5);
+                let hc = |a: f32| D2D1_COLOR_F { r: haze[0], g: haze[1], b: haze[2], a };
+                let x0 = cam.q(2.5, 0.0, 0.0).0;
+                let coll = rt.CreateGradientStopCollection(&[D2D1_GRADIENT_STOP { position: 0.0, color: hc(0.0) }, D2D1_GRADIENT_STOP { position: 1.0, color: hc(0.85) }],
+                                                           D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP)?;
+                let gb = dc.CreateLinearGradientBrush(&D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES { startPoint: p2(x0, 0.0), endPoint: p2(cam.vx, 0.0) }, None, &coll)?;
+                dc.FillGeometry(&figs(&[&[cam.p(2.5, 0.0, 1.4), cam.p(far, 0.0, 1.4), cam.p(far, 0.0, 0.0), cam.p(2.5, 0.0, 0.0)]])?, &gb, None);
+            }
+            let grit = g.brush(black)?;
+            for _ in 0..(w * h / 500.0) as usize {
+                let (px, py) = cam.q(rng.range(near, 6.0), 0.0, rng.range(0.0, 1.3));
+                grit.SetOpacity(rng.range(0.05, 0.2));
+                dc.FillRectangle(&rect(px, py, 1.0, 1.0), &grit);
+            }
+            // what stands at the kerb, nearer than any sign, goes in a layer of its own drawn over the signs
             dc.EndDraw(None, None)?;
+            dc.SetTarget(&front);
+            dc.BeginDraw();
+            dc.Clear(Some(&D2D1_COLOR_F::default()));
+            // lamp posts along the kerb, their arms reaching out over the pavement
+            let pb = g.brush(pole)?;
+            for &d in &lamps {
+                let lw = (5.0 * sc / cam.z(d)).max(1.0);
+                line(cam.p(d, 0.17, 0.0), cam.p(d, 0.17, 0.5), &pb, lw, Some(&round));
+                line(cam.p(d, 0.17, 0.5), cam.p(d, 0.14, 0.5), &pb, lw, Some(&round));
+            }
+            // traffic signs, in pictures only: a crossing ahead, one way, no parking
+            let sgn = |c: u32, t: f32| mixc(look.bg, hx(c), if light { 0.85 } else { t });
+            let blk = if light { hx(0x1d1b18) } else { dark(0.6) };
+            let post = |d: f32, ht: f32| -> (f32, f32, f32) {
+                let (px, py) = cam.q(d, 0.185, 0.0);
+                let top = cam.q(d, 0.185, ht).1;
+                line(p2(px, py), p2(px, top), &pb, (3.0 * sc / cam.z(d)).max(1.0), None);
+                (px, top, sc / cam.z(d))
+            };
+            {
+                let (px, top, s) = post(0.35, 0.3);
+                let r = 26.0 * s;
+                let cy = top + r;
+                let (a, b) = (r * 0.99, r * 0.877);
+                fill(&[p2(px, cy - a), p2(px + a, cy), p2(px, cy + a), p2(px - a, cy)], sgn(0xe0c840, 0.35), 1.0)?;
+                let kb = br(blk, 1.0)?;
+                dc.DrawGeometry(&figs(&[&[p2(px, cy - b), p2(px + b, cy), p2(px, cy + b), p2(px - b, cy)]])?, &kb, 2.0 * s, None);
+                let lw = 3.0 * s;
+                dc.DrawEllipse(&ell(px, cy - r * 0.42, r * 0.11, r * 0.11), &kb, lw, None);
+                line(p2(px, cy - r * 0.28), p2(px - r * 0.04, cy + r * 0.1), &kb, lw, Some(&round));
+                line(p2(px - r * 0.04, cy + r * 0.1), p2(px - r * 0.2, cy + r * 0.42), &kb, lw, Some(&round));
+                line(p2(px - r * 0.04, cy + r * 0.1), p2(px + r * 0.16, cy + r * 0.4), &kb, lw, Some(&round));
+                line(p2(px - r * 0.2, cy - r * 0.12), p2(px + r * 0.18, cy - r * 0.04), &kb, lw, Some(&round));
+            }
+            {
+                let (px, top, s) = post(1.4, 0.36);
+                let (sw, sh) = (62.0 * s, 20.0 * s);
+                let (x0, ay, a, e) = (px - sw * 0.15, top + sh / 2.0, px - sw * 0.05, px + sw * 0.72);
+                let wht = sgn(0xe8e8e0, 0.7);
+                dc.FillRectangle(&rect(x0, top, sw, sh), &br(wht, 1.0)?);
+                dc.FillRectangle(&rect(x0 + 2.0 * s, top + 2.0 * s, sw - 4.0 * s, sh - 4.0 * s), &br(blk, 1.0)?);
+                fill(&[p2(a, ay - 2.5 * s), p2(e - 8.0 * s, ay - 2.5 * s), p2(e - 8.0 * s, ay - 6.0 * s), p2(e, ay),
+                       p2(e - 8.0 * s, ay + 6.0 * s), p2(e - 8.0 * s, ay + 2.5 * s), p2(a, ay + 2.5 * s)], wht, 1.0)?;
+            }
+            {
+                let (px, top, s) = post(4.1, 0.32);
+                let r = 18.0 * s;
+                let cy = top + r;
+                let rd = br(sgn(0xc03040, 0.55), 1.0)?;
+                dc.FillEllipse(&ell(px, cy, r, r), &rd);
+                dc.FillEllipse(&ell(px, cy, r * 0.76, r * 0.76), &br(sgn(0x3060a0, 0.5), 1.0)?);
+                line(p2(px - r * 0.54, cy - r * 0.54), p2(px + r * 0.54, cy + r * 0.54), &rd, r * 0.24, None);
+            }
+            {   // the signal at the crossing: its pole and two housings (the lamps are drawn live)
+                line(p2(tbx, tby), p2(tbx, head[1] - 6.0 * ts), &pb, (5.0 * ts).max(1.0), None);
+                line(p2(tbx, head[1] + 10.0 * ts), p2(head[0], head[1] + 10.0 * ts), &pb, 3.0 * ts, None);
+                line(p2(tbx, ped[1] + ped[3] / 2.0), p2(ped[0], ped[1] + ped[3] / 2.0), &pb, 3.0 * ts, None);
+                let boxc = br(mixc(pole, black, 0.3), 1.0)?;
+                let hole = br(dark(0.7), 1.0)?;
+                dc.FillRectangle(&rect(head[0], head[1], head[2], head[3]), &boxc);
+                dc.FillRectangle(&rect(ped[0], ped[1], ped[2], ped[3]), &boxc);
+                dc.FillRectangle(&rect(ped[0] + 2.0 * ts, ped[1] + 2.0 * ts, ped[2] - 4.0 * ts, ped[3] - 4.0 * ts), &hole);
+                for i in 0..3 {
+                    let cy = head[1] + head[3] * (i as f32 + 0.5) / 3.0;
+                    dc.FillEllipse(&ell(head[0] + head[2] / 2.0, cy, head[2] * 0.34, head[2] * 0.34), &hole);
+                    dc.FillRectangle(&rect(head[0] - 1.0, cy - head[2] * 0.42, head[2] + 2.0, head[2] * 0.12), &boxc);   // a visor over each lamp
+                }
+            }
+            dc.EndDraw(None, None)?;
+            dc.SetTarget(&old);
+            let _ = &pud;
+            // keep the puddles' outline for the reflections
+            let sig = Self::signs_for(g, fonts, look, &cam, &mut rng, built, u)?;
+            // where the red lamp and the hand show in the wet ground: the same points mirrored in it
+            let back_to = |x: f32, y: f32| (((x - cam.vx) * tz + cam.vx) / wh, (tby - y) * tz / wh);
+            let (ro, rh) = back_to(head[0] + head[2] / 2.0, head[1] + head[3] / 6.0);
+            let (po, ph) = back_to(ped[0] + ped[2] / 2.0, ped[1] + ped[3] / 2.0);
+            let (hx0, hy0, s) = (ped[0] + ped[2] / 2.0, ped[1] + ped[3] / 2.0, ts * 1.05);
+            let mut hp = vec![p2(hx0 - 4.0 * s, hy0 + 6.0 * s), p2(hx0 - 4.0 * s, hy0 - 3.0 * s)];
+            for i in 0..4 {
+                let fx = hx0 - 3.5 * s + i as f32 * 2.4 * s;
+                let tip = hy0 - 7.0 * s + if i == 0 || i == 3 { 1.5 * s } else { 0.0 };
+                hp.extend([p2(fx, tip), p2(fx + 1.6 * s, tip), p2(fx + 1.6 * s, hy0 - 3.0 * s)]);
+            }
+            hp.extend([p2(hx0 + 6.5 * s, hy0 - s), p2(hx0 + 4.0 * s, hy0 + 6.0 * s)]);
+            let hand = figs(&[&hp])?;
+            let refl = g.surface(w, h)?;
+            let pdc = g.dc.GetDevice()?.CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE)?;
+            pdc.SetDpi(96.0 * g.scale, 96.0 * g.scale);
+            pdc.SetTarget(&refl);
+            let puffs = (0..14).map(|_| (rng.f(), rng.range(-1.0, 1.0), rng.range(0.7, 1.3))).collect();
+            let mut s = Signs { back, front, signs: sig, drops: Vec::new(), rng, u, w, h, cam, refl, pdc, pud, pools,
+                                py: (py.0.max(0.0).floor(), py.1.min(h).ceil()), ripples: Vec::new(), t: 0.0, clk: 0.0, puffs,
+                                lamps, lampc, pole, panel: if light { mixc(look.bg, look.ink, 0.1) } else { mixc(look.bg, black, 0.3) },
+                                head, ped, ts, hand, red_r: cam.q(tl, ro, -rh), ped_r: cam.q(tl, po, -ph), mh: mhs, beacons, grads: Vec::new(),
+                                still: false, flick: 1.0, rain: 9, built };
+            s.opts(o);
+            Ok(s)
         }
-        // the signs: words and a shape, each in its own colour, laid out so they don't overlap
-        let cols = [look.acc, look.ink, look.acc2];
+    }
+
+    /// the signs: words in tube, flat on the wall or on a blade hanging off it, and a shape or two; each in its own
+    /// colour, spread down the street, each at its own height
+    fn signs_for(g: &Gfx, fonts: &Fonts, look: &Look, cam: &Cam, rng: &mut Rng, built: (usize, bool, u8), u: f32) -> Result<Vec<Sign>> {
+        let (h, wh, light) = (g.h as f32, cam.wh, look.light);
+        let factory = unsafe { g.dc.GetFactory()? };
+        let dc = &g.dc;
+        let old = unsafe { dc.GetTarget()? };
+        let cols = [look.acc, look.ink, look.acc2, look.mask];
         let mut words: Vec<&str> = SIGN_WORDS.to_vec();
-        let mut spots = [(0.2f32, 0.22f32), (0.74, 0.3), (0.46, 0.56), (0.18, 0.62), (0.8, 0.66)];
         for i in (1..words.len()).rev() { let j = (rng.f() * (i + 1) as f32) as usize % (i + 1); words.swap(i, j); }
-        for i in (1..spots.len()).rev() { let j = (rng.f() * (i + 1) as f32) as usize % (i + 1); spots.swap(i, j); }
         let disp = [("Instrument Serif", true), ("Chakra Petch", false), ("Saira Stencil One", false)];
         let tube = (u / 260.0).max(2.0);
         let bad_p = [0.6, 0.2, 1.0][built.2 as usize];
         let blur = g.effect(&CLSID_D2D1GaussianBlur)?;
         // one letter or shape: `geo` stroked as tube in `col`, glowing, with a hot core; into a bitmap of w x h
-        let tubed = |geo: &ID2D1Geometry, bw: f32, bh: f32, m: windows::Foundation::Numerics::Matrix3x2, col: Color, core: Color, core_a: f32| -> Result<ID2D1Bitmap1> {
+        let tubed = |geo: &ID2D1Geometry, bw: f32, bh: f32, m: Mx, col: Color, core: Color, core_a: f32| -> Result<ID2D1Bitmap1> {
             let img = g.surface(bw, bh)?;
             let tmp = g.surface(bw, bh)?;
             unsafe {
@@ -3140,9 +3533,8 @@ impl Signs {
                 dc.BeginDraw();
                 dc.Clear(Some(&D2D1_COLOR_F::default()));
                 dc.SetTransform(&m);
-                let cb = g.brush(col)?;
-                dc.DrawGeometry(geo, &cb, tube / (m.M11.abs().max(1e-3)), None);
-                dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2::identity());
+                dc.DrawGeometry(geo, &g.brush(col)?, tube / (m.M11.abs().max(1e-3)), None);
+                dc.SetTransform(&Mx::identity());
                 dc.EndDraw(None, None)?;
                 dc.SetTarget(&img);
                 dc.BeginDraw();
@@ -3158,17 +3550,53 @@ impl Signs {
                 let kb = g.brush(core)?;
                 kb.SetOpacity(core_a);
                 dc.DrawGeometry(geo, &kb, tube * 0.4 / (m.M11.abs().max(1e-3)), None);
-                dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2::identity());
+                dc.SetTransform(&Mx::identity());
                 dc.EndDraw(None, None)?;
             }
             Ok(img)
         };
+        // a word's letters: (bitmap, advance, pad, w, h); a space has no bitmap
+        let glyphs = |word: &str, fam: &str, italic: bool, size: f32, col: Color| -> Result<Vec<(Option<ID2D1Bitmap1>, f32, f32, f32, f32)>> {
+            let face = font_face(fonts, fam)?;
+            let mut fm = DWRITE_FONT_METRICS::default();
+            unsafe { face.GetMetrics(&mut fm); }
+            let em = size / fm.designUnitsPerEm as f32;
+            let mid = (fm.ascent as f32 - fm.descent as f32) / 2.0 * em;   // the canvas's 'middle': halfway up the em box
+            let cps: Vec<u32> = word.chars().map(|c| c as u32).collect();
+            let mut idx = vec![0u16; cps.len()];
+            let mut gm = vec![DWRITE_GLYPH_METRICS::default(); cps.len()];
+            unsafe {
+                face.GetGlyphIndices(cps.as_ptr(), cps.len() as u32, idx.as_mut_ptr())?;
+                face.GetDesignGlyphMetrics(idx.as_ptr(), idx.len() as u32, gm.as_mut_ptr(), false)?;
+            }
+            let pad = size * 0.5;
+            let mut out = Vec::new();
+            for (k, ch) in word.chars().enumerate() {
+                let adv = gm[k].advanceWidth as f32 * em;
+                let (bw, bh) = ((adv + pad * 2.0).ceil().max(1.0), (size * 1.5 + pad * 2.0).ceil());
+                if ch == ' ' { out.push((None, adv, pad, bw, bh)); continue; }
+                let path = unsafe { factory.CreatePathGeometry()? };
+                unsafe {
+                    let sk = path.Open()?;
+                    face.GetGlyphRunOutline(size, idx[k..].as_ptr(), None, None, 1, false, false, &sk)?;
+                    sk.Close()?;
+                }
+                // the baseline sits `mid` below the middle; italic: the serif slanted, as the browser makes it
+                let m = Mx { M11: 1.0, M12: 0.0, M21: if italic { -0.2 } else { 0.0 }, M22: 1.0, M31: pad, M32: bh / 2.0 + mid };
+                let img = tubed(&path.cast()?, bw, bh, m, col, if light { col } else { [1.0, 1.0, 1.0, 1.0] }, 0.55)?;
+                out.push((Some(img), adv, pad, bw, bh));
+            }
+            Ok(out)
+        };
         let mut signs = Vec::new();
         for i in 0..built.0 {
-            let (sx, sy) = spots[i];
-            let col = cols[i % 3];
-            if i == 3 {   // an outline shape in tube: an arrow, a star, a ring with a bolt, a cocktail glass
-                let s = u * 0.09;
+            let col = cols[i % 4];
+            let word = words[i % words.len()];
+            let (fam, italic) = disp[i % 3];
+            let kind = if i % 5 == 3 { 2 } else if word.len() <= 7 && !word.contains(' ') && rng.f() < 0.45 { 1 } else { 0 };
+            let mut sg = Sign { letters: Vec::new(), col, kind, d: 0.0, hc: 0.0, wd: 0.0, hh: 0.0, pw: 0.0, ph: 0.0, off: 0.0, buzz: 0.0, bad: None };
+            if kind == 2 {   // an outline shape in tube: an arrow, a star, a ring with a bolt, a cocktail glass
+                let s = h * 0.07;
                 let k = (rng.f() * 4.0) as usize % 4;
                 let path = unsafe { factory.CreatePathGeometry()? };
                 unsafe {
@@ -3189,56 +3617,63 @@ impl Signs {
                     }
                     sk.Close()?;
                 }
-                let m = windows::Foundation::Numerics::Matrix3x2 { M11: 1.0, M12: 0.0, M21: 0.0, M22: 1.0, M31: s * 1.5, M32: s * 1.5 };
+                let m = Mx { M11: 1.0, M12: 0.0, M21: 0.0, M22: 1.0, M31: s * 1.5, M32: s * 1.5 };
                 let img = tubed(&path.cast()?, s * 3.0, s * 3.0, m, col, [1.0, 1.0, 1.0, 1.0], 0.5)?;
-                signs.push(Sign { letters: vec![(img, sx * w - s * 1.5, sy * fy - s * 1.5, s * 3.0, s * 3.0, 1.0)], col, x: sx * w, y: sy * fy, buzz: 0.0, bad: None });
-                continue;
-            }
-            let word = words[i];
-            let (fam, italic) = disp[i % 3];
-            let size = u * if word.len() > 6 { 0.07 } else { 0.1 };
-            let face = font_face(fonts, fam)?;
-            let mut fm = DWRITE_FONT_METRICS::default();
-            unsafe { face.GetMetrics(&mut fm); }
-            let em = size / fm.designUnitsPerEm as f32;
-            let mid = (fm.ascent as f32 - fm.descent as f32) / 2.0 * em;   // the canvas's 'middle': halfway up the em box
-            let cps: Vec<u32> = word.chars().map(|c| c as u32).collect();
-            let mut idx = vec![0u16; cps.len()];
-            let mut gm = vec![DWRITE_GLYPH_METRICS::default(); cps.len()];
-            unsafe {
-                face.GetGlyphIndices(cps.as_ptr(), cps.len() as u32, idx.as_mut_ptr())?;
-                face.GetDesignGlyphMetrics(idx.as_ptr(), idx.len() as u32, gm.as_mut_ptr(), false)?;
-            }
-            let adv: Vec<f32> = gm.iter().map(|m| m.advanceWidth as f32 * em).collect();
-            let total: f32 = adv.iter().sum();
-            let pad = size * 0.5;
-            let mut x = sx * w - total / 2.0;
-            let mut letters = Vec::new();
-            for (k, ch) in word.chars().enumerate() {
-                let (bw, bh) = ((adv[k] + pad * 2.0).ceil().max(1.0), (size * 1.5 + pad * 2.0).ceil());
-                if ch != ' ' {
-                    let path = unsafe { factory.CreatePathGeometry()? };
-                    unsafe {
-                        let sk = path.Open()?;
-                        face.GetGlyphRunOutline(size, idx[k..].as_ptr(), None, None, 1, false, false, &sk)?;
-                        sk.Close()?;
-                    }
-                    // the baseline sits `mid` below the middle; italic: the serif slanted, as the browser makes it
-                    let m = windows::Foundation::Numerics::Matrix3x2 { M11: 1.0, M12: 0.0, M21: if italic { -0.2 } else { 0.0 }, M22: 1.0,
-                                                                       M31: pad, M32: bh / 2.0 + mid };
-                    let img = tubed(&path.cast()?, bw, bh, m, col, if light { col } else { [1.0, 1.0, 1.0, 1.0] }, 0.55)?;
-                    letters.push((img, x - pad, sy * fy - bh / 2.0, bw, bh, 1.0));
+                sg.letters.push((img, 0.0, 0.0, s * 3.0, s * 3.0, 1.0));
+                sg.wd = s * 3.0 / cam.dpx;
+                sg.hh = s * 3.0 / wh;
+            } else if kind == 0 {
+                let size = h * if word.len() > 6 { 0.07 } else { 0.09 };
+                let mut x = 0.0;
+                for (img, adv, pad, bw, bh) in glyphs(word, fam, italic, size, col)? {
+                    if let Some(img) = img { sg.letters.push((img, x - pad, 0.0, bw, bh, 1.0)); }
+                    x += adv;
                 }
-                x += adv[k];
+                sg.wd = x / cam.dpx;
+                sg.hh = size * 2.5 / wh;
+            } else {   // a blade: the letters one above the other, or across for a short word now and then
+                let size = h * 0.06;
+                let across = word.len() <= 4 && rng.f() < 0.5;
+                let step = size * 1.05;
+                let gl = glyphs(word, fam, italic, size, col)?;
+                let n = gl.len() as f32;
+                if across {
+                    let total: f32 = gl.iter().map(|q| q.1).sum();
+                    let mut x = -total / 2.0;
+                    for (img, adv, pad, bw, bh) in gl {
+                        if let Some(img) = img { sg.letters.push((img, x - pad, -bh / 2.0, bw, bh, 1.0)); }
+                        x += adv;
+                    }
+                    sg.pw = total + size * 0.8;
+                    sg.ph = size * 1.6;
+                } else {
+                    sg.pw = gl.iter().map(|q| q.1).fold(0.0, f32::max) + size * 0.7;
+                    sg.ph = n * step + size * 0.5;
+                    for (k, (img, _, _, bw, bh)) in gl.into_iter().enumerate() {
+                        if let Some(img) = img { sg.letters.push((img, -bw / 2.0, (k as f32 - (n - 1.0) / 2.0) * step - bh / 2.0, bw, bh, 1.0)); }
+                    }
+                }
+                sg.off = size * 0.35;
+                sg.wd = 0.12;
+                sg.hh = sg.ph / wh;
             }
-            let n = letters.len();
-            let bad = if rng.f() < bad_p && n > 1 { Some(1 + (rng.f() * (n - 1) as f32) as usize % (n - 1)) } else { None };
-            signs.push(Sign { letters, col, x: sx * w, y: sy * fy, buzz: 0.0, bad });
+            let n = sg.letters.len();
+            if n > 1 && rng.f() < bad_p { sg.bad = Some(1 + (rng.f() * (n - 1) as f32) as usize % (n - 1)); }
+            signs.push(sg);
         }
+        let used: f32 = signs.iter().map(|s| s.wd).sum();
+        let gap = ((9.0 - used) / built.0 as f32).max(0.25);
+        let mut d = 0.7;
+        for sg in &mut signs {
+            sg.d = d;
+            d += sg.wd + gap * rng.range(0.7, 1.3);
+            let lo = 0.17 + sg.hh / 2.0;
+            let hi = lo.max(0.52 - sg.hh / 2.0);
+            sg.hc = rng.range(lo, hi);
+        }
+        signs.sort_by(|a, b| b.d.total_cmp(&a.d));   // far ones first
         unsafe { dc.SetTarget(&old); }
-        let mut s = Signs { back, signs, drops: Vec::new(), rng, u, w, h, fy, still: false, flick: 1.0, rain: 9, built };
-        s.opts(o);
-        Ok(s)
+        Ok(signs)
     }
 }
 
@@ -3278,38 +3713,174 @@ impl Background for Signs {
                 d.1 += d.2 * u * 1.6 * dt * sp;
                 if d.1 > h { d.1 = self.rng.range(-80.0, 0.0); d.0 = self.rng.range(0.0, w + 40.0); }
             }
+            self.t += dt * sp;
+            self.clk += dt;   // the signal keeps real time, whatever the motion
+            for p in &mut self.puffs { p.0 = (p.0 + dt * sp * 0.12 * p.2) % 1.0; }
+            // drops landing in the puddles: a ring that spreads and fades
+            for r in &mut self.ripples { r.2 += dt * sp; }
+            self.ripples.retain(|r| r.2 < 0.9);
+            let mut n = dt * sp * [0.0, 7.0, 20.0][self.rain.min(2) as usize];
+            while n > 0.0 && !self.pools.is_empty() {
+                if n < 1.0 && self.rng.f() > n { break; }
+                n -= 1.0;
+                let (px, py, rx, ry) = self.pools[(self.rng.f() * self.pools.len() as f32) as usize % self.pools.len()];
+                let (a, k) = (self.rng.range(0.0, TAU), self.rng.f().sqrt() * 0.8);
+                self.ripples.push((px + a.cos() * rx * k, py + a.sin() * ry * k, 0.0, rx * 0.35));
+            }
         }
-        let (fy, u) = (self.fy, self.u);
+        let (cam, u, light) = (self.cam, self.u, look.light);
+        let (sc, wh) = (cam.sc, cam.wh);
+        let add = if light { D2D1_PRIMITIVE_BLEND_SOURCE_OVER } else { D2D1_PRIMITIVE_BLEND_ADD };
+        let red = blink(self.clk, 1.3, 0.5, 0.0);
+        let hand = blink(self.clk, 1.0, 0.5, 0.37);
+        let (redc, walkc) = (hx(0xff2a20), hx(0xff5a2a));
+        let lit = |sg: &Sign| sg.letters.iter().map(|l| l.5).sum::<f32>() / sg.letters.len().max(1) as f32;
+        let id = Mx::identity();
         unsafe {
             let dc = &g.dc;
-            let rt: &ID2D1RenderTarget = dc;
             dc.DrawBitmap(&self.back, Some(&rect(0.0, 0.0, self.w, self.h)), 1.0, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, None, None);
-            dc.SetPrimitiveBlend(if look.light { D2D1_PRIMITIVE_BLEND_SOURCE_OVER } else { D2D1_PRIMITIVE_BLEND_ADD });
+            for &(x, y, ph) in &self.beacons {   // the towers' warning lights, slow
+                let a = blink(self.clk, 3.0, 0.3, ph);
+                dc.FillRectangle(&rect(x - sc * 0.8, y - sc * 0.8, sc * 1.6, sc * 1.6), &g.brush(mixc(mixc(look.bg, [0.0, 0.0, 0.0, 1.0], 0.3), redc, 0.25 + 0.75 * a))?);
+                dc.SetPrimitiveBlend(add);
+                glow(&mut self.grads, dc, x, y, 7.0 * sc, redc, 0.5 * a, 1.0)?;
+                dc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_SOURCE_OVER);
+            }
+            // the street upside down, as the wet ground holds it: into a layer of its own
+            let pdc = &self.pdc;
+            pdc.BeginDraw();
+            pdc.Clear(Some(&D2D1_COLOR_F::default()));
+            pdc.SetPrimitiveBlend(add);
             for sg in &self.signs {
-                let lit = sg.letters.iter().map(|l| l.5).sum::<f32>() / sg.letters.len().max(1) as f32;
-                if lit > 0.05 {   // the glow the sign throws on the wall around it
-                    let r = u * 0.28;
-                    let c = sg.col;
-                    let coll = rt.CreateGradientStopCollection(&[D2D1_GRADIENT_STOP { position: 0.0, color: D2D1_COLOR_F { r: c[0], g: c[1], b: c[2], a: 0.07 * lit } },
-                                                                  D2D1_GRADIENT_STOP { position: 1.0, color: D2D1_COLOR_F { r: c[0], g: c[1], b: c[2], a: 0.0 } }],
-                                                                D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP)?;
-                    let gb = dc.CreateRadialGradientBrush(&D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES { center: p2(sg.x, sg.y), gradientOriginOffset: p2(0.0, 0.0),
-                                                                                               radiusX: r, radiusY: r }, None, &coll)?;
-                    dc.FillRectangle(&rect(sg.x - r, sg.y - r, r * 2.0, r * 2.0), &gb);
+                if sg.kind == 1 {
+                    let (_, x, y, bw, bh, s) = cam.blade(sg, -1.0);
+                    for (img, ox, oy, lw, lh, on) in &sg.letters {
+                        if *on <= 0.0 { continue; }
+                        pdc.SetTransform(&Mx { M11: s, M12: 0.0, M21: 0.0, M22: -s, M31: x + bw / 2.0 + ox * s, M32: y + bh / 2.0 - oy * s });
+                        pdc.DrawBitmap(img, Some(&rect(0.0, 0.0, *lw, *lh)), 0.55 * on, D2D1_INTERPOLATION_MODE_LINEAR, None, None);
+                    }
+                } else {
+                    for (img, ox, _, lw, lh, on) in &sg.letters {
+                        if *on <= 0.0 { continue; }
+                        pdc.SetTransform(&cam.on_wall(sg, *ox, *lw, *lh, -1.0));
+                        pdc.DrawBitmap(img, Some(&rect(0.0, 0.0, *lw, *lh)), 0.5 * on, D2D1_INTERPOLATION_MODE_LINEAR, None, None);
+                    }
                 }
-                for (img, x, y, bw, bh, on) in &sg.letters {
-                    dc.DrawBitmap(img, Some(&rect(*x, *y, *bw, *bh)), 0.12 + 0.88 * on, D2D1_INTERPOLATION_MODE_LINEAR, None, None);
-                    // and its reflection on the wet ground, stretched and broken up
-                    let ry = fy + (fy - y - bh) * 0.35;
-                    dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2 { M11: 1.0, M12: 0.0, M21: 0.0, M22: -0.6, M31: 0.0, M32: ry + bh * 0.6 });
-                    dc.DrawBitmap(img, Some(&rect(*x, 0.0, *bw, *bh)), 0.16 * on, D2D1_INTERPOLATION_MODE_LINEAR, None, None);
-                    dc.SetTransform(&windows::Foundation::Numerics::Matrix3x2::identity());
-                }
+                pdc.SetTransform(&id);
+                let (gx, gy) = cam.q(sg.d + sg.wd / 2.0, 0.0, -sg.hc);
+                glow(&mut self.grads, pdc, gx, gy, wh * 0.1 / cam.z(sg.d), sg.col, (if light { 0.12 } else { 0.3 }) * lit(sg), 2.4)?;
+            }
+            for &d in &self.lamps {
+                let (x, y) = cam.q(d, 0.14, -0.5);
+                glow(&mut self.grads, pdc, x, y, 60.0 * sc / cam.z(d), self.lampc, if light { 0.2 } else { 0.5 }, 3.0)?;
+            }
+            glow(&mut self.grads, pdc, self.red_r.0, self.red_r.1, 34.0 * self.ts, redc, 0.9 * red, 3.0)?;
+            glow(&mut self.grads, pdc, self.ped_r.0, self.ped_r.1, 22.0 * self.ts, walkc, 0.7 * hand, 3.0)?;
+            pdc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_SOURCE_OVER);
+            pdc.EndDraw(None, None)?;
+            // a faint sheen of it over all the wet ground; in the puddles the whole of it, in thin bands, each pushed
+            // sideways a little by the ripples (still water when there's no rain)
+            dc.SetPrimitiveBlend(add);
+            dc.DrawBitmap(&self.refl, Some(&rect(0.0, 0.0, self.w, self.h)), 0.16, D2D1_INTERPOLATION_MODE_LINEAR, None, None);
+            let params = D2D1_LAYER_PARAMETERS1 {
+                contentBounds: rect(0.0, self.py.0, self.w, self.py.1 - self.py.0), geometricMask: std::mem::ManuallyDrop::new(Some(self.pud.clone())),
+                maskAntialiasMode: D2D1_ANTIALIAS_MODE_PER_PRIMITIVE, maskTransform: id,
+                opacity: 1.0, opacityBrush: std::mem::ManuallyDrop::new(None), layerOptions: D2D1_LAYER_OPTIONS1_NONE,
+            };
+            dc.PushLayer(&params, None::<&ID2D1Layer>);
+            let _ = std::mem::ManuallyDrop::into_inner(params.geometricMask);
+            let amp = u * if self.rain == 0 { 0.0006 } else { 0.0028 };
+            let sh = 3.0f32;
+            let (mut y, mut j) = (self.py.0, 0.0f32);
+            while y < self.py.1 {
+                let wob = (j * 1.3 + self.t * 4.0).sin() * amp + (j * 0.37 - self.t * 2.3).sin() * amp * 0.6;
+                let hh = sh.min(self.py.1 - y);
+                dc.DrawBitmap(&self.refl, Some(&rect(wob, y, self.w, hh)), 1.0, D2D1_INTERPOLATION_MODE_LINEAR, Some(&rect(0.0, y, self.w, hh)), None);
+                y += sh;
+                j += 1.0;
             }
             dc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_SOURCE_OVER);
+            if !self.ripples.is_empty() {
+                let ink = g.brush(look.ink)?;
+                for &(x, y, age, size) in &self.ripples {
+                    let r = size * (0.15 + age / 0.9);
+                    ink.SetOpacity((if light { 0.3 } else { 0.22 }) * (1.0 - age / 0.9));
+                    dc.DrawEllipse(&D2D1_ELLIPSE { point: p2(x, y), radiusX: r, radiusY: r * 0.22 }, &ink, 1.0, None);
+                }
+            }
+            dc.PopLayer();
+            // the light each sign throws on the bricks around it
+            dc.SetPrimitiveBlend(add);
+            for sg in &self.signs {
+                let (x, y) = cam.q(sg.d + sg.wd / 2.0, 0.0, sg.hc);
+                glow(&mut self.grads, dc, x, y, wh * 0.25 / cam.z(sg.d), sg.col, (if light { 0.06 } else { 0.16 }) * lit(sg), 1.0)?;
+            }
+            dc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_SOURCE_OVER);
+            // the signs, far ones first
+            let pb = g.brush(self.pole)?;
+            let panel = g.brush(self.panel)?;
+            for sg in &self.signs {
+                if sg.kind == 1 {
+                    let (ax, x, y, bw, bh, s) = cam.blade(sg, 1.0);
+                    let lw = (3.0 * sc * s).max(1.0);
+                    dc.DrawLine(p2(ax, y + bh * 0.12), p2(x, y + bh * 0.12), &pb, lw, None);
+                    dc.DrawLine(p2(ax, y + bh * 0.88), p2(x, y + bh * 0.88), &pb, lw, None);
+                    dc.FillRectangle(&rect(x, y, bw, bh), &panel);
+                    let rim = g.brush(sg.col)?;
+                    rim.SetOpacity(0.4 + 0.3 * lit(sg));
+                    dc.DrawRectangle(&rect(x, y, bw, bh), &rim, (2.0 * sc * s).max(1.0), None);
+                    dc.SetPrimitiveBlend(add);
+                    for (img, ox, oy, lw, lh, on) in &sg.letters {
+                        dc.SetTransform(&Mx { M11: s, M12: 0.0, M21: 0.0, M22: s, M31: x + bw / 2.0 + ox * s, M32: y + bh / 2.0 + oy * s });
+                        dc.DrawBitmap(img, Some(&rect(0.0, 0.0, *lw, *lh)), 0.12 + 0.88 * on, D2D1_INTERPOLATION_MODE_LINEAR, None, None);
+                    }
+                } else {
+                    dc.SetPrimitiveBlend(add);
+                    for (img, ox, _, lw, lh, on) in &sg.letters {
+                        dc.SetTransform(&cam.on_wall(sg, *ox, *lw, *lh, 1.0));
+                        dc.DrawBitmap(img, Some(&rect(0.0, 0.0, *lw, *lh)), 0.12 + 0.88 * on, D2D1_INTERPOLATION_MODE_LINEAR, None, None);
+                    }
+                }
+                dc.SetTransform(&id);
+                dc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_SOURCE_OVER);
+            }
+            dc.DrawBitmap(&self.front, Some(&rect(0.0, 0.0, self.w, self.h)), 1.0, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, None, None);
+            // the signal: flashing red, the other two lamps dark; below it a red hand flashing on its own beat
+            let off = mixc(look.bg, [0.0, 0.0, 0.0, 1.0], 0.5);
+            let (hd, pd, ts) = (self.head, self.ped, self.ts);
+            let (lx, r) = (hd[0] + hd[2] / 2.0, hd[2] * 0.3);
+            let lamp = |y: f32, c: Color, a: f32| -> Result<()> {
+                dc.FillEllipse(&D2D1_ELLIPSE { point: p2(lx, y), radiusX: r, radiusY: r }, &g.brush(mixc(off, c, 0.15 + 0.85 * a))?);
+                Ok(())
+            };
+            lamp(hd[1] + hd[3] / 6.0, redc, red)?;
+            lamp(hd[1] + hd[3] / 2.0, hx(0x5a3a10), 0.0)?;
+            lamp(hd[1] + hd[3] * 5.0 / 6.0, hx(0x103a18), 0.0)?;
+            dc.FillGeometry(&self.hand, &g.brush(mixc(off, walkc, 0.12 + 0.88 * hand))?, None);
+            dc.SetPrimitiveBlend(add);
+            glow(&mut self.grads, dc, lx, hd[1] + hd[3] / 6.0, 46.0 * ts, redc, 0.7 * red, 1.0)?;
+            glow(&mut self.grads, dc, pd[0] + pd[2] / 2.0, pd[1] + pd[3] / 2.0, 30.0 * ts, walkc, 0.5 * hand, 1.0)?;
+            // the lamps' light, and the pool of it on the ground below
+            for &d in &self.lamps {
+                let (x, y) = cam.q(d, 0.14, 0.5);
+                let r = 34.0 * sc / cam.z(d) * 2.0;
+                glow(&mut self.grads, dc, x, y, r, self.lampc, if light { 0.25 } else { 0.45 }, 1.0)?;
+                glow(&mut self.grads, dc, x, y, r * 0.15, hx(0xfff2dc), if light { 0.4 } else { 0.9 }, 1.0)?;
+                let (gx, gy) = cam.q(d, 0.14, 0.0);
+                glow(&mut self.grads, dc, gx, gy, r * 1.3, self.lampc, if light { 0.06 } else { 0.12 }, 0.25)?;
+            }
+            dc.SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_SOURCE_OVER);
+            // steam drifting up out of the manhole's vent
+            let (mx, my, rx) = self.mh;
+            let steam = if light { look.ink } else { hx(0xc8bed7) };
+            for &(k, px, _) in &self.puffs {
+                let x = mx + px * rx * 0.5 + (self.t * 0.8 + px * 9.0).sin() * rx * 0.3 * k;
+                let y = my - k * wh * 0.42 / cam.z(0.55);
+                glow(&mut self.grads, dc, x, y, rx * (0.25 + k * 0.9), steam, (if light { 0.05 } else { 0.07 }) * (k * std::f32::consts::PI).sin(), 1.0)?;
+            }
             if !self.drops.is_empty() {
                 let ink = g.brush(look.ink)?;
-                ink.SetOpacity(if look.light { 0.12 } else { 0.1 });
+                ink.SetOpacity(if light { 0.12 } else { 0.11 });
                 for d in &self.drops { dc.DrawLine(p2(d.0, d.1), p2(d.0 - d.3 * 2.0, d.1 + d.3 * u * 0.035), &ink, 1.0, None); }
             }
         }
