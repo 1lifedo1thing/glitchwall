@@ -1,0 +1,41 @@
+# Publishes a GitHub release's wheel to PyPI, unchanged: the same file, same SHA-256 as on the release page.
+# Run by hand (Actions > Publish to PyPI > Run workflow) with the release tag. No PyPI password or token is
+# stored anywhere: PyPI trusts this workflow through "trusted publishing" (a short-lived token from GitHub).
+name: Publish to PyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish, e.g. v0.5.1"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write # only for the PyPI token exchange
+    steps:
+      - name: Download the release wheel
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.whl' --dir dist
+          ls -l dist
+      - name: Check it against the SHA-256 in the release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          want=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body | grep -oE '[0-9a-f]{64}' | head -1)
+          have=$(sha256sum dist/*.whl | cut -d' ' -f1)
+          echo "release notes: $want"; echo "downloaded:    $have"
+          test -n "$want" && test "$want" = "$have"
+      - name: Upload to PyPI
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3

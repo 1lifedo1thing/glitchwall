@@ -1,6 +1,6 @@
 <div align="center">
 
-# ![glitchwall](docs/banner.gif)
+# ![glitchwall](https://raw.githubusercontent.com/marklesterb28/glitchwall/main/docs/banner.gif)
 
 **Your coding agent, live on your desktop.**<br>
 Every command it runs types itself out on your wallpaper, then leaves the way your theme likes.
@@ -10,7 +10,7 @@ Every command it runs types itself out on your wallpaper, then leaves the way yo
 ![no telemetry](https://img.shields.io/badge/no%20telemetry-1a7f37?style=flat-square)
 ![MIT](https://img.shields.io/badge/MIT-1a7f37?style=flat-square)
 
-![glitchwall: tool calls glitch in, type out with their output, then collapse](docs/demo.gif)
+![glitchwall: tool calls glitch in, type out with their output, then collapse](https://raw.githubusercontent.com/marklesterb28/glitchwall/main/docs/demo.gif)
 
 <sub>A made-up session. The Stripe key and the bearer token were masked before they ever reached the screen.</sub>
 
@@ -22,7 +22,7 @@ Every command it runs types itself out on your wallpaper, then leaves the way yo
 
 | 🔒 Private | 🪶 Light | 🎥 Stream-safe |
 | --- | --- | --- |
-| Secrets are masked before anything is stored. It reads your agent's logs read-only and talks to `127.0.0.1` only. [What it reads, and never does →](docs/PRIVACY.md) | About 6.5% of one CPU core and 153 MB, drawn by a small Rust renderer with no browser. Covered screens sleep. [The numbers →](docs/PERFORMANCE.md) | Press **P** and every card is gone at once, enforced by the feed itself. Nothing from a pause is ever replayed. |
+| Secrets are masked before anything is stored. It reads your agent's logs read-only and talks to `127.0.0.1` only. [What it reads, and never does →](https://github.com/marklesterb28/glitchwall/blob/main/docs/PRIVACY.md) | About 6.5% of one CPU core and 153 MB, drawn by a small Rust renderer with no browser. Covered screens sleep. [The numbers →](https://github.com/marklesterb28/glitchwall/blob/main/docs/PERFORMANCE.md) | Press **P** and every card is gone at once, enforced by the feed itself. Nothing from a pause is ever replayed. |
 
 ## What you see
 
@@ -50,22 +50,22 @@ background of a second, the font of a third.
 
 <table>
 <tr>
-<td><img src="docs/shots/phosphor.jpg" alt="phosphor"><br><sub><b>phosphor</b> · green terminal, glyph rain</sub></td>
-<td><img src="docs/shots/drafting.jpg" alt="drafting"><br><sub><b>drafting</b> · a blueprint drawing itself</sub></td>
-<td><img src="docs/shots/neon.jpg" alt="neon"><br><sub><b>neon</b> · a rainy street at night</sub></td>
-<td><img src="docs/shots/orb.jpg" alt="orb"><br><sub><b>orb</b> · the machine in its hall</sub></td>
+<td><img src="https://raw.githubusercontent.com/marklesterb28/glitchwall/main/docs/shots/phosphor.jpg" alt="phosphor"><br><sub><b>phosphor</b> · green terminal, glyph rain</sub></td>
+<td><img src="https://raw.githubusercontent.com/marklesterb28/glitchwall/main/docs/shots/drafting.jpg" alt="drafting"><br><sub><b>drafting</b> · a blueprint drawing itself</sub></td>
+<td><img src="https://raw.githubusercontent.com/marklesterb28/glitchwall/main/docs/shots/neon.jpg" alt="neon"><br><sub><b>neon</b> · a rainy street at night</sub></td>
+<td><img src="https://raw.githubusercontent.com/marklesterb28/glitchwall/main/docs/shots/orb.jpg" alt="orb"><br><sub><b>orb</b> · the machine in its hall</sub></td>
 </tr>
 <tr>
-<td><img src="docs/shots/notebook.jpg" alt="notebook"><br><sub><b>notebook</b> · ballpoint and doodles</sub></td>
-<td><img src="docs/shots/sleeve.jpg" alt="sleeve"><br><sub><b>sleeve</b> · a record turning</sub></td>
-<td><img src="docs/shots/scope.jpg" alt="scope"><br><sub><b>scope</b> · an oscilloscope beam</sub></td>
-<td><img src="docs/shots/chalkboard.jpg" alt="chalkboard"><br><sub><b>chalkboard</b> · written, then wiped</sub></td>
+<td><img src="https://raw.githubusercontent.com/marklesterb28/glitchwall/main/docs/shots/notebook.jpg" alt="notebook"><br><sub><b>notebook</b> · ballpoint and doodles</sub></td>
+<td><img src="https://raw.githubusercontent.com/marklesterb28/glitchwall/main/docs/shots/sleeve.jpg" alt="sleeve"><br><sub><b>sleeve</b> · a record turning</sub></td>
+<td><img src="https://raw.githubusercontent.com/marklesterb28/glitchwall/main/docs/shots/scope.jpg" alt="scope"><br><sub><b>scope</b> · an oscilloscope beam</sub></td>
+<td><img src="https://raw.githubusercontent.com/marklesterb28/glitchwall/main/docs/shots/chalkboard.jpg" alt="chalkboard"><br><sub><b>chalkboard</b> · written, then wiped</sub></td>
 </tr>
 </table>
 
 <sub>…and eleven more: newsprint, nightprint, fieldops, duplicator, bsod, cyanotype, oracle, matrix, amber,
 synthwave and msdos. 27 backgrounds in all, each with four options of its own.
-**[Every theme, background, font and transition →](docs/THEMES.md)**</sub>
+**[Every theme, background, font and transition →](https://github.com/marklesterb28/glitchwall/blob/main/docs/THEMES.md)**</sub>
 
 **No videos, no GIFs.** Every background is a small program drawing each frame live: the rain picks where its
 next glyph falls, the record works out how far it has turned. That's why no two minutes look the same, and why
@@ -74,12 +74,15 @@ any background can be recolored or slowed to a stop.
 ## Install
 
 1. Get **[uv](https://docs.astral.sh/uv/)** if you don't have it.
-2. Download `glitchwall-0.5.0-py3-none-win_amd64.whl` from Releases, then:
+2. Then:
 
 ```
-uv tool install glitchwall-0.5.0-py3-none-win_amd64.whl
+uv tool install glitchwall
 glitchwall install
 ```
+
+That fetches glitchwall from [PyPI](https://pypi.org/project/glitchwall/). Each [GitHub release](https://github.com/marklesterb28/glitchwall/releases)
+carries the same wheel and its SHA-256, if you'd rather download and check it yourself.
 
 | Needs | Download | Installed |
 | --- | --- | --- |
@@ -90,12 +93,12 @@ page; glitchwall itself never downloads or installs anything. Then it starts the
 entry, and puts the wallpaper behind your icons on every screen. Your own wallpaper is never changed:
 `glitchwall stop` or `glitchwall uninstall` uncovers it again.
 
-**Just want to look first?** `uvx --from glitchwall-0.5.0-py3-none-win_amd64.whl glitchwall demo --open` plays
+**Just want to look first?** `uvx glitchwall demo --open` plays
 made-up calls in your browser, with nothing installed and no logs read.
 
 ## Settings
 
-![switching themes, then pausing: the settings window and the wallpaper change together](docs/gifs/settings.gif)
+![switching themes, then pausing: the settings window and the wallpaper change together](https://raw.githubusercontent.com/marklesterb28/glitchwall/main/docs/gifs/settings.gif)
 
 Open **glitchwall settings** from the tray icon, the Start menu, the desktop's right-click menu, a hot corner,
 or `glitchwall settings`. Everything applies to the wallpaper within a second; nothing restarts.
@@ -131,7 +134,7 @@ glitchwall shows your agent's activity on your screen, so it's built to be easy 
   look like spyware.
 
 Redaction is a safety net, not a guarantee: when you stream or share your screen, press **P**.
-**[Everything it reads, writes and refuses, and why →](docs/PRIVACY.md)**
+**[Everything it reads, writes and refuses, and why →](https://github.com/marklesterb28/glitchwall/blob/main/docs/PRIVACY.md)**
 
 ## Commands
 
@@ -156,10 +159,10 @@ Redaction is a safety net, not a guarantee: when you stream or share your screen
 **Will it slow my PC down?** About 6.5% of one core (0.4% of a 16-core CPU) and 153 MB: about the CPU of a
 simple web wallpaper, with less memory. Screens covered by a window, a fullscreen game or a locked PC draw nothing
 (under 1% of one core in all). `--intensity 0` stills
-the background entirely. [Compared with other live wallpapers →](docs/PERFORMANCE.md)
+the background entirely. [Compared with other live wallpapers →](https://github.com/marklesterb28/glitchwall/blob/main/docs/PERFORMANCE.md)
 
 **Does it work with other agents?** Claude Code today. The log reader is one small file
-([`claude_logs.py`](src/glitchwall/claude_logs.py)); pull requests for other agents are welcome.
+([`claude_logs.py`](https://github.com/marklesterb28/glitchwall/blob/main/src/glitchwall/claude_logs.py)); pull requests for other agents are welcome.
 
 **macOS or Linux?** Not today. The renderer draws with Direct2D and sits behind the icons through the Windows
 desktop, and there are no Macs or Linux PCs here to test on.
@@ -167,8 +170,8 @@ desktop, and there are no Macs or Linux PCs here to test on.
 **Can I put it on stream?** Yes: `glitchwall export DIR` writes the page for an OBS browser source or
 Wallpaper Engine, and `glitchwall pause` still clears it at once.
 
-**Can I make a theme?** Themes live in [`looks.js`](src/glitchwall/wallpaper/looks.js). A new background is a
-canvas scene in the page plus a Rust port; see [CONTRIBUTING.md](CONTRIBUTING.md).
+**Can I make a theme?** Themes live in [`looks.js`](https://github.com/marklesterb28/glitchwall/blob/main/src/glitchwall/wallpaper/looks.js). A new background is a
+canvas scene in the page plus a Rust port; see [CONTRIBUTING.md](https://github.com/marklesterb28/glitchwall/blob/main/CONTRIBUTING.md).
 
 ## Support
 
@@ -178,19 +181,19 @@ showing it to a friend helps just as much.
 
 ## Credits & license
 
-**MIT**, see [LICENSE](LICENSE) and [SECURITY.md](SECURITY.md). Not affiliated with Anthropic: "Claude" and
+**MIT**, see [LICENSE](https://github.com/marklesterb28/glitchwall/blob/main/LICENSE) and [SECURITY.md](https://github.com/marklesterb28/glitchwall/blob/main/SECURITY.md). Not affiliated with Anthropic: "Claude" and
 "Claude Code" are Anthropic's trademarks, named only to say which logs glitchwall reads.
 
 Every font is bundled under the SIL Open Font License 1.1: Departure Mono © Helena Zhang
-([OFL.txt](src/glitchwall/wallpaper/OFL.txt)), and VT323, IBM Plex Mono, Chakra Petch, Doto, Saira Stencil One,
+([OFL.txt](https://github.com/marklesterb28/glitchwall/blob/main/src/glitchwall/wallpaper/OFL.txt)), and VT323, IBM Plex Mono, Chakra Petch, Doto, Saira Stencil One,
 Instrument Serif, Courier Prime, DM Mono, Fira Code, Overpass Mono, Gelasio, Caveat, Cascadia Mono, Inconsolata
 and DotGothic16 from [Google Fonts](https://github.com/google/fonts)
-([licenses](src/glitchwall/wallpaper/fonts/licenses)). The first eight themes' palettes and the grain, scanline
+([licenses](https://github.com/marklesterb28/glitchwall/tree/main/src/glitchwall/wallpaper/fonts/licenses)). The first eight themes' palettes and the grain, scanline
 and halftone textures are adapted from [SUB/WAVE](https://github.com/perminder-klair/subwave) by Parminder Klair
-(MIT), a lovely self-hosted radio station; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The settings
+(MIT), a lovely self-hosted radio station; see [THIRD_PARTY_NOTICES.md](https://github.com/marklesterb28/glitchwall/blob/main/THIRD_PARTY_NOTICES.md). The settings
 window uses [pywebview](https://github.com/r0x0r/pywebview) (BSD-3-Clause), [pythonnet](https://github.com/pythonnet/pythonnet)
 (MIT) and Microsoft's WebView2.
 
-How it was made, from the first idea to the Rust renderer: [docs/HISTORY.md](docs/HISTORY.md).
+How it was made, from the first idea to the Rust renderer: [docs/HISTORY.md](https://github.com/marklesterb28/glitchwall/blob/main/docs/HISTORY.md).
 
 <div align="center"><sub>made for people who like watching the machine think</sub></div>
