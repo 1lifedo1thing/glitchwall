@@ -79,7 +79,7 @@ It would be ported with the existing tests turned into shared test vectors.
 ## Decisions (taken 2026-11-22)
 
 - **Keep both renderers.** The web page stays the reference and the theme lab; each new background is ported to Rust.
-- **The exe ships inside a Windows wheel**, built on Kahoy (maturin bin mode).
+- **The exe ships inside a Windows wheel**, built on the dev PC (maturin bin mode).
 - **Stay on the `windows` crate 0.58** with the GNU toolchain; move to llvm-mingw only when forced.
 - **Each background sets its frame rate** in themes.json, and a still frame presents nothing.
 - **60 fps only while a card transition plays** (about half a second each), then back to the background's own rate.
@@ -91,7 +91,7 @@ It would be ported with the existing tests turned into shared test vectors.
    every new background is written twice. The other option is native-only themes, which wouldn't show on stream
    through OBS. *Recommendation:* accept two renderers and keep the web one the lab and the reference.
 2. **Shipping the exe.** glitchwall installs with `uv tool` from Python. The options:
-   - put the Rust exe in a Windows wheel (maturin's bin mode), built on Kahoy;
+   - put the Rust exe in a Windows wheel (maturin's bin mode), built on the dev PC;
    - build it from source at install, which needs Rust on every machine.
    *Recommendation:* the wheel.
 3. **Toolchain.** Today it builds with the GNU toolchain on `windows` 0.58, the last version that needs nothing
