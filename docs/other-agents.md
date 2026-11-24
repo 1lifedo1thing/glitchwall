@@ -1,6 +1,11 @@
 # Other agents: where their logs are and what glitchwall would need
 
-Research notes (2026-11-24), read from each project's own source code. Not a promise of support yet.
+Research notes (2026-11-24), read from each project's own source code.
+
+**Status:** readers for Gemini CLI (`gemini_logs.py`, `renderer/src/gemini.rs`) and Codex CLI (`codex_logs.py`,
+`renderer/src/codex.rs`) are built and tested against made-up lines (`tests/fixtures/gemini.json`, `codex.json`).
+**The feed does not read either agent's folder yet.** Turning them on, and whether they start on or off, is a
+separate decision, together with the README and PRIVACY.md listing those folders.
 glitchwall needs, per tool call: the tool's name, what it acted on (command, path, query), its output, a
 timestamp, and that the log is written while the agent works (so the wall can follow it live).
 
@@ -26,9 +31,10 @@ Source: `packages/core/src/services/chatRecordingService.ts`, `chatRecordingType
   for it (so it survives a crash mid-tool). Written again on completion with `status` success/error/cancelled,
   `result` (function response parts) and `resultDisplay` (what the UI shows; for shell, the output text).
   That maps onto glitchwall's two events: the call (cmd) on first sight, the output (out) on completion.
-- **Tool names to map:** `run_shell_command` (args.command), `read_file` / `read_many_files` (paths),
-  `write_file`, `replace` (edit), `glob`, `search_file_content` / grep, `google_web_search`, `web_fetch`,
-  plus MCP tools. (Names to confirm against `packages/core/src/tools/` before mapping.)
+- **Tool names mapped:** `run_shell_command` (command), `read_file` (file_path), `read_many_files` (include),
+  `list_directory` (dir_path), `write_file`, `replace` (edit), `glob` / `grep_search` (pattern, dir_path),
+  `google_web_search` (query), `web_fetch` (prompt), `invoke_agent`; bookkeeping tools (`write_todos`,
+  `update_topic`, `tracker_*`, plan mode...) are not shown; anything else shows as a generic tool line.
 - **Cost to users:** free tier with a Google account. That answers "does it work without Claude Pro".
 
 ## Codex CLI (openai/codex, read at rust-v0.172.0)
@@ -45,8 +51,12 @@ Source: `codex-rs/rollout/src/recorder.rs`, `compression.rs`, `policy.rs`, `code
   `event_msg`, `turn_context`, `compacted`.
 - **Tool calls** are `response_item` payloads (`type` field inside payload):
   - `function_call`: `{name, arguments, call_id, namespace?}`. `arguments` is a JSON *string* to parse.
-    Shell runs here (tool names `shell` with `command` as an argv list, or `exec_command` with `cmd`; confirm
-    which the current version uses), plus `update_plan`, MCP tools (`namespace` set), etc.
+    Shell runs here: `exec_command` with `cmd` (current; `write_stdin` feeds a still-running one), older
+    `shell` with `command` as an argv list (`["bash", "-lc", "<script>"]`) and `shell_command` with a string. Also
+    `update_plan`, `view_image`, MCP tools (`namespace` set), etc.
+  - Output text: `exec_command` writes header lines (`Wall time: …`, `Process exited with code N`, …) then
+    `Output:` and the output; the older shell wrote JSON `{"output", "metadata": {"exit_code"}}`. A nonzero exit
+    code is what marks a failure (the log has no success flag). Output can also be a list of `input_text` items.
   - `function_call_output`: `{call_id, output}`, the result, matched by `call_id`.
   - `custom_tool_call` / `custom_tool_call_output`: `{name, input, call_id}` / `{call_id, output}`. `apply_patch`
     (file edits) arrives this way, `input` being the patch text (file paths are in its `*** Update File:` lines).
@@ -54,6 +64,8 @@ Source: `codex-rs/rollout/src/recorder.rs`, `compression.rs`, `policy.rs`, `code
   - `web_search_call`: `{status, action}` (the query is in `action`).
 - **Lifecycle:** call and output are two separate lines, matched by `call_id`. Same shape as Claude Code's
   tool_use / tool_result, so it maps onto glitchwall's cmd/out events directly.
+- **Project and subagents:** `session_meta` and `turn_context` lines carry `cwd` (the project name shown);
+  a subagent session has `parent_thread_id` or `source: {"subagent": ...}` in its `session_meta`.
 - **Watch out:** the format changes between releases (fields added, kinds renamed). The reader must skip
   anything it doesn't know rather than fail, and the fixtures should come from a real recent session.
 - **Cost to users:** ChatGPT plan (Plus and up) or an OpenAI API key.

@@ -7,6 +7,7 @@
 
 mod anim;
 mod bg;
+mod codex;
 mod desk;
 mod feed;
 mod fonts;

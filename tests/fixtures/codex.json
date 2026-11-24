@@ -1,0 +1,1583 @@
+{
+ "streams": [
+  {
+   "path": [
+    "sessions",
+    "2026",
+    "11",
+    "24",
+    "rollout-2026-11-24T10-00-00-0199a213-81c0-7800-8aa1-bbab2a035a53.jsonl"
+   ],
+   "newer_than": null,
+   "lines": [
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"session_meta\", \"payload\": {\"id\": \"0199a213\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"cwd\": \"C:\\\\dev\\\\agent-live-wallpaper\", \"originator\": \"codex_cli_rs\", \"cli_version\": \"0.172.0\", \"source\": \"cli\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"git status -sb\\\", \\\"workdir\\\": \\\"C:\\\\\\\\dev\\\\\\\\x\\\", \\\"yield_time_ms\\\": 1000}\", \"call_id\": \"call_00AbCdEfGhIjKlMnOpQr\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"call_00AbCdEfGhIjKlMnOpQr\", \"output\": \"result 0\\nsecond line\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cargo test\\\", \\\"tty\\\": true}\", \"call_id\": \"call_01AbCdEfGhIjKlMnOpQr\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"call_01AbCdEfGhIjKlMnOpQr\", \"output\": \"result 1\\nsecond line\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"shell\", \"arguments\": \"{\\\"command\\\": [\\\"bash\\\", \\\"-lc\\\", \\\"ls -la && echo done\\\"], \\\"workdir\\\": \\\"/repo\\\"}\", \"call_id\": \"call_02AbCdEfGhIjKlMnOpQr\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"call_02AbCdEfGhIjKlMnOpQr\", \"output\": \"result 2\\nsecond line\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"shell\", \"arguments\": \"{\\\"command\\\": [\\\"powershell.exe\\\", \\\"-NoProfile\\\", \\\"-Command\\\", \\\"Get-ChildItem\\\"]}\", \"call_id\": \"call_03AbCdEfGhIjKlMnOpQr\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"call_03AbCdEfGhIjKlMnOpQr\", \"output\": \"result 3\\nsecond line\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"shell\", \"arguments\": \"{\\\"command\\\": [\\\"rg\\\", \\\"--files\\\", \\\"src\\\"]}\", \"call_id\": \"call_04AbCdEfGhIjKlMnOpQr\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"call_04AbCdEfGhIjKlMnOpQr\", \"output\": \"result 4\\nsecond line\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"shell\", \"arguments\": \"{\\\"command\\\": \\\"already a string\\\"}\", \"call_id\": \"call_05AbCdEfGhIjKlMnOpQr\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"call_05AbCdEfGhIjKlMnOpQr\", \"output\": \"result 5\\nsecond line\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"shell\", \"arguments\": \"{\\\"command\\\": [\\\"cmd\\\", \\\"/c\\\", \\\"dir\\\"]}\", \"call_id\": \"call_06AbCdEfGhIjKlMnOpQr\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"call_06AbCdEfGhIjKlMnOpQr\", \"output\": \"result 6\\nsecond line\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"shell\", \"arguments\": \"{\\\"command\\\": [1, null, true, \\\"x\\\"]}\", \"call_id\": \"call_07AbCdEfGhIjKlMnOpQr\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"call_07AbCdEfGhIjKlMnOpQr\", \"output\": \"result 7\\nsecond line\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"shell_command\", \"arguments\": \"{\\\"command\\\": \\\"npm test -- --watch=false\\\"}\", \"call_id\": \"call_08AbCdEfGhIjKlMnOpQr\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"call_08AbCdEfGhIjKlMnOpQr\", \"output\": \"result 8\\nsecond line\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"apply_patch\", \"arguments\": \"{\\\"input\\\": \\\"*** Begin Patch\\\\n*** Update File: src/app.py\\\\n@@ def main():\\\\n-    x = 1\\\\n+    x = 2\\\\n*** Add File: notes.md\\\\n+hello\\\\n*** Delete File: old.txt\\\\n*** Update File: a.rs\\\\n*** Move to: b.rs\\\\n@@\\\\n-fn a() {}\\\\n+fn b() {}\\\\n*** End of File\\\\n*** End Patch\\\"}\", \"call_id\": \"call_09AbCdEfGhIjKlMnOpQr\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"call_09AbCdEfGhIjKlMnOpQr\", \"output\": \"result 9\\nsecond line\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"view_image\", \"arguments\": \"{\\\"path\\\": \\\"shots/a.png\\\"}\", \"call_id\": \"call_10AbCdEfGhIjKlMnOpQr\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"call_10AbCdEfGhIjKlMnOpQr\", \"output\": \"result 10\\nsecond line\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"mcp__github__search_issues\", \"arguments\": \"{\\\"q\\\": \\\"L\\\\u00f6we \\\\ud83e\\\\udd81 \\\\\\\"quoted\\\\\\\"\\\", \\\"n\\\": 3, \\\"x\\\": 2.5, \\\"ok\\\": true, \\\"none\\\": null}\", \"call_id\": \"call_11AbCdEfGhIjKlMnOpQr\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"call_11AbCdEfGhIjKlMnOpQr\", \"output\": \"result 11\\nsecond line\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"some_tool\", \"arguments\": \"{\\\"q\\\": \\\"z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z end\\\"}\", \"call_id\": \"call_12AbCdEfGhIjKlMnOpQr\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"call_12AbCdEfGhIjKlMnOpQr\", \"output\": \"result 12\\nsecond line\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"other_tool\", \"arguments\": \"{}\", \"call_id\": \"call_13AbCdEfGhIjKlMnOpQr\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"call_13AbCdEfGhIjKlMnOpQr\", \"output\": \"result 13\\nsecond line\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"custom_tool_call\", \"status\": \"completed\", \"call_id\": \"call_patch1\", \"name\": \"apply_patch\", \"input\": \"*** Begin Patch\\n*** Update File: src/app.py\\n@@ def main():\\n-    x = 1\\n+    x = 2\\n*** Add File: notes.md\\n+hello\\n*** Delete File: old.txt\\n*** Update File: a.rs\\n*** Move to: b.rs\\n@@\\n-fn a() {}\\n+fn b() {}\\n*** End of File\\n*** End Patch\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"custom_tool_call_output\", \"call_id\": \"call_patch1\", \"output\": \"{\\\"output\\\": \\\"Success. Updated the following files:\\\\nM src/app.py\\\\n\\\", \\\"metadata\\\": {\\\"exit_code\\\": 0, \\\"duration_seconds\\\": 0.0}}\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"custom_tool_call\", \"call_id\": \"call_ct2\", \"name\": \"js_repl\", \"input\": \"console.log(1)\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"custom_tool_call_output\", \"call_id\": \"call_ct2\", \"output\": \"1\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"local_shell_call\", \"call_id\": \"call_ls1\", \"status\": \"completed\", \"action\": {\"type\": \"exec\", \"command\": [\"bash\", \"-lc\", \"pwd\"], \"timeout_ms\": 1000}}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"call_ls1\", \"output\": \"{\\\"output\\\": \\\"/repo\\\\n\\\", \\\"metadata\\\": {\\\"exit_code\\\": 0}}\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"local_shell_call\", \"id\": \"lsh_2\", \"call_id\": null, \"status\": \"in_progress\", \"action\": {\"type\": \"exec\", \"command\": [\"make\"]}}}"
+   ],
+   "events": [
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "GhIjKlMnOpQr",
+     "text": "git status -sb"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "GhIjKlMnOpQr",
+     "text": "result 0\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "GhIjKlMnOpQr",
+     "text": "cargo test"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "GhIjKlMnOpQr",
+     "text": "result 1\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "GhIjKlMnOpQr",
+     "text": "ls -la && echo done"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "GhIjKlMnOpQr",
+     "text": "result 2\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "GhIjKlMnOpQr",
+     "text": "Get-ChildItem"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "GhIjKlMnOpQr",
+     "text": "result 3\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "GhIjKlMnOpQr",
+     "text": "rg --files src"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "GhIjKlMnOpQr",
+     "text": "result 4\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "GhIjKlMnOpQr",
+     "text": "already a string"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "GhIjKlMnOpQr",
+     "text": "result 5\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "GhIjKlMnOpQr",
+     "text": "dir"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "GhIjKlMnOpQr",
+     "text": "result 6\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "GhIjKlMnOpQr",
+     "text": "1  True x"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "GhIjKlMnOpQr",
+     "text": "result 7\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "GhIjKlMnOpQr",
+     "text": "npm test -- --watch=false"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "GhIjKlMnOpQr",
+     "text": "result 8\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "edit",
+     "ref": "GhIjKlMnOpQr",
+     "text": "src/app.py\n@@ def main():\n-    x = 1\n+    x = 2\nnew: notes.md\n+hello\ndeleted: old.txt\na.rs\nmoved to: b.rs\n@@\n-fn a() {}\n+fn b() {}"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "GhIjKlMnOpQr",
+     "text": "result 9\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "read",
+     "ref": "GhIjKlMnOpQr",
+     "text": "shots/a.png"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "GhIjKlMnOpQr",
+     "text": "result 10\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "tool",
+     "ref": "GhIjKlMnOpQr",
+     "text": "mcp__github__search_issues {\"q\": \"Löwe 🦁 \\\"quoted\\\"\", \"n\": 3, \"x\": 2.5, \"ok\": true, \"none\": null}"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "GhIjKlMnOpQr",
+     "text": "result 11\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "tool",
+     "ref": "GhIjKlMnOpQr",
+     "text": "some_tool {\"q\": \"z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z …"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "GhIjKlMnOpQr",
+     "text": "result 12\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "tool",
+     "ref": "GhIjKlMnOpQr",
+     "text": "other_tool {}"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "GhIjKlMnOpQr",
+     "text": "result 13\nsecond line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "edit",
+     "ref": "call_patch1",
+     "text": "src/app.py\n@@ def main():\n-    x = 1\n+    x = 2\nnew: notes.md\n+hello\ndeleted: old.txt\na.rs\nmoved to: b.rs\n@@\n-fn a() {}\n+fn b() {}"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "call_patch1",
+     "text": "Success. Updated the following files:\nM src/app.py"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "tool",
+     "ref": "call_ct2",
+     "text": "js_repl console.log(1)"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "call_ct2",
+     "text": "1"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "call_ls1",
+     "text": "pwd"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "call_ls1",
+     "text": "/repo"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "lsh_2",
+     "text": "make"
+    }
+   ]
+  },
+  {
+   "path": [
+    "sessions",
+    "2026",
+    "11",
+    "24",
+    "rollout-2026-11-24T10-00-00-0199a213-81c0-7800-8aa1-bbab2a035a53.jsonl"
+   ],
+   "newer_than": null,
+   "lines": [
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"session_meta\", \"payload\": {\"id\": \"0199a213\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"cwd\": \"C:\\\\dev\\\\agent-live-wallpaper\", \"originator\": \"codex_cli_rs\", \"cli_version\": \"0.172.0\", \"source\": \"cli\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"update_plan\", \"arguments\": \"{\\\"plan\\\": [], \\\"chars\\\": \\\"\\\", \\\"session_id\\\": 3}\", \"call_id\": \"h0\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"h0\", \"output\": \"ok\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"write_stdin\", \"arguments\": \"{\\\"plan\\\": [], \\\"chars\\\": \\\"\\\", \\\"session_id\\\": 3}\", \"call_id\": \"h1\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"h1\", \"output\": \"ok\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"request_permissions\", \"arguments\": \"{\\\"plan\\\": [], \\\"chars\\\": \\\"\\\", \\\"session_id\\\": 3}\", \"call_id\": \"h2\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"h2\", \"output\": \"ok\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"request_user_input\", \"arguments\": \"{\\\"plan\\\": [], \\\"chars\\\": \\\"\\\", \\\"session_id\\\": 3}\", \"call_id\": \"h3\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"h3\", \"output\": \"ok\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"tool_search\", \"arguments\": \"{\\\"plan\\\": [], \\\"chars\\\": \\\"\\\", \\\"session_id\\\": 3}\", \"call_id\": \"h4\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"h4\", \"output\": \"ok\"}}"
+   ],
+   "events": []
+  },
+  {
+   "path": [
+    "sessions",
+    "2026",
+    "11",
+    "24",
+    "rollout-2026-11-24T10-00-00-0199a213-81c0-7800-8aa1-bbab2a035a53.jsonl"
+   ],
+   "newer_than": null,
+   "lines": [
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"session_meta\", \"payload\": {\"id\": \"0199a213\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"cwd\": \"C:\\\\dev\\\\agent-live-wallpaper\", \"originator\": \"codex_cli_rs\", \"cli_version\": \"0.172.0\", \"source\": \"cli\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 0\\\"}\", \"call_id\": \"o0\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o0\", \"output\": \"Chunk ID: 7d1f\\nWall time: 0.0123 seconds\\nProcess exited with code 0\\nOriginal token count: 12\\nOutput:\\nfine\\n\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 1\\\"}\", \"call_id\": \"o1\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o1\", \"output\": \"Chunk ID: 7d1f\\nWall time: 0.0123 seconds\\nProcess exited with code 1\\nOriginal token count: 12\\nOutput:\\nerror: build failed\\n\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 2\\\"}\", \"call_id\": \"o2\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o2\", \"output\": \"Chunk ID: 7d1f\\nWall time: 0.0123 seconds\\nProcess running with session ID 3\\nOriginal token count: 12\\nOutput:\\n\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 3\\\"}\", \"call_id\": \"o3\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o3\", \"output\": \"Chunk ID: 7d1f\\nWall time: 0.0123 seconds\\nProcess exited with code -1\\nOriginal token count: 12\\nOutput:\\nkilled\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 4\\\"}\", \"call_id\": \"o4\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o4\", \"output\": \"Chunk ID: 7d1f\\nWall time: 0.0123 seconds\\nProcess exited with code 0\\nOriginal token count: 12\\nOutput:\\na\\nOutput:\\nstill output\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 5\\\"}\", \"call_id\": \"o5\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o5\", \"output\": \"Exit code: 2\\nWall time: 1 seconds\\nOutput:\\nfrom shell_command\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 6\\\"}\", \"call_id\": \"o6\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o6\", \"output\": \"Exit code: x\\nOutput:\\nnot a number\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 7\\\"}\", \"call_id\": \"o7\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o7\", \"output\": \"Wall time: 1 seconds\\nno output line\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 8\\\"}\", \"call_id\": \"o8\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o8\", \"output\": \"Output: on the same line\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 9\\\"}\", \"call_id\": \"o9\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o9\", \"output\": \"Process exited with code 000\\nOutput:zeros\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 10\\\"}\", \"call_id\": \"o10\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o10\", \"output\": \"Process exited with code 99999999999999999999999\\nOutput:\\nhuge\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 11\\\"}\", \"call_id\": \"o11\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o11\", \"output\": \"{\\\"output\\\": \\\"old form ok\\\", \\\"metadata\\\": {\\\"exit_code\\\": 0, \\\"duration_seconds\\\": 1.5}}\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 12\\\"}\", \"call_id\": \"o12\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o12\", \"output\": \"{\\\"output\\\": \\\"old form failed\\\", \\\"metadata\\\": {\\\"exit_code\\\": 127}}\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 13\\\"}\", \"call_id\": \"o13\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o13\", \"output\": \"{\\\"output\\\": \\\"float code\\\", \\\"metadata\\\": {\\\"exit_code\\\": 1.0}}\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 14\\\"}\", \"call_id\": \"o14\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o14\", \"output\": \"{\\\"output\\\": \\\"bool code\\\", \\\"metadata\\\": {\\\"exit_code\\\": true}}\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 15\\\"}\", \"call_id\": \"o15\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o15\", \"output\": \"{\\\"output\\\": \\\"no meta\\\"}\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 16\\\"}\", \"call_id\": \"o16\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o16\", \"output\": \"{\\\"output\\\": 5, \\\"metadata\\\": {\\\"exit_code\\\": 1}}\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 17\\\"}\", \"call_id\": \"o17\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o17\", \"output\": \"{\\\"not\\\": \\\"output\\\"}\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 18\\\"}\", \"call_id\": \"o18\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o18\", \"output\": \"{broken json\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 19\\\"}\", \"call_id\": \"o19\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o19\", \"output\": [{\"type\": \"input_text\", \"text\": \"from items\"}, {\"type\": \"input_image\", \"image_url\": \"data:\"}, {\"type\": \"input_text\", \"text\": \"two\"}]}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 20\\\"}\", \"call_id\": \"o20\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o20\", \"output\": [{\"type\": \"input_text\", \"text\": \"Chunk ID: 7d1f\\nWall time: 0.0123 seconds\\nProcess exited with code 3\\nOriginal token count: 12\\nOutput:\\nitems with header\"}]}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 21\\\"}\", \"call_id\": \"o21\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o21\", \"output\": []}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 22\\\"}\", \"call_id\": \"o22\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o22\", \"output\": null}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 23\\\"}\", \"call_id\": \"o23\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o23\", \"output\": 42}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 24\\\"}\", \"call_id\": \"o24\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o24\", \"output\": \"\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 25\\\"}\", \"call_id\": \"o25\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o25\", \"output\": \"  padded  \\n\\n\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 26\\\"}\", \"call_id\": \"o26\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o26\", \"output\": \"line 0\\nline 1\\nline 2\\nline 3\\nline 4\\nline 5\\nline 6\\nline 7\\nline 8\\nline 9\\nline 10\\nline 11\\nline 12\\nline 13\\nline 14\\nline 15\\nline 16\\nline 17\\nline 18\\nline 19\\nline 20\\nline 21\\nline 22\\nline 23\\nline 24\\nline 25\\nline 26\\nline 27\\nline 28\\nline 29\\nline 30\\nline 31\\nline 32\\nline 33\\nline 34\\nline 35\\nline 36\\nline 37\\nline 38\\nline 39\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 27\\\"}\", \"call_id\": \"o27\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o27\", \"output\": \"the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away \"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 28\\\"}\", \"call_id\": \"o28\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o28\", \"output\": \"cr\\rlf\\r\\nvt\\u000bff\\ffs\\u001cnells ps end\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cmd 29\\\"}\", \"call_id\": \"o29\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"o29\", \"output\": \"ends in a key ghp_a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8\"}}"
+   ],
+   "events": [
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o0",
+     "text": "cmd 0"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o0",
+     "text": "fine"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o1",
+     "text": "cmd 1"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "err",
+     "ref": "o1",
+     "text": "error: build failed"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o2",
+     "text": "cmd 2"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o2",
+     "text": "(no output)"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o3",
+     "text": "cmd 3"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "err",
+     "ref": "o3",
+     "text": "killed"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o4",
+     "text": "cmd 4"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o4",
+     "text": "a\nOutput:\nstill output"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o5",
+     "text": "cmd 5"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "err",
+     "ref": "o5",
+     "text": "from shell_command"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o6",
+     "text": "cmd 6"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o6",
+     "text": "not a number"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o7",
+     "text": "cmd 7"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o7",
+     "text": "Wall time: 1 seconds\nno output line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o8",
+     "text": "cmd 8"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o8",
+     "text": "Output: on the same line"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o9",
+     "text": "cmd 9"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o9",
+     "text": "zeros"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o10",
+     "text": "cmd 10"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "err",
+     "ref": "o10",
+     "text": "huge"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o11",
+     "text": "cmd 11"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o11",
+     "text": "old form ok"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o12",
+     "text": "cmd 12"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "err",
+     "ref": "o12",
+     "text": "old form failed"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o13",
+     "text": "cmd 13"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "err",
+     "ref": "o13",
+     "text": "float code"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o14",
+     "text": "cmd 14"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o14",
+     "text": "bool code"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o15",
+     "text": "cmd 15"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o15",
+     "text": "no meta"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o16",
+     "text": "cmd 16"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o16",
+     "text": "{\"output\": 5, \"metadata\": {\"exit_code\": 1}}"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o17",
+     "text": "cmd 17"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o17",
+     "text": "{\"not\": \"output\"}"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o18",
+     "text": "cmd 18"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o18",
+     "text": "{broken json"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o19",
+     "text": "cmd 19"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o19",
+     "text": "from items\ntwo"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o20",
+     "text": "cmd 20"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "err",
+     "ref": "o20",
+     "text": "items with header"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o21",
+     "text": "cmd 21"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o21",
+     "text": "(no output)"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o22",
+     "text": "cmd 22"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o22",
+     "text": "(no output)"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o23",
+     "text": "cmd 23"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o23",
+     "text": "(no output)"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o24",
+     "text": "cmd 24"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o24",
+     "text": "(no output)"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o25",
+     "text": "cmd 25"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o25",
+     "text": "padded"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o26",
+     "text": "cmd 26"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o26",
+     "text": "line 0\nline 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\n… 26 more lines"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o27",
+     "text": "cmd 27"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o27",
+     "text": "the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick brown fox jumps over the lazy dog and keeps on running far away the quick …"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o28",
+     "text": "cmd 28"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o28",
+     "text": "cr\rlf\r\nvt\u000bff\ffs\u001cnells ps end"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "o29",
+     "text": "cmd 29"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "o29",
+     "text": "ends in a key ghp_a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8"
+    }
+   ]
+  },
+  {
+   "path": [
+    "sessions",
+    "2026",
+    "11",
+    "24",
+    "rollout-2026-11-24T10-00-00-0199a213-81c0-7800-8aa1-bbab2a035a53.jsonl"
+   ],
+   "newer_than": null,
+   "lines": [
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"web_search_call\", \"id\": \"ws_0\", \"status\": \"completed\", \"action\": {\"type\": \"search\", \"query\": \"rust regex\"}}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"web_search_call\", \"id\": \"ws_1\", \"status\": \"completed\", \"action\": {\"type\": \"search\", \"queries\": [\"a\", 1, \"b\"]}}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"web_search_call\", \"id\": \"ws_2\", \"status\": \"completed\", \"action\": {\"type\": \"search\", \"query\": \"\", \"queries\": [\"fallback\"]}}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"web_search_call\", \"id\": \"ws_3\", \"status\": \"completed\", \"action\": {\"type\": \"search\"}}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"web_search_call\", \"id\": \"ws_4\", \"status\": \"completed\", \"action\": {\"type\": \"open_page\", \"url\": \"https://example.com/x\"}}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"web_search_call\", \"id\": \"ws_5\", \"status\": \"completed\", \"action\": {\"type\": \"find_in_page\", \"url\": \"https://e.com\", \"pattern\": \"needle\"}}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"web_search_call\", \"id\": \"ws_6\", \"status\": \"completed\", \"action\": {\"type\": \"find_in_page\", \"pattern\": \"no url\"}}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"web_search_call\", \"id\": \"ws_7\", \"status\": \"completed\", \"action\": {\"type\": \"other\"}}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"web_search_call\", \"id\": \"ws_8\", \"status\": \"completed\", \"action\": \"not a dict\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"web_search_call\", \"id\": \"ws_9\", \"status\": \"completed\", \"action\": null}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"web_search_call\", \"status\": \"completed\", \"action\": {\"type\": \"search\", \"query\": \"no id\"}}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"web_search_call\", \"status\": \"completed\", \"action\": {\"type\": \"search\", \"query\": \"no id\"}}}",
+    "{\"timestamp\": \"2026-11-24T10:00:01Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"web_search_call\", \"status\": \"completed\", \"action\": {\"type\": \"search\", \"query\": \"no id\"}}}"
+   ],
+   "events": [
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "web",
+     "ref": "ws_0",
+     "text": "rust regex"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "web",
+     "ref": "ws_1",
+     "text": "a | b"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "web",
+     "ref": "ws_2",
+     "text": "fallback"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "web",
+     "ref": "ws_4",
+     "text": "https://example.com/x"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "web",
+     "ref": "ws_5",
+     "text": "needle  in https://e.com"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "web",
+     "ref": "ws_6",
+     "text": "no url"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "web",
+     "ref": "00.000Zno id",
+     "text": "no id"
+    },
+    {
+     "ts": "2026-11-24T10:00:01Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "web",
+     "ref": ":00:01Zno id",
+     "text": "no id"
+    }
+   ]
+  },
+  {
+   "path": [
+    "sessions",
+    "2026",
+    "11",
+    "24",
+    "rollout-2026-11-24T10-00-00-0199a213-81c0-7800-8aa1-bbab2a035a53.jsonl"
+   ],
+   "newer_than": null,
+   "lines": [
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"before any meta\\\"}\", \"call_id\": \"m0\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"session_meta\", \"payload\": {\"id\": \"0199a213\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"cwd\": \"/home/me/my-app/\", \"originator\": \"codex_cli_rs\", \"cli_version\": \"0.172.0\", \"source\": \"cli\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"in my-app\\\"}\", \"call_id\": \"m1\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"turn_context\", \"payload\": {\"cwd\": \"C:\\\\work\\\\other\", \"model\": \"x\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"in other\\\"}\", \"call_id\": \"m2\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"session_meta\", \"payload\": {\"id\": \"0199a213\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"cwd\": \"D:\\\\\", \"originator\": \"codex_cli_rs\", \"cli_version\": \"0.172.0\", \"source\": \"cli\", \"parent_thread_id\": \"0199\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"subagent by parent\\\"}\", \"call_id\": \"m3\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"session_meta\", \"payload\": {\"id\": \"0199a213\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"cwd\": \"/r\", \"originator\": \"codex_cli_rs\", \"cli_version\": \"0.172.0\", \"source\": {\"subagent\": {\"thread_spawn\": {}}}}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"subagent by source\\\"}\", \"call_id\": \"m4\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"session_meta\", \"payload\": {\"id\": \"0199a213\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"cwd\": \"/r\", \"originator\": \"codex_cli_rs\", \"cli_version\": \"0.172.0\", \"source\": \"exec\", \"parent_thread_id\": \"\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"not a subagent\\\"}\", \"call_id\": \"m5\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"turn_context\", \"payload\": {\"cwd\": 5}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cwd not a string\\\"}\", \"call_id\": \"m6\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"session_meta\", \"payload\": {\"id\": \"0199a213\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"cwd\": null, \"originator\": \"codex_cli_rs\", \"cli_version\": \"0.172.0\", \"source\": \"cli\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"cwd null\\\"}\", \"call_id\": \"m7\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"session_meta\", \"payload\": {\"source\": {\"subagent\": \"review\"}}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"meta without cwd\\\"}\", \"call_id\": \"m8\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"session_meta\", \"payload\": \"not a dict\"}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"meta payload not a dict\\\"}\", \"call_id\": \"m9\"}}"
+   ],
+   "events": [
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "m0",
+     "text": "before any meta"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "app",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "m1",
+     "text": "in my-app"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "other",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "m2",
+     "text": "in other"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "D:",
+     "session": "bbab",
+     "side": true,
+     "kind": "$",
+     "ref": "m3",
+     "text": "subagent by parent"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "r",
+     "session": "bbab",
+     "side": true,
+     "kind": "$",
+     "ref": "m4",
+     "text": "subagent by source"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "r",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "m5",
+     "text": "not a subagent"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "r",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "m6",
+     "text": "cwd not a string"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "r",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "m7",
+     "text": "cwd null"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "r",
+     "session": "bbab",
+     "side": true,
+     "kind": "$",
+     "ref": "m8",
+     "text": "meta without cwd"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "r",
+     "session": "bbab",
+     "side": true,
+     "kind": "$",
+     "ref": "m9",
+     "text": "meta payload not a dict"
+    }
+   ]
+  },
+  {
+   "path": [
+    "sessions",
+    "2026",
+    "11",
+    "24",
+    "rollout-2026-11-24T10-00-00-0199a213-81c0-7800-8aa1-bbab2a035a53.jsonl"
+   ],
+   "newer_than": null,
+   "lines": [
+    "not json",
+    "[]",
+    "{}",
+    "null",
+    "42",
+    "\"a string\"",
+    "",
+    "{\"type\": \"response_item\"}",
+    "{\"type\": \"response_item\", \"payload\": [1]}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"message\", \"role\": \"assistant\", \"content\": [{\"type\": \"output_text\", \"text\": \"hi\"}]}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"reasoning\", \"summary\": []}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"event_msg\", \"payload\": {\"type\": \"exec_command_end\", \"call_id\": \"x\", \"aggregated_output\": \"dup\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"compacted\", \"payload\": {\"message\": \"summary\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"tool_search_call\", \"call_id\": \"ts1\", \"execution\": \"client\", \"arguments\": {}}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"ls\\\"}\", \"call_id\": \"d1\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"ls\\\"}\", \"call_id\": \"d1\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"d1\", \"output\": \"a\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"d1\", \"output\": \"a\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"never-called\", \"output\": \"orphan\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"\", \"output\": \"empty id\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": null, \"output\": \"null id\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"empty call id\\\"}\", \"call_id\": \"\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"null call id\\\"}\", \"call_id\": null}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"number call id\\\"}\", \"call_id\": 7}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": 7, \"output\": \"number id out\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"not json\", \"call_id\": \"a1\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"[1, 2]\", \"call_id\": \"a2\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"5\", \"call_id\": \"a3\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": null}\", \"call_id\": \"a4\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": 12.5}\", \"call_id\": \"a5\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"   \\\"}\", \"call_id\": \"a6\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": null, \"arguments\": \"{\\\"cmd\\\": \\\"no name\\\"}\", \"call_id\": \"a7\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": 3, \"arguments\": \"{\\\"x\\\": 1}\", \"call_id\": \"a8\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": [\\\"argv\\\", \\\"list\\\"]}\", \"call_id\": \"a9\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"unknown_tool\", \"arguments\": \"raw args, not json\", \"call_id\": \"a10\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"custom_tool_call\", \"call_id\": \"c1\", \"name\": \"apply_patch\", \"input\": null}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"custom_tool_call\", \"call_id\": \"c2\", \"name\": null, \"input\": \"x\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"local_shell_call\", \"call_id\": \"l1\", \"action\": \"not a dict\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"local_shell_call\", \"call_id\": \"l2\", \"action\": {\"command\": \"a string\"}}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"long id\\\"}\", \"call_id\": \"call_0123456789abcdefghij\"}}",
+    "{\"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"no ts\\\"}\", \"call_id\": \"n1\"}}",
+    "{\"timestamp\": 12345, \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"num ts\\\"}\", \"call_id\": \"n2\"}}",
+    "{\"timestamp\": \"x\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"shell\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"dup\\\"}\", \"call_id\": \"dup\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"crlf line\\\"}\", \"call_id\": \"cr\"}}\r"
+   ],
+   "events": [
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "d1",
+     "text": "ls"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "d1",
+     "text": "a"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "7",
+     "text": "number call id"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "out",
+     "ref": "7",
+     "text": "number id out"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "a5",
+     "text": "12.5"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "tool",
+     "ref": "a7",
+     "text": " {\"cmd\": \"no name\"}"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "tool",
+     "ref": "a8",
+     "text": "3 {\"x\": 1}"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "a9",
+     "text": "[\"argv\", \"list\"]"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "tool",
+     "ref": "a10",
+     "text": "unknown_tool raw args, not json"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "tool",
+     "ref": "c2",
+     "text": " x"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "l2",
+     "text": "a string"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "89abcdefghij",
+     "text": "long id"
+    },
+    {
+     "ts": "",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "n1",
+     "text": "no ts"
+    },
+    {
+     "ts": "12345",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "n2",
+     "text": "num ts"
+    },
+    {
+     "ts": "x",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "dup",
+     "text": "dup"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.000Z",
+     "proj": "codex",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "cr",
+     "text": "crlf line"
+    }
+   ]
+  },
+  {
+   "path": [
+    "sessions",
+    "2026",
+    "11",
+    "24",
+    "rollout-2026-11-24T10-00-00-0199a213-81c0-7800-8aa1-bbab2a035a53.jsonl"
+   ],
+   "newer_than": 1795514400.0,
+   "lines": [
+    "{\"timestamp\": \"2026-11-24T10:00:00.000Z\", \"type\": \"session_meta\", \"payload\": {\"id\": \"0199a213\", \"timestamp\": \"2026-11-24T10:00:00.000Z\", \"cwd\": \"C:\\\\dev\\\\agent-live-wallpaper\", \"originator\": \"codex_cli_rs\", \"cli_version\": \"0.172.0\", \"source\": \"cli\"}}",
+    "{\"timestamp\": \"2026-11-24T09:59:59Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"stamp 2026-11-24T09:59:59Z\\\"}\", \"call_id\": \"t0\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"stamp 2026-11-24T10:00:00Z\\\"}\", \"call_id\": \"t1\"}}",
+    "{\"timestamp\": \"2026-11-24T10:00:00.5Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"stamp 2026-11-24T10:00:00.5Z\\\"}\", \"call_id\": \"t2\"}}",
+    "{\"timestamp\": \"2026-11-24T18:00:00+08:00\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"stamp 2026-11-24T18:00:00+08:00\\\"}\", \"call_id\": \"t3\"}}",
+    "{\"timestamp\": \"2026-11-24T04:00:01-06:00\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"stamp 2026-11-24T04:00:01-06:00\\\"}\", \"call_id\": \"t4\"}}",
+    "{\"timestamp\": \"garbage\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"stamp garbage\\\"}\", \"call_id\": \"t5\"}}",
+    "{\"timestamp\": \"\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"stamp \\\"}\", \"call_id\": \"t6\"}}",
+    "{\"timestamp\": \"2026-11-24\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"stamp 2026-11-24\\\"}\", \"call_id\": \"t7\"}}",
+    "{\"type\": \"response_item\", \"payload\": {\"type\": \"function_call\", \"name\": \"exec_command\", \"arguments\": \"{\\\"cmd\\\": \\\"stamp None\\\"}\", \"call_id\": \"t8\"}}",
+    "{\"timestamp\": \"2026-11-24T09:00:00Z\", \"type\": \"response_item\", \"payload\": {\"type\": \"function_call_output\", \"call_id\": \"t1\", \"output\": \"output of a new call\"}}"
+   ],
+   "events": [
+    {
+     "ts": "2026-11-24T10:00:00Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "t1",
+     "text": "stamp 2026-11-24T10:00:00Z"
+    },
+    {
+     "ts": "2026-11-24T10:00:00.5Z",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "t2",
+     "text": "stamp 2026-11-24T10:00:00.5Z"
+    },
+    {
+     "ts": "2026-11-24T18:00:00+08:00",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "t3",
+     "text": "stamp 2026-11-24T18:00:00+08:00"
+    },
+    {
+     "ts": "2026-11-24T04:00:01-06:00",
+     "proj": "wallpaper",
+     "session": "bbab",
+     "side": false,
+     "kind": "$",
+     "ref": "t4",
+     "text": "stamp 2026-11-24T04:00:01-06:00"
+    }
+   ]
+  }
+ ],
+ "labels": [
+  {
+   "cwd": "C:\\dev\\agent-live-wallpaper",
+   "out": "wallpaper"
+  },
+  {
+   "cwd": "/home/me/app/",
+   "out": "app"
+  },
+  {
+   "cwd": "/home/me/ends-with-",
+   "out": "codex"
+  },
+  {
+   "cwd": "D:\\",
+   "out": "D:"
+  },
+  {
+   "cwd": "/",
+   "out": "codex"
+  },
+  {
+   "cwd": "",
+   "out": "codex"
+  },
+  {
+   "cwd": "plain",
+   "out": "plain"
+  },
+  {
+   "cwd": "a/b\\c-d",
+   "out": "d"
+  }
+ ],
+ "shells": [
+  {
+   "argv": [
+    "bash",
+    "-lc",
+    "x"
+   ],
+   "out": "x"
+  },
+  {
+   "argv": [
+    "zsh",
+    "-c",
+    "y"
+   ],
+   "out": "y"
+  },
+  {
+   "argv": [
+    "a",
+    "b"
+   ],
+   "out": "a b"
+  },
+  {
+   "argv": [
+    "-c",
+    "z"
+   ],
+   "out": "-c z"
+  },
+  {
+   "argv": [],
+   "out": ""
+  },
+  {
+   "argv": "s",
+   "out": "s"
+  },
+  {
+   "argv": null,
+   "out": ""
+  },
+  {
+   "argv": 5,
+   "out": ""
+  },
+  {
+   "argv": [
+    "pwsh",
+    "-command",
+    "w"
+   ],
+   "out": "w"
+  }
+ ]
+}
