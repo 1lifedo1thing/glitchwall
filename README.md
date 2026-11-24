@@ -31,8 +31,14 @@ behind your icons: every shell command, file read and edit, search, web fetch an
 it runs, types itself out with its result, lingers, and leaves. A failing command's output shows in the theme's
 error color.
 
-It reads Claude Code's own session logs, so there's nothing to set up in Claude Code. No agent, or not working
-right now? Two other modes keep it a wallpaper:
+It reads Claude Code's own session logs, so there's nothing to set up in Claude Code.
+
+> **Live mode needs Claude Code**, Anthropic's coding agent, which comes with a paid Claude plan (Pro or Max)
+> or an Anthropic API account. The free Claude plan doesn't include it, and chatting on claude.ai or in the
+> Claude app writes no logs for glitchwall to read. Support for other agents is in the works. glitchwall itself is
+> free, and the two modes below work with no Claude at all.
+
+No agent, or not working right now? Two other modes keep it a wallpaper:
 
 | Mode | What you see | What it reads |
 | --- | --- | --- |
@@ -86,7 +92,7 @@ carries the same wheel and its SHA-256, if you'd rather download and check it yo
 
 | Needs | Download | Installed |
 | --- | --- | --- |
-| Windows 10 1803 or newer, .NET Framework 4.7.2 and WebView2 (Windows 11 has both) | 2.9 MB | about 78 MB, including the Python uv sets up |
+| Windows 10 1803 or newer, .NET Framework 4.7.2 and WebView2 (Windows 11 has both). For `live` mode, Claude Code (paid Claude plan or API account) | 2.9 MB | about 78 MB, including the Python uv sets up |
 
 `install` checks those first. If one is missing it stops, says which, and offers to open Microsoft's download
 page; glitchwall itself never downloads or installs anything. Then it starts the feed, adds a start-at-logon
@@ -161,7 +167,14 @@ simple web wallpaper, with less memory. Screens covered by a window, a fullscree
 (under 1% of one core in all). `--intensity 0` stills
 the background entirely. [Compared with other live wallpapers →](https://github.com/marklesterb28/glitchwall/blob/main/docs/PERFORMANCE.md)
 
-**Does it work with other agents?** Claude Code today. The log reader is one small file
+**Does it work with the free Claude plan?** Not in `live` mode. glitchwall draws the tool calls a coding agent
+runs on your PC (commands, file edits, searches), and it finds them in Claude Code's local logs. The free plan
+doesn't include Claude Code, and regular chat on claude.ai or in the Claude app runs nothing on your PC and keeps
+the conversation on Anthropic's servers, so there's nothing to show. `ambient` and `art` modes need no Claude at
+all, and `uvx glitchwall demo --open` shows what live mode looks like.
+
+**Does it work with other agents?** Claude Code today; support for other agents, including ones that run local
+models, is in the works. The log reader is one small file
 ([`claude_logs.py`](https://github.com/marklesterb28/glitchwall/blob/main/src/glitchwall/claude_logs.py)); pull requests for other agents are welcome.
 
 **macOS or Linux?** Not today. The renderer draws with Direct2D and sits behind the icons through the Windows
