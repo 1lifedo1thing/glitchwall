@@ -9,12 +9,11 @@
 #![allow(dead_code)]
 
 use crate::json::Json;
-use crate::logs::{clip, dumps, py_splitlines, py_str, py_strip, truthy, when, Event, ACTIVE, FIRST_TAIL, MAX_OUT_LINES};
-use std::collections::{HashMap, HashSet};
-use std::io::{Read, Seek, SeekFrom};
+use crate::logs::{clip, dumps, py_splitlines, py_str, py_strip, truthy, when, Event, ACTIVE, MAX_OUT_LINES};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
 const DONE: [&str; 3] = ["success", "error", "cancelled"];
 static EMPTY: Json = Json::Obj(Vec::new());
@@ -133,12 +132,12 @@ fn id_of(tc: &Json) -> String { let i = tc.get("id"); if truthy(i) { py_str(i) }
 /// Follows Gemini CLI's logs and hands each new tool call, and each finished one, to emit.
 pub struct Tailer {
     pub root: PathBuf,
-    offsets: HashMap<PathBuf, u64>,
+    follow: crate::tail::Follow,
     seen: HashSet<String>,   // "u"+id once the call is shown, "r"+id once its result is
 }
 
 impl Tailer {
-    pub fn new(root: PathBuf) -> Tailer { Tailer { root, offsets: HashMap::new(), seen: HashSet::new() } }
+    pub fn new(root: PathBuf) -> Tailer { Tailer { root, follow: crate::tail::Follow::new(), seen: HashSet::new() } }
 
     fn send(&mut self, key: String, tc: &Json, f: &Path, kind: &str, r: &str, text: String, emit: &mut impl FnMut(Event)) {
         if self.seen.contains(&key) || py_strip(&text).is_empty() { return; }
@@ -204,46 +203,32 @@ impl Tailer {
         }
     }
 
-    fn files(&self) -> Vec<PathBuf> {
+    /// <project>/chats/*.jsonl and chats/<parent>/*.jsonl: all of them, or those in folders that had a file added
+    /// in the last ACTIVE seconds (the others once a minute).
+    fn files(&self, now: f64, everything: bool) -> Vec<PathBuf> {
+        let recent = |d: &Path| everything || std::fs::metadata(d).is_ok_and(|m| crate::tail::age(&m, now) <= ACTIVE);
         let mut out = Vec::new();
-        let jsonl = |p: &Path| p.extension().is_some_and(|x| x == "jsonl");
         let Ok(projects) = std::fs::read_dir(&self.root) else { return out };
         for p in projects.flatten() {
-            let Ok(chats) = std::fs::read_dir(p.path().join("chats")) else { continue };
-            for e in chats.flatten() {
-                let f = e.path();
-                if f.is_dir() {
-                    let Ok(sub) = std::fs::read_dir(&f) else { continue };
-                    out.extend(sub.flatten().map(|e| e.path()).filter(|f| jsonl(f) && f.is_file()));
-                } else if jsonl(&f) {
-                    out.push(f);
-                }
+            let chats = p.path().join("chats");
+            if !chats.is_dir() || !recent(&chats) { continue; }
+            out.extend(crate::tail::jsonl_in(&chats));
+            let Ok(subs) = std::fs::read_dir(&chats) else { continue };
+            for e in subs.flatten() {
+                let sub = e.path();
+                if sub.is_dir() && recent(&sub) { out.extend(crate::tail::jsonl_in(&sub)); }
             }
         }
         out
     }
 
     pub fn scan(&mut self, emit: &mut impl FnMut(Event)) {
-        let now = SystemTime::now();
-        for f in self.files() {
-            let Ok(st) = std::fs::metadata(&f) else { continue };
-            if !st.is_file() { continue; }
-            let age = st.modified().ok().and_then(|m| now.duration_since(m).ok()).map_or(0.0, |d| d.as_secs_f64());
-            if age > ACTIVE && !self.offsets.contains_key(&f) { continue; }
-            let size = st.len();
-            let first = !self.offsets.contains_key(&f);
-            let newer_than = first.then(|| now.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs_f64() - ACTIVE);
-            let mut pos = self.offsets.get(&f).copied().unwrap_or(size.saturating_sub(FIRST_TAIL));
-            if size < pos { pos = 0; }   // rewritten in place (Gemini CLI does that on some resumes)
-            if size == pos { self.offsets.insert(f, pos); continue; }
-            let mut chunk = Vec::new();
-            let read = std::fs::File::open(&f)   // read-only
-                .and_then(|mut h| { h.seek(SeekFrom::Start(pos))?; h.read_to_end(&mut chunk) });
-            if read.is_err() { continue; }
-            let Some(last_nl) = chunk.iter().rposition(|&b| b == b'\n') else { continue };
-            self.offsets.insert(f.clone(), pos + last_nl as u64 + 1);
-            for line in chunk[..last_nl].split(|&b| b == b'\n') { self.parse_line(line, &f, newer_than, emit); }
-        }
+        let now = crate::tail::now_secs();
+        let mut follow = std::mem::replace(&mut self.follow, crate::tail::Follow::new());
+        let everything = follow.due(now);
+        let files = self.files(now, everything);
+        follow.scan(files, everything, now, &mut |line: &[u8], f: &Path, newer_than: Option<f64>| self.parse_line(line, f, newer_than, emit));
+        self.follow = follow;
     }
 
     /// Scan once a second until stop is set.

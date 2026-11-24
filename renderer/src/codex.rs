@@ -10,12 +10,11 @@
 #![allow(dead_code)]
 
 use crate::json::Json;
-use crate::logs::{clip, dumps, py_splitlines, py_str, py_strip, truthy, when, Event, ACTIVE, FIRST_TAIL, MAX_OUT_LINES};
+use crate::logs::{clip, dumps, py_splitlines, py_str, py_strip, truthy, when, Event, MAX_OUT_LINES};
 use std::collections::{HashMap, HashSet};
-use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
 pub const HIDDEN: [&str; 5] = ["update_plan", "write_stdin", "request_permissions", "request_user_input", "tool_search"];
 const SHELL_FLAGS: [&str; 6] = ["-c", "-lc", "-Command", "-command", "/c", "/C"];
@@ -232,7 +231,7 @@ pub fn output_text(v: &Json) -> (String, bool) {
 /// Follows Codex CLI's rollouts and hands each new tool call, and each result, to emit.
 pub struct Tailer {
     pub root: PathBuf,
-    offsets: HashMap<PathBuf, u64>,
+    follow: crate::tail::Follow,
     seen: HashSet<String>,   // "u"+id once the call is shown, "r"+id once its result is
     proj: HashMap<PathBuf, String>,
     side: HashMap<PathBuf, bool>,
@@ -242,7 +241,7 @@ pub struct Tailer {
 
 impl Tailer {
     pub fn new(root: PathBuf) -> Tailer {
-        Tailer { root, offsets: HashMap::new(), seen: HashSet::new(), proj: HashMap::new(), side: HashMap::new(), cells: HashMap::new(), waits: HashMap::new() }
+        Tailer { root, follow: crate::tail::Follow::new(), seen: HashSet::new(), proj: HashMap::new(), side: HashMap::new(), cells: HashMap::new(), waits: HashMap::new() }
     }
 
     fn send(&mut self, key: String, d: &Json, f: &Path, kind: &str, r: &str, text: String, emit: &mut impl FnMut(Event)) {
@@ -342,39 +341,26 @@ impl Tailer {
         }
     }
 
-    /// sessions/YYYY/MM/DD/*.jsonl
-    fn files(&self) -> Vec<PathBuf> {
+    /// sessions/YYYY/MM/DD/*.jsonl: all of them, or the two newest days' (the others once a minute).
+    fn files(&self, _now: f64, everything: bool) -> Vec<PathBuf> {
+        if !everything {
+            return crate::tail::newest_dirs(&self.root, 3, 2).iter().flat_map(|d| crate::tail::jsonl_in(d)).collect();
+        }
         let mut dirs = vec![self.root.clone()];
         for _ in 0..3 {
             dirs = dirs.iter().filter_map(|d| std::fs::read_dir(d).ok())
                 .flat_map(|rd| rd.flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect::<Vec<_>>()).collect();
         }
-        dirs.iter().filter_map(|d| std::fs::read_dir(d).ok())
-            .flat_map(|rd| rd.flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "jsonl")).collect::<Vec<_>>())
-            .collect()
+        dirs.iter().flat_map(|d| crate::tail::jsonl_in(d)).collect()
     }
 
     pub fn scan(&mut self, emit: &mut impl FnMut(Event)) {
-        let now = SystemTime::now();
-        for f in self.files() {
-            let Ok(st) = std::fs::metadata(&f) else { continue };
-            if !st.is_file() { continue; }
-            let age = st.modified().ok().and_then(|m| now.duration_since(m).ok()).map_or(0.0, |d| d.as_secs_f64());
-            if age > ACTIVE && !self.offsets.contains_key(&f) { continue; }
-            let size = st.len();
-            let first = !self.offsets.contains_key(&f);
-            let newer_than = first.then(|| now.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs_f64() - ACTIVE);
-            let mut pos = self.offsets.get(&f).copied().unwrap_or(size.saturating_sub(FIRST_TAIL));
-            if size < pos { pos = 0; }
-            if size == pos { self.offsets.insert(f, pos); continue; }
-            let mut chunk = Vec::new();
-            let read = std::fs::File::open(&f)   // read-only
-                .and_then(|mut h| { h.seek(SeekFrom::Start(pos))?; h.read_to_end(&mut chunk) });
-            if read.is_err() { continue; }
-            let Some(last_nl) = chunk.iter().rposition(|&b| b == b'\n') else { continue };
-            self.offsets.insert(f.clone(), pos + last_nl as u64 + 1);
-            for line in chunk[..last_nl].split(|&b| b == b'\n') { self.parse_line(line, &f, newer_than, emit); }
-        }
+        let now = crate::tail::now_secs();
+        let mut follow = std::mem::replace(&mut self.follow, crate::tail::Follow::new());
+        let everything = follow.due(now);
+        let files = self.files(now, everything);
+        follow.scan(files, everything, now, &mut |line: &[u8], f: &Path, newer_than: Option<f64>| self.parse_line(line, f, newer_than, emit));
+        self.follow = follow;
     }
 
     /// Scan once a second until stop is set.

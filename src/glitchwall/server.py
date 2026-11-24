@@ -292,7 +292,7 @@ def restart_self(httpd, manual: bool = False) -> None:
 def run_feed(port: int | None = None) -> None:
     """Run the feed in the foreground (what `start` launches in the background).
     The source follows the `mode` setting and switches when it changes, no restart needed:
-    live = tail Claude Code's logs, ambient = made-up sessions (reads nothing), art = nothing."""
+    live = tail the agents' logs that are turned on, ambient = made-up sessions (reads nothing), art = nothing."""
     live = LiveSettings()
     s = live.get()
     port = port or int(s["port"])

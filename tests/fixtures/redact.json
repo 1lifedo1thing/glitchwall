@@ -46,8 +46,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "settings  in src/",
-  "output": "settings  in src/"
+  "input": "cart  in src/",
+  "output": "cart  in src/"
  },
  {
   "home": "",
@@ -56,8 +56,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "tidepool",
-  "output": "tidepool"
+  "input": "driftwood",
+  "output": "driftwood"
  },
  {
   "home": "",
@@ -66,8 +66,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "src/pages/settings.ts:12: export function settings(\nsrc/app.tsx:44:   <settings />",
-  "output": "src/pages/settings.ts:12: export function settings(\nsrc/app.tsx:44:   <settings />"
+  "input": "src/store/cart.ts:12: export function cart(\nsrc/app.tsx:44:   <cart />",
+  "output": "src/store/cart.ts:12: export function cart(\nsrc/app.tsx:44:   <cart />"
  },
  {
   "home": "",
@@ -76,8 +76,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "~/code/tidepool/src/pages/settings.tsx",
-  "output": "~/code/tidepool/src/pages/settings.tsx"
+  "input": "~/code/driftwood/src/store/cart.ts",
+  "output": "~/code/driftwood/src/store/cart.ts"
  },
  {
   "home": "",
@@ -86,8 +86,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "~/code/tidepool/src/pages/settings.tsx\n- const res = await fetch(url)\n+ const res = await fetch(url, { signal: ctrl.signal })\n+ if (!res.ok) throw new HttpError(res.status)",
-  "output": "~/code/tidepool/src/pages/settings.tsx\n- const res = await fetch(url)\n+ const res = await fetch(url, { signal: ctrl.signal })\n+ if (!res.ok) throw new HttpError(res.status)"
+  "input": "~/code/driftwood/src/store/cart.ts\n- const res = await fetch(url)\n+ const res = await fetch(url, { signal: ctrl.signal })\n+ if (!res.ok) throw new HttpError(res.status)",
+  "output": "~/code/driftwood/src/store/cart.ts\n- const res = await fetch(url)\n+ const res = await fetch(url, { signal: ctrl.signal })\n+ if (!res.ok) throw new HttpError(res.status)"
  },
  {
   "home": "",
@@ -106,8 +106,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "> tidepool@1.3.0 lint\n> eslint src --ext .ts,.tsx\n\n✔ no problems",
-  "output": "> tidepool@1.3.0 lint\n> eslint src --ext .ts,.tsx\n\n✔ no problems"
+  "input": "> driftwood@0.17.0 lint\n> eslint src --ext .ts,.tsx\n\n✔ no problems",
+  "output": "> driftwood@0.17.0 lint\n> eslint src --ext .ts,.tsx\n\n✔ no problems"
  },
  {
   "home": "",
@@ -126,8 +126,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": " ✓ src/pages/settings.test.ts (12 tests) 48ms\n\n Test Files  30 passed\n      Tests  71 passed",
-  "output": " ✓ src/pages/settings.test.ts (12 tests) 48ms\n\n Test Files  30 passed\n      Tests  71 passed"
+  "input": " ✓ src/store/cart.test.ts (3 tests) 88ms\n\n Test Files  30 passed\n      Tests  137 passed",
+  "output": " ✓ src/store/cart.test.ts (3 tests) 88ms\n\n Test Files  30 passed\n      Tests  137 passed"
  },
  {
   "home": "",
@@ -146,8 +146,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "vite v5.4.2 building for production...\n✓ 519 modules transformed.\ndist/assets/index-c7805aea.js   181.53 kB │ gzip: 134.55 kB\n✓ built in 1.81s",
-  "output": "vite v5.4.2 building for production...\n✓ 519 modules transformed.\ndist/assets/index-c7805aea.js   181.53 kB │ gzip: 134.55 kB\n✓ built in 1.81s"
+  "input": "vite v5.4.2 building for production...\n✓ 1284 modules transformed.\ndist/assets/index-16564ab5.js   267.96 kB │ gzip: 82.89 kB\n✓ built in 1.92s",
+  "output": "vite v5.4.2 building for production...\n✓ 1284 modules transformed.\ndist/assets/index-16564ab5.js   267.96 kB │ gzip: 82.89 kB\n✓ built in 1.92s"
  },
  {
   "home": "",
@@ -156,8 +156,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "psql -d kestrel -c \"select count(*) from users where created_at > now() - interval '7 days'\"",
-  "output": "psql -d kestrel -c \"select count(*) from users where created_at > now() - interval '7 days'\""
+  "input": "~/code/parcel/src/net/conn.rs",
+  "output": "~/code/parcel/src/net/conn.rs"
  },
  {
   "home": "",
@@ -166,8 +166,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "kestrel",
-  "output": "kestrel"
+  "input": "parcel",
+  "output": "parcel"
  },
  {
   "home": "",
@@ -176,8 +176,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": " count\n-------\n  6713\n(1 row)",
-  "output": " count\n-------\n  6713\n(1 row)"
+  "input": "~/code/parcel/src/net/conn.rs\n- fn next(&mut self) -> Option<Token> {\n+ fn next(&mut self) -> Option<Token<'a>> {",
+  "output": "~/code/parcel/src/net/conn.rs\n- fn next(&mut self) -> Option<Token> {\n+ fn next(&mut self) -> Option<Token<'a>> {"
  },
  {
   "home": "",
@@ -186,8 +186,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "psql -d kestrel -c \"explain analyze select * from users where owner_id = 42\"",
-  "output": "psql -d kestrel -c \"explain analyze select * from users where owner_id = 42\""
+  "input": "cargo check",
+  "output": "cargo check"
  },
  {
   "home": "",
@@ -196,8 +196,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "Seq Scan on users  (cost=0.00..1123.00 rows=4)\nExecution Time: 112.626 ms",
-  "output": "Seq Scan on users  (cost=0.00..1123.00 rows=4)\nExecution Time: 112.626 ms"
+  "input": "error[E0106]: missing lifetime specifier\n  --> src/net/conn.rs:27:16\n   |\n   = help: consider introducing a named lifetime parameter",
+  "output": "error[E0106]: missing lifetime specifier\n  --> src/net/conn.rs:27:16\n   |\n   = help: consider introducing a named lifetime parameter"
  },
  {
   "home": "",
@@ -206,8 +206,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "~/code/kestrel/migrations/0064_users_owner_idx.sql\nCREATE INDEX CONCURRENTLY users_owner_idx\n    ON users (owner_id);",
-  "output": "~/code/kestrel/migrations/0064_users_owner_idx.sql\nCREATE INDEX CONCURRENTLY users_owner_idx\n    ON users (owner_id);"
+  "input": "~/code/parcel/src/net/conn.rs\n- impl Iterator for Lexer {\n+ impl<'a> Iterator for Lexer<'a> {",
+  "output": "~/code/parcel/src/net/conn.rs\n- impl Iterator for Lexer {\n+ impl<'a> Iterator for Lexer<'a> {"
  },
  {
   "home": "",
@@ -216,8 +216,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "make migrate",
-  "output": "make migrate"
+  "input": "cargo test",
+  "output": "cargo test"
  },
  {
   "home": "",
@@ -226,18 +226,148 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "applying 0064_users_owner_idx.sql ... ok",
-  "output": "applying 0064_users_owner_idx.sql ... ok"
+  "input": "   Compiling parcel v0.1.7\n    Finished `test` profile in 1.84s\ntest result: ok. 56 passed; 0 failed",
+  "output": "   Compiling parcel v0.1.7\n    Finished `test` profile in 1.84s\ntest result: ok. 56 passed; 0 failed"
  },
  {
-  "home": "",
+  "home": "C:\\Users\\octocat",
   "short": "",
-  "user": "",
-  "mask_user": false,
+  "user": "octocat",
+  "mask_user": true,
   "mask_email": true,
   "entropy_check": true,
-  "input": "Index Scan using users_owner_idx on users\nExecution Time: 1.215 ms",
-  "output": "Index Scan using users_owner_idx on users\nExecution Time: 1.215 ms"
+  "input": "\u001b[1;32mok\u001b[0m done",
+  "output": "ok done"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "short": "",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "\u001b]0;my title\u0007prompt",
+  "output": "prompt"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "short": "",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "\u001b]8;;https://x.test\u001b\\link\u001b]8;;\u001b\\",
+  "output": "link"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "short": "",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "a\u001bMb\u001b",
+  "output": "ab"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "short": "",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "line\r\nnext\rover",
+  "output": "line\nnext\nover"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "short": "",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "tab\tand\nnew\u0007belldelnel",
+  "output": "tab\tand\nnewbelldelnel"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "short": "",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "﻿bom ⁦iso⁩ ‍zwj",
+  "output": "bom iso zwj"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "short": "",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "café 😀 日本",
+  "output": "café 😀 日本"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "short": "",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "token sk_live_51Hd\u001b[0memoNotARealKey00000000",
+  "output": "token ••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "short": "",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "token ghp_a1B2c3​D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8",
+  "output": "token ••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "short": "",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "token ghp_a1B2c3­D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8",
+  "output": "token ••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "short": "",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "token ghp_a1B2c3\u0000D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8",
+  "output": "token ••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "short": "",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "x=sk_live_5\u001b]0;title\u00071HdemoNotARealKey00000000",
+  "output": "x=••••"
+ },
+ {
+  "home": "C:\\Users\\octocat",
+  "short": "",
+  "user": "octocat",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "ghp_a1‮B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8",
+  "output": "••••"
  },
  {
   "home": "C:\\Users\\octocat",

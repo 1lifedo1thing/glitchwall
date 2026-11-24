@@ -19,6 +19,20 @@ use std::sync::OnceLock;
 
 pub const MASK: &str = "••••";
 
+/// Terminal escapes and invisible format characters out, as redact.py's clean(): junk on the wall, and one inside
+/// a secret would split it so the patterns miss it. Tabs and newlines stay; a carriage return becomes a newline.
+pub fn clean(text: &str) -> String {
+    static ESC: OnceLock<Regex> = OnceLock::new();
+    let esc = ESC.get_or_init(|| Regex::new(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07\x1b]*(?:\x07|\x1b\\)|[@-Z\\-_])?").unwrap());
+    let t = sub(esc, text, |_| String::new()).replace("\r\n", "\n").replace('\r', "\n");
+    t.chars().filter(|&c| !invisible(c)).collect()
+}
+
+fn invisible(c: char) -> bool {
+    matches!(c, '\x00'..='\x08' | '\x0b' | '\x0c' | '\x0e'..='\x1f' | '\x7f'..='\u{9f}' | '\u{ad}'
+        | '\u{200b}'..='\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2060}'..='\u{2064}' | '\u{2066}'..='\u{2069}' | '\u{feff}')
+}
+
 // ---------------------------------------------------------------- 1. known formats
 // Python's re.S is (?s) here, and its \Z is \z.
 const KNOWN: &[&str] = &[
@@ -284,8 +298,8 @@ impl Redactor {
 
     pub fn redact(&self, text: &str) -> String {
         let p = pats();
-        let mut t = text.to_string();
-        if t.is_empty() { return t; }
+        if text.is_empty() { return String::new(); }
+        let mut t = clean(text);
         for rx in &self.homes { t = sub(rx, &t, |_| "~".into()); }
         for rx in &p.known { t = sub(rx, &t, |_| MASK.into()); }
         for (rx, tail) in &p.by_name { t = sub(rx, &t, |c| format!("{}{MASK}{tail}", &c[1])); }

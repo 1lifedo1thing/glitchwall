@@ -19,7 +19,8 @@ import time
 from pathlib import Path
 from typing import Callable
 
-from .claude_logs import ACTIVE, FIRST_TAIL, MAX_OUT_LINES, _when, clip
+from .claude_logs import ACTIVE, MAX_OUT_LINES, _when, clip
+from .tail import SWEEP, Follow, newest_dirs  # noqa: F401  (SWEEP: tests)
 
 HIDDEN = ("update_plan", "write_stdin", "request_permissions", "request_user_input", "tool_search")
 SHELL_FLAGS = ("-c", "-lc", "-Command", "-command", "/c", "/C")
@@ -232,7 +233,8 @@ class CodexLogTailer:
     def __init__(self, emit: Callable[[dict], None], root: Path | None = None):
         self.emit = emit
         self.root = root or logs_root()
-        self.offsets: dict[Path, int] = {}
+        self.follow = Follow()
+        self.offsets = self.follow.offsets
         self.seen: set[str] = set()   # "u"+id once the call is shown, "r"+id once its result is
         self.proj: dict[Path, str] = {}
         self.side: dict[Path, bool] = {}
@@ -333,36 +335,16 @@ class CodexLogTailer:
         if kind and ref:
             self._send("u" + ref, d, f, kind, ref, text)
 
-    def _files(self):
-        yield from self.root.glob("*/*/*/*.jsonl")
+    def _files(self, now: float, everything: bool):
+        """sessions/YYYY/MM/DD/*.jsonl: all of them, or the two newest days' (the others once a minute)."""
+        if everything:
+            return self.root.glob("*/*/*/*.jsonl")
+        return [f for d in newest_dirs(self.root, 3, 2) for f in d.glob("*.jsonl")]
 
     def scan(self) -> None:
         now = time.time()
-        for f in self._files():
-            try:
-                st = f.stat()
-            except OSError:
-                continue
-            if now - st.st_mtime > ACTIVE and f not in self.offsets:
-                continue
-            pos = self.offsets.get(f)
-            newer_than = now - ACTIVE if pos is None else None
-            if pos is None:
-                pos = max(0, st.st_size - FIRST_TAIL)
-            if st.st_size < pos:
-                pos = 0
-            if st.st_size == pos:
-                self.offsets[f] = pos
-                continue
-            with open(f, "rb") as h:   # read-only
-                h.seek(pos)
-                chunk = h.read()
-            last_nl = chunk.rfind(b"\n")
-            if last_nl < 0:
-                continue
-            self.offsets[f] = pos + last_nl + 1
-            for line in chunk[:last_nl].split(b"\n"):
-                self.parse_line(line, f, newer_than)
+        everything = self.follow.due(now)
+        self.follow.scan(self._files(now, everything), everything, now, self.parse_line)
 
     def run(self, stop=None) -> None:
         while not (stop and stop.is_set()):

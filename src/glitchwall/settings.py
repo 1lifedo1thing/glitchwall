@@ -154,8 +154,8 @@ def corner(s: dict) -> str:
 
 
 MODES = {
-    "live": "your real Claude Code tool calls, as they happen",
-    "ambient": "made-up but realistic coding sessions; reads nothing, no Claude Code needed",
+    "live": "your coding agents' real tool calls, as they happen",
+    "ambient": "made-up but realistic coding sessions; reads nothing, no agent needed",
     "art": "just the themed background: no cards, no label",
 }
 AMBIENT_LABEL = "AMBIENT :: made-up sessions, nothing real"
@@ -171,7 +171,15 @@ def display_label(s: dict) -> str:
     label = s.get("label") or DEFAULTS["label"]
     if label != DEFAULTS["label"]:
         return label
-    return {"live": label, "ambient": AMBIENT_LABEL, "art": ""}[mode(s)]
+    return {"live": live_label(s), "ambient": AMBIENT_LABEL, "art": ""}[mode(s)]
+
+
+def live_label(s: dict) -> str:
+    """The stock live label names the agents being read, so it never claims one that's off."""
+    on = [AGENTS[k][0].split()[0].upper() for k in AGENTS if s.get(k, DEFAULTS[k]) is True]
+    if not on:
+        return "LIVE :: no agent turned on (settings > AGENTS)"
+    return " + ".join(on) + " :: live tool feed"
 
 
 def state_dir() -> Path:

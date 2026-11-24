@@ -17,7 +17,8 @@ import time
 from pathlib import Path
 from typing import Callable
 
-from .claude_logs import ACTIVE, FIRST_TAIL, MAX_OUT_LINES, _when, clip
+from .claude_logs import ACTIVE, MAX_OUT_LINES, _when, clip
+from .tail import Follow
 
 DONE = ("success", "error", "cancelled")
 
@@ -129,13 +130,21 @@ def _result_text(tc: dict) -> tuple[str, bool]:
     return clip(out, 900), failed
 
 
+def _recent(d: Path, now: float) -> bool:
+    try:
+        return now - d.stat().st_mtime <= ACTIVE
+    except OSError:
+        return False
+
+
 class GeminiLogTailer:
     """Follows Gemini CLI's logs and calls emit(event) for each new tool call and each finished one."""
 
     def __init__(self, emit: Callable[[dict], None], root: Path | None = None):
         self.emit = emit
         self.root = root or logs_root()
-        self.offsets: dict[Path, int] = {}
+        self.follow = Follow()
+        self.offsets = self.follow.offsets
         self.seen: set[str] = set()   # "u"+id once the call is shown, "r"+id once its result is
 
     def _send(self, key: str, tc: dict, f: Path, kind: str, ref: str, text: str) -> None:
@@ -189,37 +198,23 @@ class GeminiLogTailer:
             if isinstance(tc, dict):
                 self._tool_call(d, tc, f)
 
-    def _files(self):
-        yield from self.root.glob("*/chats/*.jsonl")
-        yield from self.root.glob("*/chats/*/*.jsonl")
+    def _files(self, now: float, everything: bool):
+        """<project>/chats/*.jsonl and chats/<parent>/*.jsonl: all of them, or those in folders that had a file
+        added in the last ACTIVE seconds (the others once a minute)."""
+        if everything:
+            return [*self.root.glob("*/chats/*.jsonl"), *self.root.glob("*/chats/*/*.jsonl")]
+        out = []
+        for d in self.root.glob("*/chats"):
+            if not _recent(d, now):
+                continue
+            out += d.glob("*.jsonl")
+            out += [f for sub in d.iterdir() if sub.is_dir() and _recent(sub, now) for f in sub.glob("*.jsonl")]
+        return out
 
     def scan(self) -> None:
         now = time.time()
-        for f in self._files():
-            try:
-                st = f.stat()
-            except OSError:
-                continue
-            if now - st.st_mtime > ACTIVE and f not in self.offsets:
-                continue
-            pos = self.offsets.get(f)
-            newer_than = now - ACTIVE if pos is None else None
-            if pos is None:
-                pos = max(0, st.st_size - FIRST_TAIL)
-            if st.st_size < pos:   # rewritten in place (Gemini CLI does that on some resumes)
-                pos = 0
-            if st.st_size == pos:
-                self.offsets[f] = pos
-                continue
-            with open(f, "rb") as h:   # read-only
-                h.seek(pos)
-                chunk = h.read()
-            last_nl = chunk.rfind(b"\n")
-            if last_nl < 0:
-                continue
-            self.offsets[f] = pos + last_nl + 1
-            for line in chunk[:last_nl].split(b"\n"):
-                self.parse_line(line, f, newer_than)
+        everything = self.follow.due(now)
+        self.follow.scan(self._files(now, everything), everything, now, self.parse_line)
 
     def run(self, stop=None) -> None:
         while not (stop and stop.is_set()):

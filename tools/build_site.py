@@ -24,6 +24,9 @@ from glitchwall import ambient, demo  # noqa: E402
 from glitchwall.redact import Redactor  # noqa: E402
 from glitchwall.server import EventStore  # noqa: E402
 
+CSP = ("default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+       "img-src 'self' data:; font-src 'self'; frame-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'")
+
 SHIM = """// glitchwall's web demo. The wallpaper page asks its feed for new events with fetch();
 // this answers those calls right here with made-up ones, so nothing is ever sent anywhere.
 window.FEED = { port: 0, key: 'web-demo', label: 'demo: a made-up session' };
@@ -85,6 +88,13 @@ def build(dest: Path) -> None:
                     ignore=shutil.ignore_patterns("config.js", "settings.html", "__pycache__"))
     data = json.dumps(steps(), ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
     (dest / "demo" / "config.js").write_text(SHIM % data, encoding="utf-8")
+    # the browser holds the page to "no requests": only this site's own files, and no connections at all
+    page = dest / "demo" / "index.html"
+    html = page.read_text(encoding="utf-8")
+    head = '<meta charset="utf-8">'
+    assert html.count(head) == 1, "the wallpaper page's <head> changed: update build_site.py"
+    page.write_text(html.replace(head, head + f'<meta http-equiv="Content-Security-Policy" content="{CSP}">'),
+                    encoding="utf-8")
     img = dest / "img"
     img.mkdir()
     for f in (ROOT / "docs" / "shots").glob("*.jpg"):

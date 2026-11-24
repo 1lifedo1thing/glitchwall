@@ -148,6 +148,27 @@ class TestScan(unittest.TestCase):
             gl.GeminiLogTailer(events.append, root=Path(d)).scan()
             self.assertEqual(events, [])
 
+    def test_quiet_folders_are_looked_at_once_a_minute(self):
+        with tempfile.TemporaryDirectory() as d:
+            now = time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime())
+            quiet, busy = Path(d) / "old-proj" / "chats", Path(d) / "new-proj" / "chats"
+            quiet.mkdir(parents=True)
+            busy.mkdir(parents=True)
+            events = []
+            t = gl.GeminiLogTailer(events.append, root=Path(d))
+            t.scan()   # the first look is at everything
+            (quiet / "session-resumed.jsonl").write_text(msg([call("r1", "read_file", {"file_path": "resumed"})], ts=now) + "\n", encoding="utf-8")
+            old = time.time() - gl.ACTIVE - 60
+            os.utime(quiet, (old, old))   # a folder with no new file for a while
+            sub = busy / "session-a"
+            sub.mkdir()
+            (sub / "agent-1.jsonl").write_text(msg([call("s1", "read_file", {"file_path": "subagent"})], ts=now) + "\n", encoding="utf-8")
+            t.scan()
+            self.assertEqual([e["text"] for e in events], ["subagent"])
+            t.follow.swept -= 60
+            t.scan()
+            self.assertEqual([e["text"] for e in events], ["subagent", "resumed"])
+
 
 class TestShellOutput(unittest.TestCase):
     def test_wrapped(self):

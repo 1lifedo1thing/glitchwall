@@ -221,5 +221,31 @@ class TestSpeed(unittest.TestCase):
         self.assertNotIn("hunter2x", Redactor()(f"export {name}=hunter2x"))
 
 
+class TestClean(unittest.TestCase):
+    """Terminal escapes and invisible characters go first: a secret split by one must still be masked."""
+    KEY = "sk_" + "live_51HdemoNotARealKey00000000"
+    GH = "ghp_" + "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8"
+
+    def test_split_secrets_are_masked(self):
+        for t in (f"token {self.KEY[:12]}\x1b[0m{self.KEY[12:]}", f"token {self.GH[:10]}​{self.GH[10:]}",
+                  f"token {self.GH[:10]}­{self.GH[10:]}", f"token {self.GH[:10]}\x00{self.GH[10:]}",
+                  f"x={self.KEY[:9]}\x1b]0;title\x07{self.KEY[9:]}", f"{self.GH[:6]}‮{self.GH[6:]}"):
+            out = R(t)
+            self.assertNotIn(self.KEY[12:], out, repr(t))
+            self.assertNotIn(self.GH[10:], out, repr(t))
+            self.assertIn(MASK, out, repr(t))
+
+    def test_escapes_and_controls_go(self):
+        self.assertEqual(R("\x1b[1;32mok\x1b[0m done"), "ok done")
+        self.assertEqual(R("\x1b]0;my title\x07prompt"), "prompt")
+        self.assertEqual(R("\x1b]8;;https://x.test\x1b\\link\x1b]8;;\x1b\\"), "link")
+        self.assertEqual(R("a\x1bMb\x1b"), "ab")
+        self.assertEqual(R("line\r\nnext\rover"), "line\nnext\nover")
+        self.assertEqual(R("tab\tand\nnew\x07bell\x7fdel\x85nel"), "tab\tand\nnewbelldelnel")
+        self.assertEqual(R("﻿bom ⁦iso⁩ ‍zwj"), "bom iso zwj")
+        self.assertEqual(R("café \U0001F600 日本"), "café \U0001F600 日本")
+        self.assertEqual(redact.clean("\x1b[31"), "[31")   # an escape cut off: only the ESC goes
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -264,7 +264,7 @@ def cmd_uninstall(a) -> int:
         removed.append(f"deleted {sd} (key, settings, logs{', programs' if plat.FROZEN else ''})")
     for r in removed or ["nothing to remove"]:
         say(r)
-    say("Your Claude Code logs were never modified."
+    say("Your agents' logs were never modified."
         + ("" if plat.FROZEN else " To remove the program itself: uv tool uninstall glitchwall"))
     return 0
 
@@ -432,7 +432,7 @@ def cmd_export(a) -> int:
 
 # ---------------------------------------------------------------- parser
 def _mode_arg(p) -> None:
-    p.add_argument("--mode", choices=list(cfg.MODES), help="live: your real Claude Code activity; "
+    p.add_argument("--mode", choices=list(cfg.MODES), help="live: your coding agents' real activity; "
                    "ambient: made-up coding sessions, reads nothing; art: background only")
 
 

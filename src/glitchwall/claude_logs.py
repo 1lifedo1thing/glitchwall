@@ -155,9 +155,12 @@ class ClaudeLogTailer:
             if st.st_size == pos:
                 self.offsets[f] = pos
                 continue
-            with open(f, "rb") as h:   # read-only
-                h.seek(pos)
-                chunk = h.read()
+            try:
+                with open(f, "rb") as h:   # read-only
+                    h.seek(pos)
+                    chunk = h.read()
+            except OSError:   # locked, or gone since (or a folder): try again next time, never stop the others
+                continue
             last_nl = chunk.rfind(b"\n")
             if last_nl < 0:
                 continue

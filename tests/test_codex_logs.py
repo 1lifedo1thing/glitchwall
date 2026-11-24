@@ -131,6 +131,63 @@ class TestScan(unittest.TestCase):
             cx.CodexLogTailer(events.append, root=Path(d)).scan()
             self.assertEqual(events, [])
 
+    def test_old_log_that_grows_shows_only_the_new_part(self):
+        # Codex keeps its log open and Windows may not move its time: an old-looking log that grows is followed
+        with tempfile.TemporaryDirectory() as d:
+            day = Path(d) / "2026" / "11" / "24"
+            day.mkdir(parents=True)
+            f = day / "rollout-long.jsonl"
+            f.write_text(fc("g1", "exec_command", {"cmd": "before"}) + "\n", encoding="utf-8")
+            old = time.time() - cx.ACTIVE - 60
+            os.utime(f, (old, old))
+            events = []
+            t = cx.CodexLogTailer(events.append, root=Path(d))
+            t.scan()
+            with open(f, "a", encoding="utf-8") as h:
+                h.write(fc("g2", "exec_command", {"cmd": "after"}) + "\n")
+            os.utime(f, (old, old))
+            t.scan()
+            self.assertEqual([e["text"] for e in events], ["after"])
+
+    def test_only_recent_days_every_second(self):
+        with tempfile.TemporaryDirectory() as d:
+            now = time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime())
+            for day in ("2025/12/31", "2026/10/01", "2026/11/23", "2026/11/24"):
+                (Path(d) / day).mkdir(parents=True)
+            self.assertEqual([p.relative_to(d).as_posix() for p in cx.newest_dirs(Path(d), 3, 2)],
+                             ["2026/11/24", "2026/11/23"])
+            events = []
+            t = cx.CodexLogTailer(events.append, root=Path(d))
+            t.scan()   # the first look is at everything
+            (Path(d) / "2026/10/01/rollout-resumed.jsonl").write_text(fc("r1", "exec_command", {"cmd": "older day"}, now) + "\n", encoding="utf-8")
+            (Path(d) / "2026/11/24/rollout-new.jsonl").write_text(fc("n1", "exec_command", {"cmd": "today"}, now) + "\n", encoding="utf-8")
+            t.scan()
+            self.assertEqual([e["text"] for e in events], ["today"])
+            t.follow.swept -= cx.SWEEP   # a minute later: every log again
+            t.scan()
+            self.assertEqual([e["text"] for e in events], ["today", "older day"])
+
+    def test_quiet_log_stops_being_followed_and_picks_up_again(self):
+        with tempfile.TemporaryDirectory() as d:
+            day = Path(d) / "2026" / "11" / "24"
+            day.mkdir(parents=True)
+            f = day / "rollout-q.jsonl"
+            now = time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime())
+            f.write_text(fc("q1", "exec_command", {"cmd": "first"}, now) + "\n", encoding="utf-8")
+            events = []
+            t = cx.CodexLogTailer(events.append, root=Path(d))
+            t.scan()
+            old = time.time() - cx.ACTIVE - 60
+            os.utime(f, (old, old))
+            t.follow.swept -= cx.SWEEP
+            t.scan()
+            self.assertNotIn(f, t.offsets)
+            with open(f, "a", encoding="utf-8") as h:
+                h.write(fc("q2", "exec_command", {"cmd": "resumed"}) + "\n")
+            os.utime(f, (old, old))
+            t.scan()
+            self.assertEqual([e["text"] for e in events], ["first", "resumed"])
+
 
 def ct(cid, name, inp):
     return item({"type": "custom_tool_call", "status": "completed", "call_id": cid, "name": name, "input": inp})

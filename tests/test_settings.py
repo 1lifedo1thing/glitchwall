@@ -64,5 +64,17 @@ class TestBrokenFile(unittest.TestCase):
         self.assertFalse(live.get()["paused"])
 
 
+class TestLabel(unittest.TestCase):
+    def test_stock_live_label_names_the_agents_read(self):
+        label = lambda **k: cfg.display_label({**cfg.DEFAULTS, **k})
+        self.assertEqual(label(), "CLAUDE :: live tool feed")
+        self.assertEqual(label(agent_claude=False, agent_codex=True), "CODEX :: live tool feed")
+        self.assertEqual(label(agent_gemini=True, agent_codex=True), "CLAUDE + GEMINI + CODEX :: live tool feed")
+        self.assertEqual(label(agent_claude=False, agent_gemini="yes"), "LIVE :: no agent turned on (settings > AGENTS)")
+        self.assertEqual(label(label="MINE", agent_claude=False), "MINE")
+        self.assertEqual(label(mode="ambient", agent_claude=False), cfg.AMBIENT_LABEL)
+        self.assertEqual(label(mode="art"), "")
+
+
 if __name__ == "__main__":
     unittest.main()

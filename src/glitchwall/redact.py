@@ -21,6 +21,20 @@ from pathlib import Path
 
 MASK = "••••"
 
+# Terminal escapes (colors, titles, cursor moves) and invisible format characters (zero-width, bidi overrides,
+# soft hyphens, other control characters). On the wall they'd be junk or would reorder text, and one inside a
+# secret splits it so the patterns below miss it. They go before anything else; tabs and newlines stay, and a
+# carriage return becomes a newline.
+_ESC = re.compile(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07\x1b]*(?:\x07|\x1b\\)|[@-Z\\-_])?")
+_INVISIBLE = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f­​-‏‪-‮⁠-⁤"
+                        "⁦-⁩﻿]")
+
+
+def clean(text: str) -> str:
+    text = _ESC.sub("", text)
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    return _INVISIBLE.sub("", text)
+
 # ---------------------------------------------------------------- 1. known formats
 _KNOWN = [
     # private key blocks (PEM, OpenSSH, PGP, encrypted). Unterminated blocks mask to the end.
@@ -238,6 +252,7 @@ class Redactor:
     def __call__(self, text: str) -> str:
         if not text:
             return text
+        text = clean(text)
         for rx in self.homes:
             text = rx.sub("~", text)
         for rx in KNOWN:
