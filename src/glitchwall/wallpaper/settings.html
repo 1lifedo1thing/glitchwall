@@ -536,7 +536,7 @@ function wear() {
   const dim = [t.muted, t.dim, t.ink].find(c => c && contrast(c, t.surface || t.bg) >= 3) || t.ink;
   st.setProperty('--ph', t.ink); st.setProperty('--ph-hi', t.hi || t.ink); st.setProperty('--ph-dim', dim);
   st.setProperty('--ph-rgb', hex(t.ink) || '93,255,122'); st.setProperty('--amber', t.acc || '#ffb000');
-  // the orb's window is lit by its red lights (white would make it oracle's twin): red type, white for anything paused
+  // the orb's window is lit by its red lights: red type on black, white for anything paused
   if (name === 'orb') { st.setProperty('--ph', t.acc); st.setProperty('--ph-hi', '#ff9d94'); st.setProperty('--ph-dim', '#a8302a');
                         st.setProperty('--ph-rgb', hex(t.acc)); st.setProperty('--amber', t.ink); }
   // the theme's own fonts (or the one picked for it): its title face for the readouts, its typing face for the rest

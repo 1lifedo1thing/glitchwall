@@ -231,8 +231,8 @@ in and taking them away. Use one as it is, or swap any single part.
 | `notebook` | ruled paper, red margin, ballpoint handwriting, pencil doodles | written in / crumpled and tossed |
 | `bsod` | the old blue stop screen: white VGA text, grey title chips | drawn line by line / gone |
 | `cyanotype` | a sun print in Prussian blue: fern and leaf silhouettes developing pale, brushed edges to the coating | fades in / fades out |
-| `oracle` | an all-seeing machine: one great ring of jagged data strokes on black, slowly turning and always redrawing itself, white ink and one signal red | opens like an iris / closes to a point |
-| `orb` | the same machine seen whole: a ribbed black sphere sunk in the floor of a vast, empty, dark data hall, rows of racks blinking away into the haze behind it, tiny red lights flickering and streaming along its slats, readouts pointing at its parts as they turn into view | a curved shadow sweeps off / over it |
+| `oracle` | the software of an all-seeing machine, its mind laid out as one great ring of jagged black data strokes on white paper, slowly turning and always redrawing itself, one signal red (the old dark oracle as a negative, the red kept red) | opens like an iris / closes to a point |
+| `orb` | the hardware oracle runs on, the same machine seen whole: a ribbed black sphere sunk in the floor of a vast, empty, dark data hall, rows of racks blinking away into the haze behind it, tiny red lights flickering and streaming along its slats, readouts pointing at its parts as they turn into view | a curved shadow sweeps off / over it |
 | `scope` | a lab oscilloscope: a blue-white beam sweeping a graticule, its trace glowing yellow-green and fading slowly, the signal changing every few sweeps, readouts at the corners | swept in by the beam / fades like an afterglow |
 | `chalkboard` | a blackboard smudged with old lessons: equations, plots and little flowcharts written up in chalk, then wiped with the eraser | written in a few letters at a time / smudged and wiped |
 | `matrix` · `amber` · `synthwave` · `msdos` | bright-green katakana falling at three depths, an amber radar sweep, a synthwave sunset, blue DOS boxes on a text-mode desktop | glitch · beam · slides across · docks beside the last one |
@@ -303,8 +303,8 @@ nothing is drawn at all.
 | `bsod` | `stop` screen | VT323 | scan lines, none | about 2 (the cursor blink), 0 with no blink | a still screen with a blinking cursor |
 | `cyanotype` | `sunprint` ferns and leaves | Instrument Serif / IBM Plex Mono | none, 0.35 | 15 | a print develops slowly |
 | `notebook` | `notebook` ruled paper | Caveat | none, 0.22 | 30 while a doodle is drawn, 0 after | a pencil stroke needs smooth motion; a finished doodle needs none |
-| `oracle` | an all-seeing machine: one great ring of jagged data strokes on black, slowly turning and always redrawing itself, white ink and one signal red | opens like an iris / closes to a point |
-| `orb` | the same machine seen whole: a ribbed black sphere sunk in the floor of a vast, empty, dark data hall, rows of racks blinking away into the haze behind it, tiny red lights flickering and streaming along its slats, readouts pointing at its parts as they turn into view | a curved shadow sweeps off / over it |
+| `oracle` | `oracle` ring of data | Chakra Petch / DM Mono | none, 0.05 | 20 | strokes redraw constantly but slowly |
+| `orb` | `orb` the machine in its hall | Chakra Petch / DM Mono | none, 0.07 | 20 | the busiest scene; lights flicker and the sphere turns slowly |
 | `scope` | `scope` oscilloscope | Overpass Mono / IBM Plex Mono | CRT tube, 0.05 | 30 | a sweeping beam must look continuous |
 | `chalkboard` | `chalk` blackboard | Caveat | none, 0.18 | 20 while writing or wiping | handwriting pace |
 
