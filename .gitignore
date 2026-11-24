@@ -8,3 +8,4 @@ build/
 *.egg-info/
 # a written config.js holds a feed key
 config.js
+_site/

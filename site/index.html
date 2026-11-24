@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>glitchwall</title>
+<meta name="description" content="Your coding agent, live on your desktop. Every command it runs types itself out on your Windows wallpaper. Local only, no telemetry, MIT.">
+<meta property="og:title" content="glitchwall">
+<meta property="og:description" content="Your coding agent, live on your desktop. Local only, no telemetry, MIT.">
+<meta property="og:image" content="https://marklesterb28.github.io/glitchwall/img/neon.jpg">
+<link rel="icon" href="demo/glitchwall.png">
+<style>
+@font-face { font-family: 'Departure'; src: url(demo/DepartureMono-Regular.otf) format('opentype'); font-display: swap; }
+@font-face { font-family: 'Plex'; src: url(demo/fonts/IBMPlexMono-Regular.ttf) format('truetype'); font-display: swap; }
+:root {
+  --bg: #07090a; --panel: #0e1213; --line: #1d2628; --ink: #d6e4dc; --muted: #8a9b93; --acc: #7dffa8; --hot: #ffb347;
+  --err: #ff6b6b; --gut: clamp(16px, 4vw, 40px);
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.65 'Plex', ui-monospace, monospace; }
+a { color: var(--acc); text-underline-offset: 3px; }
+h1, h2, h3, .btn, .chip, nav { font-family: 'Departure', 'Plex', monospace; font-weight: normal; letter-spacing: .02em; }
+h2 { font-size: clamp(22px, 3vw, 30px); margin: 0 0 .4em; }
+h3 { font-size: 17px; margin: 0 0 .3em; color: var(--acc); }
+p { margin: 0 0 1em; }
+code { background: #ffffff10; padding: .1em .35em; border-radius: 3px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 var(--gut); }
+section { padding: clamp(56px, 9vw, 104px) 0; border-top: 1px solid var(--line); }
+.lede { color: var(--muted); max-width: 68ch; }
+
+/* top bar */
+nav { position: fixed; inset: 0 0 auto 0; z-index: 10; display: flex; align-items: center; gap: 20px;
+      padding: 12px var(--gut); font-size: 14px; transition: background .2s; }
+nav.solid { background: #07090ae0; backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+nav .brand { display: flex; align-items: center; gap: 8px; color: var(--ink); text-decoration: none; margin-right: auto; }
+nav .brand img { width: 20px; height: 20px; image-rendering: pixelated; }
+nav a:not(.brand) { color: var(--muted); text-decoration: none; }
+nav a:not(.brand):hover { color: var(--acc); }
+@media (max-width: 640px) { nav .hide-s { display: none; } }
+
+/* hero: the real wallpaper page, running */
+.hero { position: relative; display: flex; align-items: flex-end; min-height: min(100svh, 900px); overflow: hidden; background: #000;
+        padding: 84px var(--gut) clamp(48px, 10vh, 110px); }
+.hero iframe, .hero .still { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
+.hero .still { object-fit: cover; display: none; }
+.hero::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg, #07090af0 0%, #07090ab0 38%, #07090a00 70%), linear-gradient(#0000 70%, var(--bg)); }
+.hero .copy { position: relative; z-index: 2; max-width: 560px; }
+.hero h1 { font-size: clamp(34px, 5.6vw, 62px); line-height: 1.05; margin: 0 0 .3em; }
+.hero h1 span { color: var(--acc); }
+.hero p { font-size: 17px; color: #c3d2ca; }
+.note { font-size: 12.5px; color: var(--muted); }
+.cta { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 12px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border: 1px solid var(--acc);
+       color: var(--bg); background: var(--acc); text-decoration: none; font-size: 15px; cursor: pointer; border-radius: 2px; }
+.btn.ghost { background: transparent; color: var(--acc); }
+.btn:hover { filter: brightness(1.15); }
+
+/* theme switcher */
+.switch { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.chip { font-size: 13px; padding: 5px 10px; border: 1px solid var(--line); background: #0e1213cc; color: var(--muted);
+        cursor: pointer; border-radius: 2px; }
+.chip:hover { color: var(--ink); border-color: var(--muted); }
+.chip[aria-pressed="true"] { color: var(--bg); background: var(--acc); border-color: var(--acc); }
+
+/* pillars */
+.cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 28px; }
+.card { background: var(--panel); border: 1px solid var(--line); padding: 22px; border-radius: 3px; }
+.card p { color: var(--muted); margin: 0; }
+@media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
+
+/* pipeline */
+.flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; margin: 30px 0 10px; counter-reset: step; }
+.flow div { position: relative; padding: 16px 14px 16px 16px; background: var(--panel); border: 1px solid var(--line); margin-right: 14px; }
+.flow div:not(:last-child)::after { content: '→'; position: absolute; right: -13px; top: 50%; transform: translateY(-50%);
+  color: var(--acc); font-family: 'Departure', monospace; }
+.flow b { display: block; font-family: 'Departure', monospace; font-weight: normal; color: var(--ink); margin-bottom: 4px; }
+.flow span { font-size: 13px; color: var(--muted); line-height: 1.5; display: block; }
+@media (max-width: 900px) { .flow { grid-template-columns: 1fr; } .flow div { margin: 0 0 14px; }
+  .flow div:not(:last-child)::after { content: '↓'; right: auto; left: 18px; top: auto; bottom: -19px; transform: none; } }
+
+/* gallery */
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin-top: 26px; }
+.shot { background: var(--panel); border: 1px solid var(--line); padding: 0; cursor: pointer; text-align: left; color: inherit;
+        font: inherit; border-radius: 3px; overflow: hidden; }
+.shot img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; transition: transform .3s; }
+.shot:hover img { transform: scale(1.03); }
+.shot div { padding: 10px 12px 12px; }
+.shot b { font-family: 'Departure', monospace; font-weight: normal; color: var(--ink); }
+.shot small { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+
+/* two-up */
+.two { display: grid; grid-template-columns: 1.1fr 1fr; gap: 36px; align-items: center; }
+.two img { width: 100%; border: 1px solid var(--line); border-radius: 3px; }
+@media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
+ul.ticks { list-style: none; padding: 0; margin: 0; }
+ul.ticks li { padding-left: 1.4em; position: relative; margin-bottom: .55em; color: var(--muted); }
+ul.ticks li::before { content: '>'; position: absolute; left: 0; color: var(--acc); }
+ul.ticks b { color: var(--ink); font-weight: normal; }
+
+/* install */
+pre { background: #000; border: 1px solid var(--line); padding: 16px 18px; margin: 0 0 14px; overflow-x: auto; position: relative; border-radius: 3px; }
+pre .p { color: var(--acc); user-select: none; }
+.copy-btn { position: absolute; top: 8px; right: 8px; font: 12px 'Departure', monospace; background: var(--panel);
+            color: var(--muted); border: 1px solid var(--line); padding: 3px 8px; cursor: pointer; }
+.copy-btn:hover { color: var(--acc); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+td, th { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: 'Departure', monospace; font-weight: normal; color: var(--muted); }
+.badge { font: 11px 'Departure', monospace; color: var(--hot); border: 1px solid #ffb34766; padding: 1px 6px; margin-left: 6px; white-space: nowrap; }
+
+details { border-bottom: 1px solid var(--line); padding: 14px 0; }
+summary { cursor: pointer; font-family: 'Departure', monospace; color: var(--ink); }
+details p { color: var(--muted); margin: .7em 0 0; }
+
+footer { border-top: 1px solid var(--line); padding: 36px 0 60px; color: var(--muted); font-size: 13px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 28px; justify-content: space-between; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .shot img { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<nav aria-label="Site">
+  <a class="brand" href="#top"><img src="demo/glitchwall.png" alt="">glitchwall</a>
+  <a class="hide-s" href="#themes">Themes</a>
+  <a class="hide-s" href="#privacy">Privacy</a>
+  <a href="#install">Install</a>
+  <a href="https://github.com/marklesterb28/glitchwall">GitHub</a>
+</nav>
+
+<header class="hero" id="top">
+  <iframe id="wall" title="glitchwall running a made-up session" src="demo/index.html?theme=phosphor" loading="eager"></iframe>
+  <img class="still" id="still" src="img/phosphor.jpg" alt="">
+  <div class="copy">
+    <h1>Your coding agent, <span>live</span> on your desktop.</h1>
+    <p>Every command it runs types itself out on your Windows wallpaper, behind your icons, then leaves the way your
+       theme likes.</p>
+    <div class="cta">
+      <a class="btn" href="#install">Install</a>
+      <a class="btn ghost" href="https://github.com/marklesterb28/glitchwall">Source on GitHub</a>
+    </div>
+    <p class="note">Running right now behind this text: the real wallpaper page, playing a made-up session in your
+       browser. Nothing is read, nothing is sent. <a href="#" id="motion" hidden>Play it</a></p>
+    <div class="switch" id="switch" role="group" aria-label="Try a theme"></div>
+  </div>
+</header>
+
+<main>
+<section>
+  <div class="wrap">
+    <h2>A hundred things a minute, in a terminal you're not watching.</h2>
+    <p class="lede">glitchwall puts them on your desktop: every shell command, file read and edit, search, web fetch
+       and sub-agent gets a card the moment it runs, types itself out with its result, lingers, and leaves. A failing
+       command shows in the theme's error color. There's nothing to set up in the agent: glitchwall reads the logs it
+       already writes.</p>
+    <div class="cols">
+      <div class="card"><h3>Private</h3><p>Secrets are masked before anything is stored. Logs are opened read-only, and
+        the feed talks to <code>127.0.0.1</code> only. No telemetry, no update checks, nothing loaded from the internet.</p></div>
+      <div class="card"><h3>Light</h3><p>About 6.5% of one CPU core and 153 MB, drawn by a small Rust renderer with no
+        browser. Screens covered by a window or a game draw nothing.</p></div>
+      <div class="card"><h3>Stream-safe</h3><p>Press <b>P</b> and every card is gone at once, enforced by the feed
+        itself. Nothing from a pause is ever replayed.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="themes">
+  <div class="wrap">
+    <h2>Nineteen complete looks</h2>
+    <p class="lede">Each theme is colors, two fonts, a background, a texture, and its own way of bringing cards in and
+       taking them away. Mix any part of one with another. No videos, no GIFs: every background is a small program
+       drawing each frame live, so no two minutes look the same. Pick one to see it running above.</p>
+    <div class="gallery" id="gallery"></div>
+    <p class="note" style="margin-top:18px">27 backgrounds, 19 fonts and 19 transitions in all.
+       <a href="https://github.com/marklesterb28/glitchwall/blob/main/docs/THEMES.md">Every one of them →</a></p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap two">
+    <div>
+      <h2>Settings that show what they pick</h2>
+      <ul class="ticks">
+        <li><b>A theme drum</b> that previews every theme in its own colors and fonts.</li>
+        <li><b>Knobs:</b> colors as a swatch, a font in its own face, a background as a still, an arrival by playing it.</li>
+        <li><b>Hold</b> any control and the window fades almost away, so the wallpaper itself is the preview.</li>
+        <li><b>Everything applies within a second.</b> Nothing restarts.</li>
+        <li><b>Keyboard all the way</b>, and dockable to a screen edge.</li>
+      </ul>
+    </div>
+    <img src="img/settings.gif" alt="Switching themes, then pausing: the settings window and the wallpaper change together" loading="lazy">
+  </div>
+</section>
+
+<section id="privacy">
+  <div class="wrap">
+    <h2>Easy to trust, easy to check</h2>
+    <p class="lede">A wallpaper that shows what your agent does has to be careful with it. Here's the whole path a
+       tool call takes, and nothing else leaves it.</p>
+    <div class="flow">
+      <div><b>Agent logs</b><span>The session logs your coding agent already writes on your PC.</span></div>
+      <div><b>Read-only</b><span>Opened read-only; only what's new is read. Nothing is written there.</span></div>
+      <div><b>Masked</b><span>50+ key formats, secret-named values, passwords in URLs, your home folder and name.</span></div>
+      <div><b>127.0.0.1</b><span>A local feed with a per-install random key. Other sites and servers are refused.</span></div>
+      <div><b>Your wallpaper</b><span>Drawn behind your icons. Your own wallpaper file is never changed.</span></div>
+    </div>
+    <ul class="ticks" style="margin-top:24px">
+      <li><b>It doesn't watch you:</b> not your terminal, your typing, or other windows. It only notes where windows
+          are (to stop drawing under them) and where the mouse is (for the hot corner).</li>
+      <li><b>A feature that showed your own terminal commands was built, then removed on purpose</b>, because a
+          wallpaper shouldn't look like spyware.</li>
+      <li><b>Redaction is a safety net, not a guarantee.</b> When you stream or share your screen, press P.</li>
+    </ul>
+    <p style="margin-top:18px"><a href="https://github.com/marklesterb28/glitchwall/blob/main/docs/PRIVACY.md">Everything it reads, writes and refuses, and why →</a></p>
+  </div>
+</section>
+
+<section id="agents">
+  <div class="wrap">
+    <h2>Which agents</h2>
+    <table>
+      <tr><th>Agent</th><th>How you get it</th><th>In glitchwall</th></tr>
+      <tr><td>Claude Code</td><td>A paid Claude plan (Pro or Max) or an Anthropic API account</td><td>On by default</td></tr>
+      <tr><td>Gemini CLI <span class="badge">next release</span></td><td>A Gemini API key from Google AI Studio</td><td>Off until you turn it on</td></tr>
+      <tr><td>Codex CLI <span class="badge">next release</span></td><td>A ChatGPT plan or an OpenAI API key</td><td>Off until you turn it on</td></tr>
+    </table>
+    <p class="note" style="margin-top:14px">Chatting on a website writes no logs on your PC, so there's nothing to show.
+       No agent? <b>ambient</b> mode plays endless made-up sessions and <b>art</b> mode shows just the background;
+       neither reads anything. The corner label always says which mode is on.</p>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <h2>Install</h2>
+    <p class="lede">Windows 10 (1803 or newer) or 11. Get <a href="https://docs.astral.sh/uv/">uv</a> if you don't have
+       it, then:</p>
+    <pre><code><span class="p">&gt; </span>uv tool install glitchwall
+<span class="p">&gt; </span>glitchwall install</code><button class="copy-btn" type="button">copy</button></pre>
+    <p class="note">A 2.9 MB download, about 78 MB installed including the Python uv sets up. <code>install</code> checks
+       for .NET Framework 4.7.2 and WebView2 first (Windows 11 has both) and stops if one is missing; glitchwall never
+       downloads or installs anything itself. <code>glitchwall uninstall</code> removes all of it.</p>
+    <p style="margin-top:22px">Just want to look first, on your own PC?</p>
+    <pre><code><span class="p">&gt; </span>uvx glitchwall demo --open</code><button class="copy-btn" type="button">copy</button></pre>
+    <p class="note">Made-up calls in your browser, nothing installed, no logs read. Also on
+       <a href="https://pypi.org/project/glitchwall/">PyPI</a>, and every
+       <a href="https://github.com/marklesterb28/glitchwall/releases">GitHub release</a> carries the same wheel with its SHA-256.</p>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <h2>Questions</h2>
+    <details><summary>Will it slow my PC down?</summary><p>About 6.5% of one core (0.4% of a 16-core CPU) and 153 MB,
+      about the CPU of a simple web wallpaper with less memory. Covered screens, fullscreen games and a locked PC draw
+      nothing. <a href="https://github.com/marklesterb28/glitchwall/blob/main/docs/PERFORMANCE.md">The numbers →</a></p></details>
+    <details><summary>Can I put it on stream?</summary><p>Yes. <code>glitchwall export DIR</code> writes the page for an
+      OBS browser source or Wallpaper Engine, and <code>glitchwall pause</code> still clears it at once.</p></details>
+    <details><summary>macOS or Linux?</summary><p>Not today. The renderer draws with Direct2D and sits behind the icons
+      through the Windows desktop.</p></details>
+    <details><summary>Does this page track me?</summary><p>No. It's plain files on GitHub Pages: no analytics, no cookies,
+      no fonts or scripts from anywhere else. The wallpaper running at the top plays a made-up session built into the
+      page and makes no requests at all. GitHub itself keeps server logs, as it does for any Pages site.</p></details>
+    <details><summary>Can I make a theme?</summary><p>Themes live in one file,
+      <a href="https://github.com/marklesterb28/glitchwall/blob/main/src/glitchwall/wallpaper/looks.js">looks.js</a>.
+      A new background is a canvas scene plus a Rust port; see
+      <a href="https://github.com/marklesterb28/glitchwall/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>.</p></details>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>glitchwall is free and MIT licensed. <a href="https://ko-fi.com/marklesterb28">Ko-fi</a> if it brightens your desk; a star helps just as much.</span>
+    <span>Not affiliated with Anthropic, Google or OpenAI. Their product names belong to them.</span>
+  </div>
+</footer>
+
+<script>
+const THEMES = [
+  ['phosphor', 'green phosphor terminal, glyph rain'], ['drafting', 'a blueprint drawing itself'],
+  ['newsprint', 'a broadsheet setting itself'], ['nightprint', 'the same page at night'],
+  ['neon', 'a rainy street at night'], ['fieldops', 'a route on a contour map'],
+  ['duplicator', 'risograph, the pink drum off true'], ['sleeve', 'a record turning'],
+  ['notebook', 'ballpoint and doodles'], ['bsod', 'the old blue stop screen'],
+  ['cyanotype', 'ferns in Prussian blue'], ['oracle', 'a ring of data, always redrawing'],
+  ['orb', 'the machine in its hall'], ['scope', 'an oscilloscope beam'],
+  ['chalkboard', 'written, then wiped'], ['matrix', 'katakana at three depths'],
+  ['amber', 'an amber radar sweep'], ['synthwave', 'a synthwave sunset'], ['msdos', 'blue boxes on a DOS desktop'],
+];
+const wall = document.getElementById('wall'), still = document.getElementById('still');
+const sw = document.getElementById('switch'), gal = document.getElementById('gallery');
+const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let current = 'phosphor', playing = !calm;
+
+function show(name) {
+  current = name;
+  still.src = 'img/' + name + '.jpg';
+  if (playing) wall.src = 'demo/index.html?theme=' + encodeURIComponent(name);
+  sw.querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === name)));
+}
+for (const [name, blurb] of THEMES) {
+  const b = document.createElement('button');
+  b.className = 'chip'; b.type = 'button'; b.dataset.t = name; b.textContent = name;
+  b.setAttribute('aria-pressed', String(name === current));
+  b.onclick = () => show(name);
+  sw.appendChild(b);
+  const s = document.createElement('button');
+  s.className = 'shot'; s.type = 'button';
+  s.innerHTML = '<img loading="lazy" alt=""><div><b></b><small></small></div>';
+  s.querySelector('img').src = 'img/' + name + '.jpg';
+  s.querySelector('img').alt = name + ' theme';
+  s.querySelector('b').textContent = name;
+  s.querySelector('small').textContent = blurb;
+  s.onclick = () => { show(name); document.getElementById('top').scrollIntoView(); };
+  gal.appendChild(s);
+}
+
+// reduced motion: a still instead of the running page, until asked
+const motion = document.getElementById('motion');
+if (calm) {
+  wall.removeAttribute('src'); wall.style.display = 'none'; still.style.display = 'block'; motion.hidden = false;
+  motion.onclick = e => { e.preventDefault(); playing = true; motion.hidden = true; still.style.display = 'none';
+                          wall.style.display = ''; show(current); };
+}
+// stop drawing while the hero is scrolled away
+new IntersectionObserver(([e]) => {
+  if (!playing) return;
+  const src = 'demo/index.html?theme=' + encodeURIComponent(current);
+  if (e.isIntersecting && !wall.getAttribute('src')) wall.src = src;
+  if (!e.isIntersecting && wall.getAttribute('src')) wall.removeAttribute('src');
+}).observe(document.getElementById('top'));
+
+const nav = document.querySelector('nav');
+const solid = () => nav.classList.toggle('solid', scrollY > 40);
+addEventListener('scroll', solid, { passive: true }); solid();
+
+document.querySelectorAll('.copy-btn').forEach(b => b.onclick = () => {
+  const text = b.previousElementSibling.textContent.replace(/^> /gm, '');
+  navigator.clipboard.writeText(text).then(() => { b.textContent = 'copied'; setTimeout(() => b.textContent = 'copy', 1400); });
+});
+</script>
+</body>
+</html>
