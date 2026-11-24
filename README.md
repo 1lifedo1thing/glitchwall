@@ -1,14 +1,14 @@
 <div align="center">
 
-# `g l i t c h w a l l`
+# ![glitchwall](docs/banner.gif)
 
 **Your coding agent, live on your desktop.**<br>
 Every command it runs types itself out on your wallpaper, then leaves the way your theme likes.
 
-![Windows 10 / 11](https://img.shields.io/badge/Windows%2010%20%2F%2011-00ff41?style=flat-square&labelColor=0c0e0c)
-![localhost only](https://img.shields.io/badge/localhost%20only-00ff41?style=flat-square&labelColor=0c0e0c)
-![no telemetry](https://img.shields.io/badge/no%20telemetry-00ff41?style=flat-square&labelColor=0c0e0c)
-![MIT](https://img.shields.io/badge/MIT-00ff41?style=flat-square&labelColor=0c0e0c)
+![Windows 10 / 11](https://img.shields.io/badge/Windows%2010%20%2F%2011-1a7f37?style=flat-square)
+![localhost only](https://img.shields.io/badge/localhost%20only-1a7f37?style=flat-square)
+![no telemetry](https://img.shields.io/badge/no%20telemetry-1a7f37?style=flat-square)
+![MIT](https://img.shields.io/badge/MIT-1a7f37?style=flat-square)
 
 ![glitchwall: tool calls glitch in, type out with their output, then collapse](docs/demo.gif)
 
