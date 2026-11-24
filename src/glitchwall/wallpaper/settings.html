@@ -570,6 +570,7 @@ addEventListener('resize', () => fit());
 // one text size for all the selector windows, and one for the theme drum: the size at which the longest choice fits.
 // Worked out again only when the font or the knobs change, never while turning one, so nothing jumps
 let evenKey = '';
+const asked = new Set();   // fonts evenText has asked to load
 function evenText() {
   const st = document.documentElement.style, key = [st.getPropertyValue('--fd'), optsFor].join('|');
   if (key === evenKey || !S.theme) return;
@@ -583,9 +584,15 @@ function evenText() {
   probe.style.cssText = 'position:absolute;visibility:hidden;max-width:none;white-space:nowrap;--vs:18px';
   wins[0].appendChild(probe);
   let widest = 1;
+  const F = (window.LOOKS && window.LOOKS.fonts) || {}, loading = [];
   document.querySelectorAll('.knob').forEach(b => { for (const v of Object.keys(C[b.dataset.help] || {})) {
+    // the FONT knob shows each font's name in that font (swatch): measured in it too
+    const f = b.dataset.help === 'font' && F[v];
+    probe.style.fontFamily = f ? f.family : ''; probe.style.fontWeight = f ? String(f.weight || 400) : '';
+    if (f && !asked.has(f.family) && !document.fonts.check(`18px ${f.family}`)) { asked.add(f.family); loading.push(document.fonts.load(`18px ${f.family}`)); }   // once each: one that never loads can't loop
     for (const w of optName(b.dataset.help, v).split(' ')) { probe.textContent = w; widest = Math.max(widest, probe.scrollWidth); } } });   // the longest word: long names wrap
   probe.remove();
+  if (loading.length) Promise.all(loading).then(() => { evenKey = ''; evenText(); });   // again once they're in
   st.setProperty('--vs', Math.max(11, Math.min(18, Math.floor(18 * room / widest))) + 'px');
   const items = [...document.querySelectorAll('.drum .item')];
   st.setProperty('--ds', '22px');
@@ -594,6 +601,23 @@ function evenText() {
 }
 if (document.fonts) document.fonts.ready.then(() => fit());
 if (window.ResizeObserver) new ResizeObserver(() => fit()).observe(document.documentElement);
+// the COLORS and FONT knobs show what they've picked, like a swatch: the palette's own paper and ink (an edge of its
+// accent) in the knob's little window, the font's name in that font. The rest of the window keeps the theme (wear)
+function swatch(win, val, kind) {
+  const L = window.LOOKS || {}, v = S[kind], ws = win.style, vs = val.style;
+  ['background', 'border-color', 'box-shadow'].forEach(k => ws.removeProperty(k));
+  ['color', 'text-shadow', 'font-family', 'font-weight'].forEach(k => vs.removeProperty(k));
+  if (!v || v === 'theme') return;
+  if (kind === 'palette') {
+    const t = (L.themes || {})[v];
+    if (!t) return;
+    ws.background = t.surface || t.bg; ws.borderColor = t.acc || t.ink; ws.boxShadow = `inset 0 -3px 0 ${t.acc || t.ink}`;
+    vs.color = t.ink; vs.textShadow = 'none';
+  } else if (kind === 'font') {
+    const f = (L.fonts || {})[v];
+    if (f) { vs.fontFamily = f.family; vs.fontWeight = String(f.weight || 400); }
+  }
+}
 function render() {
   wear();
   requestAnimationFrame(fit);
@@ -602,6 +626,7 @@ function render() {
   document.querySelectorAll('.knob').forEach(b => {
     const kind = b.dataset.help, o = Object.keys(C[kind]), i = Math.max(0, o.indexOf(S[kind]));
     const val = b.querySelector('.val'); val.textContent = optName(kind, S[kind]);
+    swatch(b.querySelector('.win'), val, kind);
     b.querySelector('.wheel').style.backgroundPosition = `0 ${i * 5}px, 0 0`;   // the ridges roll as it turns
     b.setAttribute('aria-label', `${KNOB_HELP[kind]}: ${S[kind]}`);
   });
