@@ -386,7 +386,8 @@ mod tests {
     #[test]
     fn matches_python() {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/fixtures/logs.json");
-        let fx = Json::parse(&std::fs::read_to_string(path).unwrap()).unwrap();
+        // the fake keys carry an invisible marker in the file (tools/fixture_text.py): taken out before use
+        let fx = Json::parse(&std::fs::read_to_string(path).unwrap().replace('\u{e000}', "")).unwrap();
         let f = Path::new(fx.get("project").str().unwrap()).join(fx.get("file").str().unwrap());
         for (k, st) in fx.get("streams").items().iter().enumerate() {
             let mut t = Tailer::new(PathBuf::from("."));

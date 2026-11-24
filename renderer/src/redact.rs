@@ -310,7 +310,8 @@ mod tests {
     #[test]
     fn matches_python() {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/fixtures/redact.json");
-        let cases = Json::parse(&std::fs::read_to_string(path).unwrap()).unwrap();
+        // the fake keys carry an invisible marker in the file (tools/fixture_text.py): taken out before use
+        let cases = Json::parse(&std::fs::read_to_string(path).unwrap().replace('\u{e000}', "")).unwrap();
         let mut bad = Vec::new();
         for (i, c) in cases.items().iter().enumerate() {
             let s = |k| c.get(k).str().unwrap();

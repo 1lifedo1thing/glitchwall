@@ -165,5 +165,6 @@ if len(sys.argv) > 2 and sys.argv[1] == "--real":
     print(f"{len(real)} logs, {sum(len(r['events']) for r in real)} events -> {sys.argv[2]}")
 else:
     p = ROOT / "tests" / "fixtures" / "logs.json"
-    p.write_text(json.dumps(out, indent=1, ensure_ascii=False), encoding="utf-8")
+    from fixture_text import hide_fakes   # fake keys get an invisible marker, so code hosts don't take them for leaks
+    p.write_text(hide_fakes(json.dumps(out, indent=1, ensure_ascii=False)), encoding="utf-8")
     print(f"{sum(len(s['events']) for s in out['streams'])} events from {len(streams)} streams, {len(clips)} clips -> {p.relative_to(ROOT)}")

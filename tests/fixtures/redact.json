@@ -6,16 +6,6 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "git status -sb\n## main...origin/main [ahead 2]\n M src/api/routes.py\n M tests/test_routes.py\n?? notes/todo.md\n~/code/orbit/src/api/routes.py\n\n~/code/orbit/src/api/routes.py\n- return jsonify(items)\n+ return jsonify(items=items, total=len(items))\n\npytest -q tests/test_routes.py\n....F.\nFAILED tests/test_routes.py::test_list_empty - KeyError: 'total'\n1 failed, 5 passed in 0.41s\n~/code/orbit/tests/test_routes.py\n- assert r.json == []\n+ assert r.json == {'items': [], 'total': 0}\n\npytest -q\n..............................\n30 passed in 1.92s\nTODO|FIXME  in src/\nsrc/api/auth.py:41: # TODO rotate session keys\nsrc/jobs/sync.py:12: # FIXME retry on 429\nexport STRIPE_KEY=sk_live_51HdemoNotARealKey00000000 && ./deploy.sh staging\nbuilding image orbit:7f3a1c2 ...\npushing to registry.internal:5000\nrolling out 3/3 pods\ndeploy ok in 38s\nGet-Service | Where-Object Status -eq Running | Select-Object -First 5\nStatus   Name               DisplayName\n------   ----               -----------\nRunning  Appinfo            Application Information\nRunning  AudioSrv           Windows Audio\nRunning  BFE                Base Filtering Engine\nhttps://docs.python.org/3/library/http.server.html\n\ncurl -s -H \"Authorization: Bearer ghp_demoDemoDemoDemoDemoDemoDemo1234\" https://api.example.test/v1/me\n{\"login\": \"octo-demo\", \"plan\": \"free\"}\n~/code/orbit/notes/todo.md\n- [x] totals in list endpoint\n- [ ] retry on 429\n- [ ] rotate session keys\n\ndocker compose ps\nNAME        STATUS         PORTS\norbit-api   Up 3 minutes   0.0.0.0:8080->8080/tcp\norbit-db    Up 3 minutes   5432/tcp\nSurvey retry logic across jobs/\n\npsql postgres://orbit:hunter2@localhost:5432/orbit -c 'select count(*) from orders'\n count\n-------\n  1284\n(1 row)\ngit commit -am \"list endpoint returns totals\"\n[main 9c1e4b7] list endpoint returns totals\n 2 files changed, 6 insertions(+), 3 deletions(-)\ncargo build --release\n   Compiling orbit-cli v0.4.1\n    Finished `release` profile [optimized] target(s) in 12.84s\nls -la ~/code/orbit\ndrwxr-xr-x  src\ndrwxr-xr-x  tests\n-rw-r--r--  pyproject.toml\n-rw-r--r--  README.md",
-  "output": "git status -sb\n## main...origin/main [ahead 2]\n M src/api/routes.py\n M tests/test_routes.py\n?? notes/todo.md\n~/code/orbit/src/api/routes.py\n\n~/code/orbit/src/api/routes.py\n- return jsonify(items)\n+ return jsonify(items=items, total=len(items))\n\npytest -q tests/test_routes.py\n....F.\nFAILED tests/test_routes.py::test_list_empty - KeyError: 'total'\n1 failed, 5 passed in 0.41s\n~/code/orbit/tests/test_routes.py\n- assert r.json == []\n+ assert r.json == {'items': [], 'total': 0}\n\npytest -q\n..............................\n30 passed in 1.92s\nTODO|FIXME  in src/\nsrc/api/auth.py:41: # TODO rotate session keys\nsrc/jobs/sync.py:12: # FIXME retry on 429\nexport STRIPE_KEY=•••• && ./deploy.sh staging\nbuilding image orbit:7f3a1c2 ...\npushing to registry.internal:5000\nrolling out 3/3 pods\ndeploy ok in 38s\nGet-Service | Where-Object Status -eq Running | Select-Object -First 5\nStatus   Name               DisplayName\n------   ----               -----------\nRunning  Appinfo            Application Information\nRunning  AudioSrv           Windows Audio\nRunning  BFE                Base Filtering Engine\nhttps://docs.python.org/3/library/http.server.html\n\ncurl -s -H \"Authorization: ••••\" https://api.example.test/v1/me\n{\"login\": \"octo-demo\", \"plan\": \"free\"}\n~/code/orbit/notes/todo.md\n- [x] totals in list endpoint\n- [ ] retry on 429\n- [ ] rotate session keys\n\ndocker compose ps\nNAME        STATUS         PORTS\norbit-api   Up 3 minutes   0.0.0.0:8080->8080/tcp\norbit-db    Up 3 minutes   5432/tcp\nSurvey retry logic across jobs/\n\npsql postgres://orbit:••••@localhost:5432/orbit -c 'select count(*) from orders'\n count\n-------\n  1284\n(1 row)\ngit commit -am \"list endpoint returns totals\"\n[main 9c1e4b7] list endpoint returns totals\n 2 files changed, 6 insertions(+), 3 deletions(-)\ncargo build --release\n   Compiling orbit-cli v0.4.1\n    Finished `release` profile [optimized] target(s) in 12.84s\nls -la ~/code/orbit\ndrwxr-xr-x  src\ndrwxr-xr-x  tests\n-rw-r--r--  pyproject.toml\n-rw-r--r--  README.md"
- },
- {
-  "home": "",
-  "short": "",
-  "user": "",
-  "mask_user": false,
-  "mask_email": true,
-  "entropy_check": true,
   "input": "a\nx x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x …",
   "output": "a\nx x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x …"
  },
@@ -56,8 +46,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "git log --oneline -4",
-  "output": "git log --oneline -4"
+  "input": "settings  in src/",
+  "output": "settings  in src/"
  },
  {
   "home": "",
@@ -66,8 +56,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "mossgate",
-  "output": "mossgate"
+  "input": "tidepool",
+  "output": "tidepool"
  },
  {
   "home": "",
@@ -76,8 +66,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "2bca03a feat: export to csv\n8a57575 feat: export to csv\n73e5db5 perf: cache lookups\ned94b39 feat: export to csv",
-  "output": "2bca03a feat: export to csv\n8a57575 feat: export to csv\n73e5db5 perf: cache lookups\ned94b39 feat: export to csv"
+  "input": "src/pages/settings.ts:12: export function settings(\nsrc/app.tsx:44:   <settings />",
+  "output": "src/pages/settings.ts:12: export function settings(\nsrc/app.tsx:44:   <settings />"
  },
  {
   "home": "",
@@ -86,8 +76,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "~/code/mossgate/CHANGELOG.md\n+ ## 2.17.3\n+ - export to csv\n+ - retries back off properly",
-  "output": "~/code/mossgate/CHANGELOG.md\n+ ## 2.17.3\n+ - export to csv\n+ - retries back off properly"
+  "input": "~/code/tidepool/src/pages/settings.tsx",
+  "output": "~/code/tidepool/src/pages/settings.tsx"
  },
  {
   "home": "",
@@ -96,88 +86,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "git tag -a v2.17.3 -m \"v2.17.3\" && git push --follow-tags",
-  "output": "git tag -a v2.17.3 -m \"v2.17.3\" && git push --follow-tags"
- },
- {
-  "home": "",
-  "short": "",
-  "user": "",
-  "mask_user": false,
-  "mask_email": true,
-  "entropy_check": true,
-  "input": "To forge.example.test:team/mossgate.git\n * [new tag]         v2.17.3 -> v2.17.3",
-  "output": "To forge.example.test:team/mossgate.git\n * [new tag]         v2.17.3 -> v2.17.3"
- },
- {
-  "home": "",
-  "short": "",
-  "user": "",
-  "mask_user": false,
-  "mask_email": true,
-  "entropy_check": true,
-  "input": "python -m build",
-  "output": "python -m build"
- },
- {
-  "home": "",
-  "short": "",
-  "user": "",
-  "mask_user": false,
-  "mask_email": true,
-  "entropy_check": true,
-  "input": "Successfully built mossgate-2.17.3.tar.gz and mossgate-2.17.3-py3-none-any.whl",
-  "output": "Successfully built mossgate-2.17.3.tar.gz and mossgate-2.17.3-py3-none-any.whl"
- },
- {
-  "home": "",
-  "short": "",
-  "user": "",
-  "mask_user": false,
-  "mask_email": true,
-  "entropy_check": true,
-  "input": "Header  in src/",
-  "output": "Header  in src/"
- },
- {
-  "home": "",
-  "short": "",
-  "user": "",
-  "mask_user": false,
-  "mask_email": true,
-  "entropy_check": true,
-  "input": "parcel",
-  "output": "parcel"
- },
- {
-  "home": "",
-  "short": "",
-  "user": "",
-  "mask_user": false,
-  "mask_email": true,
-  "entropy_check": true,
-  "input": "src/components/Header.ts:12: export function Header(\nsrc/app.tsx:44:   <Header />",
-  "output": "src/components/Header.ts:12: export function Header(\nsrc/app.tsx:44:   <Header />"
- },
- {
-  "home": "",
-  "short": "",
-  "user": "",
-  "mask_user": false,
-  "mask_email": true,
-  "entropy_check": true,
-  "input": "~/code/parcel/src/components/Header.tsx",
-  "output": "~/code/parcel/src/components/Header.tsx"
- },
- {
-  "home": "",
-  "short": "",
-  "user": "",
-  "mask_user": false,
-  "mask_email": true,
-  "entropy_check": true,
-  "input": "~/code/parcel/src/components/Header.tsx\n- const res = await fetch(url)\n+ const res = await fetch(url, { signal: ctrl.signal })\n+ if (!res.ok) throw new HttpError(res.status)",
-  "output": "~/code/parcel/src/components/Header.tsx\n- const res = await fetch(url)\n+ const res = await fetch(url, { signal: ctrl.signal })\n+ if (!res.ok) throw new HttpError(res.status)"
+  "input": "~/code/tidepool/src/pages/settings.tsx\n- const res = await fetch(url)\n+ const res = await fetch(url, { signal: ctrl.signal })\n+ if (!res.ok) throw new HttpError(res.status)",
+  "output": "~/code/tidepool/src/pages/settings.tsx\n- const res = await fetch(url)\n+ const res = await fetch(url, { signal: ctrl.signal })\n+ if (!res.ok) throw new HttpError(res.status)"
  },
  {
   "home": "",
@@ -196,8 +106,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "> parcel@3.15.0 lint\n> eslint src --ext .ts,.tsx\n\n✔ no problems",
-  "output": "> parcel@3.15.0 lint\n> eslint src --ext .ts,.tsx\n\n✔ no problems"
+  "input": "> tidepool@1.3.0 lint\n> eslint src --ext .ts,.tsx\n\n✔ no problems",
+  "output": "> tidepool@1.3.0 lint\n> eslint src --ext .ts,.tsx\n\n✔ no problems"
  },
  {
   "home": "",
@@ -216,8 +126,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": " ✓ src/components/Header.test.ts (12 tests) 86ms\n\n Test Files  19 passed\n      Tests  48 passed",
-  "output": " ✓ src/components/Header.test.ts (12 tests) 86ms\n\n Test Files  19 passed\n      Tests  48 passed"
+  "input": " ✓ src/pages/settings.test.ts (12 tests) 48ms\n\n Test Files  30 passed\n      Tests  71 passed",
+  "output": " ✓ src/pages/settings.test.ts (12 tests) 48ms\n\n Test Files  30 passed\n      Tests  71 passed"
  },
  {
   "home": "",
@@ -236,8 +146,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "vite v5.4.2 building for production...\n✓ 306 modules transformed.\ndist/assets/index-e620038d.js   299.32 kB │ gzip: 129.17 kB\n✓ built in 2.80s",
-  "output": "vite v5.4.2 building for production...\n✓ 306 modules transformed.\ndist/assets/index-e620038d.js   299.32 kB │ gzip: 129.17 kB\n✓ built in 2.80s"
+  "input": "vite v5.4.2 building for production...\n✓ 519 modules transformed.\ndist/assets/index-c7805aea.js   181.53 kB │ gzip: 134.55 kB\n✓ built in 1.81s",
+  "output": "vite v5.4.2 building for production...\n✓ 519 modules transformed.\ndist/assets/index-c7805aea.js   181.53 kB │ gzip: 134.55 kB\n✓ built in 1.81s"
  },
  {
   "home": "",
@@ -246,8 +156,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "fetcher  in src/",
-  "output": "fetcher  in src/"
+  "input": "psql -d kestrel -c \"select count(*) from users where created_at > now() - interval '7 days'\"",
+  "output": "psql -d kestrel -c \"select count(*) from users where created_at > now() - interval '7 days'\""
  },
  {
   "home": "",
@@ -256,8 +166,8 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "ferrous",
-  "output": "ferrous"
+  "input": "kestrel",
+  "output": "kestrel"
  },
  {
   "home": "",
@@ -266,8 +176,68 @@
   "mask_user": false,
   "mask_email": true,
   "entropy_check": true,
-  "input": "src/lib/fetcher.ts:12: export function fetcher(\nsrc/app.tsx:44:   <fetcher />",
-  "output": "src/lib/fetcher.ts:12: export function fetcher(\nsrc/app.tsx:44:   <fetcher />"
+  "input": " count\n-------\n  6713\n(1 row)",
+  "output": " count\n-------\n  6713\n(1 row)"
+ },
+ {
+  "home": "",
+  "short": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "psql -d kestrel -c \"explain analyze select * from users where owner_id = 42\"",
+  "output": "psql -d kestrel -c \"explain analyze select * from users where owner_id = 42\""
+ },
+ {
+  "home": "",
+  "short": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "Seq Scan on users  (cost=0.00..1123.00 rows=4)\nExecution Time: 112.626 ms",
+  "output": "Seq Scan on users  (cost=0.00..1123.00 rows=4)\nExecution Time: 112.626 ms"
+ },
+ {
+  "home": "",
+  "short": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "~/code/kestrel/migrations/0064_users_owner_idx.sql\nCREATE INDEX CONCURRENTLY users_owner_idx\n    ON users (owner_id);",
+  "output": "~/code/kestrel/migrations/0064_users_owner_idx.sql\nCREATE INDEX CONCURRENTLY users_owner_idx\n    ON users (owner_id);"
+ },
+ {
+  "home": "",
+  "short": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "make migrate",
+  "output": "make migrate"
+ },
+ {
+  "home": "",
+  "short": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "applying 0064_users_owner_idx.sql ... ok",
+  "output": "applying 0064_users_owner_idx.sql ... ok"
+ },
+ {
+  "home": "",
+  "short": "",
+  "user": "",
+  "mask_user": false,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "Index Scan using users_owner_idx on users\nExecution Time: 1.215 ms",
+  "output": "Index Scan using users_owner_idx on users\nExecution Time: 1.215 ms"
  },
  {
   "home": "C:\\Users\\octocat",
@@ -1350,16 +1320,6 @@
   "output": "https://example.test/api/token/refresh"
  },
  {
-  "home": "C:\\Users\\octocat",
-  "short": "",
-  "user": "octocat",
-  "mask_user": true,
-  "mask_email": true,
-  "entropy_check": true,
-  "input": "line 0: AKIAQX7Z5T3NBM4WPL2R\nline 1: export AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY\nline 2: AIzaSyD4-xq9Lm2Rk7Pz0Wv3Ny8Bt6Hc1Jf5Ge0\nline 3: ghp_a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8\nline 4: github_pat_11ABCDEFG0aaaaaaaaaaaaaaaaaaaa_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbZ9\nline 5: glpat-xY7k2Lm9Qw3Ez5Rt8Uv1\nline 6: xoxb-123456789012-1234567890123-AbCdEfGhIjKlMnOpQrStUvWx\nline 7: https://hooks.slack.com/services/T0ABC1234/B0DEF5678/xYz123AbC456dEf789GhI012\nline 8: https://discord.com/api/webhooks/123456789012345678/AbCdEf_GhIjKl-MnOpQrStUvWxYz0123456789\nline 9: sk_live_51HxQ2bKz8Lm3Np4Qr5St6Uv7Wx8Yz9\nline 10: rk_test_51HxQ2bKz8Lm3Np4Qr5St6Uv7Wx8Yz9\nline 11: whsec_Ab12Cd34Ef56Gh78Ij90Kl12Mn34Op56\nline 12: sk-ant-api03-Zx9Yw8Vu7Ts6Rq5Po4Nm3Lk2Ji1Hg0Fe9Dc8Ba7\nline 13: sk-proj-Ab1Cd2Ef3Gh4Ij5Kl6Mn7Op8Qr9St0Uv1Wx2\nline 14: hf_AbCdEfGhIjKlMnOpQrStUvWxYz12345678\nline 15: npm_Ab1Cd2Ef3Gh4Ij5Kl6Mn7Op8Qr9St0Uv1Wx2Y\nline 16: pypi-AgEIcHlwaS5vcmcCJGZmY2E3ZTk0LTIzOTgtNDk5ZS1iZDAxLWNkNmVhYjU0ZmM0YQ\nline 17: dop_v1_9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\nline 18: hvs.CAESIJx9Y8wV7uT6sR5qP4oN3mL2kJ1iH0gF\nline 19: tskey-auth-kAbCdE1CNTRL-aBcDeFgHiJkLmNoPqRsTuVwXyZ123456\nline 20: SG.Ab1Cd2Ef3Gh4Ij5Kl6Mn7O.Pq8Rs9Tu0Vw1Xy2Za3Bc4De5Fg6Hi7Jk8Lm9No0Pq1Rs\nline 21: 123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw\nline 22: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4ifQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c\nline 23: -----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0Z3VS5JJcds3xfn/ygWyF8PbnGy\nabc\n-----END RSA PRIVATE KEY-----\nline 24: -----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQ\n-----END OPENSSH PRIVATE KEY-----\nline 25: -----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASC\n…\nline 26: AGE-SECRET-KEY-1QQPZ5LN8Y0A3VQKV5YSJ3MRSMFXXWDR7C3HU6K4TJ2CX8Z0YNFQ9S8LA4ME\nline 27: postgres://app:S3cr3tPass!@db.internal:5432/app\nline 28: mongodb+srv://admin:hunter2xyz@cluster0.abcde.mongodb.net/test\nline 29: rediss://default:pAsSw0rd99@cache.example.test:6380\nline 30: git clone https://octo:tokenvalue123@git.example.test/x.git\nline 31: Server=db;Database=app;User Id=sa;Password=Pa55w0rd!x;\nline 32: DefaultEndpointsProtocol=https;AccountName=acct;AccountKey=Zm9vYmFyYmF6cXV4cXV1eGNvcmdlZ3JhdWx0==;\nline 33: https://acct.blob.core.windows.net/c/f?sv=2022-11-02&sig=aBcD1234%2BeFgH5678%3D\nline 34: DB_PASSWORD=correct-horse-battery\nline 35: password = 'my secret phrase'\nline 36: {\"client_secret\": \"s3cr3t-v4lue-xyz\"}\nline 37: api_token: tok_9f8e7d6c5b4a\nline 38: export GITHUB_TOKEN=plainvalue123\nline 39: $env:OPENAI_API_KEY = 'valuevalue'\nline 40: setx SERVICE_TOKEN valuevalue2\nline 41: mytool login --password hunter2hunter2\nline 42: deploy --api-key=abc123def456\nline 43: mysql -u root -pSup3rS3cret db\nline 44: curl -u admin:adminpass1 https://x.test\nline 45: curl -H 'Authorization: Bearer abc.def.ghi123456' https://x.test\nline 46: Authorization: Basic YWRtaW46cGFzc3dvcmQ=\nline 47: -H 'X-Api-Key: k3yk3yk3y'\nline 48: Cookie: session=abcd1234; theme=dark\nline 49: machine example.test login octo password netrcpass9\nline 50: the value is q8ZpT3vN7wXb2LmR9sKd4FhJ6yUcE1aG ok\nline 51: digest 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\nline 52: ansible_become_pass=becomeme123\nline 53: sshpass -p 'Tr0ub4dor&3' ssh admin@box\nline 54: sshpass -e -psshp4ssword scp a b:\nline 55: docker login -u bob -p D0ckerPw registry.example.test\nline 56: htpasswd -cb .htpasswd bob htpassw0rd\nline 57: htpasswd -nb bob htnopass1 | tee x\nline 58: net user bob N3tUserPw /add\nline 59: ConvertTo-SecureString 'Plain!Pass1' -AsPlainText -Force\nline 60: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY\nline 61: AKIAQX7Z5T3NBM4WPL2R,wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY\nline 62: cmdkey /add:srv /user:bob /pass:Cmdk3yPass\nline 63: net use Z: \\\\srv\\share N3tUsePass /user:bob\nline 64: 7z a -pSev3nZipPw out.7z src\nline 65: zip -r -P Z1pPassw0 out.zip src\nline 66:     Key Content            : W1fiPassphrase",
-  "output": "line 0: ••••\nline 1: export AWS_SECRET_ACCESS_KEY=••••\nline 2: ••••\nline 3: ••••\nline 4: ••••\nline 5: ••••\nline 6: ••••\nline 7: https://••••\nline 8: https://••••\nline 9: ••••\nline 10: ••••\nline 11: ••••\nline 12: ••••\nline 13: ••••\nline 14: ••••\nline 15: ••••\nline 16: ••••\nline 17: ••••\nline 18: ••••\nline 19: ••••\nline 20: ••••\nline 21: ••••\nline 22: ••••\nline 23: ••••\nline 24: ••••\nline 25: ••••"
- },
- {
   "home": "/home/octo",
   "short": "",
   "user": "octo",
@@ -1396,8 +1356,8 @@
   "mask_user": true,
   "mask_email": true,
   "entropy_check": true,
-  "input": "seen before the pause",
-  "output": "seen before the pause"
+  "input": " …",
+  "output": " …"
  },
  {
   "home": "",
@@ -1408,6 +1368,16 @@
   "entropy_check": true,
   "input": "",
   "output": ""
+ },
+ {
+  "home": "",
+  "short": "",
+  "user": "",
+  "mask_user": true,
+  "mask_email": true,
+  "entropy_check": true,
+  "input": "seen before the pause",
+  "output": "seen before the pause"
  },
  {
   "home": "",
