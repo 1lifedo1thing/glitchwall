@@ -6,14 +6,13 @@ readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "src/glitchwall/wallpaper/OFL.txt", "src/glitchwall/wallpaper/fonts/licenses/*.txt"]
 requires-python = ">=3.9"
-# Windows only: glitchwall's own wallpaper windows (WebView2). Elsewhere it needs nothing outside the standard library.
+# glitchwall is Windows only; the release wheel (tools/build_release.py) carries the renderer exe and says so in its tag.
+# pywebview: the settings window (WebView2).
 dependencies = ["pywebview==6.2.1; sys_platform == 'win32'"]
 keywords = ["wallpaper", "claude-code", "terminal", "retro", "glitch"]
 classifiers = [
     "Environment :: Win32 (MS Windows)",
     "Operating System :: Microsoft :: Windows",
-    "Operating System :: POSIX :: Linux",
-    "Operating System :: MacOS",
     "Programming Language :: Python :: 3",
     "Topic :: Desktop Environment",
 ]

@@ -679,7 +679,7 @@ See [What it deliberately doesn't do](#what-it-deliberately-doesnt-do-and-why) f
 
 ```
 uv run python -m unittest discover -s tests                          # tests
-uv build                                                             # wheel + sdist
+uv run python tools/build_release.py                                 # the release wheel: renderer inside, Windows-only tag
 powershell -File packaging\build-exe.ps1                             # standalone Windows exes + zip (PyInstaller, build time only)
 uv run --no-project --with pillow --with websockets python tools/record_demo.py   # re-record docs/demo.gif
 uv run --no-project --with pillow --with websockets python tools/theme_gallery.py  # rebuild docs/themes.png

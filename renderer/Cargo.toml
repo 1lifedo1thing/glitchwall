@@ -1,6 +1,6 @@
 [package]
 name = "glitchwall-render"
-version = "0.1.0"
+version = "0.5.0"
 edition = "2024"
 description = "glitchwall's native wallpaper renderer for Windows: Direct2D behind the desktop icons, fed by glitchwall's feed"
 license = "MIT"
