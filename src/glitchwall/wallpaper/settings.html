@@ -253,9 +253,14 @@ function optText(kind, v) {
   }
   const d = C[kind][v]; return d ? d[0].toUpperCase() + d.slice(1) + '.' : '';
 }
-function say(l1, l2, bad) {
+// what the FONT knob says: a line with every letter in it, then the characters code mixes up
+const SAMPLE = 'The quick agent fixed my lazy JSON bug, proved it works\n0O 1lI {} => ;';
+function say(l1, l2, bad, face) {
   const [a, b] = $('readout').children;
   a.textContent = l1; b.textContent = l2 || ''; b.className = 'l2' + (bad ? ' err' : '');
+  // a font sample is written in that font, its two lines kept apart
+  b.style.fontFamily = face ? face.family : ''; b.style.fontWeight = face ? String(face.weight || 400) : '';
+  b.style.whiteSpace = face ? 'pre-line' : '';
   // three lines at most: a long message in a wide font steps down until it fits, rather than being cut
   for (let px = 17; px >= 12; px--) { b.style.setProperty('--ls', px + 'px'); if (b.scrollHeight <= Math.ceil(px * 1.22 * 3) + 1) break; }
 }
@@ -276,6 +281,10 @@ function help(h) {
   if (kind === 'reset') { const [a, b] = GROUP_HELP[extra]; return say(`DEFAULT · ${extra.toUpperCase()}`, `${a}: ${b}`); }
   if (FADERS[kind]) return say(`${FADERS[kind][0]} · ${S[kind]}`, FADERS[kind][1]);
   if (SWITCHES[kind]) return say(`${SWITCHES[kind][0]} · ${S[kind] ? 'ON' : 'OFF'}`, SWITCHES[kind][1]);
+  if (kind === 'font') {   // AUTO shows the sample in the theme's own face, which the readout already wears
+    const f = S.font !== 'theme' && ((window.LOOKS && window.LOOKS.fonts) || {})[S.font];
+    return say(`${KNOB_HELP[kind]} · ${optName(kind, S.font)}`, SAMPLE, false, f || null);
+  }
   if (KNOB_HELP[kind]) return say(`${KNOB_HELP[kind]} · ${optName(kind, S[kind])}`, optText(kind, S[kind]));
 }
 
