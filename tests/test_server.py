@@ -144,6 +144,14 @@ class TestLiveServer(unittest.TestCase):
             cfg.save_settings(cfg.DEFAULTS)
             self.store.floor = 0   # the pause hid the shared store; other tests read it from the start
 
+    def test_huge_text_is_cut_before_redacting(self):
+        import time
+        store = EventStore(Redactor(home="", user=""))
+        t = time.perf_counter()
+        store.add({"kind": "$", "text": "a-" * 100_000})   # 200 KB: redacted whole, this took many minutes
+        self.assertLess(time.perf_counter() - t, 1.0)
+        self.assertLessEqual(len(store.events[-1]["text"]), 1600)
+
     def test_resume_never_replays_the_pause(self):
         paused = {"on": False}
         store = EventStore(Redactor(home="", user=""), hidden=lambda: paused["on"])

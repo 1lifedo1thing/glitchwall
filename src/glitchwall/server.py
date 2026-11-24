@@ -25,10 +25,12 @@ from urllib.parse import parse_qs, urlsplit
 
 from . import settings as cfg
 from . import themes
+from .claude_logs import clip
 from .redact import Redactor
 
 KEEP = 300   # events kept in memory
 BATCH = 60   # most events per response
+SCAN = 4000  # text redacted per event: only 1600 characters show, and redacting is slower the longer the text
 
 LOCAL_ORIGIN = "null"   # a page opened from a file
 # every response: never sniffed into another type, framed only by the feed's own pages (the settings window's
@@ -54,7 +56,8 @@ class EventStore:
         if self.hidden():
             return
         ev = dict(ev)
-        ev["text"] = self.redact(str(ev.get("text", "")))[:1600]
+        # cut at a word break first (clip): a secret cut in half would be too short to be recognized as one
+        ev["text"] = self.redact(clip(str(ev.get("text", "")), SCAN))[:1600]
         ev["proj"] = self.redact(str(ev.get("proj", "")))[:60]
         with self.lock:
             self.seq += 1
@@ -88,7 +91,8 @@ def check_access(host: str | None, origin: str | None, given_key: str, key: str,
 
 
 class LiveSettings:
-    """Settings re-read when the file changes, so `pause` / `config` act without a restart."""
+    """Settings re-read when the file changes, so `pause` / `config` act without a restart. If the file turns
+    unreadable (a bad hand edit), the last good settings stay; one that's unreadable from the start counts as paused."""
 
     def __init__(self):
         self.mtime = None
@@ -100,8 +104,14 @@ class LiveSettings:
         except OSError:
             m = None
         if m != self.mtime:
-            self.mtime, self.s = m, cfg.load_settings()
+            self.mtime = m
+            saved = cfg.read_saved()
+            if saved is not None or not self.good:
+                self.s = cfg.load_settings(saved)
+                self.good = saved is not None
         return self.s
+
+    good = False
 
 
 def make_handler(store: EventStore, key: str, port: int, live: LiveSettings | None = None,

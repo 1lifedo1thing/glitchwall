@@ -117,7 +117,7 @@ const BY_NAME: &[(&str, &str)] = &[
     (r#"(?i)\b((?:set-)?cookie\s*:\s*)[^\n"']+"#, ""),
     (r#"(?i)\b(x-[a-z-]*(?:key|token|secret|auth)[a-z-]*\s*:\s*)[^\s"',]+"#, ""),
     // credentials inside URLs, connection strings:  scheme://user:pass@host
-    (r"(?i)\b([a-z][a-z0-9+.-]*://[^:/?#\s@]*:)[^@\s/]+@", "@"),
+    (r"(?i)\b([a-z][a-z0-9+.-]{0,30}://[^:/?#\s@]*:)[^@\s/]+@", "@"),
     // ADO.NET / ODBC style:  Password=x;  Pwd=x;
     (r#"(?i)\b((?:password|pwd|user\s*password)\s*=\s*)([^;"'\n]+)"#, ""),
     // .netrc:  machine x login y password z
@@ -152,7 +152,8 @@ fn pats() -> &'static Pats {
     static P: OnceLock<Pats> = OnceLock::new();
     P.get_or_init(|| {
         let rx = |p: &str| Regex::new(p).unwrap_or_else(|e| panic!("redact pattern {p}: {e}"));
-        let name = format!("[A-Za-z0-9_.-]*{SECRET_WORD}[A-Za-z0-9_.-]*");
+        // at most 64 name characters either side of the word, as redact.py (unbounded, a long a-a-a-... run is slow)
+        let name = format!("[A-Za-z0-9_.-]{{0,64}}{SECRET_WORD}[A-Za-z0-9_.-]{{0,64}}");
         Pats {
             known: KNOWN.iter().map(|p| rx(&format!("(?s){p}"))).collect(),
             by_name: BY_NAME.iter().map(|(p, tail)| (rx(&p.replace("{N}", &name).replace("{V}", VALUE)), *tail)).collect(),

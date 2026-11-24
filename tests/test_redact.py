@@ -203,5 +203,23 @@ class TestEntropy(unittest.TestCase):
         self.assertTrue(looks_random("abc/" + B64))
 
 
+class TestSpeed(unittest.TestCase):
+    """Long text with no spaces once made one pattern search again from every '-' or '.' (20 KB took 37 s,
+    and the feed stood still meanwhile). The feed redacts at most server.SCAN characters of an event."""
+
+    def test_pathological_text_is_quick(self):
+        import time
+        from glitchwall.server import SCAN
+        r = Redactor(home="C:\\Users\\someone", user="someone")
+        for text in ("a-" * SCAN, "a." * SCAN, "a." * SCAN + "@", "mysql " * SCAN, "7z a " * SCAN, "a://b:" * SCAN):
+            t = time.perf_counter()
+            r(text[:SCAN])
+            self.assertLess(time.perf_counter() - t, 0.5, text[:12])
+
+    def test_long_names_still_masked(self):
+        name = "MY_" + "LONG_" * 12 + "PASSWORD"   # 63 characters before the word
+        self.assertNotIn("hunter2x", Redactor()(f"export {name}=hunter2x"))
+
+
 if __name__ == "__main__":
     unittest.main()

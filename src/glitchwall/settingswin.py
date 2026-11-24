@@ -71,10 +71,6 @@ def _cursor() -> tuple[int, int]:
     return pt.x, pt.y
 
 
-def _mouse_down() -> bool:
-    return bool(u32.GetAsyncKeyState(0x01) & 0x8000)
-
-
 def _another_screen_beyond(x: int, y: int) -> bool:
     return bool(u32.MonitorFromPoint(wintypes.POINT(x, y), 0))   # MONITOR_DEFAULTTONULL: 0 = no screen there
 
@@ -87,6 +83,7 @@ class Settings:
         self.window = None
         self._fade_gen, self._alpha = 0, 1.0
         self._keep = False                      # the page says: don't hide now (typing in the label)
+        self._dragging = False                  # the window is being moved by its title bar (its own events say so)
 
     def open(self):
         import webview
@@ -145,11 +142,25 @@ class Settings:
                              SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE)
             time.sleep(0.016)
 
+    def _watch_drag(self, w) -> None:
+        """Know when the window is being moved from the window's own move events (WinForms ResizeBegin/ResizeEnd,
+        raised for a move by the title bar too), not by reading the mouse buttons: nothing outside this window is read."""
+        from System import EventHandler
+
+        def begin(sender, args):
+            self._dragging = True
+
+        def end(sender, args):
+            self._dragging = False
+        w.native.ResizeBegin += EventHandler(begin)
+        w.native.ResizeEnd += EventHandler(end)
+
     def _dock_loop(self, w) -> None:
         if not WIN:
             return
         while self.hwnd(w) is None:
             time.sleep(0.1)
+        self._watch_drag(w)
         edge, hidden, last_in, was_down, moved = None, False, time.time(), False, False
         prev, was_fg = None, False
         while True:
@@ -161,7 +172,7 @@ class Settings:
                 r, v = _rect(h), _visible_rect(h)                # r: as Windows places it; v: as you see it
                 pad = (v[0] - r[0], v[1] - r[1], r[2] - v[2], r[3] - v[3])
                 wa = _work_area(u32.MonitorFromWindow(h, 2))
-                down, cx, cy = _mouse_down(), *_cursor()
+                down, (cx, cy) = self._dragging, _cursor()
                 inside = r[0] <= cx < r[2] and r[1] <= cy < r[3]
                 fg = u32.GetForegroundWindow() == h.value
                 came_forward, was_fg = fg and not was_fg, fg    # alt-tab or the taskbar brought it forward just now
@@ -195,7 +206,8 @@ class Settings:
                         if not flush:
                             edge = None
                             u32.SetWindowPos(h, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
-                    elif not hidden and not down and time.time() - last_in > IDLE_HIDE:
+                    elif not hidden and not down and self._alpha > 0.99 and time.time() - last_in > IDLE_HIDE:
+                        # (not while faded: a control is being held, maybe with the mouse outside the window)
                         hidden = True                            # idle: slide away, a strip stays at the edge
                         x = wa[0] - (v[2] - v[0]) - pad[0] + STRIP if edge == "left" else wa[2] - STRIP - pad[0] if edge == "right" else r[0]
                         y = wa[1] - (v[3] - v[1]) - pad[1] + STRIP if edge == "top" else r[1]

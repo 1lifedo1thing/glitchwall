@@ -97,8 +97,9 @@ _SECRET_WORD = (
     r"cookie|signature|salt|seed[_-]?phrase|mnemonic|pin[_-]?code|otp|totp|webhook[_-]?url|dsn|conn(?:ection)?[_-]?str(?:ing)?|"
     r"license[_-]?key|encryption[_-]?key|master[_-]?key|signing[_-]?key)"
 )
-# a key name containing one of the words, e.g. DB_PASSWORD, githubToken, "api-key"
-_NAME = rf"[A-Za-z0-9_.-]*{_SECRET_WORD}[A-Za-z0-9_.-]*"
+# a key name containing one of the words, e.g. DB_PASSWORD, githubToken, "api-key". At most 64 name characters
+# either side of the word: unbounded, a long run like a-a-a-... is searched again from every "-" (20 KB took 37 s)
+_NAME = rf"[A-Za-z0-9_.-]{{0,64}}{_SECRET_WORD}[A-Za-z0-9_.-]{{0,64}}"
 _VALUE = r"(?:\"[^\"\n]*\"|'[^'\n]*'|`[^`\n]*`|[^\s,;&|)}\]\"']+)"
 
 BY_NAME = [
@@ -119,7 +120,7 @@ BY_NAME = [
     (re.compile(r"(?i)\b((?:set-)?cookie\s*:\s*)[^\n\"']+"), r"\1" + MASK),
     (re.compile(r"(?i)\b(x-[a-z-]*(?:key|token|secret|auth)[a-z-]*\s*:\s*)[^\s\"',]+"), r"\1" + MASK),
     # credentials inside URLs, connection strings:  scheme://user:pass@host
-    (re.compile(r"(?i)\b([a-z][a-z0-9+.-]*://[^:/?#\s@]*:)[^@\s/]+@"), r"\1" + MASK + "@"),
+    (re.compile(r"(?i)\b([a-z][a-z0-9+.-]{0,30}://[^:/?#\s@]*:)[^@\s/]+@"), r"\1" + MASK + "@"),
     # ADO.NET / ODBC style:  Password=x;  Pwd=x;
     (re.compile(r"(?i)\b((?:password|pwd|user\s*password)\s*=\s*)([^;\"'\n]+)"), r"\1" + MASK),
     # .netrc:  machine x login y password z

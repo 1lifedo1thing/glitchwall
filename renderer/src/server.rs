@@ -25,6 +25,7 @@ use crate::redact::Redactor;
 
 pub const KEEP: usize = 300;   // events kept in memory
 pub const BATCH: usize = 60;   // most events per answer
+const SCAN: usize = 4000;      // text redacted per event (server.py's SCAN): only 1600 characters show
 const MODES: [&str; 3] = ["live", "ambient", "art"];
 // every answer: never sniffed into another type, never framed by another page, no address passed on in a Referer
 const SAFE_HEADERS: [(&str, &str); 4] = [("X-Content-Type-Options", "nosniff"), ("X-Frame-Options", "SAMEORIGIN"),
@@ -54,7 +55,7 @@ impl Store {
             None => String::new(),
             Some((_, v)) => crate::logs::py_str(v),
         };
-        let text = chars(&self.redact.redact(&field("text")), 1600);
+        let text = chars(&self.redact.redact(&crate::logs::clip(&field("text"), SCAN)), 1600);   // cut at a word break first
         let proj = chars(&self.redact.redact(&field("proj")), 60);
         let mut out: Ev = Vec::new();
         for (k, v) in ev {   // one of each key, the last one winning, as a dict has it
@@ -105,12 +106,13 @@ fn same(a: &[u8], b: &[u8]) -> bool {
 }
 
 // ---------------------------------------------------------------- settings (what 2a needs of them)
-/// settings.json, read again whenever the file changes, so pause and mode act without a restart.
-pub struct Live { file: PathBuf, mtime: Option<SystemTime>, s: Json }
+/// settings.json, read again whenever the file changes, so pause and mode act without a restart. As server.py's
+/// LiveSettings: a file that turns unreadable keeps the last good settings; unreadable from the start counts as paused.
+pub struct Live { file: PathBuf, mtime: Option<SystemTime>, s: Json, good: bool }
 
 impl Live {
     pub fn new(file: PathBuf) -> Live {
-        let mut l = Live { file, mtime: Some(SystemTime::UNIX_EPOCH), s: Json::Obj(Vec::new()) };   // never a file's time: read at once
+        let mut l = Live { file, mtime: Some(SystemTime::UNIX_EPOCH), s: Json::Obj(Vec::new()), good: false };   // never a file's time: read at once
         l.get();
         l
     }
@@ -118,8 +120,16 @@ impl Live {
         let m = std::fs::metadata(&self.file).and_then(|m| m.modified()).ok();
         if m != self.mtime {
             self.mtime = m;
-            self.s = std::fs::read_to_string(&self.file).ok().and_then(|t| Json::parse(t.trim_start_matches('\u{feff}')).ok())
-                .filter(|j| matches!(j, Json::Obj(_))).unwrap_or(Json::Obj(Vec::new()));
+            let saved = match std::fs::read_to_string(&self.file) {
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => Some(Json::Obj(Vec::new())),
+                Err(_) => None,
+                Ok(t) => Json::parse(t.trim_start_matches('\u{feff}')).ok().filter(|j| matches!(j, Json::Obj(_))),
+            };
+            match saved {
+                Some(s) => { self.s = s; self.good = true; }
+                None if !self.good => self.s = Json::Obj(vec![("paused".into(), Json::Bool(true))]),
+                None => {}   // keep the last good settings
+            }
         }
         &self.s
     }

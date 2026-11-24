@@ -125,8 +125,10 @@ glitchwall shows your agent's activity on your screen, so it's built to be easy 
   receives the real text.
 - **It stays on your PC.** The feed listens on `127.0.0.1` only, needs a per-install random key, and refuses
   other websites and other local servers. No telemetry, no update checks, nothing remote loaded.
-- **It doesn't watch you.** Not your terminal, not your typing, not other windows. A feature that showed your
-  own terminal commands was built and then removed on purpose, because a wallpaper shouldn't look like spyware.
+- **It doesn't watch you.** Not your terminal, not your typing, not what's in other windows. It only notes where
+  windows are, to stop drawing when one covers the screen, and where the mouse is, for the hot corner. A feature
+  that showed your own terminal commands was built and then removed on purpose, because a wallpaper shouldn't
+  look like spyware.
 
 Redaction is a safety net, not a guarantee: when you stream or share your screen, press **P**.
 **[Everything it reads, writes and refuses, and why →](docs/PRIVACY.md)**

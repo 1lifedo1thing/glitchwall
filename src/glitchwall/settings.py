@@ -215,12 +215,23 @@ def settings_file() -> Path:
     return state_dir() / "settings.json"
 
 
-def load_settings() -> dict:
-    s = dict(DEFAULTS)
+def read_saved() -> dict | None:
+    """What settings.json holds: {} if there is none yet, None if it's there but unreadable (a bad hand edit)."""
     try:
-        s.update(json.loads(settings_file().read_text(encoding="utf-8")))
+        saved = json.loads(settings_file().read_text(encoding="utf-8-sig"))
+    except FileNotFoundError:
+        return {}
     except (OSError, ValueError):
-        pass
+        return None
+    return saved if isinstance(saved, dict) else None
+
+
+def load_settings(saved: dict | None = None) -> dict:
+    """The settings: the defaults with settings.json on top. A file that can't be read counts as paused, so a
+    broken file never turns a pause off (the next save writes a good one)."""
+    saved = read_saved() if saved is None else saved
+    s = dict(DEFAULTS)
+    s.update(saved if saved is not None else {"paused": True})
     for k, choices in _themes.OPTIONS.items():   # an option whose choices changed since it was saved: back to its default
         if s.get(k) not in choices:
             s[k] = DEFAULTS[k]

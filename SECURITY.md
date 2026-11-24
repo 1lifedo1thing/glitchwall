@@ -16,8 +16,22 @@ than usual. Its promises:
    Other local servers' pages are refused too. CORS headers are only sent to
    allowed origins. Changing a setting also needs a JSON POST from the feed's
    own address, where the settings window lives.
-5. **Not framed, not sniffed.** Every response says `X-Frame-Options: DENY`,
-   `frame-ancestors 'none'`, `nosniff` and `Referrer-Policy: no-referrer`.
+5. **Not framed by others, not sniffed.** Every response says
+   `X-Frame-Options: SAMEORIGIN`, `frame-ancestors 'self'`, `nosniff` and
+   `Referrer-Policy: no-referrer`. Only glitchwall's own pages may frame one
+   (the settings window shows the wallpaper page, without the key, as a
+   backdrop thumbnail); a website can't, so it can't trick you into clicking
+   the settings through a page of its own.
+6. **A pause can't be undone by accident.** A settings file glitchwall can't
+   read (a bad hand edit) counts as paused when it starts; a running feed
+   keeps its last good settings.
+7. **No input watching.** It never reads the keyboard or the mouse buttons
+   outside its own windows. It looks only at the mouse position (hot corner)
+   and where other windows are (to stop drawing when the wallpaper is
+   covered), never their titles or contents. See docs/PRIVACY.md.
+8. **Redaction can't be stalled.** Each event's text is cut (at a word) to
+   4,000 characters before it's redacted, and the patterns are bounded, so
+   long or crafted text can't make the feed hang.
 
 ## Known limits
 

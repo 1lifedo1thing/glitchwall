@@ -6,7 +6,8 @@ name and icon (Windows' own resource-update calls, no tools), and runs the feed 
 
 The copy lives next to the tool's pyvenv.cfg, so it is a normal interpreter of that environment: same packages,
 same standard library. It's rebuilt whenever its source Python changes, and if anything about it fails, glitchwall
-just runs on plain pythonw.exe as before. uv's Python isn't code-signed, so the copy loses no signature.
+just runs on plain pythonw.exe as before. uv's Python isn't code-signed; a signed one (python.org) would leave
+the copy unsigned, the original untouched. docs/PRIVACY.md explains the copy to users.
 """
 from __future__ import annotations
 

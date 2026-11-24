@@ -13,7 +13,21 @@ In `ambient` and `art` mode it reads no logs at all, only its own settings. In `
   From each line it takes tool calls and their results.
 - **Its own files:** a random key, `settings.json`, a pid file.
 
-Nothing else: not your terminal, not your shell history, not other windows, not the screen.
+Nothing else: not your terminal, not your shell history, not the screen, not what's in other windows.
+
+### 👀 It also looks at (never reads, never stores)
+
+Windows has no "is my wallpaper visible?" call, so glitchwall works it out from a few facts about the desktop. None
+of them is saved or sent anywhere; each is checked, used and forgotten.
+
+- **Where other windows are**, their size and position, and whether they're see-through or minimized. Never their
+  titles or what's in them. Why: when a window covers a whole screen (a maximized app, a game, a video), nobody can
+  see the wallpaper there, so it stops drawing and uses no CPU.
+- **Whether the screen is locked** or the screen saver is on. Same reason.
+- **Where the mouse pointer is**, ten times a second: for the hot corner (rest it in a corner to open the
+  settings), for placing the tray icon's menu, and for the settings window's docking. Only the position: never the
+  mouse buttons or the keyboard outside glitchwall's own windows. The settings window learns that you're dragging
+  it from its own move events, not by watching the mouse buttons.
 
 ### 🚫 It never
 
@@ -21,6 +35,8 @@ Nothing else: not your terminal, not your shell history, not other windows, not 
   No telemetry, no analytics, no update checks. The page loads nothing remote (the fonts are bundled).
   The one part glitchwall doesn't control: WebView2 is Microsoft's Edge engine, and it may talk to
   Microsoft for its own updates and safety checks the way Edge does. The page itself only ever asks `127.0.0.1`.
+  The settings window's feedback button opens the project's issue page in your own browser, and only when you
+  click it.
 - **Writes to your logs**, or anywhere outside the files listed below. It never edits your shell profiles,
   `~/.bashrc` or any other program's settings.
 - **Records what you type** or reads other windows. See [What it deliberately doesn't do](#what-it-deliberately-doesnt-do-and-why).
@@ -48,10 +64,20 @@ Nothing else: not your terminal, not your shell history, not other windows, not 
 
 | Where | What |
 | --- | --- |
-| `%USERPROFILE%\.glitchwall\` | key, settings, pid file, refusal note, `webview\` and `webview-settings\` (WebView2's caches for glitchwall's own windows) |
+| `%USERPROFILE%\.glitchwall\` | key, settings, pid file, refusal note, `render.log` (one line: why the renderer last stopped, if it did), `webview\` and `webview-settings\` (WebView2's caches for glitchwall's own windows) |
+| `glitchwall-feed.exe` (+ `.stamp`, Python's DLLs) in glitchwall's own install folder | a renamed copy of Python, see below; goes when you uninstall the tool (`uv tool uninstall glitchwall`) |
 | `HKCU\...\CurrentVersion\Run\glitchwall` | start at logon |
 | `%APPDATA%\Microsoft\Windows\Start Menu\Programs\glitchwall settings.lnk` | Windows: the settings window in the Start menu |
 | `HKCU\Software\Classes\DesktopBackground\Shell\glitchwall` | Windows: *glitchwall settings* in the desktop's right-click menu |
+
+**Why a renamed copy of Python?** glitchwall is a Python program, and Task Manager names a process after its exe:
+left alone, the feed and the settings window would show as "Python", and you couldn't tell them from any other
+Python running on your PC. So the first time it starts, glitchwall copies the windowed Python it was installed
+with (`pythonw.exe`) to `glitchwall-feed.exe` in its own install folder (`%APPDATA%\uv\tools\glitchwall\Scripts`
+with uv), and gives the copy glitchwall's name and icon, using Windows' own resource calls. It's the same
+interpreter running the same code; the original is never touched. The copy carries no signature: uv's Python
+has none to begin with, and a signed Python's signature doesn't survive the renaming. If making the copy fails,
+or you set `GLITCHWALL_PLAIN_PYTHON=1`, glitchwall simply runs on `pythonw.exe` and shows as Python.
 
 **Why the home folder on Windows, not `%LOCALAPPDATA%`?** Packaged (MSIX) apps such as Claude Desktop
 or Store terminals get new AppData folders redirected into a private copy. `install` run from one of
@@ -86,7 +112,7 @@ Applied to every command, file path and output before it's kept:
 | **Known formats** | AWS, Google, Azure (storage keys, SAS signatures), GitHub, GitLab, Slack (tokens and webhooks), Discord, Stripe, Anthropic, OpenAI, Hugging Face, npm, PyPI, NuGet, Docker Hub, DigitalOcean, HashiCorp Vault, Tailscale, SendGrid, Mailgun, Twilio, Doppler, Grafana, Netlify, Vercel, Telegram and more; JWTs; PEM / OpenSSH / PGP / PuTTY / age private keys |
 | **By name** | `password=`, `API_KEY: …`, `"client_secret": "…"`, `export X_TOKEN=`, `$env:X_KEY =`, `setx`, `--password x`, `--api-key=x`, `mysql -pX`, `curl -u user:pass`, `Authorization:` / `Cookie:` / `X-Api-Key:` headers, `.netrc`, credentials in URLs and connection strings (`postgres://user:pass@`, `Password=…;`) |
 | **High entropy** | long random-looking tokens (mixed case + digits, high Shannon entropy) and long hex strings, even with no known prefix |
-| **Personal** | home folder → `~` (all Windows, Git Bash and WSL spellings), user name → `user`, email local parts → `••••` |
+| **Personal** | home folder → `~` (all Windows, Git Bash and WSL spellings), user name → `user` (only names of 4 or more letters: a shorter one like `bob` is too often part of ordinary words; your home folder is masked either way), email local parts → `••••` |
 | **Optional** | `--commands-only` drops all tool output |
 
 It errs toward masking. The tests in [`tests/test_redact.py`](../tests/test_redact.py) feed 50+ realistic fake
