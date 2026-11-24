@@ -328,7 +328,8 @@ def shown_screens() -> list[tuple[int, int, int, int]]:
     while c:
         b = ctypes.create_unicode_buffer(64)
         u32.GetWindowTextW(c, b, 64)
-        if b.value.startswith("glitchwall screen") and u32.IsWindowVisible(c):
+        # the WebView2 host's windows are titled "glitchwall screen N"; the native renderer's have its window class
+        if (b.value.startswith("glitchwall screen") or _cls(c) == "glitchwall-render") and u32.IsWindowVisible(c):
             out.append(_rect(c))
         c = u32.FindWindowExW(parent, c, None, None)
     return out

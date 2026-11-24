@@ -127,7 +127,12 @@ def cmd_status(a) -> int:
     if plat.WIN:
         from . import winhost
         shown, n = winhost.shown_screens(), len(winhost.monitors())
-        say(f"  windows     WebView2, behind the desktop icons{'' if winhost.available() else ', NOT AVAILABLE: pywebview or WebView2 missing'}")
+        if s.get("renderer") == "native" and winhost.render_exe():
+            say("  windows     native (glitchwall-render, Direct2D), behind the desktop icons")
+        else:
+            why = " (the native renderer isn't in this install)" if s.get("renderer") == "native" else ""
+            say(f"  windows     WebView2{why}, behind the desktop icons"
+                f"{'' if winhost.available() else ', NOT AVAILABLE: pywebview or WebView2 missing'}")
         say(f"  showing     {f'yes, on {len(shown)} of {n} screen' + ('s' if n > 1 else '') if shown else 'no'}")
     refused = cfg.state_dir() / "last-refused.txt"
     if refused.exists():
@@ -152,7 +157,7 @@ def _asker(a):
 
 
 def cmd_doctor(a) -> int:
-    """Check everything glitchwall needs, and offer to fetch what's missing."""
+    """Check everything glitchwall needs; for what's missing, say how to get it (it can open the download page)."""
     from . import prereqs
     s = cfg.load_settings()
     ok = prereqs.preflight(cfg.mode(s), say, _asker(a))
@@ -174,7 +179,7 @@ def cmd_install(a) -> int:
     say(f"mode: {cfg.mode(s)} ({cfg.MODES[cfg.mode(s)]})")
     say(f"state dir: {cfg.state_dir()}")
 
-    # 0. on Windows: check that everything the desktop windows need is here, offering to fetch what isn't
+    # 0. on Windows: check that everything the desktop windows need is here (for what isn't: how to get it)
     if plat.WIN:
         from . import prereqs
         if not prereqs.preflight(cfg.mode(s), say, _asker(a)):
@@ -449,11 +454,11 @@ def parser() -> argparse.ArgumentParser:
     i.add_argument("--screens", choices=["all", "primary"], default="all",
                    help="with several monitors: show it on all of them (default) or only the main one")
     i.add_argument("--force", action="store_true", help="add autostart even from a temporary uvx environment")
-    i.add_argument("--yes", "-y", action="store_true", help="say yes to fetching anything missing (WebView2)")
+    i.add_argument("--yes", "-y", action="store_true", help="say yes to opening the download page of anything missing (WebView2, .NET)")
     i.set_defaults(fn=cmd_install)
 
-    dr = sub.add_parser("doctor", help="check everything glitchwall needs; offer to fetch what's missing")
-    dr.add_argument("--yes", "-y", action="store_true", help="say yes to every fix offered")
+    dr = sub.add_parser("doctor", help="check everything glitchwall needs; say how to get what's missing")
+    dr.add_argument("--yes", "-y", action="store_true", help="say yes to opening every download page offered")
     dr.set_defaults(fn=cmd_doctor)
 
     sub.add_parser("uninstall", help="remove everything install added").set_defaults(fn=cmd_uninstall)
