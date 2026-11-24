@@ -2446,7 +2446,7 @@ function next() {
   const ev = queue.shift(), busy = queue.length > 6;
   if (ev.kind === 'out' || ev.kind === 'err') {
     const card = byRef.get(ev.ref) || (ev.ref ? null : current);   // output goes under the command it belongs to
-    if (!ev.live) byRef.delete(ev.ref);   // live: a command still running (your terminal), more output to come
+    if (!ev.live) byRef.delete(ev.ref);   // live: more output to come for this card
     if (!card || card._dead) return next();
     if (card._out) {   // more output for the same command: its newest lines in place of what was there, at once
       card._out.className = ev.kind; card._out.textContent = '';

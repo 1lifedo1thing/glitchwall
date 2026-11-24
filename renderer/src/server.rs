@@ -1,4 +1,4 @@
-//! The local feed, in Rust: a port of server.py's /feed (piece 2a of prototypes/native/PLAN.md).
+//! The local feed, in Rust: a port of server.py's /feed (piece 2a of docs/native-plan.md).
 //!   glitchwall-render feed [--port N] [--seed FILE]
 //!
 //! An HTTP endpoint on 127.0.0.1 that only the wallpaper may read, with the same rules as the Python one:
@@ -8,8 +8,8 @@
 //!
 //! Events are redacted on the way in, so unredacted text is never kept or served. While paused (or in art mode) new
 //! events are dropped and everything so far is put out of reach: resuming never replays a pause.
-//! Its sources, as server.py's follow_mode: in live mode Claude Code's logs (logs.rs), and your PowerShell commands
-//! while the terminal setting is on (shell.rs). Ambient mode's made-up sessions are not ported yet (2c).
+//! Its source, as server.py's follow_mode: in live mode Claude Code's logs (logs.rs). Ambient mode's made-up sessions
+//! are not ported yet (2c).
 //! Not here yet (pieces 2b-2d): the settings API, the look/tune/opts in the answer, the page.
 //! --seed (tests only): follow a file of JSON events, one per line, adding each as it appears, instead of the sources.
 
@@ -305,18 +305,9 @@ fn event_json(e: crate::logs::Event) -> Ev {
          ("text".into(), Json::Str(e.text))]
 }
 
-/// The sources (server.py's follow_mode): your PowerShell commands every half second while the mode is live and the
-/// terminal setting on; Claude Code's logs while the mode is live, started and stopped as the mode changes.
+/// The source (server.py's follow_mode): Claude Code's logs while the mode is live, started and stopped as the mode
+/// changes.
 fn start_sources(feed: Arc<Feed>) {
-    let fd = feed.clone();
-    std::thread::spawn(move || {
-        let mut t = crate::shell::ShellTailer::new(state_dir().join("shell"));
-        loop {
-            let on = { let mut l = fd.live.lock().unwrap(); l.mode() == "live" && l.flag("terminal", true) };
-            t.scan(on, &mut |e| fd.add(&e));
-            std::thread::sleep(Duration::from_millis(500));
-        }
-    });
     std::thread::spawn(move || {
         let (mut mode, mut stop) = (String::new(), None::<Arc<AtomicBool>>);
         loop {

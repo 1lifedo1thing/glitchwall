@@ -1,6 +1,6 @@
 """The same HTTP checks against both feeds: the Python one (server.py) and the Rust one (glitchwall-render feed).
 
-The Rust feed runs when GW_FEED_EXE names the exe (piece 2a of prototypes/native/PLAN.md); otherwise only the
+The Rust feed runs when GW_FEED_EXE names the exe (piece 2a of docs/native-plan.md); otherwise only the
 Python one does. Each runs on its own port with a fresh state folder (key, settings.json), fed events through a
 seed file it follows, so both get them the same way: appended lines, paused or not.
 """

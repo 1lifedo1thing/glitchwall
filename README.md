@@ -81,6 +81,17 @@ test card, mid-century wallpaper, a newspaper page setting itself, neon signs in
 a sun print, a radar sweep, a DOS desktop, an oscilloscope, a chalkboard, the stop screen, a doodling notebook,
 the oracle's ring, the orb in its data hall, or nothing. The MOTION slider sets how busy any of them is, down to perfectly still.
 
+### No videos, no GIFs: it's all code
+
+Nothing you see is a recording. There isn't a single video file, GIF or prerendered image behind any background.
+Every one is a small program that draws each frame as it happens: the rain picks where its next glyph falls, the
+record works out how far it has turned, the orb's lights decide when to flicker, the oracle's ring redraws its
+strokes. That's why no two minutes look the same, why the MOTION slider can slow anything to a stop, and why a
+theme can be recolored on the spot. On Windows the drawing is done by a small Rust program with Direct2D (the
+graphics part of Windows itself); in OBS or Wallpaper Engine, by the same scenes written for a web page's canvas.
+Even the film grain is a noise formula, not a texture. The only pictures in this repo are glitchwall's own icon and
+the screenshots and GIFs in `docs/`, made by recording the wallpaper.
+
 ### Three modes: no coding agent needed
 
 ![live mode, then ambient mode, then art mode](docs/gifs/modes.gif)
@@ -198,9 +209,9 @@ glitchwall install
 ```
 
 `install` first checks that everything it needs is there (Windows 10 1803 or newer, .NET Framework 4.7.2,
-the WebView2 runtime) and offers to fetch what isn't: the WebView2 runtime comes straight from Microsoft, and
-runs only if Windows confirms Microsoft signed it. Nothing is downloaded without a yes (`--yes` answers yes
-for scripts). `glitchwall doctor` runs the same checks any time.
+the WebView2 runtime, which Windows 11 already has). If something is missing it stops, says what, and offers to
+open Microsoft's download page in your browser; you install it, then run `install` again. glitchwall itself
+never downloads or installs anything. `glitchwall doctor` runs the same checks any time.
 
 Then it starts the feed in the background, adds a start-at-logon entry, and puts the wallpaper behind
 your desktop icons on every screen (Windows 10 gets WebView2 with Edge; Windows 11 has it built in). To change
@@ -422,7 +433,6 @@ Full-size shots (click one to open it). They come from ambient mode, so every se
 | `glitchwall start` / `stop` | start or stop the background feed |
 | `glitchwall pause` / `resume` | stream-safe switch: serve nothing / back to live |
 | `glitchwall config --commands-only on` | show calls, hide all output |
-| `glitchwall terminal on\|off\|status` | opt-in: show the commands you type in PowerShell, cmd (with Clink) and WSL too ([what it records](#your-terminal-commands-opt-in)) |
 | `glitchwall config --label "TEXT"` | the text in the bottom-right corner |
 | `glitchwall themes` | list themes, backgrounds and fonts |
 | `glitchwall config --theme X --rain Y --font Z` | change the look, live |
@@ -442,8 +452,8 @@ In `ambient` and `art` mode it reads no logs at all, only its own settings. In `
   opened **read-only**, only logs touched in the last 30 minutes, only the newly appended part.
   From each line it takes tool calls and their results.
 - **Its own files:** a random key, `settings.json`, a pid file.
-- **Your own terminal commands, only if you turn that on** with `glitchwall terminal on`. Off until you do;
-  see [Your terminal commands](#your-terminal-commands-opt-in).
+
+Nothing else: not your terminal, not your shell history, not other windows, not the screen.
 
 ### 🚫 It never
 
@@ -451,8 +461,11 @@ In `ambient` and `art` mode it reads no logs at all, only its own settings. In `
   No telemetry, no analytics, no update checks. The page loads nothing remote (the fonts are bundled).
   The one part glitchwall doesn't control: WebView2 is Microsoft's Edge engine, and it may talk to
   Microsoft for its own updates and safety checks the way Edge does. The page itself only ever asks `127.0.0.1`.
-- **Writes to your logs**, or anywhere outside the files listed below. (The terminal hooks, if you turn them on,
-  add one line to your shell profiles; that line is listed below too, and `terminal off` or `uninstall` takes it out.)
+- **Writes to your logs**, or anywhere outside the files listed below. It never edits your shell profiles,
+  `~/.bashrc` or any other program's settings.
+- **Records what you type** or reads other windows. See [What it deliberately doesn't do](#what-it-deliberately-doesnt-do-and-why).
+- **Downloads or installs anything.** If something it needs is missing, it tells you and can open the
+  download page; the rest is up to you.
 - **Shows unmasked secrets.** Text is redacted *before* it's stored in memory, so there's nothing unredacted to leak. See [Redaction](#redaction).
 - **Serves anyone but the wallpaper.** Every request needs:
   - the per-install random key, which only the wallpaper has (in its `config.js`, or after the `#` in the
@@ -475,68 +488,30 @@ In `ambient` and `art` mode it reads no logs at all, only its own settings. In `
 | `HKCU\...\CurrentVersion\Run\glitchwall` / `~/.config/autostart/glitchwall.desktop` / `~/Library/LaunchAgents/io.github.glitchwall.plist` | start at logon |
 | `%APPDATA%\Microsoft\Windows\Start Menu\Programs\glitchwall settings.lnk` | Windows: the settings window in the Start menu |
 | `HKCU\Software\Classes\DesktopBackground\Shell\glitchwall` | Windows: *glitchwall settings* in the desktop's right-click menu |
-| one line at the end of `Documents\PowerShell\profile.ps1`, `Documents\WindowsPowerShell\profile.ps1` and WSL's `~/.bashrc` | only after `glitchwall terminal on`: loads the terminal hook. Marked `# glitchwall terminal`; `terminal off` removes it too |
-| `%USERPROFILE%\.glitchwall\clink\glitchwall.lua`, and that folder in Clink's script list | only after `glitchwall terminal on`, and only if Clink is set up for cmd: the cmd hook. `terminal off` takes the folder out of Clink's list (`clink uninstallscripts`) and deletes it |
-
-### Your terminal commands (opt-in)
-
-Off by default. `glitchwall terminal on` turns it on, `glitchwall terminal off` turns it off again, and
-`glitchwall uninstall` removes it along with everything else. While it is on, the commands you type yourself show
-on the wallpaper next to your agent's, as cards.
-
-**What it adds.** One line at the end of your PowerShell profiles (PowerShell 7 and Windows PowerShell) and of
-`~/.bashrc` in your default WSL distro. The line loads a short hook script from `~/.glitchwall/`
-(`shell-hook.ps1` or `shell-hook.bash`). For cmd it copies `shell-hook.lua` to `~/.glitchwall/clink/` and adds that
-folder to [Clink](https://github.com/chrisant996/clink)'s scripts with Clink's own `clink installscripts`. All three
-are plain text, in this repo under `src/glitchwall/`, and worth reading before you turn this on. Nothing else in your
-profiles is touched.
-
-**cmd needs Clink.** cmd itself has no hook to run code after a command, so the cmd part works through Clink, a free
-(GPL-3.0) add-on for cmd's prompt. glitchwall never installs Clink and never changes cmd's startup (its `AutoRun`
-registry value). It only looks there to see whether Clink is already set up to start with cmd, by Clink's installer or
-`clink autorun install`. If it isn't, `terminal on` says so and leaves cmd out. Two things about Clink itself, which
-glitchwall doesn't control: it keeps its own command history (`clink_history` in its profile folder), and by default it
-checks GitHub for new versions now and then (`clink set clink.autoupdate off` turns that off).
-
-**What the hooks record.**
-
-| | PowerShell | cmd (Clink) | WSL (bash) |
-| --- | --- | --- | --- |
-| the command you typed | yes, when you press Enter | yes, when you press Enter | yes, as it starts |
-| what it printed | yes: read off the console screen when it finishes, and every second while it runs | yes: read off the console screen when the next prompt comes (the last 60 lines at most) | yes: the feed reads it off the WSL window's screen (see below) when it finishes, and every 2 seconds while it runs (for 10 minutes at most) |
-| commands left out | lines PowerShell can't run yet (unfinished input) | a line starting with a space | whatever bash leaves out of its history: a leading space (`HISTCONTROL=ignorespace`), a repeat (`ignoredups`) |
-
-**Where it goes.** Each shell window appends to its own file, `~/.glitchwall/shell/<process id>.jsonl` (cmd:
-`cmd-<process id>.jsonl`, WSL: `wsl-<process id>.jsonl`), on this machine. Nothing is sent anywhere: the hooks only write that file, and the feed
-reads it the same way it reads Claude Code's logs. A file is cut back when it passes 256 KB, and the feed deletes a
-shell's file a day after it was last written.
-
-**How WSL output is read.** bash can't see its own screen, so when the hook says a command is done, the feed starts a
-short-lived helper (`python -I -m glitchwall.wslscreen`) that attaches to each open `wsl.exe` window's console in turn,
-copies the text on screen (read-only, nothing is typed or changed), and exits. The feed keeps only the lines between
-your command and the next prompt. Windows only lets it read windows running as you; an administrator window refuses.
-
-**Who could misuse it.** The hooks, their files and your profiles are writable only by your own account (and
-administrators): another user on the PC can't change them. The hooks never run anything they record; the recorded
-text is only ever shown, as plain text (never as HTML), after masking. A program already running as you could write
-fake lines into the hook files and so put made-up cards on your wallpaper, but nothing more: it could do far worse to
-your account directly.
-
-**Before it shows.** The feed reads these files only in `live` mode, only while the `terminal` setting is on
-(the tray's *Show* menu, or the settings window), and never while paused. Every line goes through the same
-[redaction](#redaction) as your agent's calls before it is kept or shown, so tokens, keys, passwords, your user name
-and email addresses are masked. Nothing is recorded in a PowerShell or cmd window running as administrator, or in a root shell in WSL: the
-hooks switch themselves off there.
-
-**Keeping one command out.** In cmd or WSL, start it with a space: the hook never writes it down. Pausing glitchwall
-(`glitchwall pause`, or the tray menu) keeps everything off the wallpaper, but the hooks still write to their local
-files while paused (the feed skips what was written during the pause and never shows it later). To stop the
-recording itself, `glitchwall terminal off` and open a new window.
 
 **Why the home folder on Windows, not `%LOCALAPPDATA%`?** Packaged (MSIX) apps such as Claude Desktop
 or Store terminals get new AppData folders redirected into a private copy. `install` run from one of
 them and the feed started at logon would then read different key files, and every request would be
 refused. Set `GLITCHWALL_HOME` to put the state somewhere else.
+
+### What it deliberately doesn't do, and why
+
+glitchwall is a wallpaper: something nice to look at that happens to show what your agent is doing. Anything that
+would make it look like it's collecting your information has no place in it, even when it works and is masked.
+So these were built, tried and taken out again, on purpose:
+
+- **Your own terminal commands.** For a while `glitchwall terminal on` put a small hook in your PowerShell
+  profile, WSL's `~/.bashrc` and (through Clink) cmd, so the commands you typed showed as cards too. To make the
+  output show for WSL, it went as far as reading other console windows' screens. It all stayed on your PC and was
+  masked, but a program that logs every command you type and reads other windows is exactly what spyware does, and
+  no amount of explaining makes that code look harmless to someone reading it. It was removed, hooks and all.
+  Your agent's calls (which include the commands it runs) are the show; your own typing isn't.
+- **Fetching what's missing.** `install` used to download Microsoft's WebView2 installer and run it, after
+  checking Microsoft's signature. A wallpaper that downloads and runs installers is a second "wait, what?", and
+  Windows 11 already has WebView2. Now it only tells you and offers the download page.
+
+What's left reads one thing, your agent's own logs, read-only, and draws them. If a future idea needs more than
+that, it has to be worth explaining here first.
 
 ## Redaction
 
@@ -685,6 +660,12 @@ it against WebView2: about 3.5% CPU and 63 MB against 18% and 330 MB. That settl
 default on Windows. With the same looks, glitchwall now uses 6.5% of one core and 153 MB, down from 34% and 699 MB:
 about a fifth of the CPU and a fifth of the memory (see [How it compares](#how-it-compares-with-other-live-wallpapers)).
 The web page is still there, unchanged, for OBS browser sources and Wallpaper Engine.
+
+**Cutting back (23 November 2026).** Not every idea was a good one. Terminal capture grew from "show my PowerShell
+commands" to cmd through Clink and WSL, and finally to reading other console windows, before it was clear that it
+didn't belong in a wallpaper at all; it was removed. So was the installer that downloaded WebView2, and the old C#
+and Rust prototypes from the going-native work (their plan lives on in [docs/native-plan.md](docs/native-plan.md)).
+See [What it deliberately doesn't do](#what-it-deliberately-doesnt-do-and-why) for why.
 
 ## Development
 

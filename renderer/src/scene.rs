@@ -389,7 +389,7 @@ impl Scene {
             let (text, masks) = self.unmask(ev.get("text").str().unwrap_or(""));
             let r = ev.get("ref").str().unwrap_or("").to_string();
             if kind == "out" || kind == "err" {
-                // live: a command still running (your terminal), more output to come, so the card stays its target
+                // live: more output to come for this card, so it stays its target
                 let live = ev.get("live").truthy();
                 let card = if r.is_empty() { self.current } else if live { self.by_ref.get(&r).copied() } else { self.by_ref.remove(&r) };
                 let Some(card) = card.filter(|id| self.cards.iter().any(|c| c.id == *id && c.dying.is_none())) else { continue };

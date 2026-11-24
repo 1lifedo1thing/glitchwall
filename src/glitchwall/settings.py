@@ -30,7 +30,6 @@ DEFAULTS = {
     "paused": False,         # serve nothing at all (stream-safe)
     "mask_user": True,       # replace your user name with "user"
     "mask_email": True,      # replace email local parts with ••••
-    "terminal": True,        # Windows: what you type in PowerShell shows too (needs `glitchwall terminal on`)
     "masked": "dots",        # how a masked secret shows on the wall, see MASKED
     "label": "CLAUDE :: live tool feed",
     "mode": "live",          # live | ambient | art, see MODES
@@ -86,7 +85,7 @@ def apply_changes(s: dict, changes: dict) -> tuple[dict, list[str]]:
             ok = isinstance(v, str) and v in themes.KINDS[k]
         elif k == "mode":
             ok = v in MODES
-        elif k in ("paused", "commands_only", "mask_user", "mask_email", "tray", "terminal"):
+        elif k in ("paused", "commands_only", "mask_user", "mask_email", "tray"):
             ok = isinstance(v, bool)
         elif k in TUNE:
             _, lo, hi = TUNE[k]

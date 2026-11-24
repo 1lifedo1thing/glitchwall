@@ -1,4 +1,4 @@
-"""The install pre-check: what it asks, what it fixes, when it stops. No downloads: the fixes are fakes."""
+"""The install pre-check: what it asks, what it fixes, when it stops. glitchwall downloads nothing: the fixes here are fakes."""
 import argparse
 import os
 import tempfile
@@ -66,7 +66,8 @@ class TestAsker(unittest.TestCase):
 
 class TestRealChecks(unittest.TestCase):
     def test_lists_without_fetching(self):
-        with mock.patch.object(prereqs, "download", side_effect=AssertionError("no downloads in checks")):
+        no = AssertionError("checks never go online or open a page")
+        with mock.patch("urllib.request.urlopen", side_effect=no), mock.patch("webbrowser.open", side_effect=no):
             found = prereqs.checks("ambient")
         self.assertIn("Python", [c.name for c in found])
         self.assertNotIn("Claude Code logs", [c.name for c in found])   # ambient reads no logs
@@ -121,3 +122,11 @@ class TestHotCorner(unittest.TestCase):
         self.assertEqual(corner_hit("bottom-left", 1921, 1438, mons), 2)
         self.assertIsNone(corner_hit("top-left", 10, 10, mons))
         self.assertIsNone(corner_hit("off", 0, 0, mons))
+
+
+class TestNoDownloader(unittest.TestCase):
+    def test_nothing_in_glitchwall_downloads_or_runs_an_installer(self):
+        import pathlib
+        src = pathlib.Path(prereqs.__file__).read_text(encoding="utf-8")
+        for gone in ("urllib", "subprocess", "install_webview2", "signed_by_microsoft"):
+            self.assertNotIn(gone, src)

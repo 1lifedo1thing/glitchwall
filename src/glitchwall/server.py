@@ -378,7 +378,7 @@ def start_tray(live: "LiveSettings", open_settings, on_change=None) -> None:
                 ("Theme", pick("theme", themes.THEMES)),
                 ("Hot corner", pick("corner", cfg.CORNERS)),
                 ("Masked secrets", pick("masked", masked, masked.get)),
-                ("Show", [flip("terminal", "My PowerShell commands"), flip("commands_only", "Calls only, no output"),
+                ("Show", [flip("commands_only", "Calls only, no output"),
                           None, flip("mask_user", "Mask my user name"), flip("mask_email", "Mask emails")]),
                 None,
                 ("Quit glitchwall", quit_all)]
@@ -401,11 +401,6 @@ def start_source(mode: str, store: EventStore) -> threading.Event:
 
 def follow_mode(store: EventStore, live: LiveSettings, poll: float = 1.0, quit: threading.Event | None = None) -> None:
     mode, stop = None, None
-    if os.name == "nt":   # your own PowerShell commands, alongside Claude's: live mode with the terminal setting on
-        from .shell_history import ShellTailer
-        on = lambda: cfg.mode(live.get()) == "live" and bool(live.get().get("terminal", True))   # noqa: E731
-        shell_stop = quit or threading.Event()
-        threading.Thread(target=ShellTailer(store.add, on).run, args=(shell_stop,), daemon=True).start()
     while not (quit and quit.is_set()):
         m = cfg.mode(live.get())
         if m != mode:
