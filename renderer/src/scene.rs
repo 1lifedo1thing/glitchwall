@@ -122,6 +122,10 @@ impl Scene {
         self.look_key = key;
         let old_rain = self.look.rain.clone();
         let old_mono = self.look.mono.family.clone();
+        // some backgrounds paint their colors once, when they're built (the orb's hall, its floor rings and glow), so a
+        // new palette builds the background again too
+        let colors = |l: &Look| format!("{:?}", (l.light, l.bg, l.surface, l.ink, l.muted, l.faint, l.acc, l.acc2, l.dim, l.hi));
+        let old_colors = colors(&self.look);
         self.look = looks.resolve(want);
         let l = &self.look;
         let mono = &l.mono;
@@ -144,7 +148,7 @@ impl Scene {
         self.anim_in = t.get("in").str().and_then(|s| anim::parse(&self.css, s));
         self.anim_out = t.get("out").str().and_then(|s| anim::parse(&self.css, s));
         self.place_mode = t.get("place").str().unwrap_or("any").to_string();   // dock | stack | any, as the page's PLACE
-        if l.rain != old_rain || l.mono.family != old_mono || !self.bg_drawn {
+        if l.rain != old_rain || l.mono.family != old_mono || colors(l) != old_colors || !self.bg_drawn {
             self.bg = bg::make(&l.rain, &self.g, &self.fonts, l, self.opts.get(&l.rain))?;
             self.bg.opts(self.opts.get(&l.rain));
         }
