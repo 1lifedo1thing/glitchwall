@@ -124,7 +124,7 @@
   /* the theme drum, turning left to right */
   .drum { position:relative; height:54px; overflow:hidden; cursor:ew-resize; touch-action:none; border:1px solid var(--ph-line); border-radius:2px; background:var(--glass); }
   .drum .window { position:absolute; left:50%; top:6px; bottom:6px; width:132px; margin-left:-66px; border:1px solid var(--ph); box-shadow:var(--glow); }
-  .drum .item { position:absolute; left:50%; top:0; height:100%; width:124px; margin-left:-62px; display:grid; place-items:center; padding:0 .25em;
+  .drum .item { position:absolute; left:50%; top:9px; height:calc(100% - 18px); border-radius:2px; width:124px; margin-left:-62px; display:grid; place-items:center; padding:0 .25em;
                 font:var(--fdw, 400) var(--ds, 22px) var(--fd, 'VT323', monospace); letter-spacing:.06em; color:var(--ph-dim); white-space:nowrap; transition:transform .22s, opacity .22s; }
   .drum .item.sel { color:var(--ph); text-shadow:var(--glow); }
   .drum::after { content:''; position:absolute; inset:0; pointer-events:none; background:linear-gradient(90deg, var(--glass), transparent 32%, transparent 68%, var(--glass)); }
@@ -384,6 +384,11 @@ function drum() {   // the theme drum: ←/→, the wheel, a sideways drag or a 
   for (const t of THEMES()) {
     const it = document.createElement('div'); it.className = 'item'; it.dataset.v = t; it.dataset.help = 'theme:' + t; it.setAttribute('role', 'option');
     it.textContent = t.toUpperCase();
+    // each theme on the drum is a swatch of itself, picked or not: its paper, its ink, its title face, an edge of
+    // its accent (as the COLORS knob shows a palette), so turning the drum previews them
+    const L = window.LOOKS || {}, th = (L.themes || {})[t], f = th && (L.fonts || {})[th.display];
+    if (th) { it.style.background = th.surface || th.bg; it.style.color = th.ink; it.style.boxShadow = `inset 0 -3px 0 ${th.acc || th.ink}`; }
+    if (f) { it.style.fontFamily = f.family; it.style.fontWeight = String(f.weight || 400); }
     dr.appendChild(it);
   }
   dr.addEventListener('keydown', e => {
@@ -592,12 +597,19 @@ function evenText() {
     if (f && !asked.has(f.family) && !document.fonts.check(`18px ${f.family}`)) { asked.add(f.family); loading.push(document.fonts.load(`18px ${f.family}`)); }   // once each: one that never loads can't loop
     for (const w of optName(b.dataset.help, v).split(' ')) { probe.textContent = w; widest = Math.max(widest, probe.scrollWidth); } } });   // the longest word: long names wrap
   probe.remove();
+  for (const it of document.querySelectorAll('.drum .item')) {   // the drum's names, each in its theme's face
+    const fam = it.style.fontFamily;
+    if (fam && !asked.has(fam) && !document.fonts.check(`22px ${fam}`)) { asked.add(fam); loading.push(document.fonts.load(`22px ${fam}`)); }
+  }
   if (loading.length) Promise.all(loading).then(() => { evenKey = ''; evenText(); });   // again once they're in
   st.setProperty('--vs', Math.max(11, Math.min(18, Math.floor(18 * room / widest))) + 'px');
   const items = [...document.querySelectorAll('.drum .item')];
+  // each name on the drum is in its own theme's face, so each is sized to fit on its own: the short ones stay big
   st.setProperty('--ds', '22px');
-  const dw = Math.max(1, ...items.map(it => it.scrollWidth));
-  st.setProperty('--ds', Math.max(12, Math.min(22, Math.floor(22 * 116 / dw))) + 'px');
+  for (const it of items) {
+    it.style.fontSize = '';
+    it.style.fontSize = Math.max(12, Math.min(22, Math.floor(22 * 116 / Math.max(1, it.scrollWidth)))) + 'px';
+  }
 }
 if (document.fonts) document.fonts.ready.then(() => fit());
 if (window.ResizeObserver) new ResizeObserver(() => fit()).observe(document.documentElement);
