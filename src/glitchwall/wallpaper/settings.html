@@ -627,7 +627,7 @@ if (window.ResizeObserver) new ResizeObserver(() => fit()).observe(document.docu
 function swatch(win, val, kind) {
   const L = window.LOOKS || {}, v = S[kind], ws = win.style, vs = val.style;
   ['background', 'border-color', 'box-shadow'].forEach(k => ws.removeProperty(k));
-  ['color', 'text-shadow', 'font-family', 'font-weight'].forEach(k => vs.removeProperty(k));
+  ['color', 'text-shadow', 'font-family', 'font-weight', 'background'].forEach(k => vs.removeProperty(k));
   if (!v || v === 'theme') return;
   if (kind === 'palette') {
     const t = (L.themes || {})[v];
@@ -637,7 +637,40 @@ function swatch(win, val, kind) {
   } else if (kind === 'font') {
     const f = (L.fonts || {})[v];
     if (f) { vs.fontFamily = f.family; vs.fontWeight = String(f.weight || 400); }
+  } else if (kind === 'rain') {   // BACKDROP: a still of that backdrop, in the theme and colors picked, the name on a dark strip
+    vs.background = 'rgba(0,0,0,.62)'; vs.color = '#fff'; vs.textShadow = 'none';
+    const want = [S.theme, S.palette, v].join('|');
+    shoot(want).then(url => { if (url && [S.theme, S.palette, S.rain].join('|') === want) ws.background = `#000 center/cover url(${url})`; });
   }
+}
+// a backdrop's still: the wallpaper page itself, drawn in a frame out of sight for a moment, then copied off its
+// canvas and the frame removed. One frame at a time: a newer pick replaces one still drawing
+const shots = new Map();
+let shooting = null;
+function shoot(key) {
+  if (shots.has(key)) return shots.get(key);
+  if (shooting) { shooting.f.remove(); shots.delete(shooting.key); shooting.done(''); }
+  const [theme, palette, rain] = key.split('|');
+  const q = new URLSearchParams({ still: '', theme, rain });
+  if (palette && palette !== 'theme') q.set('palette', palette);
+  const p = new Promise(done => {
+    const f = document.createElement('iframe');
+    f.tabIndex = -1; f.setAttribute('aria-hidden', 'true');
+    // in the window but invisible: a frame off screen gets no animation frames, so it would never draw
+    f.style.cssText = 'position:fixed;left:0;top:0;width:480px;height:270px;border:0;opacity:0;pointer-events:none;z-index:-1';
+    f.onload = () => setTimeout(() => {
+      let url = '';
+      try { url = f.contentDocument.getElementById('c').toDataURL('image/jpeg', .8); } catch (e) { /* no still: the name alone */ }
+      f.remove(); if (shooting && shooting.f === f) shooting = null;
+      if (!url) shots.delete(key);
+      done(url);
+    }, 1200);
+    shooting = { f, key, done };
+    f.src = 'index.html?' + q;
+    document.body.appendChild(f);
+  });
+  shots.set(key, p);
+  return p;
 }
 function render() {
   wear();
