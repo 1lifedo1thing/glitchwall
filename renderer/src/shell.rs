@@ -101,11 +101,12 @@ pub fn parse(line: &[u8], shell: &str, emit: &mut impl FnMut(Ev)) {
     if t == Some("cmd") && py_strip(&s("text")).is_empty() { return; }
     let id = get("id").map(py_str).unwrap_or_else(|| "None".into());
     let bash = get("sh").and_then(Json::str) == Some("bash");   // WSL's bash hook (shell-hook.bash)
-    let mut ev: Ev = vec![("ts".into(), Json::Str(s("ts"))), ("proj".into(), Json::Str(if bash { "wsl" } else { "terminal" }.into())),
+    let cmd = get("sh").and_then(Json::str) == Some("cmd");     // cmd, through Clink (shell-hook.lua)
+    let mut ev: Ev = vec![("ts".into(), Json::Str(s("ts"))), ("proj".into(), Json::Str(if bash { "wsl" } else if cmd { "cmd" } else { "terminal" }.into())),
         ("session".into(), Json::Str("you".into())), ("side".into(), Json::Bool(false)), ("ref".into(), Json::Str(format!("sh{shell}-{id}")))];
     match t {
         Some("cmd") => {
-            ev.push(("kind".into(), Json::Str(if bash { "$" } else { "PS>" }.into())));
+            ev.push(("kind".into(), Json::Str(if bash { "$" } else if cmd { ">" } else { "PS>" }.into())));
             ev.push(("text".into(), Json::Str(s("text"))));
         }
         Some("out") => {
@@ -185,6 +186,17 @@ mod tests {
         t.scan(true);
         assert_eq!(t.field("text"), ["ls", "printed by ls before p$", "exit 1"]);
         assert!(t.got.iter().all(|e| e.iter().all(|(k, _)| k != "prompt")));
+    }
+
+    #[test]
+    fn cmd_commands() {
+        let mut t = T::new("i");
+        t.add("cmd-7.jsonl", &[r#"{"sh": "cmd", "t": "cmd", "id": 1, "text": "dir /b"}"#,
+                               r#"{"sh": "cmd", "t": "out", "id": 1, "ok": false, "text": "File Not Found"}"#]);
+        t.scan(true);
+        assert_eq!(t.field("kind"), [">", "err"]);
+        assert_eq!(t.field("proj"), ["cmd", "cmd"]);
+        assert_eq!(t.field("text"), ["dir /b", "File Not Found"]);
     }
 
     #[test]

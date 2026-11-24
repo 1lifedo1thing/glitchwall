@@ -303,8 +303,8 @@ nothing is drawn at all.
 | `bsod` | `stop` screen | VT323 | scan lines, none | about 2 (the cursor blink), 0 with no blink | a still screen with a blinking cursor |
 | `cyanotype` | `sunprint` ferns and leaves | Instrument Serif / IBM Plex Mono | none, 0.35 | 15 | a print develops slowly |
 | `notebook` | `notebook` ruled paper | Caveat | none, 0.22 | 30 while a doodle is drawn, 0 after | a pencil stroke needs smooth motion; a finished doodle needs none |
-| `oracle` | `oracle` ring of data | Chakra Petch / DM Mono | none, 0.07 | 20 | strokes redraw constantly but slowly |
-| `orb` | `orb` the machine in its hall | Chakra Petch / DM Mono | none, 0.07 | 20 | the busiest scene; lights flicker and the sphere turns slowly |
+| `oracle` | an all-seeing machine: one great ring of jagged data strokes on black, slowly turning and always redrawing itself, white ink and one signal red | opens like an iris / closes to a point |
+| `orb` | the same machine seen whole: a ribbed black sphere sunk in the floor of a vast, empty, dark data hall, rows of racks blinking away into the haze behind it, tiny red lights flickering and streaming along its slats, readouts pointing at its parts as they turn into view | a curved shadow sweeps off / over it |
 | `scope` | `scope` oscilloscope | Overpass Mono / IBM Plex Mono | CRT tube, 0.05 | 30 | a sweeping beam must look continuous |
 | `chalkboard` | `chalk` blackboard | Caveat | none, 0.18 | 20 while writing or wiping | handwriting pace |
 
@@ -422,7 +422,7 @@ Full-size shots (click one to open it). They come from ambient mode, so every se
 | `glitchwall start` / `stop` | start or stop the background feed |
 | `glitchwall pause` / `resume` | stream-safe switch: serve nothing / back to live |
 | `glitchwall config --commands-only on` | show calls, hide all output |
-| `glitchwall terminal on\|off\|status` | opt-in: show the commands you type in PowerShell and WSL too ([what it records](#your-terminal-commands-opt-in)) |
+| `glitchwall terminal on\|off\|status` | opt-in: show the commands you type in PowerShell, cmd (with Clink) and WSL too ([what it records](#your-terminal-commands-opt-in)) |
 | `glitchwall config --label "TEXT"` | the text in the bottom-right corner |
 | `glitchwall themes` | list themes, backgrounds and fonts |
 | `glitchwall config --theme X --rain Y --font Z` | change the look, live |
@@ -476,6 +476,7 @@ In `ambient` and `art` mode it reads no logs at all, only its own settings. In `
 | `%APPDATA%\Microsoft\Windows\Start Menu\Programs\glitchwall settings.lnk` | Windows: the settings window in the Start menu |
 | `HKCU\Software\Classes\DesktopBackground\Shell\glitchwall` | Windows: *glitchwall settings* in the desktop's right-click menu |
 | one line at the end of `Documents\PowerShell\profile.ps1`, `Documents\WindowsPowerShell\profile.ps1` and WSL's `~/.bashrc` | only after `glitchwall terminal on`: loads the terminal hook. Marked `# glitchwall terminal`; `terminal off` removes it too |
+| `%USERPROFILE%\.glitchwall\clink\glitchwall.lua`, and that folder in Clink's script list | only after `glitchwall terminal on`, and only if Clink is set up for cmd: the cmd hook. `terminal off` takes the folder out of Clink's list (`clink uninstallscripts`) and deletes it |
 
 ### Your terminal commands (opt-in)
 
@@ -485,19 +486,28 @@ on the wallpaper next to your agent's, as cards.
 
 **What it adds.** One line at the end of your PowerShell profiles (PowerShell 7 and Windows PowerShell) and of
 `~/.bashrc` in your default WSL distro. The line loads a short hook script from `~/.glitchwall/`
-(`shell-hook.ps1` or `shell-hook.bash`); both are plain text, in this repo under `src/glitchwall/`, and worth
-reading before you turn this on. Nothing else in your profiles is touched.
+(`shell-hook.ps1` or `shell-hook.bash`). For cmd it copies `shell-hook.lua` to `~/.glitchwall/clink/` and adds that
+folder to [Clink](https://github.com/chrisant996/clink)'s scripts with Clink's own `clink installscripts`. All three
+are plain text, in this repo under `src/glitchwall/`, and worth reading before you turn this on. Nothing else in your
+profiles is touched.
+
+**cmd needs Clink.** cmd itself has no hook to run code after a command, so the cmd part works through Clink, a free
+(GPL-3.0) add-on for cmd's prompt. glitchwall never installs Clink and never changes cmd's startup (its `AutoRun`
+registry value). It only looks there to see whether Clink is already set up to start with cmd, by Clink's installer or
+`clink autorun install`. If it isn't, `terminal on` says so and leaves cmd out. Two things about Clink itself, which
+glitchwall doesn't control: it keeps its own command history (`clink_history` in its profile folder), and by default it
+checks GitHub for new versions now and then (`clink set clink.autoupdate off` turns that off).
 
 **What the hooks record.**
 
-| | PowerShell | WSL (bash) |
-| --- | --- | --- |
-| the command you typed | yes, when you press Enter | yes, as it starts |
-| what it printed | yes: read off the console screen when it finishes, and every second while it runs | yes: the feed reads it off the WSL window's screen (see below) when it finishes, and every 2 seconds while it runs (for 10 minutes at most) |
-| commands left out | lines PowerShell can't run yet (unfinished input) | whatever bash leaves out of its history: a leading space (`HISTCONTROL=ignorespace`), a repeat (`ignoredups`) |
+| | PowerShell | cmd (Clink) | WSL (bash) |
+| --- | --- | --- | --- |
+| the command you typed | yes, when you press Enter | yes, when you press Enter | yes, as it starts |
+| what it printed | yes: read off the console screen when it finishes, and every second while it runs | yes: read off the console screen when the next prompt comes (the last 60 lines at most) | yes: the feed reads it off the WSL window's screen (see below) when it finishes, and every 2 seconds while it runs (for 10 minutes at most) |
+| commands left out | lines PowerShell can't run yet (unfinished input) | a line starting with a space | whatever bash leaves out of its history: a leading space (`HISTCONTROL=ignorespace`), a repeat (`ignoredups`) |
 
-**Where it goes.** Each shell window appends to its own file, `~/.glitchwall/shell/<process id>.jsonl` (WSL:
-`wsl-<process id>.jsonl`), on this machine. Nothing is sent anywhere: the hooks only write that file, and the feed
+**Where it goes.** Each shell window appends to its own file, `~/.glitchwall/shell/<process id>.jsonl` (cmd:
+`cmd-<process id>.jsonl`, WSL: `wsl-<process id>.jsonl`), on this machine. Nothing is sent anywhere: the hooks only write that file, and the feed
 reads it the same way it reads Claude Code's logs. A file is cut back when it passes 256 KB, and the feed deletes a
 shell's file a day after it was last written.
 
@@ -515,10 +525,10 @@ your account directly.
 **Before it shows.** The feed reads these files only in `live` mode, only while the `terminal` setting is on
 (the tray's *Show* menu, or the settings window), and never while paused. Every line goes through the same
 [redaction](#redaction) as your agent's calls before it is kept or shown, so tokens, keys, passwords, your user name
-and email addresses are masked. Nothing is recorded in a PowerShell window running as administrator, or in a root shell in WSL: the hooks
-switch themselves off there.
+and email addresses are masked. Nothing is recorded in a PowerShell or cmd window running as administrator, or in a root shell in WSL: the
+hooks switch themselves off there.
 
-**Keeping one command out.** In WSL, start it with a space: the hook never writes it down. Pausing glitchwall
+**Keeping one command out.** In cmd or WSL, start it with a space: the hook never writes it down. Pausing glitchwall
 (`glitchwall pause`, or the tray menu) keeps everything off the wallpaper, but the hooks still write to their local
 files while paused (the feed skips what was written during the pause and never shows it later). To stop the
 recording itself, `glitchwall terminal off` and open a new window.

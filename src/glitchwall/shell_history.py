@@ -21,6 +21,7 @@ from . import settings as cfg
 
 HOOK_FILE = Path(__file__).resolve().parent / "shell-hook.ps1"
 BASH_HOOK = Path(__file__).resolve().parent / "shell-hook.bash"
+CLINK_HOOK = Path(__file__).resolve().parent / "shell-hook.lua"
 MARK = "# glitchwall terminal"   # ends the line `glitchwall terminal on` adds to a profile
 STALE = 24 * 3600                # a shell's file this long untouched is cleared out
 LIVE_EVERY, LIVE_FOR = 2.0, 600.0   # a running WSL command's screen: read this often, for this long at most
@@ -122,6 +123,61 @@ def remove_wsl_hook() -> bool:
     return _wsl(_WSL_OFF, MARK) == 0
 
 
+# ---------------------------------------------------------------- cmd: a script folder for Clink, if Clink runs in cmd
+def find_clink() -> Path | None:
+    """Clink's exe, if Clink is set up to start with cmd (its entry in cmd's AutoRun); without that Clink
+    never loads in cmd anyway. glitchwall never sets that up itself: Clink's own installer or `clink autorun install` does."""
+    if os.name != "nt":
+        return None
+    import re
+    import winreg
+    for root in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+        try:
+            with winreg.OpenKey(root, r"Software\Microsoft\Command Processor") as k:
+                run = str(winreg.QueryValueEx(k, "AutoRun")[0])
+        except OSError:
+            continue
+        m = re.search(r'"?([^"&|]*?clink[^"&|\\]*\.(?:bat|exe))"?', run, re.IGNORECASE)
+        if m:
+            d = Path(m.group(1)).parent
+            for name in ("clink_x64.exe", "clink_arm64.exe", "clink_x86.exe"):
+                if (d / name).is_file():
+                    return d / name
+    return None   # not a PATH search: on Windows that looks in the current folder first, where anything could sit
+
+
+def _clink(*args: str) -> int | None:
+    exe = find_clink()
+    if not exe:
+        return None
+    try:
+        return subprocess.run([str(exe), *args], capture_output=True, timeout=60).returncode  # noqa: S603 (Clink's own exe)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
+def clink_dir() -> Path:
+    return cfg.state_dir() / "clink"   # a folder of its own: Clink loads every script in a folder it is given
+
+
+def install_clink_hook() -> bool:
+    """Put the cmd hook in its own folder and add that folder to Clink's script paths. True if Clink took it."""
+    if not find_clink():
+        return False
+    clink_dir().mkdir(parents=True, exist_ok=True)
+    (clink_dir() / "glitchwall.lua").write_bytes(CLINK_HOOK.read_bytes())
+    return _clink("installscripts", str(clink_dir())) == 0
+
+
+def remove_clink_hook() -> bool:
+    """Take the folder out of Clink's script paths again, and the hook away. True if Clink had it."""
+    had = clink_dir().is_dir()
+    if had:
+        _clink("uninstallscripts", str(clink_dir()))
+        shutil.rmtree(clink_dir(), ignore_errors=True)
+    return had
+
+
 def _last_lines(text: str, n: int = 14) -> str:
     """A running command's output as the wall shows it: its newest lines (where the first ones suit a finished one)."""
     from .claude_logs import clip
@@ -184,8 +240,8 @@ class ShellTailer:
         if not isinstance(d, dict) or not str(d.get("text", "")).strip() and d.get("t") == "cmd":
             return
         ref = f"sh{shell}-{d.get('id')}"
-        bash = d.get("sh") == "bash"   # WSL's bash hook (shell-hook.bash); the PowerShell hook says nothing
-        base = {"ts": str(d.get("ts", "")), "proj": "wsl" if bash else "terminal", "session": "you", "side": False, "ref": ref}
+        bash, cmd = d.get("sh") == "bash", d.get("sh") == "cmd"   # WSL bash (shell-hook.bash), cmd via Clink (shell-hook.lua)
+        base = {"ts": str(d.get("ts", "")), "proj": "wsl" if bash else "cmd" if cmd else "terminal", "session": "you", "side": False, "ref": ref}
         if d.get("t") == "cmd":
             if bash:
                 self.cmds[ref] = str(d.get("text", ""))
@@ -193,7 +249,7 @@ class ShellTailer:
                 self.running[ref] = {"base": base, "cmd": self.cmds[ref], "until": now + LIVE_FOR, "next": now + LIVE_EVERY, "last": None}
                 while len(self.cmds) > 50:
                     self.cmds.pop(next(iter(self.cmds)))
-            self.emit({**base, "kind": "$" if bash else "PS>", "text": str(d.get("text", ""))})
+            self.emit({**base, "kind": "$" if bash else ">" if cmd else "PS>", "text": str(d.get("text", ""))})
         elif d.get("t") == "out":
             self.running.pop(ref, None)
             from .claude_logs import _output_text   # trimmed like Claude's: 14 lines, 900 characters

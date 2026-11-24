@@ -39,6 +39,17 @@ class TestShellTailer(unittest.TestCase):
         self.assertEqual([(e["kind"], e["proj"], e["text"], e["ref"]) for e in self.events],
                          [("$", "wsl", "ls /x", "shwsl-12-4"), ("err", "wsl", "exit 2", "shwsl-12-4")])
 
+    def test_cmd_commands(self):   # shell-hook.lua (cmd through Clink) marks its records "sh": "cmd"
+        self.add("cmd-7.jsonl", {"sh": "cmd", "t": "cmd", "id": 1, "text": "dir /b"},
+                 {"sh": "cmd", "t": "out", "id": 1, "ok": False, "text": "File Not Found"})
+        self.t.scan()
+        self.assertEqual([(e["kind"], e["proj"], e["text"], e["ref"]) for e in self.events],
+                         [(">", "cmd", "dir /b", "shcmd-7-1"), ("err", "cmd", "File Not Found", "shcmd-7-1")])
+
+    def test_clink_left_out_without_clink(self):
+        with mock.patch.object(sh, "find_clink", return_value=None):
+            self.assertFalse(sh.install_clink_hook())
+
     def test_empty_output_says_so(self):
         self.add("1.jsonl", {"t": "cmd", "id": 1, "text": "cls"}, {"t": "out", "id": 1, "ok": True, "text": ""})
         self.t.scan()

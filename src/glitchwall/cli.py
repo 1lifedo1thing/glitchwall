@@ -253,6 +253,8 @@ def cmd_uninstall(a) -> int:
     removed += [f"took glitchwall's line out of {p}" for p in sh.remove_hook()]
     if sh.remove_wsl_hook():
         removed.append("took glitchwall's line out of WSL's ~/.bashrc")
+    if sh.remove_clink_hook():
+        removed.append("took glitchwall's scripts out of Clink (cmd)")
     sd = cfg.state_dir()
     if sd.exists():
         shutil.rmtree(sd, ignore_errors=True)
@@ -339,14 +341,20 @@ def cmd_terminal(a) -> int:
             say(f"added a line to {p}")
         if sh.install_wsl_hook():
             say("added a line to WSL's ~/.bashrc")
-        say("terminal on: open a new PowerShell or WSL window and what you type there shows on the wallpaper "
-            "(masked like Claude's calls; PowerShell shows the output too)")
+        if sh.install_clink_hook():
+            say(f"added {sh.clink_dir()} to Clink's scripts (cmd)")
+        else:
+            say("cmd: left out (Clink isn't set up for cmd here; see the README)")
+        say("terminal on: open a new PowerShell, cmd or WSL window and what you type there shows on the wallpaper "
+            "(masked like Claude's calls, with what each command prints)")
     elif a.what == "off":
         for p in sh.remove_hook():
             say(f"took glitchwall's line out of {p}")
         if sh.remove_wsl_hook():
             say("took glitchwall's line out of WSL's ~/.bashrc")
-        say("terminal off: PowerShell and WSL windows opened from now on are left alone")
+        if sh.remove_clink_hook():
+            say("took glitchwall's scripts out of Clink (cmd)")
+        say("terminal off: PowerShell, cmd and WSL windows opened from now on are left alone")
     else:
         s = cfg.load_settings()
         say(f"terminal hook {'installed' if sh.hook_installed() else 'not installed'}; "
@@ -496,7 +504,7 @@ def parser() -> argparse.ArgumentParser:
                    ).set_defaults(fn=cmd_reset)
     sub.add_parser("pause", help="stream-safe: serve nothing until resume").set_defaults(fn=lambda a: cmd_pause(a, True))
     sub.add_parser("resume", help="undo pause").set_defaults(fn=lambda a: cmd_pause(a, False))
-    t = sub.add_parser("terminal", help="show what you type in PowerShell (and its output) on the wallpaper: on, off or status")
+    t = sub.add_parser("terminal", help="show what you type in PowerShell, cmd (with Clink) and WSL, and its output, on the wallpaper: on, off or status")
     t.add_argument("what", nargs="?", choices=["on", "off", "status"], default="status")
     t.set_defaults(fn=cmd_terminal)
 
