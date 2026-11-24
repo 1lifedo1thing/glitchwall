@@ -528,7 +528,13 @@ function wear() {
   if (!t || name === 'phosphor') { keys.forEach(k => st.removeProperty(k)); return; }
   const hex = c => { const m = /^#?([0-9a-f]{6})/i.exec(c || ''); return m ? [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16)).join(',') : null; };
   st.setProperty('--bg', t.bg); st.setProperty('--glass', t.surface || t.bg);
-  st.setProperty('--ph', t.ink); st.setProperty('--ph-hi', t.hi || t.ink); st.setProperty('--ph-dim', t.muted || t.ink);
+  // the dim labels: the theme's muted color, unless it's too close to the background to read here (MS-DOS's muted is
+  // its own blue, meant for text on the grey title bars); then the next readable one of dim and ink
+  const lum = c => { const v = (hex(c) || '0,0,0').split(',').map(x => { x /= 255; return x <= .03928 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4; });
+    return .2126 * v[0] + .7152 * v[1] + .0722 * v[2]; };
+  const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + .05) / (y + .05); };
+  const dim = [t.muted, t.dim, t.ink].find(c => c && contrast(c, t.surface || t.bg) >= 3) || t.ink;
+  st.setProperty('--ph', t.ink); st.setProperty('--ph-hi', t.hi || t.ink); st.setProperty('--ph-dim', dim);
   st.setProperty('--ph-rgb', hex(t.ink) || '93,255,122'); st.setProperty('--amber', t.acc || '#ffb000');
   // the orb's window is lit by its red lights (white would make it oracle's twin): red type, white for anything paused
   if (name === 'orb') { st.setProperty('--ph', t.acc); st.setProperty('--ph-hi', '#ff9d94'); st.setProperty('--ph-dim', '#a8302a');
