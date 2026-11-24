@@ -2,7 +2,8 @@
 //! fed by glitchwall's own feed. glitchwall starts it (renderer = native); it can also run by hand:
 //!   GLITCHWALL_KEY=<feed key> glitchwall-render --port 47833 [--which all|primary] [--wallpaper DIR] [--parent PID] [--scale X] [--peek [--peek-size WxH]]
 //! --wallpaper is the folder with looks.js, index.html and the fonts (default: the one next to this exe).
-//! `glitchwall-render feed [--port N]` runs the feed instead (server.rs; piece 2a, not used by glitchwall yet).
+//! `glitchwall-render feed [--port N] [--wallpaper DIR]` runs the feed instead (server.rs and settings.rs; pieces 2a-2b,
+//! not used by glitchwall yet).
 #![windows_subsystem = "windows"]
 
 mod anim;
@@ -19,6 +20,7 @@ mod looks;
 mod redact;
 mod scene;
 mod server;
+mod settings;
 mod tail;
 
 use std::path::PathBuf;

@@ -1,5 +1,5 @@
-//! The local feed, in Rust: a port of server.py's /feed (piece 2a of docs/native-plan.md).
-//!   glitchwall-render feed [--port N] [--seed FILE]
+//! The local feed, in Rust: a port of server.py's feed (pieces 2a and 2b of docs/native-plan.md).
+//!   glitchwall-render feed [--port N] [--wallpaper DIR] [--seed FILE]
 //!
 //! An HTTP endpoint on 127.0.0.1 that only the wallpaper may read, with the same rules as the Python one:
 //!   1. Host must be 127.0.0.1:<port> or localhost:<port>   (blocks DNS rebinding)
@@ -10,7 +10,11 @@
 //! events are dropped and everything so far is put out of reach: resuming never replays a pause.
 //! Its source, as server.py's follow_mode: in live mode Claude Code's logs (logs.rs). Ambient mode's made-up sessions
 //! are not ported yet (2c).
-//! Not here yet (pieces 2b-2d): the settings API, the look/tune/opts in the answer, the page.
+//!
+//! It also serves the page and the settings window from --wallpaper (default: the wallpaper folder next to this exe,
+//! where looks.js is read from too): static files to the right Host only, the key never in them (the page finds it
+//! after #key= in its address, which is never sent). /settings reads and changes settings.json (settings.rs) behind
+//! the same checks as /feed; a change must also be a JSON POST from the feed's own address.
 //! --seed (tests only): follow a file of JSON events, one per line, adding each as it appears, instead of the sources.
 
 use std::io::{Read, Write};
@@ -22,11 +26,14 @@ use std::time::{Duration, SystemTime};
 
 use crate::json::Json;
 use crate::redact::Redactor;
+use crate::settings::{self as cfg, Live, Schema};
 
 pub const KEEP: usize = 300;   // events kept in memory
 pub const BATCH: usize = 60;   // most events per answer
 const SCAN: usize = 4000;      // text redacted per event (server.py's SCAN): only 1600 characters show
-const MODES: [&str; 3] = ["live", "ambient", "art"];
+const MAX_BODY: i64 = 8192;    // the most a settings change may send
+/// what /config.js is when the feed serves the page itself: the key stays out of every file
+const CONFIG_JS: &str = "// the key is in the page address\n";
 // every answer: never sniffed into another type, never framed by another page, no address passed on in a Referer
 const SAFE_HEADERS: [(&str, &str); 4] = [("X-Content-Type-Options", "nosniff"), ("X-Frame-Options", "SAMEORIGIN"),
     ("Content-Security-Policy", "frame-ancestors 'self'"), ("Referrer-Policy", "no-referrer")];
@@ -105,56 +112,27 @@ fn same(a: &[u8], b: &[u8]) -> bool {
     d == 0
 }
 
-// ---------------------------------------------------------------- settings (what 2a needs of them)
-/// settings.json, read again whenever the file changes, so pause and mode act without a restart. As server.py's
-/// LiveSettings: a file that turns unreadable keeps the last good settings; unreadable from the start counts as paused.
-pub struct Live { file: PathBuf, mtime: Option<SystemTime>, s: Json, good: bool }
-
-impl Live {
-    pub fn new(file: PathBuf) -> Live {
-        let mut l = Live { file, mtime: Some(SystemTime::UNIX_EPOCH), s: Json::Obj(Vec::new()), good: false };   // never a file's time: read at once
-        l.get();
-        l
-    }
-    pub fn get(&mut self) -> &Json {
-        let m = std::fs::metadata(&self.file).and_then(|m| m.modified()).ok();
-        if m != self.mtime {
-            self.mtime = m;
-            let saved = match std::fs::read_to_string(&self.file) {
-                Err(e) if e.kind() == std::io::ErrorKind::NotFound => Some(Json::Obj(Vec::new())),
-                Err(_) => None,
-                Ok(t) => Json::parse(t.trim_start_matches('\u{feff}')).ok().filter(|j| matches!(j, Json::Obj(_))),
-            };
-            match saved {
-                Some(s) => { self.s = s; self.good = true; }
-                None if !self.good => self.s = Json::Obj(vec![("paused".into(), Json::Bool(true))]),
-                None => {}   // keep the last good settings
-            }
-        }
-        &self.s
-    }
-    pub fn flag(&mut self, k: &str, default: bool) -> bool {
-        match self.get().get(k) { Json::Null => default, v => v.truthy() }
-    }
-    pub fn mode(&mut self) -> String {
-        let m = match self.get().get("mode") { Json::Null => String::new(), v => crate::logs::py_str(v).to_lowercase() };
-        if MODES.contains(&m.as_str()) { m } else { "live".into() }
-    }
+// ---------------------------------------------------------------- HTTP
+pub struct Feed {
+    pub store: Mutex<Store>, pub live: Mutex<Live>, key: String, port: u16, extra: Vec<String>, refusals: Option<PathBuf>,
+    schema: Arc<Schema>,
+    settings_file: PathBuf,
+    /// the page, the settings window, looks.js and the fonts
+    static_dir: Option<PathBuf>,
+    /// one settings change at a time: each reads the file, changes it and writes it back
+    saving: Mutex<()>,
 }
 
-// ---------------------------------------------------------------- HTTP
-pub struct Feed { pub store: Mutex<Store>, pub live: Mutex<Live>, key: String, port: u16, extra: Vec<String>, refusals: Option<PathBuf> }
-
-struct Req { method: String, path: String, query: String, headers: Vec<(String, String)> }
+struct Req { method: String, path: String, query: String, headers: Vec<(String, String)>, body: Vec<u8> }
 
 impl Req {
     /// The first header of this name (as Python's headers.get).
     fn header(&self, name: &str) -> Option<&str> {
         self.headers.iter().find(|(k, _)| k.eq_ignore_ascii_case(name)).map(|(_, v)| v.as_str())
     }
-    /// The first value of a query parameter (parse_qs), decoded.
+    /// The first value of a query parameter (parse_qs: only & separates, as since Python 3.9.2), decoded.
     fn q(&self, name: &str) -> Option<String> {
-        self.query.split(['&', ';']).filter_map(|p| p.split_once('=')).find(|(k, _)| unquote(k) == name).map(|(_, v)| unquote(v))
+        self.query.split('&').filter_map(|p| p.split_once('=')).find(|(k, _)| unquote(k) == name).map(|(_, v)| unquote(v))
             .filter(|v| !v.is_empty())
     }
 }
@@ -179,7 +157,7 @@ fn unquote(s: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
-/// Reads a request's head (and no more: the feed takes no bodies yet). None for anything that isn't one.
+/// Reads a request's head and what came in after it. None for anything that isn't one.
 fn read_req(s: &mut TcpStream) -> Option<(Req, Option<i64>)> {
     let mut buf = Vec::new();
     let mut chunk = [0u8; 2048];
@@ -195,15 +173,16 @@ fn read_req(s: &mut TcpStream) -> Option<(Req, Option<i64>)> {
     let (method, target) = (first.next()?.to_string(), first.next()?.to_string());
     let headers: Vec<(String, String)> = lines.filter_map(|l| l.split_once(':')).map(|(k, v)| (k.trim().to_string(), v.trim().to_string())).collect();
     let (path, query) = match target.split_once('?') { Some((p, q)) => (p, q), None => (target.as_str(), "") };
-    let path = path.split('#').next().unwrap_or("").to_string();
+    let mut path = path.split('#').next().unwrap_or("").to_string();
+    if path.starts_with("//") { path = format!("/{}", path.trim_start_matches('/')); }   // as http.server does: never a host
     let query = query.split('#').next().unwrap_or("").to_string();
-    let req = Req { method, path, query, headers };
+    let req = Req { method, path, query, headers, body: buf[end + 4..].to_vec() };
     let len = req.header("Content-Length").map(|v| v.trim().parse::<i64>().unwrap_or(-1));
     Some((req, len))
 }
 
 fn reason(code: u16) -> &'static str {
-    match code { 200 => "OK", 400 => "Bad Request", 403 => "Forbidden", 404 => "Not Found", 405 => "Method Not Allowed", _ => "Error" }
+    match code { 200 => "OK", 400 => "Bad Request", 403 => "Forbidden", 404 => "Not Found", 405 => "Method Not Allowed", 500 => "Internal Server Error", _ => "Error" }
 }
 
 fn respond(s: &mut TcpStream, code: u16, extra: &[(&str, String)], body: &[u8]) {
@@ -216,11 +195,40 @@ fn respond(s: &mut TcpStream, code: u16, extra: &[(&str, String)], body: &[u8]) 
     let _ = s.flush();
 }
 
-impl Feed {
-    pub fn new(key: String, port: u16, live: Live, store: Store, refusals: Option<PathBuf>) -> Feed {
-        let extra = vec![format!("http://127.0.0.1:{port}"), format!("http://localhost:{port}")];
-        Feed { store: Mutex::new(store), live: Mutex::new(live), key, port, extra, refusals }
+/// The type of a file the feed serves (the wallpaper folder holds only these kinds).
+fn content_type(f: &Path) -> &'static str {
+    match f.extension().map(|e| e.to_string_lossy().to_lowercase()).as_deref() {
+        Some("html" | "htm") => "text/html", Some("js") => "text/javascript", Some("css") => "text/css",
+        Some("json") => "application/json", Some("txt") => "text/plain", Some("png") => "image/png",
+        Some("ico") => "image/vnd.microsoft.icon", Some("svg") => "image/svg+xml", Some("ttf") => "font/ttf",
+        Some("otf") => "font/otf", Some("woff") => "font/woff", Some("woff2") => "font/woff2",
+        _ => "application/octet-stream",
     }
+}
+
+impl Feed {
+    pub fn new(key: String, port: u16, live: Live, store: Store, refusals: Option<PathBuf>, settings_file: PathBuf,
+               static_dir: Option<PathBuf>) -> Feed {
+        let extra = vec![format!("http://127.0.0.1:{port}"), format!("http://localhost:{port}")];
+        let schema = live.schema.clone();
+        Feed { store: Mutex::new(store), live: Mutex::new(live), key, port, extra, refusals, schema, settings_file, static_dir,
+               saving: Mutex::new(()) }
+    }
+
+    fn host_ok(&self, req: &Req) -> bool {
+        let h = req.header("Host").unwrap_or("");
+        h == format!("127.0.0.1:{}", self.port) || h == format!("localhost:{}", self.port)
+    }
+
+    fn json(&self, s: &mut TcpStream, origin: Option<&str>, body: &Json) {
+        let mut h: Vec<(&str, String)> = vec![("Content-Type", "application/json".into())];
+        if let Some(o) = origin.filter(|o| !o.is_empty()) { h.push(("Access-Control-Allow-Origin", o.into())); h.push(("Vary", "Origin".into())); }
+        h.push(("Cache-Control", "no-store".into()));
+        respond(s, 200, &h, crate::logs::dumps(body).as_bytes());
+    }
+
+    /// The settings as they are on disk right now (as settings.load_settings: unreadable counts as paused).
+    fn on_disk(&self) -> Json { self.schema.load(cfg::read_saved(&self.settings_file).as_ref()) }
 
     fn refuse(&self, s: &mut TcpStream, req: &Req, code: u16) {
         if code == 403 && let Some(f) = &self.refusals {   // who was turned away (never the key), to help debug a new host
@@ -235,12 +243,33 @@ impl Feed {
     pub fn handle(&self, mut s: TcpStream) {
         let _ = s.set_read_timeout(Some(Duration::from_secs(10)));
         let Some((req, len)) = read_req(&mut s) else { return };
+        self.answer(&mut s, req, len);
+        // a graceful close: a body that was refused unread would otherwise make Windows reset the connection, and the
+        // client could lose the answer. What is left is read and dropped (a little, briefly).
+        let _ = s.shutdown(std::net::Shutdown::Write);
+        let _ = s.set_read_timeout(Some(Duration::from_millis(500)));
+        let (mut chunk, mut left) = ([0u8; 4096], 64 * 1024usize);
+        while left > 0 && let Ok(n @ 1..) = s.read(&mut chunk) { left = left.saturating_sub(n); }
+    }
+
+    fn answer(&self, s: &mut TcpStream, mut req: Req, len: Option<i64>) {
         match (req.method.as_str(), req.path.as_str()) {
-            ("GET", "/feed") => self.feed(&mut s, &req),
-            ("GET", _) => self.refuse(&mut s, &req, 404),   // the settings API and the page: not here yet
-            ("POST", "/settings") if !matches!(len, Some(n) if n > 0 && n <= 8192) => self.refuse(&mut s, &req, 400),
-            ("POST", _) => self.refuse(&mut s, &req, 404),
-            _ => self.refuse(&mut s, &req, 405),
+            ("GET", "/feed") => self.feed(s, &req),
+            ("GET", "/settings") => self.settings(s, &req, false),
+            ("GET", _) if self.static_dir.is_some() => self.static_file(s, &req),
+            ("GET", _) => self.refuse(s, &req, 404),
+            ("POST", "/settings") => {
+                let Some(n) = len.filter(|n| (1..=MAX_BODY).contains(n)) else { return self.refuse(s, &req, 400) };
+                let n = n as usize;
+                let mut chunk = [0u8; 2048];
+                while req.body.len() < n {   // the rest of the body, as Content-Length says
+                    match s.read(&mut chunk) { Ok(0) | Err(_) => return, Ok(k) => req.body.extend_from_slice(&chunk[..k]) }
+                }
+                req.body.truncate(n);
+                self.settings(s, &req, true)
+            }
+            ("POST", _) => self.refuse(s, &req, 404),
+            _ => self.refuse(s, &req, 405),
         }
     }
 
@@ -250,28 +279,80 @@ impl Feed {
             return self.refuse(s, req, 403);
         }
         let since = req.q("since").and_then(|v| v.trim().replace('_', "").parse::<i64>().ok()).unwrap_or(0);
-        let (paused, mode, commands_only) = {
-            let mut l = self.live.lock().unwrap();
-            (l.flag("paused", false), l.mode(), l.flag("commands_only", false))
-        };
+        let st = self.live.lock().unwrap().get().clone();
+        let paused = cfg::get(st.entries(), "paused").is_some_and(cfg::truthy);
+        let commands_only = cfg::get(st.entries(), "commands_only").is_some_and(cfg::truthy);
+        let mode = cfg::mode(&st);
         let hidden = paused || mode == "art";
         let (events, last) = {
-            let mut st = self.store.lock().unwrap();
-            if hidden { st.hide_all(); }   // the page clears the screen; what it hadn't shown yet must not come back later
-            (if hidden { Vec::new() } else { st.since(since, commands_only) }, st.seq)
+            let mut store = self.store.lock().unwrap();
+            if hidden { store.hide_all(); }   // the page clears the screen; what it hadn't shown yet must not come back later
+            (if hidden { Vec::new() } else { store.since(since, commands_only) }, store.seq)
         };
+        let sc = &self.schema;
         let body = Json::Obj(vec![
             ("events".into(), Json::Arr(events.into_iter().map(Json::Obj).collect())),
             ("paused".into(), Json::Bool(paused)),
             ("last".into(), Json::Num(last as f64)),
+            ("look".into(), sc.look(&st)),
             ("mode".into(), Json::Str(mode)),
-            ("sleep".into(), Json::Bool(false)),
+            ("label".into(), sc.display_label(&st)),
+            ("tune".into(), sc.tune(&st)),
+            ("opts".into(), sc.opts(&st)),
+            ("corner".into(), Json::Str(cfg::corner(&st))),   // where the hot-corner icon sits
+            ("masked".into(), Json::Str(cfg::masked(&st))),   // how masked secrets show
+            ("sleep".into(), Json::Bool(false)),   // the built-in host's "nobody can see this screen": piece 3
         ]);
-        let body = crate::logs::dumps(&body).into_bytes();
-        let mut h: Vec<(&str, String)> = vec![("Content-Type", "application/json".into())];
-        if let Some(o) = origin.filter(|o| !o.is_empty()) { h.push(("Access-Control-Allow-Origin", o.into())); h.push(("Vary", "Origin".into())); }
-        h.push(("Cache-Control", "no-store".into()));
-        respond(s, 200, &h, &body);
+        self.json(s, origin, &body);
+    }
+
+    /// The settings window: GET reads, POST changes. Same key/Host/Origin checks as the feed; a change must also be a
+    /// JSON POST from the feed's own address, where the settings window lives (a plain form can't be one, and a file
+    /// page or a sandboxed frame, which send Origin: null, can't make one).
+    fn settings(&self, s: &mut TcpStream, req: &Req, change: bool) {
+        let origin = req.header("Origin");
+        if !check_access(req.header("Host"), origin, &req.q("key").unwrap_or_default(), &self.key, self.port, &self.extra) {
+            return self.refuse(s, req, 403);
+        }
+        let mut refused = Vec::new();
+        if change {
+            let ctype = req.header("Content-Type").unwrap_or("").split(';').next().unwrap_or("");
+            if !origin.is_some_and(|o| self.extra.iter().any(|e| e == o)) || crate::logs::py_strip(ctype) != "application/json" {
+                return self.refuse(s, req, 403);
+            }
+            let body = req.body.strip_prefix(b"\xef\xbb\xbf").unwrap_or(&req.body);
+            let Some(changes) = std::str::from_utf8(body).ok().and_then(|t| Json::parse(t).ok()) else { return self.refuse(s, req, 400) };
+            let mut changes = match changes { Json::Obj(m) => cfg::dict(&m), _ => Vec::new() };
+            let reset = match changes.iter().position(|(k, _)| k == "reset") {   // RESET ALL: the defaults
+                Some(i) => changes.remove(i).1 == Json::Bool(true),
+                None => false,
+            };
+            let _one_at_a_time = self.saving.lock().unwrap();
+            let now = self.on_disk();
+            let base = if reset { self.schema.reset(&now) } else { now };
+            let (new, r) = self.schema.apply_changes(&base, &Json::Obj(changes));
+            refused = r;
+            if cfg::private_write(&self.settings_file, &self.schema.file_text(&new)).is_err() { return respond(s, 500, &[], b""); }
+        }
+        // no restart after RESET ALL: this feed has no windows of its own to start afresh (the built-in host is piece 3)
+        self.json(s, origin, &self.schema.window(&self.on_disk(), &refused, false));
+    }
+
+    /// The page and its files, from the static folder, to the right Host only. /config.js holds no key.
+    fn static_file(&self, s: &mut TcpStream, req: &Req) {
+        if !self.host_ok(req) { return self.refuse(s, req, 403); }
+        let name = req.path.trim_start_matches('/');
+        let name = if name.is_empty() { "index.html" } else { name };
+        let (data, ctype) = if name == "config.js" {
+            (CONFIG_JS.as_bytes().to_vec(), "text/javascript")
+        } else {
+            // resolved first: whatever the path says (.., \, C:, links), the file must be inside the folder
+            let dir = self.static_dir.as_ref().and_then(|d| d.canonicalize().ok());
+            let f = dir.as_ref().and_then(|d| d.join(name).canonicalize().ok()).filter(|f| dir.as_ref().is_some_and(|d| f.starts_with(d) && f != d));
+            let Some(data) = f.as_ref().filter(|f| f.is_file()).and_then(|f| std::fs::read(f).ok()) else { return self.refuse(s, req, 404) };
+            (data, content_type(f.as_deref().unwrap()))
+        };
+        respond(s, 200, &[("Content-Type", ctype.into()), ("Cache-Control", "no-store".into())], &data);
     }
 
     /// Adds an event unless paused (the pause drops what comes in while it lasts).
@@ -279,7 +360,7 @@ impl Feed {
     pub fn add(&self, ev: &[(String, Json)]) {
         let (paused, masks) = {
             let mut l = self.live.lock().unwrap();
-            (l.flag("paused", false), (l.flag("mask_user", true), l.flag("mask_email", true)))
+            (l.flag("paused"), (l.flag("mask_user"), l.flag("mask_email")))
         };
         if paused { return; }
         let mut st = self.store.lock().unwrap();
@@ -313,19 +394,6 @@ fn event_json(e: crate::logs::Event) -> Ev {
     vec![("ts".into(), Json::Str(e.ts)), ("proj".into(), Json::Str(e.proj)), ("session".into(), Json::Str(e.session)),
          ("side".into(), Json::Bool(e.side)), ("kind".into(), Json::Str(e.kind)), ("ref".into(), Json::Str(e.r#ref)),
          ("text".into(), Json::Str(e.text))]
-}
-
-/// The agents whose logs live mode reads, as settings.py's AGENTS: on only when the setting is exactly true
-/// (Claude Code by default, the others off until turned on). An agent that is off has its folder left alone.
-pub const AGENTS: [(&str, bool); 3] = [("agent_claude", true), ("agent_gemini", false), ("agent_codex", false)];
-
-impl Live {
-    pub fn agents_on(&mut self) -> Vec<&'static str> {
-        let s = self.get();
-        // missing: the default; present: on only if exactly true (null, "yes" and 1 are off, as in server.py)
-        let set = |k: &str| s.entries().iter().rev().find(|(n, _)| n == k).map(|(_, v)| *v == Json::Bool(true));
-        AGENTS.iter().filter(|(k, d)| set(k).unwrap_or(*d)).map(|(k, _)| *k).collect()
-    }
 }
 
 /// Follow one agent's logs until stop is set.
@@ -369,11 +437,17 @@ fn load_key(dir: &Path) -> Option<String> {
 /// `glitchwall-render feed`: runs until killed. Errors (no key yet, port taken) go back to main's log.
 pub fn run(args: &[String]) -> Result<(), String> {
     let dir = state_dir();
-    let mut live = Live::new(dir.join("settings.json"));
+    let wp = arg(args, "--wallpaper").map(PathBuf::from).unwrap_or_else(|| {
+        std::env::current_exe().ok().and_then(|e| e.parent().map(|d| d.join("wallpaper"))).unwrap_or_default()
+    });
+    let schema = Arc::new(Schema::from_file(&wp.join("looks.js"))?);
+    let file = dir.join("settings.json");
+    let mut live = Live::new(schema, file.clone());
     let port = arg(args, "--port").and_then(|p| p.parse().ok())
-        .or_else(|| live.get().get("port").num().map(|p| p as u16)).unwrap_or(47833);
+        .or_else(|| live.get().get("port").num().map(|p| p as u16)).unwrap_or(cfg::DEFAULT_PORT);
     let key = load_key(&dir).ok_or("no feed key yet: run glitchwall once to make one")?;
-    let feed = Arc::new(Feed::new(key, port, live, Store::new(Redactor::for_machine()), Some(dir.join("last-refused.txt"))));
+    let feed = Arc::new(Feed::new(key, port, live, Store::new(Redactor::for_machine()), Some(dir.join("last-refused.txt")),
+                                  file, Some(wp)));
     let listener = TcpListener::bind(("127.0.0.1", port)).map_err(|e| format!("port {port}: {e}"))?;
     match arg(args, "--seed") {
         Some(f) => { let fd = feed.clone(); std::thread::spawn(move || follow_seed(fd, PathBuf::from(f))); }
@@ -439,7 +513,8 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("gw-agents-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let f = dir.join("settings.json");
-        let on = |text: &str| { std::fs::write(&f, text).unwrap(); let mut l = Live::new(f.clone()); l.agents_on() };
+        let schema = cfg::test_schema();
+        let on = |text: &str| { std::fs::write(&f, text).unwrap(); let mut l = Live::new(schema.clone(), f.clone()); l.agents_on() };
         assert_eq!(on("{}"), ["agent_claude"]);
         assert_eq!(on(r#"{"agent_gemini": true, "agent_claude": false}"#), ["agent_gemini"]);
         assert_eq!(on(r#"{"agent_codex": "yes", "agent_gemini": 1, "agent_claude": null}"#), Vec::<&str>::new());
@@ -448,8 +523,10 @@ mod tests {
 
     #[test]
     fn query_decoding() {
-        let r = Req { method: "GET".into(), path: "/feed".into(), query: "key=a%2Bb+c&since=5&x".into(), headers: vec![] };
+        let r = Req { method: "GET".into(), path: "/feed".into(), query: "key=a%2Bb+c&since=5&x&k2=1;y=2".into(), headers: vec![], body: vec![] };
         assert_eq!(r.q("key").as_deref(), Some("a+b c"));
+        assert_eq!(r.q("k2").as_deref(), Some("1;y=2"));   // ; is not a separator (parse_qs since 3.9.2)
+        assert_eq!(r.q("y"), None);
         assert_eq!(r.q("since").as_deref(), Some("5"));
         assert_eq!(r.q("nope"), None);
         assert_eq!(unquote("100%"), "100%");
