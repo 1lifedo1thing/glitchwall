@@ -14,6 +14,8 @@ Every command it runs types itself out on your wallpaper, then leaves the way yo
 
 <sub>A made-up session. The Stripe key and the bearer token were masked before they ever reached the screen.</sub>
 
+**[▶ See it running in your browser](https://marklesterb28.github.io/glitchwall/)**: the real wallpaper page, every theme, nothing to install.
+
 **[Install](#install) · [Themes](#themes) · [Settings](#settings) · [Privacy](#privacy) · [Commands](#commands) · [FAQ](#faq)**
 
 </div>
