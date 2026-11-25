@@ -166,5 +166,15 @@ fixtures. The feed comes in parts, each built, tested and committed on its own:
   body never resets it. Also fixed in 2a's code: `;` no longer splits the query (parse_qs since 3.9.2), and `//x`
   is read as `/x` (http.server). Not here: the restart after RESET ALL and the per-screen sleep flag (piece 3).
 - **2c. Modes.** ambient (made-up sessions) and art, follow_mode switching, the demo script. Parity: test_modes.py.
+  Done: ambient.rs (ambient.py's eleven episodes and demo.py's script, the generators with pace and a prompt stop,
+  random numbers seeded from BCryptGenRandom, the demo key from it too), server.rs's Sources (follow_mode: the
+  mode's own source on a change, one reader per agent turned on, each stopped on its own) and `glitchwall-render
+  demo [--port N] [--pace X] [--mode M] [--theme/--palette/--rain/--font/--transition NAME] [--wallpaper DIR]`
+  (run_demo: random key in /config.js, settings window off, look from the settings plus the options, the rest from
+  the defaults, no home or user name to mask). With --seed the seed file stands in for the agents' logs but the
+  modes still follow the settings. Parity: test_feed_parity.py switches the running feed to ambient and checks what
+  it makes; test_demo_parity.py runs the demo in live, ambient and art on both; TestFollowMode and TestAmbient's
+  cases are Rust unit tests. The made-up text is random on both sides, so parity is in shape (kinds, projects,
+  ids, timestamps, the script's own lines), not in the words drawn.
 - **2d. Switch over.** `glitchwall start` runs the Rust feed when the exe is there; the Python one stays the fallback
   until pieces 3-4 replace the rest. The tray and hot corner stay in Python until piece 3 moves the desktop host.
