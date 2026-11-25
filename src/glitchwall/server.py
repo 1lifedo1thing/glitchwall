@@ -289,6 +289,88 @@ def restart_self(httpd, manual: bool = False) -> None:
     os._exit(0)
 
 
+FEED_PROTOCOL = b"glitchwall-feed-protocol:1"   # renderer/src/server.rs: what an exe with the Rust feed holds
+
+
+def rust_feed_exe(s: dict) -> Path | None:
+    """glitchwall-render.exe when it can run the feed (piece 2d of docs/native-plan.md): Windows, the native renderer
+    drawing the windows (the WebView2 host's restart-on-reset still needs this process's own feed), and an exe new
+    enough to know `feed`. An older one would open wallpaper windows instead, so the file is searched for the
+    protocol text, never run to find out. GLITCHWALL_PYTHON_FEED=1 keeps the feed in Python."""
+    if os.name != "nt" or os.environ.get("GLITCHWALL_PYTHON_FEED") or s.get("renderer") != "native":
+        return None
+    from . import winhost
+    exe = winhost.render_exe()
+    try:
+        return exe if exe and FEED_PROTOCOL in exe.read_bytes() else None
+    except OSError:
+        return None
+
+
+class RustFeed:
+    """The feed run by glitchwall-render (server.rs) as a child of this process, which keeps the windows, the tray
+    and the hot corner. It ends with this process (it checks every 2 s), is started again if it stops, and gives up
+    after 3 starts in a minute, when the feed comes back here (`on_give_up`). Which screens nobody can see goes to it
+    through a small file (`asleep`), as this process is the one that knows."""
+
+    def __init__(self, exe: Path, port: int, asleep: Path, host=None, wallpaper: Path | None = None):
+        self.exe, self.port, self.asleep, self.host, self.wallpaper = exe, port, asleep, host, wallpaper
+        self.proc = None
+        self.starts: list[float] = []
+
+    def launch(self) -> bool:
+        """Start it and wait (up to 5 s) for it to answer on the port. False if it didn't."""
+        import subprocess
+        from .platforms import port_open
+        now = time.monotonic()
+        self.starts = [t for t in self.starts if now - t < 60] + [now]
+        args = [str(self.exe), "feed", "--port", str(self.port), "--parent", str(os.getpid()), "--asleep", str(self.asleep)]
+        if self.wallpaper:
+            args += ["--wallpaper", str(self.wallpaper)]
+        try:
+            self.proc = subprocess.Popen(args, close_fds=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        except OSError:
+            return False
+        for _ in range(50):
+            if self.proc.poll() is not None:
+                return False
+            if port_open(self.port):
+                return True
+            time.sleep(0.1)
+        self.end()
+        return False
+
+    def start(self) -> bool:
+        """Up, or False after 3 tries in a minute."""
+        while len(self.starts) < 3 or time.monotonic() - self.starts[-3] >= 60:
+            if self.launch():
+                return True
+        return False
+
+    def write_asleep(self, screens: list[int]) -> None:
+        try:
+            cfg._private_write(self.asleep, json.dumps(screens))
+        except OSError:
+            pass
+
+    def watch(self, stop: threading.Event, on_give_up: Callable[[], None]) -> None:
+        last = None
+        while not stop.is_set():
+            now = sorted(getattr(self.host, "asleep", ()) or ())
+            if now != last:
+                self.write_asleep(now)
+                last = now
+            if self.proc is not None and self.proc.poll() is not None and not self.start():
+                self.end()
+                on_give_up()
+                return
+            stop.wait(0.5)
+
+    def end(self) -> None:
+        if self.proc and self.proc.poll() is None:
+            self.proc.terminate()
+
+
 def run_feed(port: int | None = None) -> None:
     """Run the feed in the foreground (what `start` launches in the background).
     The source follows the `mode` setting and switches when it changes, no restart needed:
@@ -298,7 +380,6 @@ def run_feed(port: int | None = None) -> None:
     port = port or int(s["port"])
     store = EventStore(Redactor(mask_user=s.get("mask_user", True), mask_email=s.get("mask_email", True)),
                        hidden=lambda: bool(live.get().get("paused")))
-    threading.Thread(target=follow_mode, args=(store, live), daemon=True).start()
     key = cfg.load_key()
     host = None
     if os.name == "nt":
@@ -324,7 +405,23 @@ def run_feed(port: int | None = None) -> None:
                            sleeping=(lambda scr: scr.isdigit() and int(scr) in host.asleep) if host else None,
                            editable=True, on_change=on_change,
                            on_reset=(lambda: restart_self(httpd, manual=True)) if host else None)
-    httpd = serve(handler, port)
+    httpd = None
+
+    def python_feed() -> None:   # the feed from this process: the default, and the fallback when the Rust one can't run
+        nonlocal httpd
+        httpd = serve(handler, port)
+        threading.Thread(target=follow_mode, args=(store, live), daemon=True).start()
+        if host:
+            threading.Thread(target=httpd.serve_forever, daemon=True).start()
+
+    exe = rust_feed_exe(s) if host and isinstance(host, winhost.NativeHost) else None
+    rust = RustFeed(exe, port, cfg.state_dir() / "asleep.json", host, wallpaper_source()) if exe else None
+    if rust and rust.start():
+        import atexit
+        atexit.register(rust.end)
+        threading.Thread(target=rust.watch, args=(threading.Event(), python_feed), daemon=True).start()
+    else:
+        python_feed()
     if os.name == "nt":   # the hot corner: rest the mouse there and the settings open
         from . import winhost as wh
         from .platforms import live_command
@@ -340,7 +437,6 @@ def run_feed(port: int | None = None) -> None:
     if not host:
         httpd.serve_forever()
         return
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
     host.run(threading.Event())   # the windows need this (the main) thread; runs until the process ends
 
 

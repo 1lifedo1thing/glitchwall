@@ -127,6 +127,8 @@ pub struct Feed {
     pub config_js: String,
     /// the demo's own look, mode and label, whatever the settings say
     pub fixed: Option<Fixed>,
+    /// which screens nobody can see (--asleep)
+    pub asleep: Option<Mutex<Asleep>>,
 }
 
 /// What `glitchwall demo` shows: set when it starts (demo.py's run_demo passes look, mode and label to the handler).
@@ -221,7 +223,7 @@ impl Feed {
         let extra = vec![format!("http://127.0.0.1:{port}"), format!("http://localhost:{port}")];
         let schema = live.schema.clone();
         Feed { store: Mutex::new(store), live: Mutex::new(live), key, port, extra, refusals, schema, settings_file, static_dir,
-               saving: Mutex::new(()), editable: true, config_js: CONFIG_JS.into(), fixed: None }
+               saving: Mutex::new(()), editable: true, config_js: CONFIG_JS.into(), fixed: None, asleep: None }
     }
 
     fn host_ok(&self, req: &Req) -> bool {
@@ -311,7 +313,8 @@ impl Feed {
             ("opts".into(), sc.opts(&st)),
             ("corner".into(), Json::Str(cfg::corner(&st))),   // where the hot-corner icon sits
             ("masked".into(), Json::Str(cfg::masked(&st))),   // how masked secrets show
-            ("sleep".into(), Json::Bool(false)),   // the built-in host's "nobody can see this screen": piece 3
+            // the built-in host's "nobody can see this screen" (it writes the file; the demo has none)
+            ("sleep".into(), Json::Bool(self.asleep.as_ref().is_some_and(|a| a.lock().unwrap().has(&req.q("screen").unwrap_or_default())))),
         ]);
         self.json(s, origin, &body);
     }
@@ -481,8 +484,35 @@ fn load_key(dir: &Path) -> Option<String> {
     std::fs::read_to_string(dir.join("key")).ok().map(|k| k.trim().to_string()).filter(|k| k.len() >= 32)
 }
 
-/// `glitchwall-render feed`: runs until killed. Errors (no key yet, port taken) go back to main's log.
+/// What glitchwall (Python) looks for in this exe before it hands it the feed: an older exe has no `feed` and would
+/// open wallpaper windows instead, so the file is searched for this text, never run to find out. Raise the number
+/// when the feed's command line changes in a way glitchwall must know about.
+pub const FEED_PROTOCOL: &str = "glitchwall-feed-protocol:1";
+
+/// The screens nobody can see right now (covered by a window, the session locked), as glitchwall's desktop host
+/// writes them: a JSON list of screen numbers, read again when the file changes. The page and the native renderer
+/// ask with ?screen=N and stop animating while theirs is in it.
+pub struct Asleep { file: PathBuf, mtime: Option<SystemTime>, screens: Vec<i64> }
+
+impl Asleep {
+    pub fn new(file: PathBuf) -> Asleep { Asleep { file, mtime: None, screens: Vec::new() } }
+
+    pub fn has(&mut self, screen: &str) -> bool {
+        let m = std::fs::metadata(&self.file).and_then(|m| m.modified()).ok();
+        if m != self.mtime {
+            self.mtime = m;
+            self.screens = std::fs::read_to_string(&self.file).ok().and_then(|t| Json::parse(&t).ok())
+                .map(|j| j.items().iter().filter_map(|v| v.num()).map(|n| n as i64).collect()).unwrap_or_default();
+        }
+        !screen.is_empty() && screen.bytes().all(|b| b.is_ascii_digit()) && screen.parse::<i64>().is_ok_and(|n| self.screens.contains(&n))
+    }
+}
+
+/// `glitchwall-render feed [--port N] [--wallpaper DIR] [--parent PID] [--asleep FILE] [--seed FILE]`: runs until
+/// killed, or until the program with PID ends (glitchwall's desktop host, which starts it). Errors (no key yet, port
+/// taken) go back to main's log.
 pub fn run(args: &[String]) -> Result<(), String> {
+    if args.iter().any(|a| a == "--protocol") { println!("{FEED_PROTOCOL}"); return Ok(()); }
     let dir = state_dir();
     let wp = wallpaper_dir(args);
     let schema = Arc::new(Schema::from_file(&wp.join("looks.js"))?);
@@ -491,9 +521,16 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let port = arg(args, "--port").and_then(|p| p.parse().ok())
         .or_else(|| live.get().get("port").num().map(|p| p as u16)).unwrap_or(cfg::DEFAULT_PORT);
     let key = load_key(&dir).ok_or("no feed key yet: run glitchwall once to make one")?;
-    let feed = Arc::new(Feed::new(key, port, live, Store::new(Redactor::for_machine()), Some(dir.join("last-refused.txt")),
-                                  file, Some(wp)));
+    let mut feed = Feed::new(key, port, live, Store::new(Redactor::for_machine()), Some(dir.join("last-refused.txt")), file, Some(wp));
+    feed.asleep = arg(args, "--asleep").map(|f| Mutex::new(Asleep::new(PathBuf::from(f))));
+    let feed = Arc::new(feed);
     let listener = TcpListener::bind(("127.0.0.1", port)).map_err(|e| format!("port {port}: {e}"))?;
+    if let Some(pid) = arg(args, "--parent").and_then(|p| p.parse::<u32>().ok()) {
+        std::thread::spawn(move || loop {   // glitchwall is gone (stopped, ended in Task Manager): so is its feed
+            std::thread::sleep(Duration::from_secs(2));
+            if !crate::desk::alive(pid) { std::process::exit(0); }
+        });
+    }
     let seed = arg(args, "--seed");
     if let Some(f) = seed.clone() { let fd = feed.clone(); std::thread::spawn(move || follow_seed(fd, PathBuf::from(f))); }
     follow_mode(feed.clone(), seed.is_some());
@@ -660,6 +697,22 @@ mod tests {
         assert_eq!(readers, ["agent_claude", "agent_gemini", "agent_claude"]);
         src.stop_all();
         assert!(flags.iter().all(|f| f.load(Ordering::Relaxed)));
+    }
+
+    #[test]
+    fn asleep_screens_from_the_hosts_file() {
+        let f = std::env::temp_dir().join(format!("gw-asleep-{}.json", std::process::id()));
+        let mut a = Asleep::new(f.clone());
+        assert!(!a.has("1"));   // no file: every screen awake
+        std::fs::write(&f, "[1, 3]").unwrap();
+        assert!(a.has("1") && a.has("3") && !a.has("2") && !a.has("") && !a.has("x") && !a.has("-1") && !a.has(" 1"));
+        std::fs::write(&f, "{oops").unwrap();
+        let t = std::fs::File::options().write(true).open(&f).unwrap();
+        t.set_modified(SystemTime::UNIX_EPOCH + Duration::from_secs(5)).unwrap();
+        drop(t);
+        assert!(!a.has("1"));   // unreadable: awake (the safe side is drawing, not a blank screen)
+        let _ = std::fs::remove_file(&f);
+        assert!(FEED_PROTOCOL.starts_with("glitchwall-feed-protocol:"));
     }
 
     #[test]
