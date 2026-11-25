@@ -159,7 +159,17 @@ Pieces, in order; each one is built, tested against the Python version and commi
      the 11-entry menu. (A settings window left open across feed restarts and outside minimize/restore went
      black; a fresh one was fine.)
 4. **The CLI and install** (cli, platforms, prereqs, winexe): `glitchwall` subcommands, autostart, the desktop
-   menu entry. Medium.
+   menu entry. Medium. Split (2026-11-25):
+   - **4a (done 2026-11-25). Nothing in Python left running.** `glitchwall-render run` (supervise.rs, FEED_PROTOCOL
+     5): notes its pid in feed.pid (so stop, status and the tray's Quit work unchanged), keeps `host` as its child,
+     starts it again when it closes, and after 3 starts in a minute starts `glitchwall run` with
+     GLITCHWALL_PYTHON_FEED=1 and steps aside. cli.cmd_run hands over when started in the background (start,
+     autostart) and the exe knows `run`; at a terminal it stays Python. Live: run 9 MB + host 130 MB, the 33 MB
+     Python feed gone; stop ends both. Autostart still goes through pythonw for a moment (4c can point it at the
+     exe).
+   - 4b: config, themes, reset, export in Rust.
+   - 4c: install and uninstall (autostart, the Start menu shortcut, the desktop menu entry).
+   - 4d: doctor and demo.
 5. **The settings window** (settingswin): the same settings.html in WebView2, opened from Rust with the `wry`
    crate instead of pywebview. Small to medium.
 
