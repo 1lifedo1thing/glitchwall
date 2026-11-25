@@ -67,7 +67,11 @@ class TestInstallParity(unittest.TestCase):
         extra = ["--no-start", "--glitchwall", json.dumps(plat.live_command())] if args[0] == "install" else []
         p = subprocess.run([EXE, *args, *extra, "--wallpaper", str(WALLPAPER)], capture_output=True, timeout=60,
                            env={**os.environ, **self.sides["rs"]})
-        return p.returncode, p.stdout.decode("utf-8").replace(self.sides["rs"]["GLITCHWALL_HOME"], "<HOME>")
+        out = p.stdout.decode("utf-8").replace(self.sides["rs"]["GLITCHWALL_HOME"], "<HOME>")
+        if args[0] == "install":   # the prerequisite check (piece 4d; test_doctor_parity), a stand-in on the Python side
+            self.assertIn("checking what glitchwall needs:\n", out)
+            out = "".join(l for l in out.splitlines(True) if not (l.startswith("  ") or l.startswith("checking what")))
+        return p.returncode, out
 
     def test_install_then_uninstall(self):
         (pc, po), (rc, ro) = self.python(ARGS), self.rust(ARGS)

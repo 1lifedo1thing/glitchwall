@@ -656,6 +656,11 @@ pub fn run_demo(args: &[String]) -> Result<(), String> {
     let wp = wallpaper_dir(args);
     let schema = Arc::new(Schema::from_file(&wp.join("looks.js"))?);
     let port = arg(args, "--port").and_then(|p| p.parse().ok()).unwrap_or(DEMO_PORT);
+    if crate::cli::port_open(port) { println!("port {port} is in use; try --port N"); std::process::exit(1); }
+    if args.iter().any(|a| a == "--open") {   // cli.cmd_demo: the browser once the feed is listening
+        let url = format!("http://127.0.0.1:{port}/");
+        std::thread::spawn(move || { std::thread::sleep(std::time::Duration::from_millis(800)); crate::doctor::open_url(&url); });
+    }
     let pace = arg(args, "--pace").and_then(|p| p.parse::<f64>().ok()).filter(|p| p.is_finite() && *p >= 0.0).unwrap_or(1.0);
     let mode = arg(args, "--mode").filter(|m| cfg::MODES.iter().any(|(k, _)| k == m)).unwrap_or_else(|| "live".into());
     let file = state_dir().join("settings.json");

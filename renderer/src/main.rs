@@ -10,7 +10,8 @@
 //! `glitchwall-render run [host's options]` keeps `host` running with no Python, and hands over to the Python feed
 //! after 3 starts in a minute (supervise.rs, piece 4a).
 //! `glitchwall-render install|uninstall` (install.rs, piece 4c) adds or removes autostart (pointing at `run`), the
-//! Start menu shortcut and the desktop right-click entry.
+//! Start menu shortcut and the desktop right-click entry. `glitchwall-render doctor [--yes]` checks what glitchwall
+//! needs (doctor.rs, piece 4d); `demo` takes --open to show the page in the browser.
 #![windows_subsystem = "windows"]
 
 mod ambient;
@@ -20,6 +21,7 @@ mod bg;
 mod codex;
 mod corner;
 mod desk;
+mod doctor;
 mod feed;
 mod fonts;
 mod gemini;
@@ -61,8 +63,9 @@ fn run() -> Result<()> {
     if args.get(1).map(String::as_str) == Some("feed") {
         return server::run(&args).map_err(|e| Error::new(HRESULT(-1), e.as_str()));
     }
-    if let Some(cmd @ ("config" | "themes" | "reset" | "export" | "install" | "uninstall")) = args.get(1).map(String::as_str) {   // piece 4b
+    if let Some(cmd @ ("config" | "themes" | "reset" | "export" | "install" | "uninstall" | "doctor")) = args.get(1).map(String::as_str) {   // piece 4b
         cli::attach_console();
+        let yes = args.iter().any(|a| a == "--yes" || a == "-y");
         let wp = server::wallpaper_dir(&args);
         let schema = settings::Schema::from_file(&wp.join("looks.js")).map_err(|e| Error::new(HRESULT(-1), e.as_str()))?;
         let code = match cmd {
@@ -71,6 +74,7 @@ fn run() -> Result<()> {
             "reset" => cli::reset(&schema),
             "install" => install::install(&schema, &wp, &args),   // piece 4c
             "uninstall" => install::uninstall(),
+            "doctor" => doctor::doctor(&settings::mode(&cli::load(&schema)), yes),   // piece 4d
             _ => cli::export(&schema, &wp, &args),
         };
         std::process::exit(code);
@@ -79,6 +83,7 @@ fn run() -> Result<()> {
         return supervise::run(&args).map_err(|e| Error::new(HRESULT(-1), e.as_str()));
     }
     if args.get(1).map(String::as_str) == Some("demo") {
+        cli::attach_console();
         return server::run_demo(&args).map_err(|e| Error::new(HRESULT(-1), e.as_str()));
     }
     if args.get(1).map(String::as_str) == Some("host") {

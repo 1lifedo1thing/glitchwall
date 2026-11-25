@@ -185,7 +185,15 @@ Pieces, in order; each one is built, tested against the Python version and commi
      the exe isn't inside a Python glitchwall (Python copies only when frozen). No prerequisite check yet (4d adds
      doctor). `--no-start` (tests, packagers) stops after the files are in place. The Python `glitchwall install`
      is unchanged and still what Lester runs.
-   - 4d: doctor and demo.
+   - **4d (done 2026-11-25).** `glitchwall-render doctor [--yes]` (doctor.rs): prereqs.py's Windows build, .NET
+     Framework, WebView2 version and Claude logs checks with the same lines; `install` runs the same check first
+     (4c's missing piece) and stops when something required is missing. `demo` now prints to the terminal it was
+     typed in, refuses a port in use as cli.cmd_demo does, and `--open` opens the page in the browser after 0.8 s
+     (its port, pace, mode and look options were already wired in 2c). tests/test_doctor_parity.py compares both
+     sides on this machine (read-only). Deliberate differences: no Python or pywebview lines (the exe needs
+     neither); the Windows build is read from the registry (CurrentBuildNumber) rather than GetVersionEx; a windowed
+     exe can't ask at the keyboard, so without --yes the download-page offers always say "skipped", as Python's do
+     when no one is at the keyboard.
 5. **The settings window** (settingswin): the same settings.html in WebView2, opened from Rust with the `wry`
    crate instead of pywebview. Small to medium.
 

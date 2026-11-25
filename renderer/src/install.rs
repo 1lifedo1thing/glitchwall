@@ -146,7 +146,7 @@ fn shown_windows() -> usize {
 }
 
 // ---------------------------------------------------------------- the commands
-/// `install [--port N] [--commands-only] [--mode M] [--screens all|primary] [--no-autostart] [--no-start]
+/// `install [--port N] [--commands-only] [--mode M] [--screens all|primary] [--no-autostart] [--yes] [--no-start]
 /// [--glitchwall JSON] [--wallpaper DIR]`
 pub fn install(schema: &Schema, wallpaper: &Path, args: &[String]) -> i32 {
     let Ok(me) = std::env::current_exe() else { return 1 };
@@ -169,6 +169,10 @@ pub fn install(schema: &Schema, wallpaper: &Path, args: &[String]) -> i32 {
     let mode = cfg::mode(&s);
     println!("mode: {mode} ({})", cfg::MODES.iter().find(|(k, _)| *k == mode).map_or("", |m| m.1));
     println!("state dir: {}", state_dir().display());
+    if !crate::doctor::preflight(&mode, args.iter().any(|a| a == "--yes" || a == "-y")) {   // piece 4d
+        println!("install stopped: fix what's missing above, then run install again (glitchwall doctor re-checks)");
+        return 1;
+    }
 
     // where it runs from: in place when it ships inside the Python glitchwall (upgrades replace it there), else a
     // copy in the state folder, so autostart doesn't depend on the Downloads folder (platforms.install_binaries)
