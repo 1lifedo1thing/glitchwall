@@ -4,6 +4,8 @@
 //! --wallpaper is the folder with looks.js, index.html and the fonts (default: the one next to this exe).
 //! `glitchwall-render feed [--port N] [--wallpaper DIR]` runs the feed instead (server.rs and settings.rs; pieces 2a-2b,
 //! not used by glitchwall yet); `glitchwall-render demo` runs demo.py's made-up feed (piece 2c).
+//! `glitchwall-render host [--wallpaper DIR] [--parent PID] [--which ..]` runs both in one process (piece 3b): the
+//! feed on threads, the windows rebuilt in place when the screens change instead of the process ending.
 #![windows_subsystem = "windows"]
 
 mod ambient;
@@ -52,18 +54,31 @@ fn run() -> Result<()> {
     if args.get(1).map(String::as_str) == Some("demo") {
         return server::run_demo(&args).map_err(|e| Error::new(HRESULT(-1), e.as_str()));
     }
-    let peek = args.iter().any(|a| a == "--peek");
+    if args.get(1).map(String::as_str) == Some("host") {
+        let (port, key) = server::start_in_background(&args).map_err(|e| Error::new(HRESULT(-1), e.as_str()))?;
+        loop {   // screens changed: new windows for the new layout, the feed carries on
+            if draw(&args, Some(port), &key, args.iter().any(|a| a == "--peek"))? == Ended::Quit { return Ok(()); }
+        }
+    }
+    let port: Option<u16> = arg(&args, "--port").and_then(|p| p.parse().ok());
+    let key = std::env::var("GLITCHWALL_KEY").unwrap_or_default();
+    draw(&args, port, &key, args.iter().any(|a| a == "--peek")).map(|_| ())
+}
+
+#[derive(PartialEq)]
+enum Ended { Quit, ScreensChanged }
+
+/// The wallpaper windows, one per screen, until they close, glitchwall's process ends, or the screens change.
+fn draw(args: &[String], port: Option<u16>, key: &str, peek: bool) -> Result<Ended> {
     // --peek-size: the peek window's size, for screenshots at a set resolution (default 960x560)
-    let peek_size: (u32, u32) = arg(&args, "--peek-size").and_then(|s| {
+    let peek_size: (u32, u32) = arg(args, "--peek-size").and_then(|s| {
         let (w, h) = s.split_once('x')?;
         Some((w.parse().ok()?, h.parse().ok()?))
     }).filter(|&(w, h)| (320..=3840).contains(&w) && (200..=2160).contains(&h)).unwrap_or((960, 560));
-    let port: Option<u16> = arg(&args, "--port").and_then(|p| p.parse().ok());
-    let which = arg(&args, "--which").unwrap_or_else(|| "all".into());
-    let key = std::env::var("GLITCHWALL_KEY").unwrap_or_default();
-    let parent: Option<u32> = arg(&args, "--parent").and_then(|p| p.parse().ok());
-    let force_scale: Option<f32> = arg(&args, "--scale").and_then(|s| s.parse().ok()).filter(|s: &f32| (0.5..=4.0).contains(s));
-    let wp = arg(&args, "--wallpaper").map(PathBuf::from).unwrap_or_else(|| {
+    let which = arg(args, "--which").unwrap_or_else(|| "all".into());
+    let parent: Option<u32> = arg(args, "--parent").and_then(|p| p.parse().ok());
+    let force_scale: Option<f32> = arg(args, "--scale").and_then(|s| s.parse().ok()).filter(|s: &f32| (0.5..=4.0).contains(s));
+    let wp = arg(args, "--wallpaper").map(PathBuf::from).unwrap_or_else(|| {
         std::env::current_exe().ok().and_then(|e| e.parent().map(|d| d.join("wallpaper"))).unwrap_or_default()
     });
     let looks = looks::Looks::load(&wp.join("looks.js")).map_err(|e| Error::new(HRESULT(-1), e))?;
@@ -82,7 +97,7 @@ fn run() -> Result<()> {
         let g = gfx::Gfx::new(hwnd, w, h, scale)?;
         let mut scene = scene::Scene::new(g, fonts.clone(), css.clone(), &looks)?;
         scene.ignore_sleep = peek;   // the peek window is the thing being looked at, whatever covers the desktop
-        let feed = port.map(|p| feed::start(p, key.clone(), n, peek));
+        let feed = port.map(|p| feed::start(p, key.to_string(), n, peek));
         screens.push(Screen { n, rect: r, scale, hwnd, scene, feed });
     }
 
@@ -91,7 +106,7 @@ fn run() -> Result<()> {
     let mut looked = 0.0;
     let ours: Vec<u32> = screens.iter().map(|s| s.n).collect();
     loop {
-        if !desk::pump() { return Ok(()); }
+        if !desk::pump() { return Ok(Ended::Quit); }
         let now = clock.elapsed().as_secs_f64();
         if now - looked > 0.5 && !peek {   // twice a second: which of our screens nobody can see (covered, locked)
             looked = now;
@@ -110,9 +125,12 @@ fn run() -> Result<()> {
             checked = now;
             let mut m = desk::monitors();
             if which == "primary" { m.truncate(1); }
-            if m != layout { return Ok(()); }   // screens changed: glitchwall starts a fresh renderer for the new layout
-            if force_scale.is_none() && screens.iter().any(|s| (desk::scale(s.rect) - s.scale).abs() > 0.01) { return Ok(()); }   // scaling too
-            if parent.is_some_and(|p| !desk::alive(p)) { return Ok(()); }   // glitchwall's feed is gone: so are we
+            if parent.is_some_and(|p| !desk::alive(p)) { return Ok(Ended::Quit); }   // glitchwall is gone: so are we
+            // screens changed, or their scaling: windows for the new layout (the drawing goes first, then its window)
+            if m != layout || (force_scale.is_none() && screens.iter().any(|s| (desk::scale(s.rect) - s.scale).abs() > 0.01)) {
+                for s in screens { let h = s.hwnd; drop(s); desk::close(h); }
+                return Ok(Ended::ScreensChanged);
+            }
             for s in &screens { desk::keep_behind_icons(s.hwnd, s.rect); }
         }
         let mut next = now + 0.25;

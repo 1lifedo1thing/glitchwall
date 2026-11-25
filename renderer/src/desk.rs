@@ -165,9 +165,22 @@ pub fn keep_behind_icons(hwnd: HWND, r: Rect) {
 
 extern "system" fn wndproc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT {
     unsafe {
-        if m == WM_DESTROY { PostQuitMessage(0); return LRESULT(0); }
+        if m == WM_DESTROY {
+            if !REBUILDING.load(std::sync::atomic::Ordering::Relaxed) { PostQuitMessage(0); }
+            return LRESULT(0);
+        }
         DefWindowProcW(h, m, w, l)
     }
+}
+
+static REBUILDING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Close a screen's window because the screens changed (host): unlike a window closed any other way, it does not end
+/// the renderer.
+pub fn close(hwnd: HWND) {
+    REBUILDING.store(true, std::sync::atomic::Ordering::Relaxed);
+    unsafe { let _ = DestroyWindow(hwnd); }
+    REBUILDING.store(false, std::sync::atomic::Ordering::Relaxed);
 }
 
 /// a window for one screen: behind the icons, or (peek) a small topmost window to look at while developing

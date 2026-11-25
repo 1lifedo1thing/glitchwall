@@ -513,6 +513,22 @@ impl Asleep {
 /// taken) go back to main's log.
 pub fn run(args: &[String]) -> Result<(), String> {
     if args.iter().any(|a| a == "--protocol") { println!("{FEED_PROTOCOL}"); return Ok(()); }
+    let (listener, feed) = open(args)?;
+    serve(&listener, feed);
+    Ok(())
+}
+
+/// `glitchwall-render host` (piece 3b): the feed on threads inside the renderer's process. Answers the port and the
+/// key the renderer's own windows ask it with; the feed keeps serving until the process ends.
+pub fn start_in_background(args: &[String]) -> Result<(u16, String), String> {
+    let (listener, feed) = open(args)?;
+    let (port, key) = (feed.port, feed.key.clone());
+    std::thread::spawn(move || serve(&listener, feed));
+    Ok((port, key))
+}
+
+/// The feed set up and its port taken, as `feed` and `host` both start it.
+fn open(args: &[String]) -> Result<(TcpListener, Arc<Feed>), String> {
     let dir = state_dir();
     let wp = wallpaper_dir(args);
     let schema = Arc::new(Schema::from_file(&wp.join("looks.js"))?);
@@ -534,8 +550,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let seed = arg(args, "--seed");
     if let Some(f) = seed.clone() { let fd = feed.clone(); std::thread::spawn(move || follow_seed(fd, PathBuf::from(f))); }
     follow_mode(feed.clone(), seed.is_some());
-    serve(&listener, feed);
-    Ok(())
+    Ok((listener, feed))
 }
 
 fn serve(listener: &TcpListener, feed: Arc<Feed>) {
