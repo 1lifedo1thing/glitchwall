@@ -135,7 +135,13 @@ Pieces, in order; each one is built, tested against the Python version and commi
      never says sleep) went from 0.4% of a core to 0% under a maximized window and back.
    - **3b. One process.** `glitchwall-render host`: the feed (server.rs) on threads inside the renderer's process,
      no child processes, a screen change rebuilt in place instead of a restart. run_feed starts it when the exe
-     knows it (a new FEED_PROTOCOL), as 2d did, Python staying the fallback.
+     knows it (a new FEED_PROTOCOL), as 2d did, Python staying the fallback. In parts:
+     - 3b-1 (done 2026-11-25): the `host` command. One process serves the feed and draws (78 MB, against 20 + 89
+       for feed and renderer apart), refuses a wrong key, starts no children; `--peek` works for trying it by hand.
+       The in-place rebuild on a screen change builds and closes the old windows quietly (desk::close), but is not
+       yet tried with a real monitor change.
+     - 3b-2: try the rebuild with a monitor plugged in or out, and a scaling change.
+     - 3b-3: run_feed hands over to `host` (FEED_PROTOCOL 2), tests on both sides.
    - **3c. Hot corner.** watch_corner and bring_settings_forward in Rust; it still opens the Python settings window
      until piece 5.
    - **3d. Tray.** The notification-area icon and its menu (mode, theme, corner, masked, agents, show, pause, quit),
