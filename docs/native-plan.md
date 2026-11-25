@@ -151,7 +151,13 @@ Pieces, in order; each one is built, tested against the Python version and commi
      corner comes back to Python with the feed. On the real desktop the corner brought a minimized settings window
      back to the front, without a second copy. Opening a fresh window uses the same command Python used.
    - **3d. Tray.** The notification-area icon and its menu (mode, theme, corner, masked, agents, show, pause, quit),
-     writing settings.json as tray.py does.
+     writing settings.json as tray.py does. Done 2026-11-25 (tray.rs, tray_menu and Feed::tray_change in server.rs):
+     FEED_PROTOCOL 4, `--glitchwall` (glitchwall's own command, + settings / stop) replaces 3c's --open-settings;
+     the corner and the tray come back to Python together if host is given up on. Saves go through the feed's
+     one-at-a-time lock, like the settings window's; a new theme resets its look and motion tweaks. On the real
+     desktop: one tray icon, owned by host; a left click restored the minimized settings; a right click opened
+     the 11-entry menu. (A settings window left open across feed restarts and outside minimize/restore went
+     black; a fresh one was fine.)
 4. **The CLI and install** (cli, platforms, prereqs, winexe): `glitchwall` subcommands, autostart, the desktop
    menu entry. Medium.
 5. **The settings window** (settingswin): the same settings.html in WebView2, opened from Rust with the `wry`
