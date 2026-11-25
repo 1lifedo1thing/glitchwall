@@ -56,7 +56,7 @@ pub struct Scene {
     cards: Vec<Card>, queue: VecDeque<Json>, typing: Option<Typing>, wait_until: Option<f64>,
     by_ref: HashMap<String, u64>, current: Option<u64>, next_id: u64,
     tune: Tune, rng: Rng, masked: String,
-    pub asleep: bool, pub ignore_sleep: bool, slept_at: Option<f64>, hidden: bool, art: bool,
+    pub asleep: bool, pub ignore_sleep: bool, pub covered: bool, slept_at: Option<f64>, hidden: bool, art: bool,
     label: String, live_until: f64, blink: bool,
     last_frame: f64, last_bg: f64, bg_drawn: bool, changed: bool,
 }
@@ -109,7 +109,7 @@ impl Scene {
             cards: Vec::new(), queue: VecDeque::new(), typing: None, wait_until: None,
             by_ref: HashMap::new(), current: None, next_id: 1,
             tune: Tune { cps: 240.0, rain: 0.5, linger: 7.0, cards: 4, glass: 0.58, grain: 1.0 }, rng: Rng(0x2545_f491_4f6c_dd1d), masked: "dots".into(),
-            asleep: false, ignore_sleep: false, slept_at: None, hidden: false, art: false, label: "live tool feed".into(), live_until: 0.0, blink: false,
+            asleep: false, ignore_sleep: false, covered: false, slept_at: None, hidden: false, art: false, label: "live tool feed".into(), live_until: 0.0, blink: false,
             last_frame: 0.0, last_bg: 0.0, bg_drawn: false, changed: true,
         };
         s.set_look(looks, &Json::Null)?;
@@ -203,7 +203,8 @@ impl Scene {
     /// a reply from the feed
     pub fn on_reply(&mut self, looks: &Looks, data: &Json, events: Vec<Json>, now: f64) -> Result<()> {
         let was = self.asleep;
-        self.asleep = data.get("sleep").truthy() && !self.ignore_sleep;
+        // asleep if the feed says so (the page hosts' answer) or this process sees the screen covered itself (piece 3a)
+        self.asleep = (data.get("sleep").truthy() || self.covered) && !self.ignore_sleep;
         if was && !self.asleep {   // woke: typing picks up where it stopped
             if let (Some(t), Some(at)) = (self.typing.as_mut(), self.slept_at) { t.t0 += now - at; }
             self.changed = true;

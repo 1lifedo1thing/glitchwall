@@ -29,7 +29,7 @@ use std::rc::Rc;
 use std::time::Instant;
 use windows::core::*;
 
-struct Screen { rect: desk::Rect, scale: f32, hwnd: windows::Win32::Foundation::HWND, scene: scene::Scene, feed: Option<std::sync::mpsc::Receiver<feed::Msg>> }
+struct Screen { n: u32, rect: desk::Rect, scale: f32, hwnd: windows::Win32::Foundation::HWND, scene: scene::Scene, feed: Option<std::sync::mpsc::Receiver<feed::Msg>> }
 
 fn arg(args: &[String], name: &str) -> Option<String> { args.iter().position(|a| a == name).and_then(|i| args.get(i + 1).cloned()) }
 
@@ -83,14 +83,21 @@ fn run() -> Result<()> {
         let mut scene = scene::Scene::new(g, fonts.clone(), css.clone(), &looks)?;
         scene.ignore_sleep = peek;   // the peek window is the thing being looked at, whatever covers the desktop
         let feed = port.map(|p| feed::start(p, key.clone(), n, peek));
-        screens.push(Screen { rect: r, scale, hwnd, scene, feed });
+        screens.push(Screen { n, rect: r, scale, hwnd, scene, feed });
     }
 
     let clock = Instant::now();
     let mut checked = 0.0;
+    let mut looked = 0.0;
+    let ours: Vec<u32> = screens.iter().map(|s| s.n).collect();
     loop {
         if !desk::pump() { return Ok(()); }
         let now = clock.elapsed().as_secs_f64();
+        if now - looked > 0.5 && !peek {   // twice a second: which of our screens nobody can see (covered, locked)
+            looked = now;
+            let asleep = desk::asleep(&ours);
+            for s in &mut screens { s.scene.covered = asleep.contains(&s.n); }
+        }
         for s in &mut screens {
             while let Some(m) = s.feed.as_ref().and_then(|f| f.try_recv().ok()) {
                 match m {
