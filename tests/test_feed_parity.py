@@ -12,8 +12,11 @@ import tempfile
 import threading
 import time
 import unittest
+from datetime import datetime
 from pathlib import Path
+from unittest import mock
 
+AMBIENT_KINDS = {"$", "PS>", "read", "edit", "write", "find", "web", "agent"}
 KEY = "k" * 43
 SECRET = "abc123secretvalue"
 WALLPAPER = Path(__file__).resolve().parent.parent / "src" / "glitchwall" / "wallpaper"   # the page, looks.js, the fonts
@@ -376,6 +379,35 @@ class FeedChecks:
         self.assertEqual(d["events"][-1]["text"], "n69")
         self.assertEqual(self.new_events("junk")[-1], "n69")   # a since that isn't a number reads as 0
 
+    # ---- piece 2c: ambient mode follows the setting, no restart
+    def test_ambient_mode(self):
+        from datetime import timedelta
+        from glitchwall import ambient
+        from glitchwall import settings as cfg
+        try:
+            last = self.fetch()["last"]
+            self.settings({"mode": "ambient"})
+            evs = []
+            for _ in range(40):   # the mode is looked at once a second; an episode's first call comes at once
+                time.sleep(0.1)
+                evs = self.fetch(last)["events"]
+                if evs:
+                    break
+            self.assertTrue(evs)
+            d = self.fetch(last)
+            self.assertEqual((d["mode"], d["label"]), ("ambient", cfg.AMBIENT_LABEL))
+            for e in evs:
+                self.assertIn(e["kind"], AMBIENT_KINDS | {"out", "err"})
+                self.assertIn(e["proj"], ambient.PROJECTS)
+                self.assertRegex(e["session"], r"^[0-9a-f]{4}$")
+                self.assertRegex(e["ref"], r"^[0-9a-f]{12}$")
+                self.assertEqual(e["side"], e["kind"] == "agent")
+                self.assertEqual(datetime.fromisoformat(e["ts"]).utcoffset(), timedelta(0))
+                self.assertEqual(set(e), {"proj", "session", "side", "ts", "kind", "ref", "text", "id"})
+        finally:
+            self.settings({})
+            time.sleep(1.5)   # back in live mode: the made-up sessions stop before the next check counts events
+
     def test_long_text_clipped(self):
         last = self.fetch()["last"]
         self.add({"kind": "out", "text": "é" * 2000, "proj": "p" * 100})
@@ -414,10 +446,16 @@ class TestPythonFeed(FeedChecks, unittest.TestCase):
                     pos = nl + 1
                 time.sleep(0.05)
         threading.Thread(target=follow, daemon=True).start()
+        # the modes' own sources follow the settings, as in run_feed; the seed file stands in for the agents' logs
+        from glitchwall import server
+        cls.no_readers = mock.patch.object(server, "start_reader", lambda agent, store: threading.Event())
+        cls.no_readers.start()
+        threading.Thread(target=server.follow_mode, args=(store, live), kwargs={"quit": cls.quit}, daemon=True).start()
 
     @classmethod
     def stop(cls):
         cls.quit.set()
+        cls.no_readers.stop()
         cls.httpd.shutdown()
         cls.httpd.server_close()
 
