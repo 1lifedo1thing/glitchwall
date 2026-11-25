@@ -125,6 +125,21 @@ Pieces, in order; each one is built, tested against the Python version and commi
    page don't change. Parity tests from test_server, test_settings, test_modes. Large.
 3. **The desktop host** (winhost): screens, behind the icons, sleep and fullscreen checks, restarts, moved into the
    renderer's process. Medium to large.
+   Split (2026-11-25), each built, checked on the real desktop and committed on its own:
+   - **3a. Sleep in the renderer.** Port covered_screens, work_areas and session_hidden (winhost) so the renderer
+     knows by itself which of its screens nobody can see; the feed's ?screen= answer (asleep.json) stays for the
+     web page hosts. Tests: winhost's geometry cases as Rust unit tests.
+     Done (2026-11-25): desk.rs work_areas, covered (EnumWindows, DWM frame, cloaked/click-through/faded windows
+     skipped), session_hidden (screen saver, locked input desktop) and asleep(); main.rs looks twice a second and
+     the scene sleeps when the feed or its own look says so. On the real desktop a renderer on the demo feed (which
+     never says sleep) went from 0.4% of a core to 0% under a maximized window and back.
+   - **3b. One process.** `glitchwall-render host`: the feed (server.rs) on threads inside the renderer's process,
+     no child processes, a screen change rebuilt in place instead of a restart. run_feed starts it when the exe
+     knows it (a new FEED_PROTOCOL), as 2d did, Python staying the fallback.
+   - **3c. Hot corner.** watch_corner and bring_settings_forward in Rust; it still opens the Python settings window
+     until piece 5.
+   - **3d. Tray.** The notification-area icon and its menu (mode, theme, corner, masked, agents, show, pause, quit),
+     writing settings.json as tray.py does.
 4. **The CLI and install** (cli, platforms, prereqs, winexe): `glitchwall` subcommands, autostart, the desktop
    menu entry. Medium.
 5. **The settings window** (settingswin): the same settings.html in WebView2, opened from Rust with the `wry`
