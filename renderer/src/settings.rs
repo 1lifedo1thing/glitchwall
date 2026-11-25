@@ -387,7 +387,7 @@ pub fn config_js(port: u16, key: &str, label: &str) -> String {
     format!("window.FEED = {{\"port\": {port}, \"key\": {k}, \"label\": {l}}};\n")
 }
 
-fn ascii_str(s: &str, o: &mut String) {
+pub fn ascii_str(s: &str, o: &mut String) {
     o.push('"');
     for c in s.chars() {
         match c {

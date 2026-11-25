@@ -24,6 +24,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let _ = std::fs::create_dir_all(crate::server::state_dir());
     std::fs::write(pid_file(), me.to_string()).map_err(|e| format!("feed.pid: {e}"))?;
     let rest = &args[2..];   // host's own options, passed on as they are
+    // noted for `config` and `reset`, which start it again the same way (cli.rs)
+    let mut noted = String::from("[");
+    for (i, a) in rest.iter().enumerate() { if i > 0 { noted.push_str(", "); } crate::settings::ascii_str(a, &mut noted); }
+    let _ = std::fs::write(crate::server::state_dir().join("run-args.json"), noted + "]");
     let mut starts: Vec<Instant> = Vec::new();
     loop {
         let now = Instant::now();

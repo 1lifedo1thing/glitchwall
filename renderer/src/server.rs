@@ -692,7 +692,7 @@ pub fn run_demo(args: &[String]) -> Result<(), String> {
 }
 
 /// --wallpaper, or the wallpaper folder next to this exe: the page, looks.js and the fonts.
-fn wallpaper_dir(args: &[String]) -> PathBuf {
+pub fn wallpaper_dir(args: &[String]) -> PathBuf {
     arg(args, "--wallpaper").map(PathBuf::from).unwrap_or_else(|| {
         std::env::current_exe().ok().and_then(|e| e.parent().map(|d| d.join("wallpaper"))).unwrap_or_default()
     })

@@ -13,6 +13,7 @@
 
 mod ambient;
 mod anim;
+mod cli;
 mod bg;
 mod codex;
 mod corner;
@@ -56,6 +57,18 @@ fn run() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
     if args.get(1).map(String::as_str) == Some("feed") {
         return server::run(&args).map_err(|e| Error::new(HRESULT(-1), e.as_str()));
+    }
+    if let Some(cmd @ ("config" | "themes" | "reset" | "export")) = args.get(1).map(String::as_str) {   // piece 4b
+        cli::attach_console();
+        let wp = server::wallpaper_dir(&args);
+        let schema = settings::Schema::from_file(&wp.join("looks.js")).map_err(|e| Error::new(HRESULT(-1), e.as_str()))?;
+        let code = match cmd {
+            "config" => cli::config(&schema, &args),
+            "themes" => cli::themes(&schema),
+            "reset" => cli::reset(&schema),
+            _ => cli::export(&schema, &wp, &args),
+        };
+        std::process::exit(code);
     }
     if args.get(1).map(String::as_str) == Some("run") {   // what start and autostart leave running (piece 4a)
         return supervise::run(&args).map_err(|e| Error::new(HRESULT(-1), e.as_str()));
