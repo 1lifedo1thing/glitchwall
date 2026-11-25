@@ -141,7 +141,10 @@ Pieces, in order; each one is built, tested against the Python version and commi
        The in-place rebuild on a screen change builds and closes the old windows quietly (desk::close), but is not
        yet tried with a real monitor change.
      - 3b-2: try the rebuild with a monitor plugged in or out, and a scaling change.
-     - 3b-3: run_feed hands over to `host` (FEED_PROTOCOL 2), tests on both sides.
+     - 3b-3 (done 2026-11-25): run_feed hands over to `host` when the exe says FEED_PROTOCOL 2 (feed_protocol reads
+       the number; 1 still gets the 2d feed child). Python keeps only the tray and the hot corner and watches the
+       child on the main thread; after 3 starts in a minute the feed and the windows come back as before. The
+       run_feed test uses stand-ins for the hosting path, so no wallpaper windows open while the tests run.
    - **3c. Hot corner.** watch_corner and bring_settings_forward in Rust; it still opens the Python settings window
      until piece 5.
    - **3d. Tray.** The notification-area icon and its menu (mode, theme, corner, masked, agents, show, pause, quit),
