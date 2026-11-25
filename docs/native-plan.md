@@ -146,7 +146,10 @@ Pieces, in order; each one is built, tested against the Python version and commi
        child on the main thread; after 3 starts in a minute the feed and the windows come back as before. The
        run_feed test uses stand-ins for the hosting path, so no wallpaper windows open while the tests run.
    - **3c. Hot corner.** watch_corner and bring_settings_forward in Rust; it still opens the Python settings window
-     until piece 5.
+     until piece 5. Done 2026-11-25 (corner.rs): FEED_PROTOCOL 3, glitchwall passes `--open-settings` (its own
+     command for the settings, as a JSON list) and stops watching the corner itself; if host is given up on, the
+     corner comes back to Python with the feed. On the real desktop the corner brought a minimized settings window
+     back to the front, without a second copy. Opening a fresh window uses the same command Python used.
    - **3d. Tray.** The notification-area icon and its menu (mode, theme, corner, masked, agents, show, pause, quit),
      writing settings.json as tray.py does.
 4. **The CLI and install** (cli, platforms, prereqs, winexe): `glitchwall` subcommands, autostart, the desktop
