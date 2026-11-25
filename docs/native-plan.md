@@ -172,7 +172,19 @@ Pieces, in order; each one is built, tested against the Python version and commi
      point until one exe ships. Deliberate differences: config checks values through the schema (refused: exit 2;
      Python saves whatever argparse let through), on|off in any case; restarting reuses the options `run` noted in
      run-args.json; the exe attaches to the terminal it was typed in.
-   - 4c: install and uninstall (autostart, the Start menu shortcut, the desktop menu entry).
+   - **4c (done 2026-11-25).** `glitchwall-render install|uninstall` (install.rs): the HKCU Run value, the Start
+     menu shortcut (IShellLinkW instead of a PowerShell call), the desktop right-click entry and, for a standalone
+     exe, a copy of itself and the wallpaper folder in <state>\bin. tests/test_install_parity.py runs both sides
+     with their own GLITCHWALL_HOME, APPDATA and a throwaway HKCU key (GLITCHWALL_REG_ROOT, which platforms.py now
+     honours too), so the real registry and Start menu are never touched. FEED_PROTOCOL unchanged: Python doesn't
+     call it. Deliberate differences: autostart runs `glitchwall-render.exe run --which S [--glitchwall JSON]
+     --wallpaper DIR` straight away (no pythonw first; no --port, so host reads the port from the settings each
+     logon); glitchwall's own command comes from --glitchwall, else the Python glitchwall the exe ships in
+     (`<tool>\Scripts\pythonw.exe -m glitchwall`); with neither, the Start menu and right-click entries are skipped
+     (the settings window is still Python until piece 5) and the tray and corner are off. Copying happens whenever
+     the exe isn't inside a Python glitchwall (Python copies only when frozen). No prerequisite check yet (4d adds
+     doctor). `--no-start` (tests, packagers) stops after the files are in place. The Python `glitchwall install`
+     is unchanged and still what Lester runs.
    - 4d: doctor and demo.
 5. **The settings window** (settingswin): the same settings.html in WebView2, opened from Rust with the `wry`
    crate instead of pywebview. Small to medium.

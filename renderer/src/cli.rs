@@ -28,9 +28,9 @@ fn arg<'a>(args: &'a [String], name: &str) -> Option<&'a str> { args.iter().posi
 
 fn settings_file() -> PathBuf { state_dir().join("settings.json") }
 
-fn load(schema: &Schema) -> Json { schema.load(cfg::read_saved(&settings_file()).as_ref()) }
+pub fn load(schema: &Schema) -> Json { schema.load(cfg::read_saved(&settings_file()).as_ref()) }
 
-fn save(schema: &Schema, s: &Json) -> Result<(), String> {
+pub fn save(schema: &Schema, s: &Json) -> Result<(), String> {
     let _ = std::fs::create_dir_all(state_dir());
     cfg::private_write(&settings_file(), &schema.file_text(s)).map_err(|e| format!("settings.json: {e}"))
 }
@@ -82,17 +82,23 @@ pub fn stop() -> bool {
 
 /// cli.cmd_start: `run` with the options it was last started with, and the port from the settings now
 pub fn start(schema: &Schema) -> i32 {
+    let Ok(exe) = std::env::current_exe() else { return 1 };
+    launch(schema, None, &exe)
+}
+
+/// start `exe run OPTS` in the background and wait for the feed; OPTS None: the ones noted in run-args.json
+pub fn launch(schema: &Schema, opts: Option<Vec<String>>, exe: &Path) -> i32 {
     let port = load(schema).get("port").num().map(|p| p as u16).unwrap_or(cfg::DEFAULT_PORT);
     if let Some(pid) = running_pid() { println!("feed already running (pid {pid}) on 127.0.0.1:{port}"); return 0; }
     if port_open(port) { println!("port {port} is in use by another program. Pick another: glitchwall config --port N"); return 1; }
-    let Some(mut opts) = std::fs::read_to_string(state_dir().join("run-args.json")).ok().and_then(|t| Json::parse(&t).ok())
-        .map(|j| j.items().iter().filter_map(|v| v.str().map(String::from)).collect::<Vec<_>>()) else {
+    let Some(mut opts) = opts.or_else(|| std::fs::read_to_string(state_dir().join("run-args.json")).ok().and_then(|t| Json::parse(&t).ok())
+        .map(|j| j.items().iter().filter_map(|v| v.str().map(String::from)).collect::<Vec<_>>())) else {
         println!("start it with: glitchwall start");
         return 1;
     };
+    if opts.first().is_some_and(|o| o == "run") { opts.remove(0); }
     if let Some(i) = opts.iter().position(|a| a == "--port") { if i + 1 < opts.len() { opts[i + 1] = port.to_string(); } }
     use std::os::windows::process::CommandExt;
-    let Ok(exe) = std::env::current_exe() else { return 1 };
     if std::process::Command::new(exe).arg("run").args(&opts).creation_flags(0x0000_0008 | 0x0000_0200 | 0x0800_0000).spawn().is_err() {
         println!("feed did not come up");
         return 1;
@@ -103,6 +109,35 @@ pub fn start(schema: &Schema) -> i32 {
     }
     println!("feed did not come up; run `glitchwall run` to see the error");
     1
+}
+
+/// settings.load_key: the feed key, made (random, private) when there is none yet
+pub fn make_key() -> Option<String> {
+    let f = state_dir().join("key");
+    if let Some(k) = std::fs::read_to_string(&f).ok().map(|k| k.trim().to_string()).filter(|k| k.len() >= 32) { return Some(k); }
+    let k = crate::ambient::token_urlsafe(32);
+    cfg::private_write(&f, &k).ok().map(|_| k)
+}
+
+/// subprocess.list2cmdline: one Windows command line from a list
+pub fn list2cmdline(args: &[String]) -> String {
+    let mut out = String::new();
+    for (i, a) in args.iter().enumerate() {
+        if i > 0 { out.push(' '); }
+        let quote = a.is_empty() || a.contains(' ') || a.contains('\t');
+        if quote { out.push('"'); }
+        let mut bs = 0;
+        for c in a.chars() {
+            match c {
+                '\\' => bs += 1,
+                '"' => { out.push_str(&"\\".repeat(bs * 2 + 1)); out.push('"'); bs = 0; }
+                _ => { out.push_str(&"\\".repeat(bs)); bs = 0; out.push(c); }
+            }
+        }
+        out.push_str(&"\\".repeat(if quote { bs * 2 } else { bs }));
+        if quote { out.push('"'); }
+    }
+    out
 }
 
 // ---------------------------------------------------------------- the commands
@@ -256,5 +291,7 @@ mod tests {
                    ["True", "47833", "a b", "None"]);
         assert_eq!((on_off("ON"), on_off("no"), on_off("maybe")), (Some(true), Some(false), None));
         assert_eq!(file_uri(Path::new(r"C:\a b\index.html")), "file:///C:/a%20b/index.html");
+        let l = |v: &[&str]| list2cmdline(&v.iter().map(|s| s.to_string()).collect::<Vec<_>>());
+        assert_eq!(l(&[r"C:\a b\x.exe", "", r#"say "hi""#, r"end\", r"sp ace\"]), r#""C:\a b\x.exe" "" "say \"hi\"" end\ "sp ace\\""#);
     }
 }

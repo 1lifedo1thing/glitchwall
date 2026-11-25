@@ -9,6 +9,8 @@
 //! --glitchwall JSON (glitchwall's own command, as a list) it has the hot corner and the tray icon too (3c, 3d).
 //! `glitchwall-render run [host's options]` keeps `host` running with no Python, and hands over to the Python feed
 //! after 3 starts in a minute (supervise.rs, piece 4a).
+//! `glitchwall-render install|uninstall` (install.rs, piece 4c) adds or removes autostart (pointing at `run`), the
+//! Start menu shortcut and the desktop right-click entry.
 #![windows_subsystem = "windows"]
 
 mod ambient;
@@ -22,6 +24,7 @@ mod feed;
 mod fonts;
 mod gemini;
 mod gfx;
+mod install;
 mod json;
 mod logs;
 mod looks;
@@ -58,7 +61,7 @@ fn run() -> Result<()> {
     if args.get(1).map(String::as_str) == Some("feed") {
         return server::run(&args).map_err(|e| Error::new(HRESULT(-1), e.as_str()));
     }
-    if let Some(cmd @ ("config" | "themes" | "reset" | "export")) = args.get(1).map(String::as_str) {   // piece 4b
+    if let Some(cmd @ ("config" | "themes" | "reset" | "export" | "install" | "uninstall")) = args.get(1).map(String::as_str) {   // piece 4b
         cli::attach_console();
         let wp = server::wallpaper_dir(&args);
         let schema = settings::Schema::from_file(&wp.join("looks.js")).map_err(|e| Error::new(HRESULT(-1), e.as_str()))?;
@@ -66,6 +69,8 @@ fn run() -> Result<()> {
             "config" => cli::config(&schema, &args),
             "themes" => cli::themes(&schema),
             "reset" => cli::reset(&schema),
+            "install" => install::install(&schema, &wp, &args),   // piece 4c
+            "uninstall" => install::uninstall(),
             _ => cli::export(&schema, &wp, &args),
         };
         std::process::exit(code);

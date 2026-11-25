@@ -104,6 +104,12 @@ def delete_later(path: Path) -> None:
 
 
 # ---------------------------------------------------------------- autostart
+def hkcu(sub: str) -> str:
+    """A key under HKEY_CURRENT_USER; GLITCHWALL_REG_ROOT (tests) moves every one under that key instead."""
+    root = os.environ.get("GLITCHWALL_REG_ROOT")
+    return rf"{root}\{sub}" if root else sub
+
+
 def _desktop_file(name: str = FOLDER) -> Path:
     return Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "autostart" / f"{name}.desktop"
 
@@ -116,7 +122,7 @@ def add_autostart() -> str:
     cmd = feed_command()
     if WIN:
         import winreg
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE) as k:
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, hkcu(r"Software\Microsoft\Windows\CurrentVersion\Run")) as k:
             winreg.SetValueEx(k, RUN_VALUE, 0, winreg.REG_SZ, subprocess.list2cmdline(cmd))
         return "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\" + RUN_VALUE
     if sys.platform == "darwin":
@@ -146,7 +152,7 @@ def _remove_autostart(name: str, label: str) -> bool:
     if WIN:
         import winreg
         try:
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE) as k:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, hkcu(r"Software\Microsoft\Windows\CurrentVersion\Run"), 0, winreg.KEY_SET_VALUE) as k:
                 winreg.DeleteValue(k, name)
             return True
         except FileNotFoundError:
@@ -162,7 +168,7 @@ def autostart_entry() -> str | None:
     if WIN:
         import winreg
         try:
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run") as k:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, hkcu(r"Software\Microsoft\Windows\CurrentVersion\Run")) as k:
                 return winreg.QueryValueEx(k, RUN_VALUE)[0]
         except FileNotFoundError:
             return None
@@ -221,12 +227,12 @@ def add_context_menu() -> bool:
         return False
     import winreg
     try:
-        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, MENU_KEY) as k:
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, hkcu(MENU_KEY)) as k:
             winreg.SetValueEx(k, "", 0, winreg.REG_SZ, "glitchwall settings")
             winreg.SetValueEx(k, "MUIVerb", 0, winreg.REG_SZ, "glitchwall settings")
             winreg.SetValueEx(k, "Icon", 0, winreg.REG_SZ, icon_location())
             winreg.SetValueEx(k, "Position", 0, winreg.REG_SZ, "Bottom")
-        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, MENU_KEY + r"\command") as k:
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, hkcu(MENU_KEY) + r"\command") as k:
             winreg.SetValueEx(k, "", 0, winreg.REG_SZ, subprocess.list2cmdline(settings_command()))
     except OSError:
         return False
@@ -238,8 +244,8 @@ def remove_context_menu() -> bool:
         return False
     import winreg
     try:
-        winreg.DeleteKey(winreg.HKEY_CURRENT_USER, MENU_KEY + r"\command")
-        winreg.DeleteKey(winreg.HKEY_CURRENT_USER, MENU_KEY)
+        winreg.DeleteKey(winreg.HKEY_CURRENT_USER, hkcu(MENU_KEY) + r"\command")
+        winreg.DeleteKey(winreg.HKEY_CURRENT_USER, hkcu(MENU_KEY))
         return True
     except OSError:
         return False
