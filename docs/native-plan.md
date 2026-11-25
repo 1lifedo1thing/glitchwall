@@ -194,8 +194,39 @@ Pieces, in order; each one is built, tested against the Python version and commi
      neither); the Windows build is read from the registry (CurrentBuildNumber) rather than GetVersionEx; a windowed
      exe can't ask at the keyboard, so without --yes the download-page offers always say "skipped", as Python's do
      when no one is at the keyboard.
-5. **The settings window** (settingswin): the same settings.html in WebView2, opened from Rust with the `wry`
-   crate instead of pywebview. Small to medium.
+5. **The settings window** (settingswin): the same settings.html in WebView2, opened from Rust instead of
+   pywebview. Small to medium. Planned 2026-11-25 (not started; after the weekly reset):
+   - **Why:** today an open settings window is an extra ~108 MB Python process (pywebview + .NET via pythonnet).
+     In Rust it is WebView2 only, and once the switch is done .NET leaves doctor's list of needs.
+   - **The crate question, first.** WebView2's COM interfaces are not in the `windows` crate, so one crate must
+     come from crates.io (a download: ask Lester first). Two candidates: `webview2-com` alone (just the WebView2
+     bindings; we already have our own windows, message loop and DPI code in desk.rs), or `wry` (webview2-com plus
+     its own window layer, more than we need). Leaning webview2-com. The risk: we stay on `windows` 0.58 with the
+     GNU toolchain, so it must be a version built on windows 0.58 (newer ones need 0.59+, which needs dlltool
+     and an assembler rustup doesn't ship), and its WebView2Loader must link under GNU (or ship
+     WebView2Loader.dll beside the exe). Check both before writing anything else.
+   - **5a. Spike.** Add the crate, build on GNU, open a plain window showing settings.html from the running feed.
+     Measure memory against the Python window. If it won't build on 0.58/GNU, stop and bring the options to
+     Lester (another crate version, the loader DLL, or a toolchain change).
+   - **5b. The window.** `glitchwall-render settings`: settingswin.Settings.open's rules (560x1050 logical px,
+     shrunk to fit a short screen, centred on the screen under the mouse, not resizable, background #010401),
+     the title "glitchwall settings" (bring_settings_forward finds it by title), the icon, its own taskbar
+     button (AppUserModelID glitchwall.settings), a private profile in <state>\webview-settings, quiet_webview's
+     browser arguments, one window at a time, the feed started first when it isn't running (cmd_settings).
+   - **5c. What the page may ask.** settings.html calls window.pywebview.api.fade / keep / feedback. A small
+     script injected at page load supplies that same object over WebView2's message channel, so settings.html
+     doesn't change and the Python window keeps working. fade: layered-window alpha; keep: don't slide away;
+     feedback: the fixed issues URL in the browser, nothing else. Navigation is locked to the feed's own origin
+     and new windows are refused.
+   - **5d. Docking.** settingswin's _dock_loop (dock at the left, right or top edge, slide away after 3 s
+     leaving a 6 px strip, back on touch, drag off to undock). In our own window procedure a drag is known from
+     WM_ENTERSIZEMOVE/WM_EXITSIZEMOVE, so nothing outside the window is read.
+   - **5e. Switch over.** The hot corner, the tray's "settings" and `glitchwall settings` open the Rust window
+     when the exe knows it (a FEED_PROTOCOL bump), Python's window staying the fallback. A window left open across
+     a feed restart reloads its page instead of going black (the 3d note).
+   - **Tests:** the injected script's calls and refusals as Rust unit tests; a parity test that the window
+     opens with the right title and size and loads the page from the feed with the key (run on a throwaway
+     GLITCHWALL_HOME and port, closed by the test); docking by a scripted drag, as the security pass did.
 
 Then: package one exe (zip or installer), update the README's install steps and the measurements.
 
