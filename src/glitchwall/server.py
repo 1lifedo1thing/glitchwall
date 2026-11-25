@@ -290,7 +290,8 @@ def restart_self(httpd, manual: bool = False) -> None:
 
 
 FEED_PROTOCOL = b"glitchwall-feed-protocol:"   # renderer/src/server.rs: what an exe with the Rust feed holds, then
-# its number: 1 knows `feed` (piece 2d), 2 also `host`, the feed and the windows in one process (piece 3b)
+# its number: 1 knows `feed` (piece 2d), 2 also `host`, the feed and the windows in one process (piece 3b), 3 the
+# hot corner in `host` too (--open-settings, piece 3c)
 
 
 def feed_protocol(exe: Path) -> int:
@@ -326,9 +327,10 @@ class RustFeed:
     one process, which works out for itself which screens nobody can see, so there is no file to write."""
 
     def __init__(self, exe: Path, port: int, asleep: Path, host=None, wallpaper: Path | None = None,
-                 hosting: bool = False):
+                 hosting: bool = False, open_settings: list[str] | None = None):
         self.exe, self.port, self.asleep, self.host, self.wallpaper = exe, port, asleep, host, wallpaper
         self.hosting = hosting
+        self.open_settings = open_settings   # host watches the hot corner and opens the settings with this
         self.proc = None
         self.starts: list[float] = []
 
@@ -341,6 +343,8 @@ class RustFeed:
         if self.hosting:
             args = [str(self.exe), "host", "--port", str(self.port), "--parent", str(os.getpid()),
                     "--which", getattr(self.host, "which", "all")]
+            if self.open_settings:
+                args += ["--open-settings", json.dumps(self.open_settings)]
         else:
             args = [str(self.exe), "feed", "--port", str(self.port), "--parent", str(os.getpid()),
                     "--asleep", str(self.asleep)]
@@ -434,8 +438,10 @@ def run_feed(port: int | None = None) -> None:
             threading.Thread(target=httpd.serve_forever, daemon=True).start()
 
     exe = rust_feed_exe(s) if host and isinstance(host, winhost.NativeHost) else None
-    rust = RustFeed(exe, port, cfg.state_dir() / "asleep.json", host, wallpaper_source(),
-                    hosting=feed_protocol(exe) >= 2) if exe else None
+    protocol = feed_protocol(exe) if exe else 0
+    from .platforms import live_command
+    rust = RustFeed(exe, port, cfg.state_dir() / "asleep.json", host, wallpaper_source(), hosting=protocol >= 2,
+                    open_settings=live_command("settings") if protocol >= 3 else None) if exe else None
     hosted = False   # glitchwall-render host draws the windows too: this process keeps only the tray and the corner
     if rust and rust.start():
         import atexit
@@ -453,8 +459,11 @@ def run_feed(port: int | None = None) -> None:
             if not wh.bring_settings_forward():
                 import subprocess
                 subprocess.Popen(live_command("settings"), close_fds=True)
-        threading.Thread(target=wh.watch_corner, args=(lambda: cfg.corner(live.get()), open_settings, threading.Event()),
-                         daemon=True).start()
+        def watch_corner() -> None:
+            threading.Thread(target=wh.watch_corner, args=(lambda: cfg.corner(live.get()), open_settings,
+                                                           threading.Event()), daemon=True).start()
+        if not (hosted and rust.open_settings):   # host watches the corner itself (protocol 3)
+            watch_corner()
         if live.get().get("tray", True):   # glitchwall in the notification area, for as long as the feed runs
             start_tray(live, open_settings, on_change)
     if not host:
@@ -462,6 +471,8 @@ def run_feed(port: int | None = None) -> None:
         return
     if hosted:   # until it can't be kept running: then the feed comes back here and the windows as before
         rust.watch(threading.Event(), python_feed)
+        if rust.open_settings:   # its corner went with it
+            watch_corner()
     host.run(threading.Event())   # the windows need this (the main) thread; runs until the process ends
 
 

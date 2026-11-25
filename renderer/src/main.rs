@@ -5,13 +5,15 @@
 //! `glitchwall-render feed [--port N] [--wallpaper DIR]` runs the feed instead (server.rs and settings.rs; pieces 2a-2b,
 //! not used by glitchwall yet); `glitchwall-render demo` runs demo.py's made-up feed (piece 2c).
 //! `glitchwall-render host [--wallpaper DIR] [--parent PID] [--which ..]` runs both in one process (piece 3b): the
-//! feed on threads, the windows rebuilt in place when the screens change instead of the process ending.
+//! feed on threads, the windows rebuilt in place when the screens change instead of the process ending; with
+//! --open-settings JSON (the command for the settings, as a list) it watches the hot corner too (piece 3c).
 #![windows_subsystem = "windows"]
 
 mod ambient;
 mod anim;
 mod bg;
 mod codex;
+mod corner;
 mod desk;
 mod feed;
 mod fonts;

@@ -52,6 +52,9 @@ const DESKTOP_CLASSES: [&str; 4] = ["Progman", "WorkerW", "Shell_TrayWnd", "Shel
 /// a window's frame (left, top, right, bottom) covers the whole area
 pub fn covers(f: (i32, i32, i32, i32), a: Rect) -> bool { f.0 <= a.x && f.1 <= a.y && f.2 >= a.x + a.w && f.3 >= a.y + a.h }
 
+/// the desktop itself or the taskbar
+pub fn is_desktop(h: HWND) -> bool { DESKTOP_CLASSES.contains(&class_of(h).as_str()) }
+
 fn class_of(h: HWND) -> String {
     let mut b = [0u16; 64];
     let n = unsafe { GetClassNameW(h, &mut b) };
