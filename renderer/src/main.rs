@@ -7,6 +7,8 @@
 //! `glitchwall-render host [--wallpaper DIR] [--parent PID] [--which ..]` runs both in one process (piece 3b): the
 //! feed on threads, the windows rebuilt in place when the screens change instead of the process ending; with
 //! --glitchwall JSON (glitchwall's own command, as a list) it has the hot corner and the tray icon too (3c, 3d).
+//! `glitchwall-render run [host's options]` keeps `host` running with no Python, and hands over to the Python feed
+//! after 3 starts in a minute (supervise.rs, piece 4a).
 #![windows_subsystem = "windows"]
 
 mod ambient;
@@ -26,6 +28,7 @@ mod redact;
 mod scene;
 mod server;
 mod settings;
+mod supervise;
 mod tray;
 mod tail;
 
@@ -53,6 +56,9 @@ fn run() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
     if args.get(1).map(String::as_str) == Some("feed") {
         return server::run(&args).map_err(|e| Error::new(HRESULT(-1), e.as_str()));
+    }
+    if args.get(1).map(String::as_str) == Some("run") {   // what start and autostart leave running (piece 4a)
+        return supervise::run(&args).map_err(|e| Error::new(HRESULT(-1), e.as_str()));
     }
     if args.get(1).map(String::as_str) == Some("demo") {
         return server::run_demo(&args).map_err(|e| Error::new(HRESULT(-1), e.as_str()));

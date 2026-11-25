@@ -55,7 +55,7 @@ class TestWhichExe(unittest.TestCase):
     @unittest.skipUnless(EXE, "set GW_FEED_EXE")
     def test_the_built_exe_qualifies(self):
         self.assertEqual(self.pick(Path(EXE)), Path(EXE))
-        self.assertEqual(server.feed_protocol(Path(EXE)), 4)
+        self.assertEqual(server.feed_protocol(Path(EXE)), 5)
 
 
 def free_port():
@@ -269,6 +269,113 @@ class TestRunFeedChoosesTheFeed(unittest.TestCase):
         old.write_bytes(b"MZ an older renderer")
         seen, started, feeds = self.run_feed(old)
         self.assertEqual((seen, started, feeds), ({"mode": "live"}, [1], []))
+
+
+class TestHandToRust(unittest.TestCase):
+    """Piece 4a: a background start hands everything to `glitchwall-render run`, no Python left running."""
+
+    def hand(self, protocol, port_taken=False):
+        from glitchwall import cli
+        with mock.patch.object(cli.plat, "WIN", True), \
+                mock.patch.object(server, "rust_feed_exe", lambda s: Path("r.exe")), \
+                mock.patch.object(server, "feed_protocol", lambda exe: protocol), \
+                mock.patch("subprocess.Popen") as popen:
+            took = cli._hand_to_rust(47833, {"port": 47833, "screens": "primary"})
+        return took, (popen.call_args[0][0] if popen.called else None)
+
+    def test_only_an_exe_that_knows_run(self):
+        took, args = self.hand(5)
+        self.assertTrue(took)
+        self.assertEqual(args[:2], ["r.exe", "run"])
+        self.assertEqual(args[args.index("--which") + 1], "primary")
+        self.assertIsInstance(json.loads(args[args.index("--glitchwall") + 1]), list)
+        self.assertEqual(self.hand(4), (False, None))
+
+    def test_background_run_hands_over_terminal_run_does_not(self):
+        from glitchwall import cli
+        a = mock.Mock(port=None)
+        for at_terminal, handed in ((False, True), (True, False)):
+            with mock.patch.object(cli, "_at_terminal", lambda: at_terminal), \
+                    mock.patch.object(cli.plat, "port_open", lambda p: False), \
+                    mock.patch.object(cli, "_hand_to_rust", mock.Mock(return_value=True)) as hand, \
+                    mock.patch.object(cli, "_heal_wallpaper", lambda s: None), \
+                    mock.patch("glitchwall.server.run_feed", lambda port: None), \
+                    mock.patch.object(cli.plat, "pid_file", lambda: Path(tempfile.mkdtemp()) / "feed.pid"):
+                self.assertEqual(cli.cmd_run(a), 0)
+                self.assertEqual(hand.called, handed)
+
+
+def children(pid):
+    out = subprocess.run(["powershell", "-NoProfile", "-Command",
+                          f"(Get-CimInstance Win32_Process -Filter 'ParentProcessId={pid}').ProcessId"],
+                         capture_output=True, text=True, timeout=30).stdout
+    return [int(x) for x in out.split()]
+
+
+@unittest.skipUnless(EXE and sys.platform == "win32", "set GW_FEED_EXE to the glitchwall-render exe")
+class TestRunKeepsHostGoing(unittest.TestCase):
+    def setUp(self):
+        self.home = Path(tempfile.mkdtemp(prefix="gw-run-"))
+        (self.home / "key").write_text(KEY, encoding="utf-8")
+        self.env = {**os.environ, "GLITCHWALL_HOME": str(self.home)}
+        self.port = free_port()
+
+    def fetch(self):
+        c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        c.request("GET", f"/feed?key={KEY}", headers={"Host": f"127.0.0.1:{self.port}"})
+        d = json.loads(c.getresponse().read())
+        c.close()
+        return d
+
+    def up(self):
+        for _ in range(80):
+            try:
+                return self.fetch()
+            except OSError:
+                time.sleep(0.1)
+        self.fail("host never answered")
+
+    def test_notes_its_pid_restarts_host_and_ends_it(self):
+        sup = subprocess.Popen([EXE, "run", "--port", str(self.port), "--peek", "--wallpaper", str(WALLPAPER)], env=self.env)
+        try:
+            self.assertEqual(self.up()["mode"], "live")
+            self.assertEqual((self.home / "feed.pid").read_text().strip(), str(sup.pid))   # where stop and status look
+            first = children(sup.pid)
+            self.assertEqual(len(first), 1)
+            subprocess.run(["taskkill", "/F", "/PID", str(first[0])], capture_output=True)   # it crashes: started again
+            time.sleep(1)
+            self.up()
+            again = children(sup.pid)
+            self.assertEqual(len(again), 1)
+            self.assertNotEqual(again, first)
+            sup.kill()   # glitchwall stop: the host goes with it (it looks every 2 s)
+            deadline = time.monotonic() + 8
+            while time.monotonic() < deadline and subprocess.run(["tasklist", "/FI", f"PID eq {again[0]}", "/NH"],
+                                                                  capture_output=True, text=True).stdout.count("glitchwall-render"):
+                time.sleep(0.5)
+            self.assertLess(time.monotonic(), deadline)
+        finally:
+            sup.kill()
+
+    def test_hands_over_to_python_when_host_cannot_run(self):
+        mark = self.home / "fallback.txt"
+        script = self.home / "fake_glitchwall.py"
+        script.write_text("import os, sys\nopen(os.environ['GW_MARK'], 'w').write(' '.join(sys.argv[1:]) + ' '"
+                          " + os.environ.get('GLITCHWALL_PYTHON_FEED', ''))\n", encoding="utf-8")
+        taken = socket.socket()
+        taken.bind(("127.0.0.1", self.port))   # bound, not listening: host can't have the port and exits
+        try:
+            sup = subprocess.Popen([EXE, "run", "--port", str(self.port), "--peek", "--wallpaper", str(WALLPAPER),
+                                    "--glitchwall", json.dumps([sys.executable, str(script)])], env={**self.env, "GW_MARK": str(mark)})
+            sup.wait(30)   # steps aside once it hands over
+            for _ in range(50):
+                if mark.exists():
+                    break
+                time.sleep(0.2)
+            self.assertEqual(mark.read_text(), "run 1")   # glitchwall run, with the feed kept in Python
+            self.assertFalse((self.home / "feed.pid").exists())   # the Python feed writes its own
+        finally:
+            taken.close()
 
 
 if __name__ == "__main__":

@@ -49,10 +49,39 @@ def _as_glitchwall() -> bool:
     return True
 
 
+def _hand_to_rust(port: int, s: dict) -> bool:
+    """Started in the background (start, autostart) with an exe that knows `run` (piece 4a of docs/native-plan.md):
+    glitchwall-render run keeps the feed, the windows, the tray and the hot corner going with no Python left
+    running, and hands back to the Python feed by itself if it can't. True if it took over."""
+    if not plat.WIN:
+        return False
+    from .server import feed_protocol, rust_feed_exe
+    exe = rust_feed_exe(s)
+    if not exe or feed_protocol(exe) < 5:
+        return False
+    import json
+    import subprocess
+    args = [str(exe), "run", "--port", str(port), "--which", str(s.get("screens", "all")),
+            "--glitchwall", json.dumps(plat.live_command()), "--wallpaper", str(plat.wallpaper_source())]
+    try:
+        subprocess.Popen(args, close_fds=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+                         | subprocess.CREATE_NO_WINDOW)
+    except OSError:
+        return False
+    return True
+
+
 def cmd_run(a) -> int:
     """Foreground feed. `start` and autostart launch this with pythonw."""
-    if not _at_terminal() and _as_glitchwall():   # started in the background (start, autostart)
-        return 0
+    if not _at_terminal():   # started in the background (start, autostart)
+        s = cfg.load_settings()
+        port = a.port or int(s["port"])
+        if not plat.port_open(port) and _hand_to_rust(port, s):
+            _heal_wallpaper(s)
+            return 0
+        if _as_glitchwall():
+            return 0
     from .server import run_feed
     s = cfg.load_settings()
     port = a.port or int(s["port"])
