@@ -6,7 +6,7 @@
 //! not used by glitchwall yet); `glitchwall-render demo` runs demo.py's made-up feed (piece 2c).
 //! `glitchwall-render host [--wallpaper DIR] [--parent PID] [--which ..]` runs both in one process (piece 3b): the
 //! feed on threads, the windows rebuilt in place when the screens change instead of the process ending; with
-//! --open-settings JSON (the command for the settings, as a list) it watches the hot corner too (piece 3c).
+//! --glitchwall JSON (glitchwall's own command, as a list) it has the hot corner and the tray icon too (3c, 3d).
 #![windows_subsystem = "windows"]
 
 mod ambient;
@@ -26,6 +26,7 @@ mod redact;
 mod scene;
 mod server;
 mod settings;
+mod tray;
 mod tail;
 
 use std::path::PathBuf;

@@ -487,7 +487,7 @@ fn load_key(dir: &Path) -> Option<String> {
 /// What glitchwall (Python) looks for in this exe before it hands it the feed: an older exe has no `feed` and would
 /// open wallpaper windows instead, so the file is searched for this text, never run to find out. Raise the number
 /// when the feed's command line changes in a way glitchwall must know about.
-pub const FEED_PROTOCOL: &str = "glitchwall-feed-protocol:3";   // 2: `host` too (piece 3b); 3: its hot corner (3c)
+pub const FEED_PROTOCOL: &str = "glitchwall-feed-protocol:4";   // 2: `host` too (piece 3b); 4: its hot corner and tray (3c, 3d)
 
 /// The screens nobody can see right now (covered by a window, the session locked), as glitchwall's desktop host
 /// writes them: a JSON list of screen numbers, read again when the file changes. The page and the native renderer
@@ -523,13 +523,20 @@ pub fn run(args: &[String]) -> Result<(), String> {
 pub fn start_in_background(args: &[String]) -> Result<(u16, String), String> {
     let (listener, feed) = open(args)?;
     let (port, key) = (feed.port, feed.key.clone());
-    // --open-settings '["exe", "arg", ..]': the hot corner is watched here (piece 3c), and opens the settings so
-    if let Some(cmd) = arg(args, "--open-settings").and_then(|c| Json::parse(&c).ok()) {
-        let cmd: Vec<String> = cmd.items().iter().filter_map(|v| v.str().map(String::from)).collect();
+    // --glitchwall '["exe", "arg", ..]', glitchwall's own command: the hot corner (piece 3c) and the tray icon (3d)
+    // live here, and use it to open the settings (+ "settings") and to quit (+ "stop")
+    if let Some(cmd) = arg(args, "--glitchwall").and_then(|c| Json::parse(&c).ok()) {
+        let base: Vec<String> = cmd.items().iter().filter_map(|v| v.str().map(String::from)).collect();
+        let settings: Vec<String> = base.iter().cloned().chain(["settings".to_string()]).collect();
         let fd = feed.clone();
         std::thread::spawn(move || crate::corner::watch(
             || fd.live.lock().map(|mut l| cfg::corner(l.get())).unwrap_or_else(|_| "off".into()),
-            || crate::corner::open_settings(&cmd)));
+            || crate::corner::open_settings(&settings)));
+        let tray_on = feed.live.lock().map(|mut l| cfg::truthy(l.get().get("tray"))).unwrap_or(true);
+        if tray_on {   // glitchwall in the notification area, for as long as the feed runs
+            let (fd, icon) = (feed.clone(), wallpaper_dir(args).join("glitchwall.ico"));
+            std::thread::spawn(move || crate::tray::run(&icon, "glitchwall", move || tray_menu(&fd, &base)));
+        }
     }
     std::thread::spawn(move || serve(&listener, feed));
     Ok((port, key))
@@ -559,6 +566,76 @@ fn open(args: &[String]) -> Result<(TcpListener, Arc<Feed>), String> {
     if let Some(f) = seed.clone() { let fd = feed.clone(); std::thread::spawn(move || follow_seed(fd, PathBuf::from(f))); }
     follow_mode(feed.clone(), seed.is_some());
     Ok((listener, feed))
+}
+
+impl Feed {
+    /// A setting changed from the tray (server.py's start_tray): saved as the settings window's are, one at a time;
+    /// a new theme starts clean, its look and motion tweaks back to the defaults, as the settings window does.
+    fn tray_change(&self, k: &str, v: Json) {
+        let _one_at_a_time = self.saving.lock().unwrap();
+        let now = self.on_disk();
+        let (mut new, refused) = self.schema.apply_changes(&now, &Json::Obj(vec![(k.to_string(), v.clone())]));
+        if !refused.is_empty() { return; }
+        if k == "theme" && now.get("theme") != &v {
+            let resets = ["palette", "rain", "font", "transition"].into_iter().chain(cfg::TUNE.iter().map(|t| t.0))
+                .filter_map(|x| cfg::get(&self.schema.defaults, x).map(|d| (x.to_string(), d.clone()))).collect();
+            new = self.schema.apply_changes(&new, &Json::Obj(resets)).0;
+        }
+        let _ = cfg::private_write(&self.settings_file, &self.schema.file_text(&new));
+    }
+}
+
+/// "neon-street" -> "Neon street" (Python's str.capitalize after the dashes go)
+fn menu_name(v: &str) -> String {
+    let v = v.replace('-', " ");
+    let mut c = v.chars();
+    c.next().map(|f| f.to_uppercase().chain(c.flat_map(char::to_lowercase)).collect()).unwrap_or_default()
+}
+
+/// The tray's menu, made afresh each time it opens (start_tray's menu): the everyday settings, each current one
+/// ticked, plus pause (stream-safe) and quit. `glitchwall` is glitchwall's own command (settings, stop).
+fn tray_menu(feed: &Arc<Feed>, glitchwall: &[String]) -> Vec<crate::tray::Item> {
+    use crate::tray::Item::{self, Act, Sep, Sub};
+    let s = feed.live.lock().map(|mut l| l.get().clone()).unwrap_or(Json::Null);
+    let change = |k: &str, v: Json| -> crate::tray::Action {
+        let (fd, k) = (feed.clone(), k.to_string());
+        Box::new(move || fd.tray_change(&k, v.clone()))
+    };
+    let pick = |k: &str, choices: Vec<(String, String)>| -> Vec<Item> {
+        let cur = s.get(k).str().unwrap_or("").to_string();
+        choices.into_iter().map(|(v, label)| Act(label, v == cur, change(k, Json::Str(v)))).collect()
+    };
+    let named = |list: &[(&str, &str)]| list.iter().map(|(v, _)| (v.to_string(), menu_name(v))).collect::<Vec<_>>();
+    let flip = |k: &str, label: &str| -> Item {
+        let on = cfg::truthy(s.get(k));
+        Act(label.to_string(), on, change(k, Json::Bool(!on)))
+    };
+    let themes = match cfg::get(&feed.schema.kinds, "theme") {
+        Some(Json::Obj(t)) => t.iter().map(|(v, _)| (v.clone(), menu_name(v))).collect(),
+        _ => Vec::new(),
+    };
+    let masked = [("dots", "Dots  ••••"), ("words", "Words  [REDACTED]"), ("blocks", "Blocks  ████"),
+                  ("stars", "Stars  ****"), ("noise", "Gibberish  x7#q")];
+    let paused = cfg::truthy(s.get("paused"));
+    let settings: Vec<String> = glitchwall.iter().cloned().chain(["settings".to_string()]).collect();
+    let stop: Vec<String> = glitchwall.iter().cloned().chain(["stop".to_string()]).collect();
+    vec![
+        Act("Open settings".into(), false, Box::new(move || crate::corner::open_settings(&settings))),
+        Act(if paused { "Resume" } else { "Pause (stream-safe)" }.into(), false, change("paused", Json::Bool(!paused))),
+        Sep,
+        Sub("Mode".into(), pick("mode", named(&cfg::MODES))),
+        Sub("Theme".into(), pick("theme", themes)),
+        Sub("Hot corner".into(), pick("corner", named(&cfg::CORNERS))),
+        Sub("Masked secrets".into(), pick("masked", masked.iter().map(|(v, l)| (v.to_string(), l.to_string())).collect())),
+        Sub("Read logs of".into(), cfg::AGENTS.iter().map(|(k, name, _)| flip(k, name)).collect()),
+        Sub("Show".into(), vec![flip("commands_only", "Calls only, no output"), Sep,
+                                flip("mask_user", "Mask my user name"), flip("mask_email", "Mask emails")]),
+        Sep,
+        Act("Quit glitchwall".into(), false, Box::new(move || {
+            crate::tray::hide();   // first, or the icon lingers until the mouse passes over it
+            if let Some((exe, rest)) = stop.split_first() { let _ = std::process::Command::new(exe).args(rest).spawn(); }
+        })),
+    ]
 }
 
 fn serve(listener: &TcpListener, feed: Arc<Feed>) {
@@ -741,5 +818,55 @@ mod tests {
     #[test]
     fn config_js_holds_port_key_label() {
         assert_eq!(cfg::config_js(47834, "k-_1", "é  [demo]"), "window.FEED = {\"port\": 47834, \"key\": \"k-_1\", \"label\": \"\\u00e9  [demo]\"};\n");
+    }
+
+    fn tray_feed() -> (Arc<Feed>, PathBuf) {
+        let wp = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../src/glitchwall/wallpaper");
+        let schema = Arc::new(Schema::from_file(&wp.join("looks.js")).unwrap());
+        let dir = std::env::temp_dir().join(format!("gw-tray-{}-{}", std::process::id(), crate::ambient::token_hex(4)));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("settings.json");
+        let feed = Feed::new(KEY.into(), P, Live::new(schema, file.clone()), Store::new(Redactor::new("", "", false, true, true)),
+                             None, file.clone(), Some(wp));
+        (Arc::new(feed), file)
+    }
+
+    fn labels(items: &[crate::tray::Item]) -> Vec<String> {
+        use crate::tray::Item::*;
+        items.iter().map(|i| match i { Sep => "-".into(), Act(l, t, _) => format!("{l}{}", if *t { " *" } else { "" }), Sub(l, _) => format!("{l} >") }).collect()
+    }
+
+    #[test]
+    fn tray_menu_like_start_tray() {
+        assert_eq!((menu_name("bottom-right"), menu_name("neon-street"), menu_name("CRT")), ("Bottom right".into(), "Neon street".into(), "Crt".into()));
+        let (feed, _) = tray_feed();
+        let m = tray_menu(&feed, &["gw".into()]);
+        assert_eq!(labels(&m), ["Open settings", "Pause (stream-safe)", "-", "Mode >", "Theme >", "Hot corner >", "Masked secrets >",
+                                "Read logs of >", "Show >", "-", "Quit glitchwall"]);
+        let crate::tray::Item::Sub(_, mode) = &m[3] else { panic!() };
+        assert_eq!(labels(mode), ["Live *", "Ambient", "Art"]);
+        let crate::tray::Item::Sub(_, agents) = &m[7] else { panic!() };
+        assert_eq!(labels(agents), ["Claude Code *", "Gemini CLI", "Codex CLI"]);
+        let crate::tray::Item::Sub(_, show) = &m[8] else { panic!() };
+        assert_eq!(labels(show), ["Calls only, no output", "-", "Mask my user name *", "Mask emails *"]);
+    }
+
+    #[test]
+    fn tray_saves_and_a_new_theme_starts_clean() {
+        let (feed, file) = tray_feed();
+        feed.tray_change("paused", Json::Bool(true));
+        let saved = || cfg::read_saved(&file).unwrap();
+        assert_eq!(saved().get("paused"), &Json::Bool(true));
+        assert_eq!(labels(&tray_menu(&feed, &[]))[1], "Resume");
+        let themes: Vec<String> = match cfg::get(&feed.schema.kinds, "theme") { Some(Json::Obj(t)) => t.iter().map(|(k, _)| k.clone()).collect(), _ => vec![] };
+        let other = themes.iter().find(|t| Some(t.as_str()) != feed.schema.defaults.iter().find(|(k, _)| k == "theme").and_then(|(_, v)| v.str())).unwrap().clone();
+        feed.tray_change("linger", Json::Num(25.0));
+        assert_eq!(saved().get("linger"), &Json::Num(25.0));
+        feed.tray_change("theme", Json::Str(other.clone()));
+        assert_eq!(saved().get("theme").str(), Some(other.as_str()));
+        assert_eq!(saved().get("linger"), cfg::get(&feed.schema.defaults, "linger").unwrap());   // back to the default
+        assert_eq!(saved().get("paused"), &Json::Bool(true));   // the rest kept
+        feed.tray_change("mode", Json::Str("nonsense".into()));   // refused: nothing written
+        assert_eq!(saved().get("mode").str(), Some("live"));
     }
 }
