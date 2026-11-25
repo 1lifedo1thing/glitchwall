@@ -110,9 +110,7 @@ fn draw(args: &[String], port: Option<u16>, key: &str, peek: bool) -> Result<End
     let which = arg(args, "--which").unwrap_or_else(|| "all".into());
     let parent: Option<u32> = arg(args, "--parent").and_then(|p| p.parse().ok());
     let force_scale: Option<f32> = arg(args, "--scale").and_then(|s| s.parse().ok()).filter(|s: &f32| (0.5..=4.0).contains(s));
-    let wp = arg(args, "--wallpaper").map(PathBuf::from).unwrap_or_else(|| {
-        std::env::current_exe().ok().and_then(|e| e.parent().map(|d| d.join("wallpaper"))).unwrap_or_default()
-    });
+    let wp = server::wallpaper_dir(args);
     let looks = looks::Looks::load(&wp.join("looks.js")).map_err(|e| Error::new(HRESULT(-1), e))?;
     let css = Rc::new(std::fs::read_to_string(wp.join("index.html")).unwrap_or_default());
     let fonts = Rc::new(fonts::Fonts::load(&wp)?);

@@ -699,7 +699,10 @@ pub fn run_demo(args: &[String]) -> Result<(), String> {
 /// --wallpaper, or the wallpaper folder next to this exe: the page, looks.js and the fonts.
 pub fn wallpaper_dir(args: &[String]) -> PathBuf {
     arg(args, "--wallpaper").map(PathBuf::from).unwrap_or_else(|| {
-        std::env::current_exe().ok().and_then(|e| e.parent().map(|d| d.join("wallpaper"))).unwrap_or_default()
+        // next to the exe (standalone), else beside its bin folder (glitchwall\bin\ inside the Python package)
+        let dir = std::env::current_exe().ok().and_then(|e| e.parent().map(Path::to_path_buf)).unwrap_or_default();
+        [dir.join("wallpaper"), dir.parent().map(|p| p.join("wallpaper")).unwrap_or_default()].into_iter()
+            .find(|w| w.join("looks.js").is_file()).unwrap_or_else(|| dir.join("wallpaper"))
     })
 }
 
