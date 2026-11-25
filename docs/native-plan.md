@@ -178,3 +178,13 @@ fixtures. The feed comes in parts, each built, tested and committed on its own:
   ids, timestamps, the script's own lines), not in the words drawn.
 - **2d. Switch over.** `glitchwall start` runs the Rust feed when the exe is there; the Python one stays the fallback
   until pieces 3-4 replace the rest. The tray and hot corner stay in Python until piece 3 moves the desktop host.
+  Done: run_feed hands the feed to `glitchwall-render feed` (server.py's RustFeed) when the native renderer draws the
+  windows and the exe holds FEED_PROTOCOL ("glitchwall-feed-protocol:1"; the file is searched, never run, since an
+  older exe would open windows). The Python process keeps the windows, the tray and the hot corner and starts none of
+  its own sources. The Rust feed gets `--parent` (it exits within 2 s of glitchwall) and `--asleep FILE` (the host
+  writes which screens are covered to <state>/asleep.json; /feed?screen=N answers sleep from it). It is started again
+  if it stops; after 3 starts in a minute the Python feed takes over. GLITCHWALL_PYTHON_FEED=1 keeps everything in
+  Python; renderer = web keeps it too (the WebView2 host's restart-on-reset needs the Python feed until piece 3).
+  With the Rust feed RESET ALL doesn't restart the wallpaper: the native renderer takes the new look on its next poll.
+  Tests: tests/test_rust_feed_host.py (which exe qualifies, the start, the asleep hand-off, a restart after a
+  crash, ending with the parent, giving up to Python, and run_feed choosing each way with the windows left out).
