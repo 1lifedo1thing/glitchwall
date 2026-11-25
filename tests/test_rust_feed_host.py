@@ -1,5 +1,5 @@
-"""Piece 2d: glitchwall's desktop host runs the Rust feed (glitchwall-render feed) as its child, with the Python feed
-as the fallback. Which exe qualifies, starting it, the asleep hand-off, restarts, ending with its parent, giving up.
+"""Pieces 2d and 3b: glitchwall's desktop host runs the Rust feed (glitchwall-render feed, or host: the feed and the
+windows in one process) as its child, with the Python feed as the fallback. Which exe qualifies, starting it, the asleep hand-off, restarts, ending with its parent, giving up.
 The ones that run the exe need GW_FEED_EXE."""
 import http.client
 import json
@@ -25,7 +25,7 @@ class TestWhichExe(unittest.TestCase):
     def setUp(self):
         self.dir = Path(tempfile.mkdtemp(prefix="gw-exe-"))
         self.new = self.dir / "new.exe"
-        self.new.write_bytes(b"MZ...." + server.FEED_PROTOCOL + b"....")
+        self.new.write_bytes(b"MZ...." + server.FEED_PROTOCOL + b"1....")
         self.old = self.dir / "old.exe"
         self.old.write_bytes(b"MZ.... a renderer without the feed ....")
 
@@ -42,6 +42,12 @@ class TestWhichExe(unittest.TestCase):
         self.assertIsNone(self.pick(None))
         self.assertIsNone(self.pick(self.dir / "missing.exe"))
 
+    def test_protocol_number(self):
+        two = self.dir / "two.exe"
+        two.write_bytes(b"MZ" + server.FEED_PROTOCOL + b"2\x00 more")
+        self.assertEqual([server.feed_protocol(x) for x in (self.new, two, self.old, self.dir / "missing.exe")], [1, 2, 0, 0])
+        self.assertEqual(self.pick(two), two)
+
     def test_only_with_the_native_renderer_and_no_override(self):
         self.assertIsNone(self.pick(self.new, {"renderer": "web"}))
         self.assertIsNone(self.pick(self.new, env={"GLITCHWALL_PYTHON_FEED": "1"}))
@@ -49,6 +55,7 @@ class TestWhichExe(unittest.TestCase):
     @unittest.skipUnless(EXE, "set GW_FEED_EXE")
     def test_the_built_exe_qualifies(self):
         self.assertEqual(self.pick(Path(EXE)), Path(EXE))
+        self.assertEqual(server.feed_protocol(Path(EXE)), 2)
 
 
 def free_port():
@@ -124,6 +131,31 @@ class TestRustFeedChild(unittest.TestCase):
             parent.kill()
             child.kill()
 
+    def test_host_serves_and_ends_with_its_parent(self):
+        """`host`: the feed and the windows in one process, no children. --peek: a small window, not the desktop."""
+        parent = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
+        child = subprocess.Popen([EXE, "host", "--port", str(self.port), "--parent", str(parent.pid), "--peek",
+                                  "--wallpaper", str(WALLPAPER)])
+        try:
+            for _ in range(50):
+                try:
+                    self.assertEqual(self.fetch()["mode"], "live")
+                    break
+                except OSError:
+                    time.sleep(0.1)
+            else:
+                self.fail("host never answered")
+            c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+            c.request("GET", "/feed?key=wrong", headers={"Host": f"127.0.0.1:{self.port}"})
+            self.assertEqual(c.getresponse().status, 403)
+            c.close()
+            self.assertIsNone(child.poll())
+            parent.kill()
+            child.wait(6)   # it looks every 2 s
+        finally:
+            parent.kill()
+            child.kill()
+
     def test_gives_up_when_it_cannot_run(self):
         taken = socket.socket()
         taken.bind(("127.0.0.1", self.port))   # bound, not listening: the exe can't have the port and exits
@@ -156,7 +188,7 @@ class TestRustFeedChild(unittest.TestCase):
 class TestRunFeedChoosesTheFeed(unittest.TestCase):
     """run_feed as `glitchwall start` runs it, with the windows, the tray and the hot corner left out."""
 
-    def run_feed(self, exe):
+    def run_feed(self, exe, protocol=None, launch=None, watch=None):
         home = Path(tempfile.mkdtemp(prefix="gw-runfeed-"))
         (home / "key").write_text(KEY, encoding="utf-8")
         port, seen, started, feeds = free_port(), {}, [], []
@@ -176,7 +208,10 @@ class TestRunFeedChoosesTheFeed(unittest.TestCase):
                 mock.patch.object(winhost, "watch_corner", lambda *a: None), \
                 mock.patch.object(server, "start_tray", lambda *a, **k: None), \
                 mock.patch.object(server, "follow_mode", lambda *a, **k: started.append(1)), \
-                mock.patch.object(server.RustFeed, "start", keep):
+                mock.patch.object(server.RustFeed, "start", keep), \
+                mock.patch.object(server, "feed_protocol", protocol or server.feed_protocol), \
+                mock.patch.object(server.RustFeed, "launch", launch or server.RustFeed.launch), \
+                mock.patch.object(server.RustFeed, "watch", watch or server.RustFeed.watch):
             os.environ.pop("GLITCHWALL_PYTHON_FEED", None)
             try:
                 server.run_feed(port)
@@ -185,12 +220,39 @@ class TestRunFeedChoosesTheFeed(unittest.TestCase):
                     f.end()
         return seen, started, feeds
 
-    def test_rust_feed_when_the_exe_has_it(self):
-        seen, started, feeds = self.run_feed(Path(EXE))
+    def test_rust_feed_when_the_exe_has_it(self):   # protocol 1 (2d): the Rust feed, the windows as before
+        seen, started, feeds = self.run_feed(Path(EXE), protocol=lambda exe: 1)
         self.assertEqual(seen, {"mode": "live"})
         self.assertEqual(started, [])   # Python's own sources never started: nothing is read twice
         self.assertEqual(len(feeds), 1)
         self.assertIsNotNone(feeds[0].proc)
+
+    def test_host_with_protocol_2_and_back_to_python(self):
+        """Protocol 2: one `host` child draws and serves; nothing else here. When it can't be kept running, the feed
+        and the windows come back as before. Stand-ins, so no real wallpaper windows open during the tests."""
+        launched, watched = [], []
+
+        def launch(rf):
+            launched.append(rf.hosting)
+            return True
+
+        def watch(rf, stop, on_give_up):
+            watched.append(1)
+            on_give_up()   # as if it kept stopping
+        seen, started, feeds = self.run_feed(Path(EXE), launch=launch, watch=watch)
+        self.assertEqual((launched, watched), ([True], [1]))
+        self.assertEqual((seen, started), ({"mode": "live"}, [1]))   # the Python feed took over
+
+    def test_host_command_line(self):
+        rf = server.RustFeed(Path("x.exe"), 47999, Path("a.json"), mock.Mock(which="primary"), WALLPAPER, hosting=True)
+        with mock.patch("subprocess.Popen") as popen, mock.patch("glitchwall.platforms.port_open", lambda p: True):
+            popen.return_value.poll.return_value = None
+            self.assertTrue(rf.launch())
+        args = popen.call_args[0][0]
+        self.assertEqual(args[:2], ["x.exe", "host"])
+        self.assertIn("--parent", args)
+        self.assertEqual(args[args.index("--which") + 1], "primary")
+        self.assertNotIn("--asleep", args)   # host knows for itself which screens nobody can see
 
     def test_python_feed_with_an_older_exe(self):
         old = Path(tempfile.mkdtemp(prefix="gw-old-")) / "glitchwall-render.exe"

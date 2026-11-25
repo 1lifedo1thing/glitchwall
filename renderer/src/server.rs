@@ -487,7 +487,7 @@ fn load_key(dir: &Path) -> Option<String> {
 /// What glitchwall (Python) looks for in this exe before it hands it the feed: an older exe has no `feed` and would
 /// open wallpaper windows instead, so the file is searched for this text, never run to find out. Raise the number
 /// when the feed's command line changes in a way glitchwall must know about.
-pub const FEED_PROTOCOL: &str = "glitchwall-feed-protocol:1";
+pub const FEED_PROTOCOL: &str = "glitchwall-feed-protocol:2";   // 2: `host` too (piece 3b)
 
 /// The screens nobody can see right now (covered by a window, the session locked), as glitchwall's desktop host
 /// writes them: a JSON list of screen numbers, read again when the file changes. The page and the native renderer
