@@ -167,7 +167,11 @@ Pieces, in order; each one is built, tested against the Python version and commi
      autostart) and the exe knows `run`; at a terminal it stays Python. Live: run 9 MB + host 130 MB, the 33 MB
      Python feed gone; stop ends both. Autostart still goes through pythonw for a moment (4c can point it at the
      exe).
-   - 4b: config, themes, reset, export in Rust.
+   - **4b (done 2026-11-25).** `glitchwall-render config|themes|reset|export` (cli.rs), output and saved settings
+     matched to cli.py by tests/test_cli_parity.py. Not what `glitchwall` runs yet: that stays the Python entry
+     point until one exe ships. Deliberate differences: config checks values through the schema (refused: exit 2;
+     Python saves whatever argparse let through), on|off in any case; restarting reuses the options `run` noted in
+     run-args.json; the exe attaches to the terminal it was typed in.
    - 4c: install and uninstall (autostart, the Start menu shortcut, the desktop menu entry).
    - 4d: doctor and demo.
 5. **The settings window** (settingswin): the same settings.html in WebView2, opened from Rust with the `wry`
