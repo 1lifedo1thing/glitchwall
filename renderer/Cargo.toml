@@ -9,6 +9,7 @@ publish = false
 [dependencies]
 # the redaction's patterns lean on lookarounds, which the plain regex crate leaves out
 fancy-regex = "0.14"
+webview2-com = "=0.33.0"
 # 0.58: the last version that brings its own import libraries, so the GNU toolchain needs nothing else (see docs/native-plan.md)
 windows = { version = "0.58", features = [
     "Foundation_Numerics",

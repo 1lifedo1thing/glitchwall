@@ -34,6 +34,7 @@ mod redact;
 mod scene;
 mod server;
 mod settings;
+mod settingswin;
 mod supervise;
 mod tray;
 mod tail;
@@ -81,6 +82,10 @@ fn run() -> Result<()> {
     }
     if args.get(1).map(String::as_str) == Some("run") {   // what start and autostart leave running (piece 4a)
         return supervise::run(&args).map_err(|e| Error::new(HRESULT(-1), e.as_str()));
+    }
+    if args.get(1).map(String::as_str) == Some("settings") {   // piece 5 (5a: the spike)
+        cli::attach_console();
+        return settingswin::run(&args).map_err(|e| { eprintln!("glitchwall settings: {e}"); Error::new(HRESULT(-1), e.as_str()) });
     }
     if args.get(1).map(String::as_str) == Some("demo") {
         cli::attach_console();

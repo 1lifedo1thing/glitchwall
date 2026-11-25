@@ -208,6 +208,15 @@ Pieces, in order; each one is built, tested against the Python version and commi
    - **5a. Spike.** Add the crate, build on GNU, open a plain window showing settings.html from the running feed.
      Measure memory against the Python window. If it won't build on 0.58/GNU, stop and bring the options to
      Lester (another crate version, the loader DLL, or a toolchain change).
+     Done 2026-11-25 (settingswin.rs, `glitchwall-render settings`): webview2-com 0.33.0 (MIT; with
+     webview2-com-sys 0.33.0, webview2-com-macros 0.8.1, thiserror 1.0.69) is the release built on windows 0.58 and
+     builds on GNU unchanged. Under GNU its loader can only be linked as Microsoft's WebView2Loader.dll (165 KB,
+     shipped inside webview2-com-sys), so the exe loads it with LoadLibrary when the window opens: the exe starts
+     and draws without it, and `settings` says it is missing. The DLL must go beside the exe in the wheel
+     (build_release.py) and in the third-party notices: part of 5b/5e. On the real desktop the window showed the
+     live settings page in the current theme. Memory, the whole process tree with WebView2's helpers: Rust 7
+     processes, 262 MB private (432 MB working set); the Python window 9 processes, 347 MB private (370 MB), so
+     about 85 MB less, the Python + .NET share.
    - **5b. The window.** `glitchwall-render settings`: settingswin.Settings.open's rules (560x1050 logical px,
      shrunk to fit a short screen, centred on the screen under the mouse, not resizable, background #010401),
      the title "glitchwall settings" (bring_settings_forward finds it by title), the icon, its own taskbar
