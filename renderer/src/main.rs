@@ -3,9 +3,10 @@
 //!   GLITCHWALL_KEY=<feed key> glitchwall-render --port 47833 [--which all|primary] [--wallpaper DIR] [--parent PID] [--scale X] [--peek [--peek-size WxH]]
 //! --wallpaper is the folder with looks.js, index.html and the fonts (default: the one next to this exe).
 //! `glitchwall-render feed [--port N] [--wallpaper DIR]` runs the feed instead (server.rs and settings.rs; pieces 2a-2b,
-//! not used by glitchwall yet).
+//! not used by glitchwall yet); `glitchwall-render demo` runs demo.py's made-up feed (piece 2c).
 #![windows_subsystem = "windows"]
 
+mod ambient;
 mod anim;
 mod bg;
 mod codex;
@@ -47,6 +48,9 @@ fn run() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
     if args.get(1).map(String::as_str) == Some("feed") {
         return server::run(&args).map_err(|e| Error::new(HRESULT(-1), e.as_str()));
+    }
+    if args.get(1).map(String::as_str) == Some("demo") {
+        return server::run_demo(&args).map_err(|e| Error::new(HRESULT(-1), e.as_str()));
     }
     let peek = args.iter().any(|a| a == "--peek");
     // --peek-size: the peek window's size, for screenshots at a set resolution (default 960x560)

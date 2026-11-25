@@ -379,6 +379,14 @@ fn dump_indent(v: &Json, level: usize, o: &mut String) {
     }
 }
 
+/// The file the wallpaper loads to find the feed (settings.config_js). Holds the key: never publish it.
+pub fn config_js(port: u16, key: &str, label: &str) -> String {
+    let (mut k, mut l) = (String::new(), String::new());
+    ascii_str(key, &mut k);
+    ascii_str(label, &mut l);
+    format!("window.FEED = {{\"port\": {port}, \"key\": {k}, \"label\": {l}}};\n")
+}
+
 fn ascii_str(s: &str, o: &mut String) {
     o.push('"');
     for c in s.chars() {
@@ -395,19 +403,23 @@ fn ascii_str(s: &str, o: &mut String) {
 // ---------------------------------------------------------------- re-read on change
 /// The settings, read again whenever the file changes, so pause and the rest act without a restart (LiveSettings).
 /// If the file turns unreadable the last good settings stay; one that's unreadable from the start counts as paused.
-pub struct Live { pub schema: Arc<Schema>, file: PathBuf, mtime: Option<SystemTime>, s: Json, good: bool }
+pub struct Live { pub schema: Arc<Schema>, file: Option<PathBuf>, mtime: Option<SystemTime>, s: Json, good: bool }
 
 impl Live {
     pub fn new(schema: Arc<Schema>, file: PathBuf) -> Live {
         let s = schema.load(read_saved(&file).as_ref());
-        Live { schema, file, mtime: None, s, good: false }
+        Live { schema, file: Some(file), mtime: None, s, good: false }
     }
 
+    /// Settings that never change (the demo: the defaults, whatever settings.json says).
+    pub fn fixed(schema: Arc<Schema>, s: Json) -> Live { Live { schema, file: None, mtime: None, s, good: true } }
+
     pub fn get(&mut self) -> &Json {
-        let m = std::fs::metadata(&self.file).and_then(|m| m.modified()).ok();
+        let Some(file) = self.file.clone() else { return &self.s };
+        let m = std::fs::metadata(&file).and_then(|m| m.modified()).ok();
         if m != self.mtime {
             self.mtime = m;
-            let saved = read_saved(&self.file);
+            let saved = read_saved(&file);
             if saved.is_some() || !self.good {
                 self.s = self.schema.load(saved.as_ref());
                 self.good = saved.is_some();

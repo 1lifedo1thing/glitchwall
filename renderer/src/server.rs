@@ -121,7 +121,16 @@ pub struct Feed {
     static_dir: Option<PathBuf>,
     /// one settings change at a time: each reads the file, changes it and writes it back
     saving: Mutex<()>,
+    /// the settings window's API (off in the demo)
+    pub editable: bool,
+    /// what /config.js is
+    pub config_js: String,
+    /// the demo's own look, mode and label, whatever the settings say
+    pub fixed: Option<Fixed>,
 }
+
+/// What `glitchwall demo` shows: set when it starts (demo.py's run_demo passes look, mode and label to the handler).
+pub struct Fixed { pub look: Json, pub mode: String, pub label: Json }
 
 struct Req { method: String, path: String, query: String, headers: Vec<(String, String)>, body: Vec<u8> }
 
@@ -212,7 +221,7 @@ impl Feed {
         let extra = vec![format!("http://127.0.0.1:{port}"), format!("http://localhost:{port}")];
         let schema = live.schema.clone();
         Feed { store: Mutex::new(store), live: Mutex::new(live), key, port, extra, refusals, schema, settings_file, static_dir,
-               saving: Mutex::new(()) }
+               saving: Mutex::new(()), editable: true, config_js: CONFIG_JS.into(), fixed: None }
     }
 
     fn host_ok(&self, req: &Req) -> bool {
@@ -282,7 +291,8 @@ impl Feed {
         let st = self.live.lock().unwrap().get().clone();
         let paused = cfg::get(st.entries(), "paused").is_some_and(cfg::truthy);
         let commands_only = cfg::get(st.entries(), "commands_only").is_some_and(cfg::truthy);
-        let mode = cfg::mode(&st);
+        let fixed = self.fixed.as_ref();
+        let mode = fixed.map(|f| f.mode.clone()).unwrap_or_else(|| cfg::mode(&st));
         let hidden = paused || mode == "art";
         let (events, last) = {
             let mut store = self.store.lock().unwrap();
@@ -294,9 +304,9 @@ impl Feed {
             ("events".into(), Json::Arr(events.into_iter().map(Json::Obj).collect())),
             ("paused".into(), Json::Bool(paused)),
             ("last".into(), Json::Num(last as f64)),
-            ("look".into(), sc.look(&st)),
+            ("look".into(), fixed.map(|f| f.look.clone()).unwrap_or_else(|| sc.look(&st))),
             ("mode".into(), Json::Str(mode)),
-            ("label".into(), sc.display_label(&st)),
+            ("label".into(), fixed.map(|f| f.label.clone()).unwrap_or_else(|| sc.display_label(&st))),
             ("tune".into(), sc.tune(&st)),
             ("opts".into(), sc.opts(&st)),
             ("corner".into(), Json::Str(cfg::corner(&st))),   // where the hot-corner icon sits
@@ -310,6 +320,7 @@ impl Feed {
     /// JSON POST from the feed's own address, where the settings window lives (a plain form can't be one, and a file
     /// page or a sandboxed frame, which send Origin: null, can't make one).
     fn settings(&self, s: &mut TcpStream, req: &Req, change: bool) {
+        if !self.editable { return self.refuse(s, req, 404); }
         let origin = req.header("Origin");
         if !check_access(req.header("Host"), origin, &req.q("key").unwrap_or_default(), &self.key, self.port, &self.extra) {
             return self.refuse(s, req, 403);
@@ -338,13 +349,14 @@ impl Feed {
         self.json(s, origin, &self.schema.window(&self.on_disk(), &refused, false));
     }
 
-    /// The page and its files, from the static folder, to the right Host only. /config.js holds no key.
+    /// The page and its files, from the static folder, to the right Host only. /config.js holds no key (but the demo's,
+    /// whose key is random per run and reads nothing real).
     fn static_file(&self, s: &mut TcpStream, req: &Req) {
         if !self.host_ok(req) { return self.refuse(s, req, 403); }
         let name = req.path.trim_start_matches('/');
         let name = if name.is_empty() { "index.html" } else { name };
         let (data, ctype) = if name == "config.js" {
-            (CONFIG_JS.as_bytes().to_vec(), "text/javascript")
+            (self.config_js.as_bytes().to_vec(), "text/javascript")
         } else {
             // resolved first: whatever the path says (.., \, C:, links), the file must be inside the folder
             let dir = self.static_dir.as_ref().and_then(|d| d.canonicalize().ok());
@@ -364,7 +376,7 @@ impl Feed {
         };
         if paused { return; }
         let mut st = self.store.lock().unwrap();
-        if st.masks != Some(masks) {
+        if self.fixed.is_none() && st.masks != Some(masks) {   // the demo keeps its own (no home, no user name)
             st.redact = Redactor::for_machine_with(masks.0, masks.1);
             st.masks = Some(masks);
         }
@@ -412,17 +424,52 @@ fn start_reader(agent: &str, feed: Arc<Feed>) -> Arc<AtomicBool> {
     stop
 }
 
-/// The sources (server.py's follow_mode): while the mode is live, one reader per agent turned on, each started
-/// and stopped on its own as the settings change.
-fn start_sources(feed: Arc<Feed>) {
+/// The mode's own source (server.py's start_source): ambient's made-up sessions; live and art start nothing here
+/// (live mode's readers are started one by one, see Sources). Set the flag to stop it.
+fn start_source(mode: &str, feed: Arc<Feed>) -> Arc<AtomicBool> {
+    let stop = Arc::new(AtomicBool::new(false));
+    if mode == "ambient" {
+        let s2 = stop.clone();
+        std::thread::spawn(move || crate::ambient::generate(&mut |e| feed.add(&e), &s2, 1.0));
+    }
+    stop
+}
+
+/// What runs, kept in step with the settings (server.py's follow_mode): the mode's own source, and in live mode one
+/// reader per agent turned on. Turning an agent on or off starts or stops just that reader; an agent that is off has
+/// its folder left alone.
+#[derive(Default)]
+pub struct Sources { mode: Option<String>, stop: Option<Arc<AtomicBool>>, readers: Vec<(&'static str, Arc<AtomicBool>)> }
+
+impl Sources {
+    pub fn step(&mut self, mode: &str, agents: &[&'static str], start_source: &mut dyn FnMut(&str) -> Arc<AtomicBool>,
+                start_reader: &mut dyn FnMut(&'static str) -> Arc<AtomicBool>) {
+        if self.mode.as_deref() != Some(mode) {
+            if let Some(s) = self.stop.take() { s.store(true, Ordering::Relaxed); }
+            self.mode = Some(mode.to_string());
+            self.stop = Some(start_source(mode));
+        }
+        let want: &[&str] = if mode == "live" { agents } else { &[] };
+        self.readers.retain(|(a, s)| { let keep = want.contains(a); if !keep { s.store(true, Ordering::Relaxed); } keep });
+        for (a, _, _) in cfg::AGENTS {   // in AGENTS' order, as follow_mode starts them
+            if want.contains(&a) && !self.readers.iter().any(|(r, _)| *r == a) { self.readers.push((a, start_reader(a))); }
+        }
+    }
+
+    #[cfg(test)]
+    pub fn stop_all(&mut self) {
+        for s in self.stop.take().into_iter().chain(self.readers.drain(..).map(|(_, s)| s)) { s.store(true, Ordering::Relaxed); }
+    }
+}
+
+/// Follows the settings once a second. `seeded` (the tests' --seed): the seed file stands in for the agents' logs,
+/// so none is read; the modes' own sources still follow the settings.
+fn follow_mode(feed: Arc<Feed>, seeded: bool) {
     std::thread::spawn(move || {
-        let mut readers: Vec<(&'static str, Arc<AtomicBool>)> = Vec::new();
+        let mut src = Sources::default();
         loop {
-            let want = { let mut l = feed.live.lock().unwrap(); if l.mode() == "live" { l.agents_on() } else { Vec::new() } };
-            readers.retain(|(a, s)| { let keep = want.contains(a); if !keep { s.store(true, Ordering::Relaxed); } keep });
-            for a in want {
-                if !readers.iter().any(|(r, _)| *r == a) { readers.push((a, start_reader(a, feed.clone()))); }
-            }
+            let (mode, agents) = { let mut l = feed.live.lock().unwrap(); (l.mode(), if seeded { Vec::new() } else { l.agents_on() }) };
+            src.step(&mode, &agents, &mut |m| start_source(m, feed.clone()), &mut |a| start_reader(a, feed.clone()));
             std::thread::sleep(Duration::from_secs(1));
         }
     });
@@ -437,9 +484,7 @@ fn load_key(dir: &Path) -> Option<String> {
 /// `glitchwall-render feed`: runs until killed. Errors (no key yet, port taken) go back to main's log.
 pub fn run(args: &[String]) -> Result<(), String> {
     let dir = state_dir();
-    let wp = arg(args, "--wallpaper").map(PathBuf::from).unwrap_or_else(|| {
-        std::env::current_exe().ok().and_then(|e| e.parent().map(|d| d.join("wallpaper"))).unwrap_or_default()
-    });
+    let wp = wallpaper_dir(args);
     let schema = Arc::new(Schema::from_file(&wp.join("looks.js"))?);
     let file = dir.join("settings.json");
     let mut live = Live::new(schema, file.clone());
@@ -449,15 +494,71 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let feed = Arc::new(Feed::new(key, port, live, Store::new(Redactor::for_machine()), Some(dir.join("last-refused.txt")),
                                   file, Some(wp)));
     let listener = TcpListener::bind(("127.0.0.1", port)).map_err(|e| format!("port {port}: {e}"))?;
-    match arg(args, "--seed") {
-        Some(f) => { let fd = feed.clone(); std::thread::spawn(move || follow_seed(fd, PathBuf::from(f))); }
-        None => start_sources(feed.clone()),
-    }
+    let seed = arg(args, "--seed");
+    if let Some(f) = seed.clone() { let fd = feed.clone(); std::thread::spawn(move || follow_seed(fd, PathBuf::from(f))); }
+    follow_mode(feed.clone(), seed.is_some());
+    serve(&listener, feed);
+    Ok(())
+}
+
+fn serve(listener: &TcpListener, feed: Arc<Feed>) {
     for conn in listener.incoming().flatten() {
         let fd = feed.clone();
         std::thread::spawn(move || fd.handle(conn));
     }
+}
+
+pub const DEMO_PORT: u16 = 47834;
+
+/// `glitchwall-render demo [--port N] [--pace X] [--mode M] [--theme ..] [--palette ..] [--rain ..] [--font ..]
+/// [--transition ..] [--wallpaper DIR]` (demo.py's run_demo): made-up tool calls, no logs read, and the wallpaper page
+/// itself at http://127.0.0.1:<port>/ to open in a browser. The key is random per run and sits in /config.js: the
+/// data is fake, so nothing real is exposed. The settings window's API is off; the look comes from the settings and
+/// the options given, and live mode here is the scripted demo session.
+pub fn run_demo(args: &[String]) -> Result<(), String> {
+    let wp = wallpaper_dir(args);
+    let schema = Arc::new(Schema::from_file(&wp.join("looks.js"))?);
+    let port = arg(args, "--port").and_then(|p| p.parse().ok()).unwrap_or(DEMO_PORT);
+    let pace = arg(args, "--pace").and_then(|p| p.parse::<f64>().ok()).filter(|p| p.is_finite() && *p >= 0.0).unwrap_or(1.0);
+    let mode = arg(args, "--mode").filter(|m| cfg::MODES.iter().any(|(k, _)| k == m)).unwrap_or_else(|| "live".into());
+    let file = state_dir().join("settings.json");
+    let s = schema.load(cfg::read_saved(&file).as_ref());
+    let mut with = cfg::dict(s.entries());
+    cfg::set(&mut with, "mode", Json::Str(mode.clone()));
+    let label = schema.display_label(&Json::Obj(with.clone()));
+    for (k, _) in &schema.kinds { if let Some(v) = arg(args, &format!("--{k}")) { cfg::set(&mut with, k, Json::Str(v)); } }
+    let look = schema.look(&Json::Obj(with));
+    let shown = crate::logs::py_str(&label) + "  [demo]";
+    let key = crate::ambient::token_urlsafe(24);
+    let mut feed = Feed::new(key.clone(), port, Live::fixed(schema.clone(), Json::Obj(schema.defaults.clone())),
+                             Store::new(Redactor::new("", "", false, true, true)), None, file, Some(wp));
+    feed.editable = false;
+    feed.config_js = cfg::config_js(port, &key, &shown);
+    feed.fixed = Some(Fixed { look: look.clone(), mode: mode.clone(), label: Json::Str(if cfg::truthy(&label) { shown } else { String::new() }) });
+    let feed = Arc::new(feed);
+    let listener = TcpListener::bind(("127.0.0.1", port)).map_err(|e| format!("port {port}: {e}"))?;
+    if mode != "art" {
+        let fd = feed.clone();
+        let m = mode.clone();
+        std::thread::spawn(move || {
+            let stop = AtomicBool::new(false);
+            let mut add = |e: crate::ambient::Ev| fd.add(&e);
+            if m == "ambient" { crate::ambient::generate(&mut add, &stop, pace) } else { crate::ambient::demo_generate(&mut add, &stop, pace) }
+        });
+    }
+    let l = |k: &str| look.get(k).str().unwrap_or("").to_string();
+    println!("demo feed (fake data) on http://127.0.0.1:{port}/  - open it in a browser, Ctrl+C to stop");
+    println!("mode: {mode}");
+    println!("look: {} theme, {} rain, {} font  (try ?theme=amber&rain=stars)", l("theme"), l("rain"), l("font"));
+    serve(&listener, feed);
     Ok(())
+}
+
+/// --wallpaper, or the wallpaper folder next to this exe: the page, looks.js and the fonts.
+fn wallpaper_dir(args: &[String]) -> PathBuf {
+    arg(args, "--wallpaper").map(PathBuf::from).unwrap_or_else(|| {
+        std::env::current_exe().ok().and_then(|e| e.parent().map(|d| d.join("wallpaper"))).unwrap_or_default()
+    })
 }
 
 #[cfg(test)]
@@ -531,5 +632,38 @@ mod tests {
         assert_eq!(r.q("nope"), None);
         assert_eq!(unquote("100%"), "100%");
         assert_eq!(unquote("%zz"), "%zz");
+    }
+
+    // test_modes.py's TestFollowMode, on Sources::step
+    fn run_steps(states: &[(&str, Vec<&'static str>)]) -> (Vec<String>, Vec<&'static str>, Vec<Arc<AtomicBool>>, Sources) {
+        let (mut modes, mut readers, flags) = (Vec::new(), Vec::new(), std::cell::RefCell::new(Vec::new()));
+        let flag = || { let f = Arc::new(AtomicBool::new(false)); flags.borrow_mut().push(f.clone()); f };
+        let mut src = Sources::default();
+        for (mode, agents) in states {
+            src.step(mode, agents, &mut |m| { modes.push(m.to_string()); flag() }, &mut |a| { readers.push(a); flag() });
+        }
+        (modes, readers, flags.into_inner(), src)
+    }
+
+    #[test]
+    fn switches_source_when_mode_changes() {
+        let (modes, _, flags, _) = run_steps(&[("live", vec![]), ("live", vec![]), ("ambient", vec![]), ("art", vec![]), ("art", vec![])]);
+        assert_eq!(modes, ["live", "ambient", "art"]);
+        assert_eq!(flags.iter().map(|f| f.load(Ordering::Relaxed)).collect::<Vec<_>>(), [true, true, false]);   // the old ones stopped
+    }
+
+    #[test]
+    fn agents_start_and_stop_one_by_one() {
+        // the agents' lists as agents_on gives them for {}, {gemini}, {gemini, claude off}, {gemini: "yes"}, then art
+        let (_, readers, flags, mut src) = run_steps(&[("live", vec!["agent_claude"]), ("live", vec!["agent_claude", "agent_gemini"]),
+            ("live", vec!["agent_gemini"]), ("live", vec!["agent_claude"]), ("art", vec!["agent_claude", "agent_codex"])]);
+        assert_eq!(readers, ["agent_claude", "agent_gemini", "agent_claude"]);
+        src.stop_all();
+        assert!(flags.iter().all(|f| f.load(Ordering::Relaxed)));
+    }
+
+    #[test]
+    fn config_js_holds_port_key_label() {
+        assert_eq!(cfg::config_js(47834, "k-_1", "é  [demo]"), "window.FEED = {\"port\": 47834, \"key\": \"k-_1\", \"label\": \"\\u00e9  [demo]\"};\n");
     }
 }
